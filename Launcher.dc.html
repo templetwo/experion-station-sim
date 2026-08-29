@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#8f8f8f}
+*{box-sizing:border-box}
+a{color:#1a4a7a;text-decoration:none}a:hover{color:#0a3a6a;text-decoration:underline}
+</style>
+</helmet>
+<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-family:Tahoma,Verdana,'Segoe UI',sans-serif;background:#BFBFBF;color:#000">
+<div style="width:660px;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #5E5E5E #5E5E5E #FFFFFF;box-shadow:6px 6px 18px rgba(0,0,0,0.45)">
+  <div style="display:flex;align-items:center;gap:8px;background:#41608A;color:#FFFFFF;padding:6px 10px">
+    <div style="font-weight:700;font-size:13px;flex:1">OPERATOR STATION TRAINING SIMULATOR — LAUNCHER</div>
+    <div style="font-size:10px;border:1px solid #FFFFFF;padding:1px 6px">v{{ version }}</div>
+  </div>
+  <div style="padding:16px 18px 8px 18px">
+    <div style="font-size:12px;color:#3c3c3c;line-height:1.5;margin-bottom:14px">Independent, browser-based imitation of an Experion® PKS Console Station for operator training. Three live process units, scored drills, and a rule-based Ops Assistant. Not a Honeywell product.</div>
+    <sc-for list="{{ items }}" as="it" hint-placeholder-count="3">
+      <a href="{{ it.href }}" style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:12px 14px;background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;cursor:pointer;color:#000;text-decoration:none" style-hover="background:#C2CBD8;text-decoration:none" style-active="border-color:#8a867e #FFFFFF #FFFFFF #8a867e">
+        <div style="width:44px;height:44px;background:#41608A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none">{{ it.glyph }}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">{{ it.title }}</div>
+          <div style="font-size:11px;color:#55524c;margin-top:2px">{{ it.sub }}</div>
+        </div>
+        <div style="font-weight:700;font-size:12px;color:#31548F">{{ it.action }} ▸</div>
+      </a>
+    </sc-for>
+  </div>
+  <div style="display:flex;gap:16px;padding:8px 18px 12px 18px;font-size:10.5px;color:#55524c;border-top:1px solid #9a968e">
+    <div>BUILD v{{ version }} · {{ buildDate }}</div>
+    <div style="flex:1"></div>
+    <div>SECURITY DEFAULTS: oper / supv / engr / mngr</div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals(){
+    return { version:'1.1.0', buildDate:'29-AUG-2026',
+      items:[
+        {glyph:'STN', title:'Launch Operator Station', sub:'Full console — Units 01/02/03, alarms, trends, drills, Ops Assistant', action:'OPEN', href:'Experion%20Station%20Simulator.dc.html'},
+        {glyph:'OFF', title:'Standalone Offline Build', sub:'Single self-contained file (dist/) — runs with no network, ideal for handout', action:'OPEN', href:'dist/experion-station-sim-standalone.html'},
+        {glyph:'DOC', title:'README & Changelog', sub:'Repo docs: features, run instructions, version history, license', action:'VIEW', href:'README.md'}
+      ]};
+  }
+}
+</script>
+</body>
+</html>

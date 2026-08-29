@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#41608A"></rect><rect x="30" y="34" width="40" height="26" fill="#D4D0C8"></rect><rect x="34" y="38" width="14" height="8" fill="#FF0000"></rect><rect x="52" y="38" width="14" height="8" fill="#00D8D8"></rect><rect x="34" y="50" width="32" height="6" fill="#41608A"></rect><rect x="44" y="60" width="12" height="6" fill="#D4D0C8"></rect></svg></template>
+<helmet>
+<style>
+html,body{margin:0;padding:0;height:100%;background:#8f8f8f;overflow:hidden}
+*{box-sizing:border-box}
+a{color:#1a4a7a;text-decoration:none}a:hover{color:#0a3a6a;text-decoration:underline}
+input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
+::-webkit-scrollbar{width:14px;height:14px;background:#D4D0C8}
+::-webkit-scrollbar-thumb{background:#B4B0A8;border:2px solid #D4D0C8}
+</style>
+</helmet>
+<div style="position:fixed;inset:0;display:flex;flex-direction:column;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;background:#D4D0C8;color:#000;font-variant-numeric:tabular-nums" onMouseMove="{{ rootMove }}" onMouseUp="{{ rootUp }}">
+
+<div style="display:flex;align-items:center;gap:2px;padding:1px 4px;border-bottom:1px solid #9a968e;user-select:none">
+  <sc-for list="{{ menus }}" as="m" hint-placeholder-count="5">
+    <div style="position:relative">
+      <div style="padding:3px 9px;cursor:default;background:{{ m.bg }};color:{{ m.fg }}" onClick="{{ m.toggle }}">{{ m.name }}</div>
+      <sc-if value="{{ m.open }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:100%;left:0;z-index:800;min-width:230px;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF;box-shadow:3px 3px 6px rgba(0,0,0,0.35);padding:2px">
+          <sc-for list="{{ m.items }}" as="it" hint-placeholder-count="4">
+            <sc-if value="{{ it.sep }}" hint-placeholder-val="{{ false }}"><div style="height:1px;background:#9a968e;margin:3px 6px"></div></sc-if>
+            <sc-if value="{{ it.label }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:4px 18px;cursor:default;white-space:nowrap" style-hover="background:#31548F;color:#FFFFFF" onClick="{{ it.cb }}">{{ it.label }}</div>
+            </sc-if>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </sc-for>
+  <div style="flex:1"></div>
+  <sc-if value="{{ showBadge }}" hint-placeholder-val="{{ true }}">
+    <div style="font-size:10px;color:#5c5850;padding-right:4px">INDEPENDENT TRAINING SIMULATOR — representative of Experion® conventions · not a Honeywell product</div>
+  </sc-if>
+</div>
+
+<div style="display:flex;align-items:stretch;gap:3px;padding:3px 4px;border-bottom:1px solid #9a968e;user-select:none;flex-wrap:nowrap">
+  <sc-for list="{{ tbtns }}" as="b" hint-placeholder-count="8">
+    <sc-if value="{{ b.sep }}" hint-placeholder-val="{{ false }}"><div style="width:1px;background:#9a968e;margin:1px 2px"></div></sc-if>
+    <sc-if value="{{ b.label }}" hint-placeholder-val="{{ false }}">
+      <div title="{{ b.title }}" style="padding:4px 8px;background:{{ b.bg }};border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF;font-size:11px;font-weight:700;color:#2c2c2c;cursor:pointer;white-space:nowrap;display:flex;align-items:center" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;background:#C8C4BC" onClick="{{ b.cb }}">{{ b.label }}</div>
+    </sc-if>
+  </sc-for>
+</div>
+
+<div style="display:flex;align-items:center;gap:6px;padding:3px 4px;border-bottom:2px solid #9a968e;user-select:none">
+  <div style="font-size:11px;color:#3c3c3c">Command:</div>
+  <input value="{{ cmdVal }}" onChange="{{ onCmd }}" onKeyDown="{{ onCmdKey }}" spellcheck="false" style="width:170px;padding:3px 5px;font-size:12px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+  <div style="width:270px;padding:4px 6px;background:#C9C5BD;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:11px;color:#7a1a00;font-weight:700;height:24px;overflow:hidden;white-space:nowrap">{{ msgTxt }}</div>
+  <div style="flex:1;display:flex;align-items:center;padding:0 6px;background:{{ al.bg }};color:{{ al.fg }};border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:12px;font-weight:700;height:24px;overflow:hidden;white-space:nowrap;cursor:pointer" onClick="{{ al.click }}">{{ al.txt }}</div>
+  <div style="display:flex;gap:3px;align-items:center;font-size:10px;font-weight:700">
+    <div style="padding:2px 6px;background:#FF0000;color:#FFFFFF;border:1px solid #7a0000">U {{ cU }}</div>
+    <div style="padding:2px 6px;background:{{ hcol }};color:#000000;border:1px solid #7a6a00">H {{ cH }}</div>
+    <div style="padding:2px 6px;background:#00D8D8;color:#000000;border:1px solid #006a6d">L {{ cL }}</div>
+  </div>
+</div>
+
+<div style="flex:1;display:flex;align-items:stretch;overflow:hidden;background:#BFBFBF" onMouseDown="{{ closeMenus }}">
+<div style="flex:1;position:relative;overflow:hidden;min-width:0">
+
+<sc-if value="{{ isG1 }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Unit 01 Graphic" style="position:absolute;inset:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:3px;padding:4px 8px;background:#C4C1BA;border-bottom:1px solid #9a968e;user-select:none">
+  <sc-for list="{{ utabs }}" as="u" hint-placeholder-count="3">
+    <div style="padding:3px 14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid;border-color:{{ u.bc }};background:{{ u.bg }}" onClick="{{ u.cb }}">{{ u.label }}</div>
+  </sc-for>
+  <div style="flex:1"></div>
+  <div style="font-size:10px;color:#6a665e">CONTINUOUS TRAIN — TANK / REACTOR / HX / FLASH DRUM</div>
+</div>
+<svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id="hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+      <rect width="7" height="7" fill="#C4C4C4"></rect>
+      <line x1="0" y1="0" x2="0" y2="7" style="stroke:#A9A9A9;stroke-width:3.5"></line>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 01 — GENERIC PROCESS UNIT</text>
+  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">TK-101 FEED → R-201 REACTOR → E-301 EXCHANGER → V-401 FLASH DRUM · SIMULATION</text>
+
+  <path d="M20,190 H60" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="52,185 62,190 52,195" fill="#4a4a4a"></polygon>
+  <text x="20" y="182" style="font:700 10px Tahoma;fill:#4a4a4a">FEED</text>
+
+  <rect x="60" y="150" width="170" height="240" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="62" y="{{ gfx.tankY }}" width="166" height="{{ gfx.tankH }}" fill="#93A8B8"></rect>
+  <text x="66" y="166" style="font:700 10px Tahoma;fill:#55524c">TK-101 FEED TANK</text>
+
+  <path d="M145,390 V470 H220" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <circle cx="240" cy="470" r="20" fill="{{ gfx.pumpFill }}" stroke="#3a3a3a" stroke-width="2"></circle>
+  <polygon points="233,460 253,470 233,480" fill="{{ gfx.pumpGlyph }}"></polygon>
+  <text x="222" y="442" style="font:700 10px Tahoma;fill:#4a4a4a">P-101</text>
+  <path d="M260,470 H306" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <path d="M354,470 H500" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+
+  <rect x="490" y="368" width="180" height="198" fill="none" stroke="#7a7a7a" stroke-width="3"></rect>
+  <rect x="500" y="310" width="160" height="250" rx="10" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="565" y="284" width="30" height="26" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <path d="M580,310 V440 M558,440 H602 M564,455 H596" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <text x="505" y="586" style="font:700 10px Tahoma;fill:#55524c">R-201 REACTOR (JACKETED)</text>
+  <text x="516" y="250" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx.rTripOp }}">▲ HI-TEMP TRIP</text>
+  <text x="64" y="140" style="font:700 12px Tahoma;fill:#CC0000;opacity:{{ gfx.ovfOp }}">▲ HI-HI TRIP</text>
+
+  <path d="M368,640 H396" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <path d="M444,640 H470 V530 H490" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <text x="330" y="644" style="font:700 10px Tahoma;fill:#4a6a8a">CWS</text>
+  <path d="M670,530 H710 V640 H748" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <polygon points="742,635 752,640 742,645" fill="#4a6a8a"></polygon>
+  <text x="756" y="644" style="font:700 10px Tahoma;fill:#4a6a8a">CWR</text>
+
+  <path d="M660,390 H750" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <rect x="750" y="360" width="130" height="60" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <path d="M750,390 L775,372 L800,408 L825,372 L850,408 L880,390" style="stroke:#6a6a6a;stroke-width:1.6;fill:none"></path>
+  <text x="752" y="356" style="font:700 10px Tahoma;fill:#55524c">E-301</text>
+  <path d="M815,420 V470 M815,518 V552" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
+  <text x="790" y="568" style="font:700 10px Tahoma;fill:#8a6a3a">HTM</text>
+
+  <path d="M880,390 H1060" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <rect x="1060" y="270" width="120" height="280" rx="16" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="1062" y="{{ gfx.drumY }}" width="116" height="{{ gfx.drumH }}" fill="#93A8B8"></rect>
+  <text x="1064" y="264" style="font:700 10px Tahoma;fill:#55524c">V-401 FLASH DRUM</text>
+  <text x="1186" y="264" style="font:700 12px Tahoma;fill:#CC0000;opacity:{{ gfx.psvOp }}">▲ PSV LIFTED</text>
+
+  <path d="M1120,270 V150 H1226" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <path d="M1274,150 H1352" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="1346,145 1356,150 1346,155" fill="#4a4a4a"></polygon>
+  <text x="1300" y="142" style="font:700 10px Tahoma;fill:#4a4a4a">VENT</text>
+  <path d="M1120,550 V620 H1226" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <path d="M1274,620 H1352" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="1346,615 1356,620 1346,625" fill="#4a4a4a"></polygon>
+  <text x="1290" y="612" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT</text>
+
+  <sc-for list="{{ vlist }}" as="v" hint-placeholder-count="5">
+    <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
+      <polygon points="-16,-11 -16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+      <polygon points="16,-11 16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+    </g>
+    <text x="{{ v.tx }}" y="{{ v.ty }}" style="font:10px Tahoma;fill:#3a3a3a">{{ v.label }} {{ v.pos }}</text>
+  </sc-for>
+
+  <sc-for list="{{ gvList }}" as="p" hint-placeholder-count="9">
+    <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch)" opacity="{{ p.hatchOp }}"></rect>
+      <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
+      <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
+      <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
+      <text x="{{ p.modeX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#31548F">{{ p.modeT }}</text>
+      <rect x="{{ p.aX }}" y="{{ p.aY }}" width="14" height="14" fill="{{ p.aBg }}" stroke="{{ p.aBd }}" stroke-width="1"></rect>
+      <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
+    </g>
+  </sc-for>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">Colors and key legends are representative of Experion defaults; site configurations vary. Click a point for its faceplate; double-click for Point Detail.</text>
+</svg>
+</div>
+</sc-if>
+
+<sc-if value="{{ isG2 }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Unit 02 Graphic" style="position:absolute;inset:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:3px;padding:4px 8px;background:#C4C1BA;border-bottom:1px solid #9a968e;user-select:none">
+  <sc-for list="{{ utabs }}" as="u" hint-placeholder-count="3">
+    <div style="padding:3px 14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid;border-color:{{ u.bc }};background:{{ u.bg }}" onClick="{{ u.cb }}">{{ u.label }}</div>
+  </sc-for>
+  <div style="flex:1"></div>
+  <div style="font-size:10px;font-weight:700;color:#55524c">SCM202:</div>
+  <div style="font-size:11px;font-weight:700;padding:3px 12px;background:{{ batch.phBg }};color:{{ batch.phFg }};border:1px solid #6E6E6E">{{ batch.phase }}</div>
+  <div style="font-size:10px;color:#55524c;width:40px;text-align:center">{{ batch.pt }}</div>
+  <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ batch.startCb }}">START BATCH</div>
+  <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ batch.holdCb }}">{{ batch.holdT }}</div>
+  <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ batch.abortCb }}">ABORT</div>
+</div>
+<svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id="hatch2" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+      <rect width="7" height="7" fill="#C4C4C4"></rect>
+      <line x1="0" y1="0" x2="0" y2="7" style="stroke:#A9A9A9;stroke-width:3.5"></line>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 02 — SEMI-BATCH POLYMERIZATION</text>
+  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">R-202 JACKETED BATCH REACTOR · SCM202 SEQUENCE · MONOMER-ACCUMULATION TRAINING</text>
+  <path d="M20,120 H314" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <text x="20" y="112" style="font:700 10px Tahoma;fill:#4a4a4a">MONOMER</text>
+  <path d="M346,120 H640 V204" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="635,198 640,208 645,198" fill="#4a4a4a"></polygon>
+  <rect x="528" y="266" width="244" height="278" fill="none" stroke="#7a7a7a" stroke-width="3"></rect>
+  <rect x="540" y="210" width="220" height="340" rx="14" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="544" y="{{ gfx2.lvlY }}" width="212" height="{{ gfx2.lvlH }}" fill="#93A8B8"></rect>
+  <path d="M650,166 V430 M616,430 H684 M628,448 H672" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <circle cx="650" cy="150" r="16" fill="{{ gfx2.agFill }}" stroke="#3a3a3a" stroke-width="2"></circle>
+  <text x="650" y="155" style="font:700 12px Tahoma;fill:{{ gfx2.agFg }};text-anchor:middle">M</text>
+  <text x="674" y="146" style="font:700 10px Tahoma;fill:#4a4a4a">M-202</text>
+  <text x="544" y="576" style="font:700 10px Tahoma;fill:#55524c">R-202 BATCH REACTOR (JACKETED)</text>
+  <path d="M140,600 H404" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <text x="140" y="590" style="font:700 10px Tahoma;fill:#4a6a8a">JACKET MEDIUM (HTM / CW BLEND)</text>
+  <path d="M436,600 H528 V544" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <path d="M772,300 H840" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <polygon points="834,295 844,300 834,305" fill="#4a6a8a"></polygon>
+  <text x="848" y="304" style="font:700 10px Tahoma;fill:#4a6a8a">RETURN</text>
+  <path d="M700,210 V150 H900" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="894,145 904,150 894,155" fill="#4a4a4a"></polygon>
+  <text x="852" y="142" style="font:700 10px Tahoma;fill:#4a4a4a">VENT</text>
+  <path d="M650,550 V630 H900" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="894,625 904,630 894,635" fill="#4a4a4a"></polygon>
+  <text x="836" y="622" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT (DRAIN)</text>
+  <text x="536" y="196" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx2.tripOp }}">▲ HI-TEMP TRIP — FEED CUT, FULL COOLING</text>
+  <rect x="60" y="240" width="300" height="200" fill="#CDCDCD" stroke="#8a8a86" stroke-width="1.2"></rect>
+  <text x="74" y="264" style="font:700 11px Tahoma;fill:#3c3c3c">SCM202 — BATCH SEQUENCE</text>
+  <sc-for list="{{ batch.phaseRows }}" as="r" hint-placeholder-count="6">
+    <text x="80" y="{{ r.y }}" style="font:{{ r.fw }} 12px Tahoma;fill:{{ r.fill }}">{{ r.label }}</text>
+  </sc-for>
+  <rect x="60" y="456" width="300" height="92" fill="#CDCDCD" stroke="#8a8a86" stroke-width="1.2"></rect>
+  <text x="74" y="478" style="font:700 11px Tahoma;fill:#3c3c3c">MONOMER INVENTORY (UNREACTED)</text>
+  <rect x="74" y="488" width="272" height="18" fill="#FFFFFF" stroke="#6E6E6E" stroke-width="1"></rect>
+  <rect x="74" y="488" width="{{ gfx2.cmW }}" height="18" fill="{{ gfx2.cmFill }}"></rect>
+  <text x="74" y="524" style="font:700 12px Tahoma;fill:#3c3c3c">{{ gfx2.cmT }}</text>
+  <text x="74" y="540" style="font:700 10px Tahoma;fill:#CC0000;opacity:{{ gfx2.cmWarn }}">HIGH — STOP FEED BEFORE RESTARTING AGITATOR</text>
+  <sc-for list="{{ vl2 }}" as="v" hint-placeholder-count="2">
+    <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
+      <polygon points="-16,-11 -16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+      <polygon points="16,-11 16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+    </g>
+    <text x="{{ v.tx }}" y="{{ v.ty }}" style="font:10px Tahoma;fill:#3a3a3a">{{ v.label }} {{ v.pos }}</text>
+  </sc-for>
+  <sc-for list="{{ gv2 }}" as="p" hint-placeholder-count="6">
+    <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch2)" opacity="{{ p.hatchOp }}"></rect>
+      <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
+      <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
+      <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
+      <text x="{{ p.modeX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#31548F">{{ p.modeT }}</text>
+      <rect x="{{ p.aX }}" y="{{ p.aY }}" width="14" height="14" fill="{{ p.aBg }}" stroke="{{ p.aBd }}" stroke-width="1"></rect>
+      <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
+    </g>
+  </sc-for>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. During FEED the monomer SP is program-driven (MODEATTR = PROGRAM). HOLD stops the feed without losing the phase.</text>
+</svg>
+</div>
+</sc-if>
+
+<sc-if value="{{ isG3 }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Unit 03 Graphic" style="position:absolute;inset:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:3px;padding:4px 8px;background:#C4C1BA;border-bottom:1px solid #9a968e;user-select:none">
+  <sc-for list="{{ utabs }}" as="u" hint-placeholder-count="3">
+    <div style="padding:3px 14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid;border-color:{{ u.bc }};background:{{ u.bg }}" onClick="{{ u.cb }}">{{ u.label }}</div>
+  </sc-for>
+  <div style="flex:1"></div>
+  <div style="font-size:10px;color:#6a665e">FIRED PREHEATER + EXOTHERMIC FIXED-BED REACTOR</div>
+</div>
+<svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id="hatch3" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+      <rect width="7" height="7" fill="#C4C4C4"></rect>
+      <line x1="0" y1="0" x2="0" y2="7" style="stroke:#A9A9A9;stroke-width:3.5"></line>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 03 — FIRED PREHEATER + FIXED-BED REACTOR</text>
+  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">H-310 FUEL-FIRED PREHEATER · R-310 EXOTHERMIC CATALYST BED · QUENCH TRAINING</text>
+  <path d="M20,400 H134" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <text x="20" y="392" style="font:700 10px Tahoma;fill:#4a4a4a">FEED</text>
+  <path d="M166,400 H260" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <rect x="260" y="300" width="220" height="220" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <path d="M280,340 H440 M280,375 H440 M280,410 H440" style="stroke:#6a6a6a;stroke-width:2;fill:none"></path>
+  <polygon points="300,505 312,470 324,505" fill="#C06000" opacity="{{ gfx3.flameOp }}"></polygon>
+  <polygon points="356,505 368,470 380,505" fill="#C06000" opacity="{{ gfx3.flameOp }}"></polygon>
+  <polygon points="412,505 424,470 436,505" fill="#C06000" opacity="{{ gfx3.flameOp }}"></polygon>
+  <text x="264" y="294" style="font:700 10px Tahoma;fill:#55524c">H-310 PREHEATER</text>
+  <path d="M370,640 V586" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
+  <path d="M370,534 V520" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
+  <text x="388" y="634" style="font:700 10px Tahoma;fill:#8a6a3a">FUEL GAS</text>
+  <path d="M480,340 H680 V306" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="675,310 680,300 685,310" fill="#4a4a4a"></polygon>
+  <path d="M500,120 H604" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <text x="500" y="112" style="font:700 10px Tahoma;fill:#4a6a8a">QUENCH</text>
+  <path d="M636,120 H760 V306" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <polygon points="755,300 760,310 765,300" fill="#4a6a8a"></polygon>
+  <rect x="640" y="300" width="160" height="310" rx="12" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="648" y="390" width="144" height="140" fill="url(#hatch3)" stroke="#8a8a86" stroke-width="1"></rect>
+  <rect x="648" y="390" width="144" height="140" fill="#CC2200" opacity="{{ gfx3.bedGlow }}"></rect>
+  <text x="652" y="384" style="font:700 10px Tahoma;fill:#55524c">CATALYST BED</text>
+  <text x="644" y="630" style="font:700 10px Tahoma;fill:#55524c">R-310 REACTOR</text>
+  <path d="M840,412 H796" style="stroke:#55524c;stroke-width:1.5;fill:none"></path>
+  <path d="M720,610 V656 H920" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="914,651 924,656 914,661" fill="#4a4a4a"></polygon>
+  <text x="866" y="648" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT</text>
+  <text x="600" y="282" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx3.tripOp }}">▲ FUEL TRIP — BED OVERTEMP</text>
+  <sc-for list="{{ vl3 }}" as="v" hint-placeholder-count="3">
+    <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
+      <polygon points="-16,-11 -16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+      <polygon points="16,-11 16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+    </g>
+    <text x="{{ v.tx }}" y="{{ v.ty }}" style="font:10px Tahoma;fill:#3a3a3a">{{ v.label }} {{ v.pos }}</text>
+  </sc-for>
+  <sc-for list="{{ gv3 }}" as="p" hint-placeholder-count="4">
+    <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch3)" opacity="{{ p.hatchOp }}"></rect>
+      <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
+      <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
+      <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
+      <text x="{{ p.modeX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#31548F">{{ p.modeT }}</text>
+      <rect x="{{ p.aX }}" y="{{ p.aY }}" width="14" height="14" fill="{{ p.aBg }}" stroke="{{ p.aBd }}" stroke-width="1"></rect>
+      <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
+    </g>
+  </sc-for>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">TI312 is the bed hotspot (indication only). The fuel trip operates at 480 °C — cool with quench FIC313 or lower the TIC311 preheat SP.</text>
+</svg>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAlarms }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Alarm Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
+    <div style="font-weight:700;font-size:13px;margin-right:8px">ALARM SUMMARY</div>
+    <sc-for list="{{ av.filters }}" as="f" hint-placeholder-count="3">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ f.bc }};background:{{ f.bg }}" onClick="{{ f.cb }}">{{ f.label }}</div>
+    </sc-for>
+    <div style="flex:1"></div>
+    <sc-for list="{{ av.btns }}" as="b" hint-placeholder-count="4">
+      <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ b.cb }}">{{ b.label }}</div>
+    </sc-for>
+  </div>
+  <div style="display:flex;padding:3px 8px;gap:0;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none">
+    <div style="width:26px"></div><div style="width:80px">Time</div><div style="width:80px">Source</div><div style="width:90px">Condition</div><div style="width:70px">Priority</div><div style="flex:1">Description</div><div style="width:80px;text-align:right">Value</div><div style="width:64px;padding-left:10px">Units</div><div style="width:46px">Ack</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;background:#C6C6C6">
+    <sc-for list="{{ av.rows }}" as="a" hint-placeholder-count="6">
+      <div style="display:flex;align-items:center;padding:2px 8px;font-size:12px;background:{{ a.bg }};color:{{ a.fg }};box-shadow:{{ a.sel }};cursor:default;border-bottom:1px solid rgba(0,0,0,0.06)" onClick="{{ a.click }}" onDoubleClick="{{ a.dbl }}">
+        <div style="width:26px;font-weight:700">{{ a.icon }}</div><div style="width:80px">{{ a.t }}</div><div style="width:80px;font-weight:700">{{ a.tag }}</div><div style="width:90px">{{ a.cond }}</div><div style="width:70px">{{ a.prio }}</div><div style="flex:1;overflow:hidden;white-space:nowrap">{{ a.desc }}</div><div style="width:80px;text-align:right">{{ a.val }}</div><div style="width:64px;padding-left:10px">{{ a.eu }}</div><div style="width:46px">{{ a.ackT }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:4px 8px;background:#CCC8C0;border-top:1px solid #9a968e;font-size:11px;color:#3c3c3c;display:flex;gap:18px">
+    <div>{{ av.selInfo }}</div><div style="flex:1"></div><div>{{ av.countTxt }}</div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Event Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
+    <div style="font-weight:700;font-size:13px;margin-right:8px">EVENT SUMMARY</div>
+    <sc-for list="{{ evFilters }}" as="f" hint-placeholder-count="4">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ f.bc }};background:{{ f.bg }}" onClick="{{ f.cb }}">{{ f.label }}</div>
+    </sc-for>
+    <div style="flex:1"></div><div style="font-size:11px;color:#55524c">Journal of alarms, operator changes, and system events (newest first)</div>
+  </div>
+  <div style="display:flex;padding:3px 8px;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none">
+    <div style="width:132px">Date / Time</div><div style="width:86px">Type</div><div style="width:84px">Source</div><div style="flex:1">Description</div><div style="width:90px;text-align:right">Old</div><div style="width:90px;text-align:right">New</div><div style="width:60px;padding-left:12px">Level</div><div style="width:56px">Station</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;background:#C6C6C6">
+    <sc-for list="{{ evR }}" as="e" hint-placeholder-count="8">
+      <div style="display:flex;padding:2px 8px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.05);color:{{ e.fg }}">
+        <div style="width:132px">{{ e.t }}</div><div style="width:86px;font-weight:700">{{ e.type }}</div><div style="width:84px;font-weight:700">{{ e.src }}</div><div style="flex:1;overflow:hidden;white-space:nowrap">{{ e.desc }}</div><div style="width:90px;text-align:right">{{ e.oldV }}</div><div style="width:90px;text-align:right">{{ e.newV }}</div><div style="width:60px;padding-left:12px">{{ e.lvl }}</div><div style="width:56px">STN01</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMsgs }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Message Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;font-weight:700;font-size:13px">MESSAGE SUMMARY</div>
+  <div style="flex:1;overflow-y:auto;background:#C6C6C6;padding:2px 0">
+    <sc-for list="{{ msgsR }}" as="m" hint-placeholder-count="4">
+      <div style="display:flex;padding:3px 10px;font-size:12px;border-bottom:1px solid rgba(0,0,0,0.05)">
+        <div style="width:140px">{{ m.t }}</div><div style="flex:1">{{ m.txt }}</div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ msgsEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:14px;color:#55524c;font-size:12px">No messages. Shelving records and system notices appear here.</div></sc-if>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isTrend }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Trend Display" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
+    <div style="font-weight:700;font-size:13px;margin-right:6px">TREND — {{ tv.title }}</div>
+    <sc-for list="{{ tv.groups }}" as="g" hint-placeholder-count="3">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ g.bc }};background:{{ g.bg }}" onClick="{{ g.cb }}">{{ g.label }}</div>
+    </sc-for>
+    <div style="width:14px"></div>
+    <div style="font-size:11px;color:#55524c">Span:</div>
+    <sc-for list="{{ tv.spans }}" as="s" hint-placeholder-count="3">
+      <div style="padding:3px 9px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ s.bc }};background:{{ s.bg }}" onClick="{{ s.cb }}">{{ s.label }}</div>
+    </sc-for>
+    <div style="flex:1"></div><div style="font-size:11px;color:#55524c">Y axis: % of each pen's range</div>
+  </div>
+  <div style="flex:1;padding:8px;min-height:0">
+    <svg viewBox="0 0 1060 430" style="width:100%;height:100%;background:#FAFAF8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" preserveAspectRatio="none">
+      <sc-for list="{{ tv.gridY }}" as="gl" hint-placeholder-count="5">
+        <line x1="44" x2="1050" y1="{{ gl.y }}" y2="{{ gl.y }}" style="stroke:#DDDDD8;stroke-width:1"></line>
+        <text x="8" y="{{ gl.ty }}" style="font:10px Tahoma;fill:#7a766e">{{ gl.label }}</text>
+      </sc-for>
+      <sc-for list="{{ tv.gridX }}" as="gx" hint-placeholder-count="4">
+        <line y1="10" y2="404" x1="{{ gx.x }}" x2="{{ gx.x }}" style="stroke:#E4E4DE;stroke-width:1"></line>
+        <text x="{{ gx.tx }}" y="422" style="font:10px Tahoma;fill:#7a766e">{{ gx.label }}</text>
+      </sc-for>
+      <sc-for list="{{ tv.pens }}" as="p" hint-placeholder-count="4">
+        <polyline points="{{ p.pts }}" style="fill:none;stroke-width:1.7;stroke:{{ p.color }};stroke-dasharray:{{ p.dash }}"></polyline>
+      </sc-for>
+    </svg>
+  </div>
+  <div style="padding:0 8px 8px 8px">
+    <div style="display:flex;padding:3px 8px;background:#C8C5BE;font-weight:700;font-size:11px;border:1px solid #9a968e">
+      <div style="width:30px"></div><div style="width:130px">Pen</div><div style="flex:1">Description</div><div style="width:100px;text-align:right">Value</div><div style="width:70px;padding-left:10px">Units</div><div style="width:130px;text-align:right">Range</div>
+    </div>
+    <sc-for list="{{ tv.pens }}" as="p" hint-placeholder-count="4">
+      <div style="display:flex;align-items:center;padding:3px 8px;font-size:12px;background:#C6C6C6;border:1px solid #B2B2AE;border-top:none">
+        <div style="width:30px"><div style="width:18px;height:4px;background:{{ p.color }}"></div></div>
+        <div style="width:130px;font-weight:700">{{ p.label }}</div><div style="flex:1">{{ p.desc }}</div><div style="width:100px;text-align:right;font-weight:700">{{ p.val }}</div><div style="width:70px;padding-left:10px">{{ p.eu }}</div><div style="width:130px;text-align:right">{{ p.range }}</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Point Detail" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:baseline;gap:14px;padding:7px 12px;background:#CCC8C0;border-bottom:1px solid #9a968e">
+    <div style="font-weight:700;font-size:17px">{{ dpt.tag }}</div>
+    <div style="font-size:12px;color:#3c3c3c">{{ dpt.desc }}</div>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;color:#55524c">CM: {{ dpt.cm }} · EXEC PERIOD 500 mS (SIM) · {{ dpt.kindT }}</div>
+  </div>
+  <div style="display:flex;gap:2px;padding:4px 8px 0 8px;background:#CCC8C0;user-select:none">
+    <sc-for list="{{ dpt.tabs }}" as="t" hint-placeholder-count="5">
+      <div style="padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;background:{{ t.bg }};border:1px solid #9a968e;border-bottom:{{ t.bb }}" onClick="{{ t.cb }}">{{ t.label }}</div>
+    </sc-for>
+    <div style="flex:1;border-bottom:1px solid #9a968e"></div>
+  </div>
+  <div style="flex:1;overflow-y:auto;background:#C6C6C6;padding:14px">
+
+    <sc-if value="{{ dpt.isMain }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:20px;align-items:flex-start">
+        <div style="width:520px">
+          <sc-for list="{{ dpt.mainRows }}" as="r" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;padding:4px 8px;border-bottom:1px solid #B6B6B2;font-size:12.5px;background:{{ r.rowBg }}">
+              <div style="width:170px;color:#3c3c3c">{{ r.label }}</div>
+              <div style="width:110px;font-weight:700;color:#55524c;font-size:11px">{{ r.param }}</div>
+              <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+                <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:110px;padding:2px 5px;font-size:12.5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
+              </sc-if>
+              <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
+                <div style="width:120px;font-weight:700;cursor:{{ r.cur }};text-decoration:{{ r.und }}" onClick="{{ r.cb }}">{{ r.value }}</div>
+              </sc-if>
+              <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
+            </div>
+          </sc-for>
+          <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
+            <div style="font-size:11px;color:#3c3c3c;width:80px">MODE:</div>
+            <sc-for list="{{ dpt.modes }}" as="m" hint-placeholder-count="3">
+              <div style="padding:4px 16px;font-weight:700;font-size:12px;cursor:pointer;background:{{ m.bg }};border:2px solid;border-color:{{ m.bc }}" onClick="{{ m.cb }}">{{ m.label }}</div>
+            </sc-for>
+            <div style="font-size:11px;color:#7a1a00;font-weight:700;padding-left:8px">{{ dpt.shedNote }}</div>
+          </div>
+        </div>
+        <div style="flex:1;font-size:11.5px;color:#3c3c3c;background:#CFCFCB;border:1px solid #B6B6B2;padding:10px;max-width:420px">
+          <div style="font-weight:700;margin-bottom:6px">OPERATION NOTES</div>
+          <div style="line-height:1.5">SP entry permitted in AUTO only. OP entry permitted in MAN only. CAS setpoint is driven by the primary controller. Entries are clamped to configured limits and rejected with a Message Zone notice. Tuning and limit changes require ENGR level or above.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ dpt.isAlm }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:820px">
+        <div style="display:flex;padding:3px 8px;background:#C8C5BE;font-weight:700;font-size:11px;border:1px solid #9a968e">
+          <div style="width:100px">Condition</div><div style="width:130px">Trip point</div><div style="width:110px">Priority</div><div style="width:110px">State</div><div style="flex:1">Note</div>
+        </div>
+        <sc-for list="{{ dpt.almRows }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;padding:4px 8px;font-size:12.5px;background:#CFCFCB;border:1px solid #B6B6B2;border-top:none">
+            <div style="width:100px;font-weight:700">{{ r.cond }}</div>
+            <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+              <div style="width:130px"><input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:100px;padding:2px 5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" /></div>
+            </sc-if>
+            <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="width:130px;font-weight:700;cursor:pointer;text-decoration:underline dotted" onClick="{{ r.cb }}">{{ r.tp }}</div>
+            </sc-if>
+            <div style="width:110px;cursor:pointer;font-weight:700;color:{{ r.prioFg }}" onClick="{{ r.prioCb }}">{{ r.prio }}</div>
+            <div style="width:110px;font-weight:700;color:{{ r.stFg }}">{{ r.state }}</div>
+            <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
+          </div>
+        </sc-for>
+        <div style="margin-top:10px;font-size:11px;color:#55524c">Trip points editable at ENGR+. Click a priority to cycle Journal → Low → High → Urgent (ENGR+). Deadband 1% of span. Journal alarms are logged only — no annunciation.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ dpt.isTune }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:640px">
+        <sc-for list="{{ dpt.tuneRows }}" as="r" hint-placeholder-count="8">
+          <div style="display:flex;align-items:center;padding:4px 8px;border-bottom:1px solid #B6B6B2;font-size:12.5px">
+            <div style="width:230px;color:#3c3c3c">{{ r.label }}</div>
+            <div style="width:110px;font-weight:700;color:#55524c;font-size:11px">{{ r.param }}</div>
+            <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+              <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:100px;padding:2px 5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
+            </sc-if>
+            <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="width:110px;font-weight:700;cursor:pointer;text-decoration:underline dotted" onClick="{{ r.cb }}">{{ r.value }}</div>
+            </sc-if>
+            <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
+          </div>
+        </sc-for>
+        <div style="margin-top:10px;font-size:11px;color:#7a1a00;font-weight:700">{{ dpt.tuneGate }}</div>
+        <div style="margin-top:4px;font-size:11px;color:#55524c">Experion PID form: OP = K·e% + K/(T1·60)·∫e%·dt − K·T2·60·dPV%/dt, with back-calculation anti-windup and bumpless transfer. T1, T2 in minutes.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ dpt.isChart }}" hint-placeholder-val="{{ false }}">
+      <div style="height:100%;display:flex;flex-direction:column;gap:8px">
+        <svg viewBox="0 0 1060 360" style="width:100%;flex:1;min-height:220px;background:#FAFAF8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" preserveAspectRatio="none">
+          <sc-for list="{{ dpt.chartGrid }}" as="gl" hint-placeholder-count="5">
+            <line x1="44" x2="1050" y1="{{ gl.y }}" y2="{{ gl.y }}" style="stroke:#DDDDD8;stroke-width:1"></line>
+            <text x="8" y="{{ gl.ty }}" style="font:10px Tahoma;fill:#7a766e">{{ gl.label }}</text>
+          </sc-for>
+          <sc-for list="{{ dpt.chartPens }}" as="p" hint-placeholder-count="3">
+            <polyline points="{{ p.pts }}" style="fill:none;stroke-width:1.7;stroke:{{ p.color }};stroke-dasharray:{{ p.dash }}"></polyline>
+          </sc-for>
+        </svg>
+        <div style="display:flex;gap:22px;font-size:12px;font-weight:700">
+          <sc-for list="{{ dpt.chartPens }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:6px"><div style="width:18px;height:4px;background:{{ p.color }}"></div>{{ p.label }} = {{ p.val }}</div>
+          </sc-for>
+          <div style="flex:1"></div><div style="color:#55524c;font-weight:400">15 minute span · % of range</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ dpt.isCm }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:900px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">CONTROL MODULE {{ dpt.cm }} — chart view (as built in Control Builder)</div>
+        <svg viewBox="0 0 900 260" style="width:100%;background:#EDEDE8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E">
+          <rect x="10" y="10" width="880" height="240" fill="none" stroke="#8a867e" stroke-width="1.5" stroke-dasharray="6,4"></rect>
+          <text x="22" y="32" style="font:700 12px Tahoma;fill:#55524c">CM: {{ dpt.cm }} · CEE 50 mS BASE · PERIOD 500 mS (SIM) · C300-SIM</text>
+          <sc-for list="{{ dpt.cmBlocks }}" as="b" hint-placeholder-count="4">
+            <rect x="{{ b.x }}" y="90" width="150" height="90" fill="#D8D8D4" stroke="#4a4a4a" stroke-width="2"></rect>
+            <text x="{{ b.lx }}" y="112" style="font:700 12px Tahoma;fill:#000">{{ b.name }}</text>
+            <text x="{{ b.lx }}" y="128" style="font:10px Tahoma;fill:#55524c">{{ b.type }}</text>
+            <text x="{{ b.lx }}" y="146" style="font:10px Tahoma;fill:#55524c">ORDERINCM {{ b.ord }}</text>
+            <text x="{{ b.lx }}" y="162" style="font:10px Tahoma;fill:#31548F">{{ b.note }}</text>
+          </sc-for>
+          <sc-for list="{{ dpt.cmWires }}" as="w" hint-placeholder-count="3">
+            <path d="{{ w.d }}" style="stroke:#31548F;stroke-width:2;fill:none"></path>
+            <text x="{{ w.tx }}" y="{{ w.ty }}" style="font:10px Tahoma;fill:#31548F">{{ w.label }}</text>
+          </sc-for>
+        </svg>
+        <div style="margin-top:8px;font-size:11px;color:#55524c;line-height:1.5">{{ dpt.cmNote }}</div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSys }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="System Status" style="position:absolute;inset:0;overflow-y:auto;padding:16px">
+  <div style="font-weight:700;font-size:14px;margin-bottom:12px">SYSTEM STATUS</div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:12px;max-width:1100px">
+    <sc-for list="{{ sysPanels }}" as="p" hint-placeholder-count="6">
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:10px;height:10px;border-radius:50%;background:{{ p.led }};border:1px solid #55524c"></div>
+          <div style="font-weight:700;font-size:12px">{{ p.title }}</div>
+        </div>
+        <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex;font-size:11.5px;padding:2px 0"><div style="width:150px;color:#55524c">{{ r.k }}</div><div style="font-weight:700">{{ r.v }}</div></div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+  <div style="margin-top:16px;max-width:1100px;background:#CFCFCB;border:1px solid #B6B6B2;padding:10px;font-size:11.5px;color:#3c3c3c;line-height:1.55">
+    This is an independent, browser-based training simulator that reproduces the behavior, layout, and color logic of an Experion PKS operator station for education. It contains no Honeywell software or artwork and is not affiliated with, endorsed by, or a product of Honeywell. Alarm colors, summary columns, and key legends are representative defaults — real sites configure these. Experion® is a trademark of Honeywell International Inc.
+  </div>
+</div>
+</sc-if>
+
+<sc-for list="{{ fps }}" as="fp" hint-placeholder-count="1">
+  <div style="position:absolute;left:{{ fp.x }}px;top:{{ fp.y }}px;width:242px;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #5E5E5E #5E5E5E #FFFFFF;box-shadow:4px 4px 10px rgba(0,0,0,0.4);z-index:{{ fp.z }};user-select:none" onMouseDown="{{ fp.front }}">
+    <div style="display:flex;align-items:center;background:#41608A;color:#FFFFFF;padding:3px 6px;cursor:move;gap:6px" onMouseDown="{{ fp.dragStart }}">
+      <div style="font-weight:700;font-size:12px">{{ fp.tag }}</div>
+      <div style="font-size:10px;opacity:0.85;overflow:hidden;white-space:nowrap;flex:1">{{ fp.desc }}</div>
+      <div style="padding:1px 6px;font-size:10px;font-weight:700;cursor:pointer;background:{{ fp.pinBg }};color:{{ fp.pinFg }};border:1px solid #FFFFFF" onClick="{{ fp.pinCb }}">PIN</div>
+      <div style="padding:1px 7px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ fp.close }}">✕</div>
+    </div>
+    <div style="height:20px;display:flex;align-items:center;padding:0 6px;font-size:10.5px;font-weight:700;background:{{ fp.almBg }};color:{{ fp.almFg }}">{{ fp.almTxt }}</div>
+
+    <sc-if value="{{ fp.isPid }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;padding:8px;gap:10px">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="font-size:9px;color:#55524c">{{ fp.hiT }}</div>
+        <div style="position:relative;width:30px;height:170px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E">
+          <div style="position:absolute;left:0;right:0;bottom:0;height:{{ fp.pvH }}px;background:#2E5F8A"></div>
+          <div style="position:absolute;left:0;right:0;top:{{ fp.spY }}px;height:0;border-top:2px solid #000"></div>
+          <sc-for list="{{ fp.ticks }}" as="tk" hint-placeholder-count="4">
+            <div style="position:absolute;right:-8px;top:{{ tk.y }}px;width:7px;height:3px;background:{{ tk.c }}"></div>
+          </sc-for>
+        </div>
+        <div style="font-size:9px;color:#55524c">{{ fp.loT }}</div>
+        <div style="font-size:9px;color:#3c3c3c;font-weight:700;margin-top:2px">PV ▮ SP —</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:baseline;gap:5px"><div style="width:26px;font-size:11px;color:#3c3c3c">PV</div><div style="font-size:19px;font-weight:700">{{ fp.pvT }}</div><div style="font-size:10px;color:#55524c">{{ fp.eu }}</div></div>
+        <div style="display:flex;align-items:center;gap:5px;border:{{ fp.spBd }};padding:1px 3px">
+          <div style="width:26px;font-size:11px;color:#3c3c3c">SP</div>
+          <sc-if value="{{ fp.spEditing }}" hint-placeholder-val="{{ false }}">
+            <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:86px;padding:1px 4px;font-size:14px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
+          </sc-if>
+          <sc-if value="{{ fp.spNotEditing }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:15px;font-weight:700;cursor:pointer;background:#DCDCD8;padding:1px 8px;border:1px solid #A9A9A4" onClick="{{ fp.spClick }}">{{ fp.spT }}</div>
+          </sc-if>
+          <div style="font-size:10px;color:#55524c">{{ fp.eu }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;border:{{ fp.opBd }};padding:1px 3px">
+          <div style="width:26px;font-size:11px;color:#3c3c3c">OP</div>
+          <sc-if value="{{ fp.opEditing }}" hint-placeholder-val="{{ false }}">
+            <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:86px;padding:1px 4px;font-size:14px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
+          </sc-if>
+          <sc-if value="{{ fp.opNotEditing }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:15px;font-weight:700;cursor:pointer;background:#DCDCD8;padding:1px 8px;border:1px solid #A9A9A4" onClick="{{ fp.opClick }}">{{ fp.opT }}</div>
+          </sc-if>
+          <div style="font-size:10px;color:#55524c">%</div>
+        </div>
+        <div style="height:10px;background:#FFFFFF;border:1px solid #6E6E6E;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ fp.opW }}%;background:#6E6E6E"></div></div>
+        <div style="display:flex;gap:3px">
+          <sc-for list="{{ fp.modes }}" as="m" hint-placeholder-count="3">
+            <div style="flex:1;text-align:center;padding:4px 0;font-size:11px;font-weight:700;cursor:pointer;background:{{ m.bg }};border:2px solid;border-color:{{ m.bc }}" onClick="{{ m.cb }}">{{ m.label }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:3px;align-items:center">
+          <div style="flex:1;text-align:center;padding:3px 0;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.lower }}">▼</div>
+          <div style="flex:1;text-align:center;padding:3px 0;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.raise }}">▲</div>
+          <div style="font-size:9.5px;color:#55524c;width:74px">RAISE / LOWER {{ fp.selT }}</div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:#7a1a00;height:13px">{{ fp.noteT }}</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ fp.isInd }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;padding:8px;gap:12px">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="font-size:9px;color:#55524c">{{ fp.hiT }}</div>
+        <div style="position:relative;width:30px;height:130px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E">
+          <div style="position:absolute;left:0;right:0;bottom:0;height:{{ fp.indH }}px;background:#2E5F8A"></div>
+          <sc-for list="{{ fp.ticks }}" as="tk" hint-placeholder-count="2">
+            <div style="position:absolute;right:-8px;top:{{ tk.y }}px;width:7px;height:3px;background:{{ tk.c }}"></div>
+          </sc-for>
+        </div>
+        <div style="font-size:9px;color:#55524c">{{ fp.loT }}</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;justify-content:center">
+        <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:24px;font-weight:700">{{ fp.pvT }}</div><div style="font-size:11px;color:#55524c">{{ fp.eu }}</div></div>
+        <div style="font-size:10.5px;color:#55524c">INDICATION ONLY — DATAACQ (DACA)</div>
+        <div style="font-size:10.5px;color:#55524c">RANGE {{ fp.loT }} – {{ fp.hiT }} {{ fp.eu }}</div>
+        <div style="font-size:10px;font-weight:700;color:#7a1a00;height:12px">{{ fp.noteT }}</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ fp.isMotor }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:10px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:86px;text-align:center;padding:10px 0;font-size:15px;font-weight:700;background:{{ fp.stBg }};color:{{ fp.stFg }};border:2px solid #55524c">{{ fp.stT }}</div>
+        <div style="font-size:11px;color:#3c3c3c;line-height:1.5">CMD: <b>{{ fp.cmdT }}</b><br />FEEDBACK: <b>{{ fp.fbT }}</b></div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <div style="flex:1;text-align:center;padding:6px 0;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.start }}">START</div>
+        <div style="flex:1;text-align:center;padding:6px 0;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.stop }}">STOP</div>
+      </div>
+      <div style="font-size:10.5px;color:{{ fp.permFg }};font-weight:700">{{ fp.permT }}</div>
+      <div style="font-size:10px;color:#55524c">DEVCTL · uncommanded stop raises TRIP (Urgent); failed start raises CMDFAIL (High)</div>
+    </div>
+    </sc-if>
+
+    <div style="display:flex;gap:3px;padding:0 8px 8px 8px">
+      <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.sil }}">SILENCE</div>
+      <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.ack }}">ACK</div>
+      <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.detail }}">DETAIL</div>
+    </div>
+    <div style="padding:0 8px 6px 8px;font-size:10px;color:#55524c;display:flex;gap:8px"><div>{{ fp.modeLine }}</div><div style="flex:1"></div><div style="font-weight:700;color:#31548F">{{ fp.initT }}</div></div>
+  </div>
+</sc-for>
+
+<sc-if value="{{ db.on }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;top:8px;right:10px;z-index:850;background:#41608A;color:#FFFFFF;padding:5px 10px;display:flex;gap:12px;align-items:center;border:1px solid #22344e;box-shadow:2px 2px 8px rgba(0,0,0,0.4)">
+    <div style="font-size:11px;font-weight:700">DRILL IN PROGRESS · {{ db.tm }}</div>
+    <div style="font-size:10px;padding:2px 8px;background:#D4D0C8;color:#000;font-weight:700;cursor:pointer" onClick="{{ db.end }}">END</div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dg.open }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:900;background:rgba(30,30,30,0.18)">
+  <div style="position:absolute;left:50%;top:12%;transform:translateX(-50%);width:{{ dg.w }}px;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #5E5E5E #5E5E5E #FFFFFF;box-shadow:6px 6px 16px rgba(0,0,0,0.45)">
+    <div style="display:flex;align-items:center;background:#41608A;color:#FFFFFF;padding:4px 8px">
+      <div style="font-weight:700;font-size:12px;flex:1">{{ dg.title }}</div>
+      <div style="padding:1px 7px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ dg.close }}">✕</div>
+    </div>
+    <div style="padding:12px;max-height:70vh;overflow-y:auto">
+
+      <sc-if value="{{ dg.isLogon }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;margin-bottom:8px">Current security level: <b>{{ secT }}</b></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px">Password:</div>
+          <input type="password" value="{{ dg.pw }}" onChange="{{ dg.pwChange }}" onKeyDown="{{ dg.pwKey }}" style="width:150px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+          <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.pwGo }}">ENTER</div>
+          <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.signOff }}">SIGN OFF</div>
+        </div>
+        <div style="font-size:11px;color:#55524c;line-height:1.5">Station-based security. Training defaults: <b>oper</b>, <b>supv</b>, <b>engr</b>, <b>mngr</b>. Sign Off drops to View Only. Tuning and trip-point changes require ENGR or above; alarm disable requires MNGR.</div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isShelve }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;margin-bottom:8px">Shelve alarm: <b>{{ dg.shelfTag }}</b></div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <sc-for list="{{ dg.durs }}" as="d" hint-placeholder-count="3">
+            <div style="padding:5px 14px;font-weight:700;cursor:pointer;background:{{ d.bg }};border:2px solid;border-color:{{ d.bc }}" onClick="{{ d.cb }}">{{ d.label }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px">Reason:</div>
+          <input value="{{ dg.reason }}" onChange="{{ dg.reasonChange }}" placeholder="e.g. nuisance during washdown" style="flex:1;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.shelfGo }}">SHELVE</div>
+        </div>
+        <div style="font-size:11px;color:#55524c;margin-top:8px;line-height:1.5">Shelving auto-acknowledges and silences the alarm and removes it from the main summary until the period expires or it is unshelved. A record is kept in the Message Summary. Shelve nuisance alarms only — not a substitute for fixing them.</div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isDrills }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:10px;line-height:1.5">A fault is injected 8–15 s after start (no announcement). Respond as an operator: <b>Silence → Ack → read condition → check trend → act → verify</b>. Scored on detection, action, trip avoidance, stabilization, and diagnosis.</div>
+        <sc-for list="{{ dg.drills }}" as="d" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;padding:6px 8px;border:1px solid #B6B6B2;background:#CFCFCB;margin-bottom:4px">
+            <div style="width:36px;font-weight:700">{{ d.id }}</div>
+            <div style="flex:1;font-size:12px">{{ d.name }}</div>
+            <div style="padding:3px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ d.cb }}">START</div>
+          </div>
+        </sc-for>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.randomDrill }}">RANDOM DRILL</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isInstr }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px">MALFUNCTION INJECTION</div>
+        <sc-for list="{{ dg.faults }}" as="f" hint-placeholder-count="8">
+          <div style="display:flex;align-items:center;gap:8px;padding:3px 4px;font-size:12px">
+            <input type="checkbox" checked="{{ f.on }}" onChange="{{ f.cb }}" />
+            <div style="flex:1">{{ f.label }}</div>
+            <div style="font-size:10px;color:#55524c">{{ f.state }}</div>
+          </div>
+        </sc-for>
+        <div style="height:1px;background:#9a968e;margin:10px 0"></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-size:12px;font-weight:700">SIM SPEED:</div>
+          <sc-for list="{{ dg.speeds }}" as="s" hint-placeholder-count="4">
+            <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:{{ s.bg }};border:2px solid;border-color:{{ s.bc }}" onClick="{{ s.cb }}">{{ s.label }}</div>
+          </sc-for>
+          <div style="flex:1"></div>
+          <div style="padding:4px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.resetGo }}">RESET PROCESS</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isDebrief }}" hint-placeholder-val="{{ false }}">
+        <div style="font-weight:700;font-size:13px;margin-bottom:2px">{{ dg.dbName }}</div>
+        <div style="font-size:11px;color:#55524c;margin-bottom:10px">{{ dg.dbReason }}</div>
+        <sc-for list="{{ dg.dbRows }}" as="r" hint-placeholder-count="6">
+          <div style="display:flex;padding:3px 6px;font-size:12px;border-bottom:1px solid #B6B6B2"><div style="width:280px;color:#3c3c3c">{{ r.k }}</div><div style="font-weight:700;color:{{ r.fg }}">{{ r.v }}</div></div>
+        </sc-for>
+        <sc-if value="{{ dg.dbAsk }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:12px;font-size:12px;font-weight:700">{{ dg.dbQ }}</div>
+          <sc-for list="{{ dg.dbOpts }}" as="o" hint-placeholder-count="4">
+            <div style="margin-top:4px;padding:5px 8px;font-size:12px;cursor:pointer;background:{{ o.bg }};border:2px solid;border-color:{{ o.bc }}" onClick="{{ o.cb }}">{{ o.label }}</div>
+          </sc-for>
+          <div style="display:flex;justify-content:flex-end;margin-top:10px">
+            <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.dbSubmit }}">SUBMIT</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ dg.dbScored }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:12px;display:flex;align-items:baseline;gap:12px"><div style="font-size:26px;font-weight:700">{{ dg.dbScore }}/100</div><div style="font-size:14px;font-weight:700;color:#31548F">{{ dg.dbGrade }}</div></div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ dg.isHelp }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;line-height:1.7">
+          <b>Shortcut keys (representative)</b><br />F1 Silence · F2 Acknowledge · F3 Alarm Summary · F4 Point Detail of selected point<br />
+          In an entry field: type a value + Enter to store, Esc to cancel, ▲/▼ arrow keys to raise/lower.<br /><br />
+          <b>Operating rules</b><br />SP changes in AUTO only · OP changes in MAN only · CAS setpoint comes from the primary.<br />
+          Auto-selection: AUTO selects SP, MAN selects OP (RAISE/LOWER act on it).<br />
+          Entries outside SPHILM/SPLOLM or OPHILM/OPLOLM are rejected.<br /><br />
+          <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isAbout }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;line-height:1.7">
+          <b>Operator Station Training Simulator</b><br />
+          An independent, browser-based training aid reproducing the conventions of an Experion PKS Console/Flex Station: HMIWeb-style gray graphics, four alarm priorities (Journal/Low/High/Urgent), PID faceplates with MAN/AUTO/CAS, Point Detail with Experion parameter names (K, T1, T2 in minutes; SPHILM/OPHILM; SHEDHOLD…), alarm shelving, event journal, trends, and three live units: a continuous train with an exothermic CSTR, a semi-batch polymerization reactor with an SCM-driven sequence, and a fired-heater fixed-bed reactor. A rule-based Ops Assistant panel provides live diagnosis and coaching.<br /><br />
+          Not a Honeywell product; contains no Honeywell software, artwork, or manual text. High-priority yellow, summary columns, and key legends are representative defaults — sites configure these. Experion® is a trademark of Honeywell International Inc.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isReset }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;margin-bottom:12px">Reset the process to steady state? Alarms and events will be cleared.</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.resetYes }}">RESET</div>
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.close }}">CANCEL</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isSysMenu }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <sc-for list="{{ dg.sysLinks }}" as="l" hint-placeholder-count="6">
+            <div style="padding:10px;font-weight:700;font-size:12px;cursor:pointer;text-align:center;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ l.cb }}">{{ l.label }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ asst.on }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Ops Assistant" style="width:302px;flex:none;display:flex;flex-direction:column;background:#CCC8C0;border-left:2px solid #9a968e;min-height:0">
+  <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#41608A;color:#FFFFFF">
+    <div style="font-weight:700;font-size:12px;flex:1">OPS ASSISTANT</div>
+    <div style="font-size:9px;border:1px solid #FFFFFF;padding:1px 5px">TRAINING AID</div>
+    <div style="padding:1px 7px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ asst.close }}">✕</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;min-height:0">
+    <div style="padding:6px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c">LIVE DIAGNOSIS</div>
+    <sc-for list="{{ asst.issues }}" as="i" hint-placeholder-count="3">
+      <div style="margin:4px 8px;background:#D4D0C8;border:1px solid #9a968e">
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer" onClick="{{ i.click }}">
+          <div style="font-size:9px;font-weight:700;padding:1px 5px;background:{{ i.sevBg }};color:{{ i.sevFg }}">{{ i.sev }}</div>
+          <div style="flex:1;font-size:11px;font-weight:700;line-height:1.25">{{ i.title }}</div>
+          <div style="font-size:10px;color:#55524c">{{ i.arrow }}</div>
+        </div>
+        <sc-if value="{{ i.open }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:2px 8px 8px 8px;border-top:1px solid #B6B6B2">
+            <div style="font-size:10.5px;color:#3c3c3c;line-height:1.45;margin:4px 0 6px 0">{{ i.why }}</div>
+            <sc-for list="{{ i.steps }}" as="st" hint-placeholder-count="3">
+              <div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0">
+                <div style="font-size:10.5px;font-weight:700;width:14px">{{ st.n }}</div>
+                <div style="flex:1;font-size:10.5px;line-height:1.4">{{ st.txt }}</div>
+                <sc-if value="{{ st.hasGo }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:9px;font-weight:700;padding:2px 7px;cursor:pointer;background:#B8C4D4;border:1px solid #6E6E6E" onClick="{{ st.go }}">GO</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">ASK ABOUT A PROBLEM</div>
+    <div style="padding:4px 8px">
+      <input value="{{ asst.q }}" onChange="{{ asst.qChange }}" placeholder="e.g. why is my SP entry rejected?" style="width:100%;padding:4px 6px;font-size:11px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px 8px">
+      <sc-for list="{{ asst.chips }}" as="c" hint-placeholder-count="4">
+        <div style="font-size:9.5px;padding:2px 7px;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e" style-hover="background:#B8C4D4" onClick="{{ c.cb }}">{{ c.label }}</div>
+      </sc-for>
+    </div>
+    <sc-for list="{{ asst.hits }}" as="h" hint-placeholder-count="1">
+      <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e">
+        <div style="font-size:11px;font-weight:700;margin-bottom:3px">{{ h.t }}</div>
+        <div style="font-size:10.5px;line-height:1.45;color:#3c3c3c">{{ h.a }}</div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ asst.hitsNone }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:4px 8px;font-size:10.5px;color:#55524c">No matching topic — try the chips above, or Help → Shortcut Keys.</div>
+    </sc-if>
+  </div>
+  <div style="padding:5px 8px;font-size:9px;color:#6a665e;border-top:1px solid #9a968e;line-height:1.4">Advisory guidance representative of good operating practice — verify against your site procedures.</div>
+</div>
+</sc-if>
+
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;padding:3px 8px;border-top:2px solid #9a968e;background:#CCC8C0;user-select:none;font-size:11px">
+  <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:{{ ledSrv }};border:1px solid #55524c"></div>SRV A</div>
+  <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:{{ ledCee }};border:1px solid #55524c"></div>C300-SIM CEE</div>
+  <div style="color:#55524c">|</div><div style="font-weight:700">STN01</div>
+  <div style="color:#55524c">ASSET: UNIT 01</div>
+  <div style="flex:1"></div>
+  <div style="cursor:pointer;color:#31548F;font-weight:700" onClick="{{ instrOpen }}">SIM {{ spdT }}</div>
+  <div style="cursor:pointer;font-weight:700" onClick="{{ audCb }}">HORN: {{ audT }}</div>
+  <div style="color:#55524c">|</div>
+  <div style="cursor:pointer;padding:1px 10px;font-weight:700;background:#B8C4D4;border:1px solid #6E6E6E" onClick="{{ secCb }}">{{ secT }}</div>
+  <div>{{ dateT }}</div><div style="font-weight:700;width:60px">{{ timeT }}</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+class Component extends DCLogic {
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1 };
+
+  componentDidMount(){
+    if(!this.L) this.initSim();
+    this.iv = setInterval(()=>this.tick(), 500);
+    this.kd = (e)=>this.onKey(e);
+    window.addEventListener('keydown', this.kd);
+  }
+  componentWillUnmount(){ clearInterval(this.iv); window.removeEventListener('keydown', this.kd); }
+
+  initSim(){
+    const now = Date.now();
+    const P = (o)=>Object.assign({kind:'pid',mode:'AUTO',modeAttr:'OPERATOR',T2:0,ophilm:100,oplolm:0,opexhi:105,opexlo:-5,safeop:0,shed:'SHEDHOLD',badPv:false,init:false,dec:1,_as:{}}, o);
+    this.L = {
+      FI100: {kind:'ind',tag:'FI100',desc:'UNIT FEED SUPPLY FLOW',eu:'M3/H',lo:0,hi:150,dec:1,pv:60,cm:'CM0_FI100',alm:{},_as:{}},
+      LIC101:P({tag:'LIC101',desc:'FEED TANK TK-101 LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.5,T1:3,act:'DIR',sphilm:95,splolm:5,slave:'FIC102',cm:'CM1_LIC101',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[80,'High'],PVHH:[90,'Urgent']}}),
+      FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
+      P101:  {kind:'motor',tag:'P101',desc:'FEED PUMP P-101',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM2A_P101',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
+      TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent']}}),
+      TIC202:P({tag:'TIC202',desc:'R-201 JACKET COOLANT TEMP',eu:'DEG C',lo:0,hi:100,pv:40,sp:40,op:74,K:1.2,T1:1.5,act:'DIR',mode:'CAS',master:'TIC201',sphilm:80,splolm:5,cm:'CM4_TIC202',alm:{PVLL:[10,'Journal'],PVLO:[20,'Low'],PVHI:[70,'High'],PVHH:[85,'Urgent'],DEVHI:[12,'High']}}),
+      TIC301:P({tag:'TIC301',desc:'E-301 PRODUCT OUTLET TEMP',eu:'DEG C',lo:0,hi:250,pv:180,sp:180,op:50,K:1.8,T1:4,T2:0.3,act:'REV',sphilm:210,splolm:120,cm:'CM5_TIC301',alm:{PVLL:[150,'Journal'],PVLO:[165,'Low'],PVHI:[200,'High'],PVHH:[215,'Urgent']}}),
+      LIC401:P({tag:'LIC401',desc:'FLASH DRUM V-401 LEVEL',eu:'%',lo:0,hi:100,pv:45,sp:45,op:73,K:1.2,T1:2.5,act:'DIR',sphilm:90,splolm:10,cm:'CM6_LIC401',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[75,'High'],PVHH:[90,'Urgent']}}),
+      PIC401:P({tag:'PIC401',desc:'V-401 OVERHEAD PRESSURE',eu:'KPA',lo:0,hi:1000,dec:0,pv:600,sp:600,op:40,K:0.8,T1:0.8,act:'DIR',sphilm:850,splolm:200,cm:'CM7_PIC401',alm:{PVLL:[350,'Urgent'],PVLO:[450,'Low'],PVHI:[800,'High'],PVHH:[900,'Urgent']}}),
+      FIC211:P({tag:'FIC211',desc:'R-202 MONOMER FEED FLOW',eu:'M3/H',lo:0,hi:40,pv:0,sp:0,op:0,K:0.4,T1:0.15,act:'REV',sphilm:30,splolm:0,cm:'CM10_FIC211',alm:{PVHI:[28,'High']}}),
+      TIC212:P({tag:'TIC212',desc:'R-202 BATCH REACTOR TEMP',eu:'DEG C',lo:0,hi:150,pv:25,sp:40,op:8,K:1.8,T1:6,T2:0.4,act:'REV',mode:'MAN',slave:'TIC213',sphilm:95,splolm:20,cm:'CM11_TIC212',alm:{PVHI:[95,'High'],PVHH:[105,'Urgent']}}),
+      TIC213:P({tag:'TIC213',desc:'R-202 JACKET MEDIUM TEMP',eu:'DEG C',lo:0,hi:130,pv:20,sp:20,op:45,K:1.2,T1:1.2,act:'REV',mode:'CAS',master:'TIC212',sphilm:120,splolm:5,cm:'CM12_TIC213',alm:{PVHI:[115,'High']}}),
+      PI214: {kind:'ind',tag:'PI214',desc:'R-202 VAPOR PRESSURE',eu:'KPA',lo:0,hi:600,dec:0,pv:100,cm:'CM13_PI214',alm:{PVHI:[420,'High'],PVHH:[520,'Urgent']},_as:{}},
+      LI215: {kind:'ind',tag:'LI215',desc:'R-202 BATCH LEVEL',eu:'%',lo:0,hi:100,dec:1,pv:12,cm:'CM14_LI215',alm:{PVHI:[85,'High']},_as:{}},
+      M202:  {kind:'motor',tag:'M202',desc:'R-202 AGITATOR',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM15_M202',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
+      FIC310:P({tag:'FIC310',desc:'R-310 FRESH FEED FLOW',eu:'M3/H',lo:0,hi:80,pv:40,sp:40,op:50,K:0.4,T1:0.15,act:'REV',sphilm:70,splolm:0,cm:'CM16_FIC310',alm:{PVLO:[10,'Low'],PVHI:[65,'High']}}),
+      TIC311:P({tag:'TIC311',desc:'H-310 PREHEATER OUTLET TEMP',eu:'DEG C',lo:0,hi:500,dec:0,pv:320,sp:320,op:40,K:1.0,T1:2.5,T2:0.2,act:'REV',sphilm:380,splolm:150,cm:'CM17_TIC311',alm:{PVLO:[260,'Low'],PVHI:[360,'High'],PVHH:[400,'Urgent']}}),
+      TI312: {kind:'ind',tag:'TI312',desc:'R-310 CATALYST BED HOTSPOT',eu:'DEG C',lo:0,hi:600,dec:0,pv:380,cm:'CM18_TI312',alm:{PVHI:[440,'High'],PVHH:[480,'Urgent']},_as:{}},
+      FIC313:P({tag:'FIC313',desc:'R-310 QUENCH FLOW',eu:'M3/H',lo:0,hi:40,pv:10,sp:10,op:25,K:0.5,T1:0.2,act:'REV',sphilm:38,splolm:0,cm:'CM19_FIC313',alm:{PVLO:[4,'Low'],PVLL:[2,'Urgent']}})
+    };
+    for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } }
+    this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
+    this.P = { t:now, qin:60, tankL:50, flow:60, conc:1, rT:150, Tj:40, Tcw:8, hxT:180, drumL:45, drumP:600, foulF:1, up:0, trips:{}, faults:{}, faultT:{}, b:{phase:'IDLE',pt:0,Cm:0,lvl:12,T:25,Tj:20,mf:0}, h:{f:40,pre:320,bed:380,q:10} };
+    this.alarms=[]; this.events=[]; this.msgs=[]; this.hist={}; this.aid=1; this.eid=1;
+    ['FI100','LIC101','FIC102','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','FIC310','TIC311','TI312','FIC313'].forEach(t=>this.hist[t]=[]);
+    this.addEvent('SYSTEM','STN01','OPERATOR STATION STARTED — SIMULATION MODE','','');
+  }
+
+  // ---------- helpers ----------
+  rank(l){ return {VIEW:0,OPER:1,SUPV:2,ENGR:3,MNGR:4}[l]??0; }
+  can(need){ if(this.rank(this.state.sec)>=this.rank(need)) return true; this.msgZone('HIGHER SECURITY LEVEL REQUIRED ('+need+')'); return false; }
+  msgZone(t){ this.setState({msg:t, msgT:this.P.t}); }
+  fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
+  fT(ms){ const d=new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
+  fD(ms){ const d=new Date(ms); const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return ('0'+d.getDate()).slice(-2)+'-'+M[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2); }
+  addEvent(type,src,desc,oldV,newV){ this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:this.state.sec}); if(this.events.length>600) this.events.length=600; }
+  prioColor(p){ return {Urgent:'#FF0000', High:(this.props.highColor??'#FFE000'), Low:'#00D8D8', Journal:'#909090'}[p]; }
+  prioDark(p){ return {Urgent:'#A00000', High:'#7a6400', Low:'#00696d', Journal:'#666666'}[p]; }
+
+  raiseA(src,cond,prio,val,eu,desc){
+    if(prio==='Journal'){ this.addEvent('ALARM',src,cond+' (JOURNAL) '+this.fmt(val,1),'',''); return; }
+    const key=src+'.'+cond; let a=this.alarms.find(x=>x.key===key);
+    if(a){ if(!a.active){ a.active=true; a.ack=false; a.t=this.P.t; a.val=val; if(!a.shelved){ this.hornNew(); } this.addEvent('ALARM',src,cond+' ALARM '+prio.toUpperCase(),'',this.fmt(val,1)); } return; }
+    this.alarms.unshift({id:this.aid++, key, t:this.P.t, tag:src, cond, prio, val, eu, desc, ack:false, active:true, shelved:false, until:0});
+    this.addEvent('ALARM',src,cond+' ALARM '+prio.toUpperCase(),'',this.fmt(val,1));
+    this.hornNew();
+  }
+  clearA(src,cond){
+    const a=this.alarms.find(x=>x.key===src+'.'+cond);
+    if(a && a.active){ a.active=false; this.addEvent('ALARM',src,cond+' RETURN TO NORMAL','',''); if(a.ack){ this.alarms=this.alarms.filter(x=>x!==a); } }
+  }
+  hornNew(){ this.setState({silenced:false}); }
+  beep(freq,dur){ try{ if(!this.actx) this.actx=new (window.AudioContext||window.webkitAudioContext)(); const c=this.actx; if(c.state==='suspended') c.resume(); const o=c.createOscillator(), g=c.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.05; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+dur); }catch(e){} }
+
+  // ---------- simulation ----------
+  tick(){
+    if(!this.L) this.initSim();
+    const n=this.state.speed;
+    for(let i=0;i<n;i++) this.step(0.5);
+    if(this.state.msg && this.P.t-this.state.msgT>9000) this.state.msg='';
+    const aud=(this.props.audible??true)&&this.state.aud;
+    const top=this.topUnack();
+    if(aud && top && !this.state.silenced){
+      if(top.prio==='Urgent'){ this.beep(880,0.12); setTimeout(()=>this.beep(880,0.12),200); }
+      else if(top.prio==='High'){ this.beep(640,0.14); }
+      else if((this.state.tk%4)===0){ this.beep(460,0.1); }
+    }
+    this.setState(s=>({tk:s.tk+1, blink:!s.blink}));
+  }
+  topUnack(){ const r={Urgent:3,High:2,Low:1}; let best=null; for(const a of this.alarms){ if(a.ack||a.shelved) continue; if(!best || r[a.prio]>r[best.prio] || (r[a.prio]===r[best.prio]&&a.t>best.t)) best=a; } return best; }
+
+  step(dt){
+    const P=this.P, L=this.L, V=this.V, F=P.faults;
+    P.t += dt*1000; P.up += dt;
+    const n=(k)=>(Math.random()-0.5)*k;
+    // feed disturbance
+    let qin = 60 + 2*Math.sin(P.up/120) + n(0.6) + (F.surge?50:0);
+    if(F.surge && P.t-P.faultT.surge>480000){ F.surge=false; }
+    if(P.trips.ovf) qin=0;
+    P.qin=qin;
+    // valves
+    const tgt = { FV102:(P.trips.rx?0:L.FIC102.op/100), TV202:L.TIC202.op/100, TV301:L.TIC301.op/100, PV401:L.PIC401.op/100, LV401:L.LIC401.op/100, MV211:(P.trips.batch?0:L.FIC211.op/100), JV213:(P.trips.batch?0:L.TIC213.op/100), FV310:L.FIC310.op/100, FV311:(P.trips.bed?0:L.TIC311.op/100), QV313:L.FIC313.op/100 };
+    for(const k in V){ const v=V[k]; let g=F.air?v.fail:tgt[k]; if(v.stuck) g=v.pos; v.pos += (g-v.pos)*dt/3; v.pos=Math.max(0,Math.min(1,v.pos)); }
+    // pump + flow
+    const pumpF = L.P101.run?1:0;
+    const flowSS = 120*V.FV102.pos*pumpF*Math.sqrt(Math.max(P.tankL,0)/50);
+    P.flow += (flowSS-P.flow)*dt/4; if(P.flow<0.05&&flowSS===0)P.flow=0;
+    // tank
+    P.tankL += (qin-P.flow)*0.0023148*dt; P.tankL=Math.max(0,Math.min(100,P.tankL));
+    if(P.tankL>=98 && !P.trips.ovf){ P.trips.ovf=true; this.raiseA('TK-101','HIHI TRIP','Urgent',P.tankL,'%','FEED TANK OVERFLOW PROTECTION — FEED ISOLATED'); this.dTrip(); }
+    if(P.trips.ovf && P.tankL<90){ P.trips.ovf=false; this.clearA('TK-101','HIHI TRIP'); }
+    if(P.tankL<2 && L.P101.run){ this.tripMotor('P101','CAVITATION — LOW SUCTION LEVEL'); }
+    // reactor
+    P.conc += (Math.min(P.flow/60,1.6)-P.conc)*dt/45; P.conc=Math.max(0,P.conc);
+    let eEff = F.cool ? ((P.t-P.faultT.cool>300000)?0.75:0) : 1;
+    const e = 0.9*Math.sqrt(Math.max(V.TV202.pos,0))*eEff;
+    const TjSS = P.Tcw*e + P.rT*(1-e);
+    P.Tj += (TjSS-P.Tj)*dt/15;
+    const Qr = 213700*Math.exp(-1600/(P.rT+273))*P.conc*(F.rxn?1.15:1);
+    P.rT += (Qr - 30*(P.rT-P.Tj) - 0.2*P.flow*(P.rT-40) - 2*(P.rT-25))*dt/20000;
+    if(P.rT>=185 && !P.trips.rx){ P.trips.rx=true; this.raiseA('R-201','HI TEMP TRIP','Urgent',P.rT,'DEG C','REACTOR HIGH TEMPERATURE TRIP — FEED VALVE CLOSED'); this.dTrip(); }
+    if(P.trips.rx && P.rT<160){ P.trips.rx=false; this.clearA('R-201','HI TEMP TRIP'); }
+    // fouling
+    P.foulF = F.foul ? Math.max(0.6, P.foulF-dt/600*0.4) : Math.min(1, P.foulF+dt/300);
+    // HX
+    const hxSS = P.rT + 60*V.TV301.pos*P.foulF;
+    P.hxT += (hxSS-P.hxT)*dt/90;
+    // drum
+    const vapf = Math.max(0, Math.min(0.3, 0.02+(P.hxT-165)*0.004));
+    const Ql = P.flow*(1-vapf);
+    const Qo = 80*V.LV401.pos*Math.sqrt(Math.max(P.drumL,1)/50);
+    P.drumL += (Ql-Qo)*0.001852*dt; P.drumL=Math.max(0,Math.min(100,P.drumL));
+    let vap = P.flow*vapf*(F.vap?1.9:1);
+    if(F.vap && P.t-P.faultT.vap>300000) F.vap=false;
+    const vent = 0.02*V.PV401.pos*P.drumP;
+    P.drumP += (vap-vent)*dt/8;
+    if(P.drumP>950){ if(!P.trips.psv){ P.trips.psv=true; this.raiseA('V-401','PSV LIFT','Urgent',P.drumP,'KPA','RELIEF VALVE LIFTED TO FLARE'); this.dTrip(); } P.drumP -= (P.drumP-950)*0.5*dt; }
+    if(P.trips.psv && P.drumP<900){ P.trips.psv=false; this.clearA('V-401','PSV LIFT'); }
+    P.drumP=Math.max(0,Math.min(1100,P.drumP));
+    // measurements
+    L.FI100.pv = qin + n(0.2);
+    L.LIC101.pv = P.tankL + n(0.12);
+    if(F.xmtr){
+      const ft=P.t-P.faultT.xmtr;
+      if(ft>5000 && !L.FIC102.badPv){ L.FIC102.badPv=true; this.raiseA('FIC102','BADPV','High',L.FIC102.pv,'M3/H',L.FIC102.desc); this.applyShed(L.FIC102); }
+      if(ft>5000){ L.FIC102.pv += (0-L.FIC102.pv)*dt/10; }
+    } else {
+      if(L.FIC102.badPv){ L.FIC102.badPv=false; this.clearA('FIC102','BADPV'); this.msgZone('FIC102 PV RESTORED'); }
+      L.FIC102.pv = P.flow + n(0.25);
+    }
+    L.TIC201.pv = P.rT + n(0.15);
+    L.TIC202.pv = P.Tj + n(0.12);
+    L.TIC301.pv = P.hxT + n(0.2);
+    L.LIC401.pv = P.drumL + n(0.15);
+    L.PIC401.pv = P.drumP + n(1.2);
+    L.P101.pv = L.P101.run?1:0;
+    L.M202.pv = L.M202.run?1:0;
+    for(const mt of ['P101','M202']){ if(L[mt].lock>0) L[mt].lock=Math.max(0,L[mt].lock-dt); }
+    if(F.pump && L.P101.run){ this.tripMotor('P101','UNCOMMANDED STOP'); }
+    this.stepU2(dt);
+    this.stepU3(dt);
+    this.pids(dt);
+    this.scan();
+    this.shelfScan();
+    this.drillWatch(dt);
+    // history
+    for(const k of ['FI100','LIC101','FIC102','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','FIC310','TIC311','TI312','FIC313']){
+      const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift();
+    }
+  }
+
+  stepU2(dt){
+    const P=this.P,L=this.L,V=this.V,b=P.b,M=L.M202;
+    const n=(k)=>(Math.random()-0.5)*k;
+    b.pt+=dt;
+    const setPh=(ph)=>{ b.phase=ph; b.pt=0; this.addEvent('SYSTEM','SCM202','PHASE → '+ph,'',''); };
+    if(b.phase==='CHARGE'){ b.lvl+=0.5*dt; if(b.lvl>=40){ L.TIC212.mode='AUTO'; L.TIC212.sp=80; setPh('HEATUP'); } }
+    else if(b.phase==='HEATUP'){ if(b.T>=76) setPh('FEED'); }
+    else if(b.phase==='FEED'){ if(b.lvl>=75) setPh('REACT'); }
+    else if(b.phase==='REACT'){ if(b.Cm<=2){ L.TIC212.sp=40; setPh('COOL'); } }
+    else if(b.phase==='COOL'){ if(b.T<=45) setPh('DRAIN'); }
+    else if(b.phase==='DRAIN'){ b.lvl=Math.max(10,b.lvl-0.8*dt); if(b.lvl<=10){ L.TIC212.mode='MAN'; L.TIC212.op=8; setPh('IDLE'); } }
+    const seqOn=b.phase!=='IDLE';
+    if(b.phase==='FEED') L.FIC211.sp=(b.held||P.trips.batch)?0:20; else if(seqOn) L.FIC211.sp=0;
+    L.FIC211.modeAttr=(b.phase==='FEED'&&!b.held)?'PROGRAM':'OPERATOR';
+    L.TIC212.modeAttr=seqOn?'PROGRAM':'OPERATOR';
+    const mfSS=40*V.MV211.pos*(P.trips.batch?0:1);
+    b.mf=b.mf+(mfSS-b.mf)*dt/3;
+    if(b.phase==='FEED'&&b.mf>0.1) b.lvl=Math.min(100,b.lvl+b.mf*0.012*dt);
+    const med=15+105*V.JV213.pos;
+    b.Tj=b.Tj+(med-b.Tj)*dt/10;
+    const UA=M.run?1:0.3;
+    const kk=0.9*Math.exp((b.T-80)/22)*(M.run?1:0.18);
+    const rrate=kk*b.Cm*0.06;
+    b.Cm=Math.max(0,Math.min(99,b.Cm+(b.mf*0.05-rrate)*dt));
+    const heat=1.2*rrate, cool=0.055*(b.T-b.Tj)*UA, loss=0.004*(b.T-25);
+    b.T=Math.max(12,b.T+(heat-cool-loss)*dt*0.5);
+    if(b.T>=110 && !P.trips.batch){ P.trips.batch=true; this.raiseA('R-202','HI TEMP TRIP','Urgent',b.T,'DEG C','BATCH REACTOR OVERTEMP — FEED CUT, JACKET FULL COLD'); this.dTrip(); if(b.phase==='FEED'||b.phase==='REACT'||b.phase==='HEATUP'){ b.phase='COOL'; b.pt=0; L.TIC212.sp=40; } }
+    if(P.trips.batch && b.T<70){ P.trips.batch=false; this.clearA('R-202','HI TEMP TRIP'); }
+    L.FIC211.pv=b.mf+n(0.15);
+    L.TIC212.pv=b.T+n(0.12);
+    L.TIC213.pv=b.Tj+n(0.1);
+    L.PI214.pv=100+Math.max(0,b.T-25)*3.4+n(1.5);
+    L.LI215.pv=b.lvl+n(0.1);
+  }
+  stepU3(dt){
+    const P=this.P,L=this.L,V=this.V,h=P.h;
+    const n=(k)=>(Math.random()-0.5)*k;
+    const feed=80*V.FV310.pos; h.f+=(feed-h.f)*dt/3;
+    const preSS=150+420*V.FV311.pos-0.9*(h.f-40);
+    h.pre+=(preSS-h.pre)*dt/22;
+    const q=40*V.QV313.pos; h.q+=(q-h.q)*dt/3;
+    const act=P.faults.bedact?1.35:1;
+    const bedSS=h.pre+92*act*Math.exp((h.bed-380)/150)*(h.f/40)-3.2*h.q;
+    h.bed+=(bedSS-h.bed)*dt/35;
+    if(h.bed>=480 && !P.trips.bed){ P.trips.bed=true; this.raiseA('R-310','HI TEMP TRIP','Urgent',h.bed,'DEG C','BED OVERTEMP — FUEL GAS SHUT OFF'); this.dTrip(); }
+    if(P.trips.bed && h.bed<400){ P.trips.bed=false; this.clearA('R-310','HI TEMP TRIP'); }
+    L.FIC310.pv=h.f+n(0.2);
+    L.TIC311.pv=h.pre+n(0.4);
+    L.TI312.pv=h.bed+n(0.5);
+    L.FIC313.pv=h.q+n(0.1);
+  }
+  seqCmd(cmd,silent){
+    const b=this.P.b;
+    if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
+    if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
+    if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
+  }
+  unitOf(tag){
+    if(['FIC211','TIC212','TIC213','PI214','LI215','M202','R-202','SCM202'].includes(tag)) return 'U2';
+    if(['FIC310','TIC311','TI312','FIC313','R-310','H-310'].includes(tag)) return 'U3';
+    if(this.L[tag]||['TK-101','R-201','V-401'].includes(tag)) return 'U1';
+    return null;
+  }
+  peakOf(k){ const P=this.P; return ({tankL:P.tankL,rT:P.rT,drumP:P.drumP,T212:P.b.T,bed:P.h.bed})[k]??0; }
+  diagnose(){
+    const P=this.P,L=this.L,V=this.V,S=this.state,out=[];
+    const gFp=(tag)=>()=>{ this.setState({display:'graphic'}); this.openFp(tag); };
+    const gDet=(tag)=>()=>this.nav('detail',tag);
+    const gAlm=()=>this.nav('alarms');
+    const gTg=(g)=>()=>{ this.setState({tg:g}); this.nav('trend'); };
+    const slope=(tag,sec)=>{ const hh=this.hist[tag]; if(!hh||hh.length<5) return 0; const nn=Math.min(hh.length-1,Math.round(sec*2)); const a=hh[hh.length-1-nn], b2=hh[hh.length-1]; const dts=(b2[0]-a[0])/1000; return dts>0?(b2[1]-a[1])/dts:0; };
+    if(P.trips.rx) out.push({id:'trip.rx',sev:'URGENT',title:'R-201 high-temperature trip active',why:'The reactor exceeded 185 °C and the trip closed feed valve FV-102. It resets below 160 °C.',steps:[{t:'Silence and acknowledge the trip alarms.',go:()=>gAlm()},{t:'Verify maximum cooling — TIC202 in CAS, TV-202 open.',go:gFp('TIC202')},{t:'Watch TIC201 fall on trend TG01.',go:gTg('TG01')},{t:'Re-establish feed slowly after the trip clears.',go:gFp('FIC102')}]});
+    if(P.trips.batch) out.push({id:'trip.b',sev:'URGENT',title:'R-202 batch overtemp trip',why:'Batch temperature reached 110 °C. Monomer feed is cut and the jacket driven full cold until T < 70 °C.',steps:[{t:'Acknowledge alarms; confirm monomer feed is zero.',go:gFp('FIC211')},{t:'Keep the agitator running for heat removal.',go:gFp('M202')},{t:'The sequence resumes in COOL when the trip clears.'}]});
+    if(P.trips.bed) out.push({id:'trip.bed',sev:'URGENT',title:'R-310 bed overtemp trip — fuel shut off',why:'The hotspot reached 480 °C; fuel gas is isolated until the bed cools below 400 °C.',steps:[{t:'Acknowledge; verify quench flow is available.',go:gFp('FIC313')},{t:'Lower the TIC311 SP before relight to avoid a repeat.',go:gFp('TIC311')}]});
+    if(P.trips.ovf) out.push({id:'trip.ovf',sev:'URGENT',title:'TK-101 overflow protection active',why:'Tank level reached 98% and unit feed was isolated.',steps:[{t:'Increase outlet flow to draw the level down.',go:gFp('FIC102')},{t:'Acknowledge alarms; feed restores below 90%.',go:()=>gAlm()}]});
+    if(P.trips.psv) out.push({id:'trip.psv',sev:'URGENT',title:'V-401 relief valve lifted',why:'Drum pressure exceeded 950 kPa and is venting to flare.',steps:[{t:'Verify PIC401 is in AUTO and the vent is opening.',go:gFp('PIC401')},{t:'Reduce heat input at TIC301.',go:gFp('TIC301')}]});
+    for(const mt of ['P101','M202']){ const m=L[mt]; if(m.trip) out.push({id:'mtrip.'+mt,sev:'URGENT',title:(mt==='P101'?'P-101 pump tripped':'M-202 agitator tripped')+(m.lock>0?' — lockout '+Math.ceil(m.lock)+' s':''),why:(m.tripWhy||'Uncommanded stop')+'. '+(mt==='M202'?'Without agitation heat transfer collapses and unreacted monomer accumulates — it reacts all at once on restart.':'Downstream flow is lost and affected controllers wind up.'),steps: mt==='M202'?[{t:'Cut monomer feed first — HOLD the sequence or FIC211 to MAN, OP 0.',go:gFp('FIC211')},{t:'Watch TIC212 and the monomer inventory bar.',go:gFp('TIC212')},{t:'Restart the agitator only after the feed is stopped.',go:gFp('M202')}]:[{t:'Put FIC102 in MAN, OP 0 to prevent windup.',go:gFp('FIC102')},{t:'Wait out the lockout, then START.',go:gFp('P101')},{t:'Restore AUTO / CAS and bring flow back gently.'}]}); }
+    if(!P.trips.rx && P.rT>162 && slope('TIC201',20)>0.04) out.push({id:'risk.rx',sev:'URGENT',title:'R-201 temperature rising — runaway risk',why:'Reaction heat rises exponentially with temperature while jacket cooling is only linear. Act before the 185 °C trip.',steps:[{t:'Check TV-202 position against TIC202 output.',go:gFp('TIC202')},{t:'Cut feed — FIC102 to MAN, reduce OP.',go:gFp('FIC102')},{t:'Track the exotherm on trend TG01.',go:gTg('TG01')}]});
+    if(!P.trips.bed && P.h.bed>435) out.push({id:'risk.bed',sev:'WARN',title:'R-310 bed hotspot climbing ('+Math.round(P.h.bed)+' °C)',why:'The bed exotherm grows with temperature; the fuel trip operates at 480 °C.',steps:[{t:'Raise quench flow FIC313.',go:gFp('FIC313')},{t:'Lower the preheater SP at TIC311.',go:gFp('TIC311')}]});
+    if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence / stop the FIC211 feed.',go:gFp('FIC211')},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
+    for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here when the fault clears.'}]}); }
+    const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'};
+    if(!P.faults.air){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&v.stuck&&Math.abs(l.op/100-v.pos)>0.12) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
+    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!l.badPv&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=Object.keys(l.alm).some(c=>l._as[c]); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
+    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.slave&&l.init) out.push({id:'init.'+k,sev:'INFO',title:k+' in INITMAN — cascade broken',why:'Its secondary '+l.slave+' is not in CAS, so the primary is initialized and tracks for a bumpless return.',steps:[{t:'Return '+l.slave+' to CAS when ready.',go:gFp(l.slave)}]}); }
+    const un=this.alarms.filter(a=>!a.ack&&!a.shelved).length;
+    if(un>=6) out.push({id:'flood',sev:'WARN',title:'Alarm flood — '+un+' unacknowledged',why:'Do not blind-acknowledge. Triage by priority: Urgent first, then High. Look for a common cause.',steps:[{t:'Silence the horn (F1).'},{t:'Work the summary Urgent-first.',go:()=>gAlm()},{t:'Check for a common cause: pump, air, cooling.'}]});
+    if(P.faults.air) out.push({id:'air',sev:'URGENT',title:'Instrument air loss — valves at fail positions',why:'All control valves have driven to their fail-safe states; controllers are ineffective until air returns.',steps:[{t:'Recognize the common cause — do not chase individual loops.'},{t:'Note which valves failed open vs closed on the graphics.'},{t:'Triage alarms by priority.',go:()=>gAlm()}]});
+    if(L.PIC401.mode==='MAN'&&P.drumP>700) out.push({id:'man401',sev:'WARN',title:'PIC401 in MAN while pressure rises',why:'The vent will not move in MAN.',steps:[{t:'Put PIC401 back in AUTO.',go:gFp('PIC401')}]});
+    for(const mt of ['P101','M202']){ const m=L[mt]; if(!m.trip&&!m.run&&m.lock>0) out.push({id:'lock.'+mt,sev:'INFO',title:(mt==='P101'?'P-101':'M-202')+' restart lockout — '+Math.ceil(m.lock)+' s remaining',why:'A lockout timer protects the motor after a stop or trip.',steps:[{t:'Wait for the lockout, then START from the faceplate.',go:gFp(mt)}]}); }
+    const sevR={URGENT:2,WARN:1,INFO:0};
+    out.sort((a,b)=>sevR[b.sev]-sevR[a.sev]);
+    if(!out.length) out.push({id:'ok',sev:'INFO',title:'No abnormal conditions detected',why:'All loops near setpoint, no trips, no bad measurements. Use the Drills menu to practice an upset, or start a batch on Unit 02.',steps:[{t:'Review trends for slow drift.',go:gTg('TG01')},{t:'Start a scored drill.',go:()=>this.setState({dlg:{type:'drills'}})}]});
+    return out.slice(0,8);
+  }
+  topics(){ return [
+    {k:['op','output','invalid mode','man','change op'],t:'Why can I not change OP?',a:'OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'},
+    {k:['sp','setpoint','rejected','limit','entry'],t:'SP entry rejected',a:'SP must be inside SPLOLM…SPHILM and the loop must be in AUTO (CAS setpoints are primary- or program-driven). Out-of-range entries are rejected with the limits shown in the Message Zone. Limits live on Point Detail → Loop Tune (ENGR to change).'},
+    {k:['initman','init','cascade','track','bkcal'],t:'What is INITMAN?',a:'When a cascade secondary leaves CAS, the primary initializes (INITMAN) and its output tracks the secondary SP via back-calculation, so the return to CAS is bumpless. Fix: put the secondary back in CAS.'},
+    {k:['crosshatch','bad','badpv','hatch','stale','quality'],t:'PV shows crosshatch',a:'Crosshatch means bad or uncertain PV quality. A BADPV alarm raises and the PID sheds per its option — default SHEDHOLD: MODE to MAN, output held at the last good value. Keep it in MAN until the input is repaired.'},
+    {k:['shelve','shelving','nuisance','hide'],t:'How do I shelve an alarm?',a:'Select the alarm row, press SHELVE, pick a duration and reason. Shelving auto-acknowledges and silences it and removes it from the summary until the timer expires (or UNSHELVE). A record stays in the Message Summary. Shelve nuisance alarms only.'},
+    {k:['pump','start','won','lockout','permissive','agitator','motor'],t:'Motor will not start',a:'Check the Message Zone: a start needs its permissive met (P-101 needs tank level above 5%) and the restart lockout expired (30 s after a trip, 15 s after a stop). Failed starts raise CMDFAIL.'},
+    {k:['color','colours','flash','red','yellow','cyan','blink'],t:'What do alarm colors mean?',a:'Urgent = red, High = yellow (representative), Low = cyan. Flashing = unacknowledged; steady = acknowledged with the cause still present; inverse flashing = returned to normal but never acknowledged. Journal alarms only log to the journal.'},
+    {k:['ack','silence','acknowledge','horn'],t:'Ack vs Silence',a:'SILENCE (F1) stops the horn only. ACK (F2) claims the alarm: flashing stops and it goes steady while the cause remains, or drops off the summary if it already returned to normal. Sequence: Silence → Ack → read → trend → act → verify.'},
+    {k:['tuning','tune','gain','t1','t2','engr','action'],t:'Cannot change tuning',a:'K, T1, T2, limits and control action need ENGR level or above: Station menu → Security Level, password engr. Experion PID uses overall gain K with T1 and T2 in minutes.'},
+    {k:['batch','sequence','scm','phase','stuck','hold','charge'],t:'Batch sequence control',a:'SCM202 on Unit 02 runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. START begins a batch; HOLD stops the monomer feed without losing the phase; ABORT forces COOL. During FEED the FIC211 SP is program-driven (MODEATTR = PROGRAM).'},
+    {k:['raise','lower','arrow','keys','select'],t:'RAISE / LOWER keys',a:'The raise/lower buttons act on the auto-selected target: SP in AUTO, OP in MAN (dashed highlight on the faceplate). In an entry field, arrow keys nudge the typed value; Enter stores, Esc cancels.'},
+    {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. A fault injects unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
+    {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
+    {k:['assistant','guide','coach','panel'],t:'About this assistant',a:'It watches live process state and lists detected issues with step-by-step guidance (GO jumps to the right display). It is a training aid — on a real console, follow site procedures and your shift supervisor.'}
+  ]; }
+  pids(dt){
+    const L=this.L;
+    const casMap = { FIC102:(op)=>op*1.2, TIC202:(op)=>10+0.6*op, TIC213:(op)=>op*1.3 };
+    const invMap = { FIC102:(sp)=>sp/1.2, TIC202:(sp)=>(sp-10)/0.6, TIC213:(sp)=>sp/1.3 };
+    for(const k of ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313']){
+      const l=L[k]; if(l.kind!=='pid') continue;
+      if(l.slave){ const s=L[l.slave]; l.init = s.mode!=='CAS';
+        if(l.init){ l.op = Math.max(l.oplolm,Math.min(l.ophilm, invMap[l.slave](s.sp))); l.I=l.op; l.lastPv=l.pv; continue; } }
+      if(l.mode==='CAS' && l.master){ const m=L[l.master]; l.sp = Math.max(l.splolm,Math.min(l.sphilm, casMap[k](m.op))); }
+      if(l.mode==='MAN' || l.badPv){ l.I=l.op; l.lastPv=l.pv; continue; }
+      const span=l.hi-l.lo;
+      const e=((l.act==='DIR'?(l.pv-l.sp):(l.sp-l.pv))/span)*100;
+      const Pt=l.K*e;
+      if(l.T1>0) l.I += l.K*e*dt/(l.T1*60);
+      const dpv=((l.pv-l.lastPv)/span)*100;
+      const D=(l.T2>0)? -l.K*l.T2*60*dpv/dt : 0;
+      let op=Pt+l.I+D;
+      if(op>l.ophilm){ op=l.ophilm; l.I=op-Pt-D; }
+      if(op<l.oplolm){ op=l.oplolm; l.I=op-Pt-D; }
+      l.op=op; l.lastPv=l.pv;
+    }
+  }
+
+  applyShed(l){
+    if(l.shed==='NOSHED') return;
+    const old=l.mode; l.mode='MAN';
+    if(l.shed==='SHEDLOW') l.op=l.opexlo; else if(l.shed==='SHEDHIGH') l.op=l.opexhi; else if(l.shed==='SHEDSAFE') l.op=l.safeop;
+    if(old!=='MAN') this.addEvent('SYSTEM',l.tag,'BAD PV — SHED '+l.shed.replace('SHED','')+' · MODE '+old+' → MAN','','');
+  }
+
+  scan(){
+    const L=this.L;
+    for(const k in L){ const l=L[k];
+      for(const cond in l.alm){
+        const [tp,prio]=l.alm[cond]; const span=(l.hi-l.lo)||1; const db=span*0.01;
+        let act=l._as[cond]||false; let v=l.pv;
+        if(cond==='PVHI'||cond==='PVHH'){ if(v>=tp) act=true; else if(v<tp-db) act=false; }
+        else if(cond==='PVLO'||cond==='PVLL'){ if(v<=tp) act=true; else if(v>tp+db) act=false; }
+        else if(cond==='DEVHI'){ const d=l.pv-l.sp; if(d>=tp) act=true; else if(d<tp-db) act=false; }
+        if(act && !l._as[cond]) this.raiseA(l.tag,cond,prio,v,l.eu,l.desc);
+        if(!act && l._as[cond]) this.clearA(l.tag,cond);
+        l._as[cond]=act;
+      }
+    }
+    for(const mt of ['P101','M202']){ const m=L[mt];
+      if(m.trip && !m._as.TRIP){ this.raiseA(mt,'TRIP','Urgent',0,'',m.desc+' — '+(m.tripWhy||'TRIP')); m._as.TRIP=true; }
+      if(!m.trip && m._as.TRIP){ this.clearA(mt,'TRIP'); m._as.TRIP=false; }
+    }
+  }
+
+  shelfScan(){
+    for(const a of [...this.alarms]){
+      if(a.shelved && this.P.t>=a.until){
+        a.shelved=false;
+        if(a.active){ a.ack=false; this.addEvent('SYSTEM',a.tag,'SHELVE PERIOD EXPIRED — ALARM RE-ANNUNCIATED','',''); this.hornNew(); }
+        else this.alarms=this.alarms.filter(x=>x!==a);
+      }
+    }
+  }
+
+  tripMotor(tag,why){
+    const m=this.L[tag]; if(!m||!m.run) return;
+    m.run=false; m.trip=true; m.tripWhy=why; m.lock=30;
+    this.addEvent('SYSTEM',tag,(tag==='P101'?'PUMP':'AGITATOR')+' TRIPPED — '+why,'RUN','STOP');
+  }
+
+  // ---------- drills ----------
+  drillDefs(){
+    return [
+      {id:'D1',name:'Flow transmitter failure (FIC102)',fault:'xmtr',rel:['FIC102'],act:'ACK',stable:'contain',
+       q:'FIC102 PV went BAD. What did the PID do (shed option SHEDHOLD)?',opts:['Shed to MAN and held OP at the last good value','Drove OP to SAFEOP and stayed in AUTO','Closed the valve immediately','Kept controlling on the bad PV'],a:0},
+      {id:'D2',name:'Feed surge — tank level rising',fault:'surge',rel:['LIC101','FIC102','TK-101'],act:'OUTFLOW',stable:'alarms',peak:'tankL',
+       q:'Best first control action for rising level?',opts:['Increase outlet flow (raise FIC102/LIC101 output)','Shelve the level alarms','Stop the feed pump','Lower the outlet flow setpoint'],a:0},
+      {id:'D3',name:'Feed pump trip',fault:'pump',rel:['P101','FIC102','LIC101','TK-101'],act:'START',stable:'alarms',
+       q:'Correct restart sequence?',opts:['FIC102 to MAN / OP 0, START P-101 after lockout, restore AUTO','Immediately drive FIC102 OP to 100%','Repeatedly press START until it holds','Shelve the TRIP alarm and wait'],a:0},
+      {id:'D4',name:'Cooling water loss — exotherm',fault:'cool',rel:['TIC201','TIC202','R-201'],act:'CUTFEED',stable:'alarms',peak:'rT',
+       q:'Reactor temperature climbing with no cooling. Best action?',opts:['Cut feed (FIC102 to MAN, OP low) to remove reaction heat','Raise TIC201 SP to reduce the error','Put TIC202 in MAN with OP 0','Acknowledge the alarms and monitor'],a:0},
+      {id:'D6',name:'Stuck coolant valve (stiction)',fault:'stick',rel:['TIC202','TIC201'],act:'MAN202',stable:'alarms',peak:'rT',
+       q:'TIC202 OP moves but jacket temperature does not. Root cause?',opts:['Control valve TV-202 stuck (stiction)','Transmitter failure on the jacket RTD','Wrong control action configured','Cascade initialization error'],a:0},
+      {id:'D9',name:'Flash drum pressure high',fault:'vap',rel:['PIC401','V-401'],act:'AUTO401',stable:'alarms',peak:'drumP',
+       q:'PIC401 did not respond to rising pressure. Why?',opts:['It had been left in MAN — the vent never moved','The vent valve was stuck','The setpoint was too high','Transmitter drift'],a:0},
+      {id:'D11',name:'Agitator trip during semi-batch feed (Unit 02)',fault:'agit',needBatch:true,when:(P)=>P.b.phase==='FEED'&&P.b.Cm>8,rel:['M202','TIC212','R-202','FIC211','SCM202'],act:'CUTMONO',stable:'alarms',peak:'T212',
+       q:'The agitator tripped during monomer feed. Why is restarting it later dangerous?',opts:['Accumulated monomer reacts at once when mixing resumes — stop feed and max cooling before restart','It will trip the breaker again','The jacket cannot heat without agitation','It pulls a vacuum in the reactor'],a:0},
+      {id:'D12',name:'Catalyst activity surge — bed overtemp (Unit 03)',fault:'bedact',rel:['TI312','TIC311','FIC313','R-310'],act:'QUENCH',stable:'alarms',peak:'bed',
+       q:'Bed temperature climbing at constant preheat. Correct response?',opts:['Raise quench flow and/or lower the preheater SP — the fuel trips at 480 °C','Raise the preheater SP to burn off deposits','Put FIC313 in MAN and close the quench','Increase feed to sweep the heat out'],a:0}
+    ];
+  }
+  startDrill(d){
+    if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
+    if(d.needBatch && this.P.b.phase==='IDLE') this.seqCmd('START',true);
+    const delay=8000+Math.random()*7000;
+    this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0},dlg:null});
+    this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
+  }
+  injectFault(k,on){
+    const P=this.P,V=this.V,L=this.L;
+    P.faults[k]=on; P.faultT[k]=P.t;
+    if(k==='pump'){ if(on){ this.tripMotor('P101','UNCOMMANDED STOP'); P.faults.pump=false; } }
+    if(k==='agit'){ if(on){ this.tripMotor('M202','UNCOMMANDED STOP'); P.faults.agit=false; } }
+    if(k==='stick'){ V.TV202.stuck=on; if(on){ P.faults.rxn=true; } else { P.faults.rxn=false; } }
+    if(k==='xmtr' && !on){ /* heal handled in step */ }
+  }
+  drillWatch(dt){
+    const d=this.state.drill; if(!d) return;
+    const P=this.P,L=this.L,m=d.m,def=d.def;
+    if(!d.injected && P.t>=d.ti && (!def.when || def.when(P))){ d.injected=true; this.injectFault(def.fault,true); }
+    if(!d.injected) return;
+    if(def.peak){ const v=this.peakOf(def.peak); m.peak=Math.max(m.peak||0,v); }
+    if(!m.tAlarm){ const a=this.alarms.find(x=>def.rel.includes(x.tag)&&x.active); if(a) m.tAlarm=a.t; }
+    if(m.tAlarm && !m.tStable){
+      let ok=false;
+      if(def.stable==='contain'){ ok = L.FIC102.mode==='MAN' && !this.alarms.some(x=>def.rel.includes(x.tag)&&!x.ack&&!x.shelved); }
+      else { ok = m.tAck && !this.alarms.some(x=>def.rel.includes(x.tag)&&x.active&&!x.shelved); }
+      d.stableFor = ok ? d.stableFor+dt : 0;
+      if(d.stableFor>=60){ m.tStable=P.t; this.endDrill('STABILIZED'); return; }
+    }
+    if(P.t-d.t0>720000) this.endDrill('TIME LIMIT REACHED');
+  }
+  dHook(kind,tag){
+    const d=this.state.drill; if(!d||!d.injected) return;
+    const m=d.m;
+    if(d.def.rel.includes(tag)||!tag){
+      if(kind==='SIL'&&!m.tSil&&m.tAlarm) m.tSil=this.P.t;
+      if(kind==='ACK'&&!m.tAck&&m.tAlarm){ m.tAck=this.P.t; if(d.def.act==='ACK'&&!m.tAct) m.tAct=this.P.t; }
+    }
+  }
+  dAct(type,tag,val,delta){
+    const d=this.state.drill; if(!d||!d.injected||d.m.tAct) return;
+    const A=d.def.act; let hit=false;
+    if(A==='OUTFLOW') hit=(tag==='FIC102'&&(type==='SP'||type==='OP')&&delta>0)||(tag==='LIC101'&&type==='SP'&&delta<0);
+    if(A==='CUTFEED') hit=(tag==='FIC102'&&(type==='OP'||type==='SP')&&val<=25);
+    if(A==='MAN202') hit=(tag==='TIC202'&&type==='MODE'&&val==='MAN');
+    if(A==='AUTO401') hit=(tag==='PIC401'&&type==='MODE'&&val==='AUTO');
+    if(A==='START') hit=(tag==='P101'&&type==='START');
+    if(A==='CUTMONO') hit=(tag==='FIC211'&&(type==='OP'||type==='SP')&&val<=2)||(tag==='SCM202'&&type==='HOLD');
+    if(A==='QUENCH') hit=(tag==='FIC313'&&(type==='SP'||type==='OP')&&delta>0)||(tag==='TIC311'&&type==='SP'&&delta<0);
+    if(hit) d.m.tAct=this.P.t;
+  }
+  dTrip(){ const d=this.state.drill; if(d&&d.injected) d.m.trip=true; }
+  endDrill(reason){
+    const d=this.state.drill; if(!d) return;
+    const F=this.P.faults;
+    ['xmtr','surge','cool','vap','rxn','bedact'].forEach(k=>F[k]=false);
+    this.V.TV202.stuck=false;
+    d.reason=reason;
+    this.setState({drill:null, dlg:{type:'debrief',drill:d}, debAns:-1});
+    this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.def.id+' ended — '+reason});
+  }
+  scoreDrill(d,ans){
+    const m=d.m; let s=0;
+    const dt1=m.tAck&&m.tAlarm?(m.tAck-m.tAlarm)/1000:null;
+    s += dt1==null?0:(dt1<=30?25:dt1<=60?18:dt1<=120?10:4);
+    s += m.tAct ? ((m.tAct-m.tAlarm)<=180000?30:12) : 0;
+    s += m.trip?0:20;
+    s += m.tStable?15:0;
+    s += ans===d.def.a?10:0;
+    return s;
+  }
+
+  // ---------- operator actions ----------
+  nav(d,arg){
+    const h=this.state.hist.slice(0,this.state.hi+1); h.push({d,arg});
+    const st={display:d, hist:h, hi:h.length-1, menu:null};
+    if(d==='detail'&&arg) st.detailTag=arg;
+    this.setState(st);
+  }
+  goBack(){ const {hist,hi}=this.state; if(hi<=0){this.msgZone('NO EARLIER DISPLAY');return;} const p=hist[hi-1]; const st={hi:hi-1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); }
+  goFwd(){ const {hist,hi}=this.state; if(hi>=hist.length-1){this.msgZone('NO LATER DISPLAY');return;} const p=hist[hi+1]; const st={hi:hi+1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); }
+  parseCmd(){
+    const c=this.state.cmd.trim().toUpperCase(); if(!c) return;
+    this.setState({cmd:''});
+    if(c==='U1'||c==='UNIT01'){ this.setState({unit:'U1'}); this.nav('graphic'); return; }
+    if(c==='U2'||c==='UNIT02'){ this.setState({unit:'U2'}); this.nav('graphic'); return; }
+    if(c==='U3'||c==='UNIT03'){ this.setState({unit:'U3'}); this.nav('graphic'); return; }
+    if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return; }
+    const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail'};
+    if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return; }
+    if(map[c]){ this.nav(map[c]); return; }
+    if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
+    if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return; }
+    this.msgZone('DISPLAY NOT FOUND: '+c);
+  }
+  silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); }
+  ackAlarm(a){
+    if(!this.can('OPER')) return;
+    if(!a) return;
+    a.ack=true; this.addEvent('OPERATOR',a.tag,a.cond+' ACKNOWLEDGED','','');
+    this.dHook('ACK',a.tag);
+    if(!a.active) this.alarms=this.alarms.filter(x=>x!==a);
+  }
+  ackTop(){ const a=this.state.selAlm!=null? this.alarms.find(x=>x.id===this.state.selAlm) : this.topUnack(); if(!a){this.msgZone('NO UNACKNOWLEDGED ALARM');return;} this.ackAlarm(a); }
+  ackPage(){
+    if(!this.can('OPER')) return;
+    const rows=this.visAlarms(); let n=0;
+    for(const a of rows){ if(!a.ack){ a.ack=true; n++; this.dHook('ACK',a.tag); if(!a.active) this.alarms=this.alarms.filter(x=>x!==a); } }
+    this.addEvent('OPERATOR','STN01','PAGE ACKNOWLEDGE ('+n+' ALARMS)','','');
+  }
+  visAlarms(){
+    const v=this.state.shelfView;
+    let rows=this.alarms.filter(a=> v==='SHELVED'? a.shelved : !a.shelved);
+    if(v==='UNACK') rows=rows.filter(a=>!a.ack);
+    return rows.sort((a,b)=>b.t-a.t);
+  }
+  shelve(mins){
+    const a=this.alarms.find(x=>x.id===this.state.selAlm); if(!a){this.msgZone('NO ALARM SELECTED');return;}
+    if(!this.can('OPER')) return;
+    a.shelved=true; a.until=this.P.t+mins*60000; a.ack=true;
+    const r=this.state.dlgReason||'no reason given';
+    this.addEvent('OPERATOR',a.tag,a.cond+' SHELVED '+mins+' MIN — '+r,'','');
+    this.msgs.unshift({t:this.P.t,txt:'ALARM SHELVED '+mins+' MIN: '+a.tag+' '+a.cond+' — '+r});
+    this.setState({dlg:null,dlgReason:''});
+  }
+  unshelve(){
+    const a=this.alarms.find(x=>x.id===this.state.selAlm); if(!a||!a.shelved){this.msgZone('SELECT A SHELVED ALARM');return;}
+    a.shelved=false; if(a.active){a.ack=false; this.hornNew();} else this.alarms=this.alarms.filter(x=>x!==a);
+    this.addEvent('OPERATOR',a.tag,a.cond+' UNSHELVED','','');
+  }
+  setMode(tag,m){
+    const l=this.L[tag];
+    if(!this.can('OPER')) return;
+    if(l.badPv && m!=='MAN'){ this.msgZone('PV BAD — SHED ACTIVE, MODE CHANGE DENIED'); return; }
+    if(m==='CAS' && !l.master){ this.msgZone('NO CASCADE CONNECTION CONFIGURED'); return; }
+    if(l.mode===m) return;
+    const old=l.mode; l.mode=m;
+    if(m!=='MAN'){ l.I=l.op; }
+    this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=old; this.events[0].newV=m;
+    this.dAct('MODE',tag,m,0);
+  }
+  openEntry(tag,param){
+    const l=this.L[tag];
+    if(!this.can('OPER')) return;
+    if(param==='SP'){ if(l.mode==='CAS'){this.msgZone('SP IS CASCADE-DRIVEN — CHANGE PRIMARY');return;} if(l.mode!=='AUTO'){this.msgZone('INVALID MODE — SP ENTRY REQUIRES AUTO');return;} }
+    if(param==='OP' && l.mode!=='MAN'){ this.msgZone('INVALID MODE — OP ENTRY REQUIRES MAN'); return; }
+    const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP'].includes(param)||param.startsWith('TP:');
+    if(engr && !this.can('ENGR')) return;
+    const cur = param==='SP'?l.sp : param==='OP'?l.op : param.startsWith('TP:')? l.alm[param.slice(3)][0] : l[param.toLowerCase()]??l[param];
+    this.setState({entry:{tag,param}, entryText:this.fmt(cur, param==='SP'||param.startsWith('TP:')?l.dec:2)});
+  }
+  commitEntry(){
+    const en=this.state.entry; if(!en) return;
+    const l=this.L[en.tag]; const v=parseFloat(this.state.entryText);
+    if(isNaN(v)){ this.msgZone('INVALID ENTRY'); this.setState({entry:null}); return; }
+    const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',en.tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.setState({entry:null}); };
+    if(en.param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',en.tag,v,v-o); return; }
+    if(en.param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',en.tag,v,v-o);
+      if(en.tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.P.faults.rxn=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return; }
+    if(en.param.startsWith('TP:')){ const c=en.param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return; }
+    const key=en.param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
+    const o=l[key]??l[en.param]; done(o,()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; }, map[key]||en.param);
+  }
+  raiseLower(tag,dir){
+    const l=this.L[tag]; if(!this.can('OPER')) return;
+    const p = l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
+    if(!p){ this.msgZone('CAS MODE — RAISE/LOWER NOT PERMITTED ON SP'); return; }
+    if(p==='SP'){ const step=(l.hi-l.lo)/100; const o=l.sp; const nv=Math.max(l.splolm,Math.min(l.sphilm,o+dir*step)); l.sp=nv; this.addEvent('OPERATOR',tag,'SP CHANGE','',''); this.events[0].oldV=this.fmt(o,l.dec); this.events[0].newV=this.fmt(nv,l.dec); this.dAct('SP',tag,nv,nv-o); }
+    else { const o=l.op; const nv=Math.max(l.oplolm,Math.min(l.ophilm,o+dir)); l.op=nv; l.I=nv; this.addEvent('OPERATOR',tag,'OP CHANGE','',''); this.events[0].oldV=this.fmt(o,1); this.events[0].newV=this.fmt(nv,1); this.dAct('OP',tag,nv,nv-o); }
+  }
+  motorCmd(tag,start){
+    const m=this.L[tag]; if(!m||!this.can('OPER')) return;
+    if(start){
+      if(m.run) return;
+      if(m.lock>0){ this.msgZone('START INHIBITED — LOCKOUT '+Math.ceil(m.lock)+' S'); return; }
+      if(tag==='P101' && this.P.tankL<5){ this.raiseA('P101','CMDFAIL','High',0,'','START PERMISSIVE NOT MET — TK-101 LEVEL LOW'); this.msgZone('PERMISSIVE NOT MET: TK-101 LEVEL < 5%'); return; }
+      m.run=true; m.trip=false; m.cmd='START'; this.addEvent('OPERATOR',tag,'START COMMAND','STOP','RUN'); if(tag==='P101') this.clearA('P101','CMDFAIL'); this.dAct('START',tag,'',0);
+    } else {
+      if(!m.run) return;
+      m.run=false; m.cmd='STOP'; m.lock=15; this.addEvent('OPERATOR',tag,'STOP COMMAND','RUN','STOP');
+    }
+  }
+  openFp(tag){
+    const u=this.unitOf(tag)||this.state.unit;
+    const fps=this.state.fps.filter(f=>f.pin||f.tag===tag);
+    const ex=fps.find(f=>f.tag===tag);
+    if(ex){ this.setState({fps:[...fps.filter(f=>f!==ex),ex], sel:tag, unit:u}); return; }
+    const n=fps.length;
+    this.setState({fps:[...fps,{tag,x:30+(n%5)*44,y:44+(n%5)*30,pin:false}], sel:tag, unit:u});
+  }
+  logon(){
+    const pw=this.state.dlgPw.trim().toLowerCase();
+    const map={oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'};
+    if(map[pw]){ const o=this.state.sec; this.setState({sec:map[pw],dlg:null,dlgPw:''}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,map[pw]); this.msgZone('SECURITY LEVEL: '+map[pw]); }
+    else { this.msgZone('INVALID PASSWORD'); this.setState({dlgPw:''}); }
+  }
+  onKey(e){
+    if(e.key==='F1'){ e.preventDefault(); this.silence(); return; }
+    if(e.key==='F2'){ e.preventDefault(); this.ackTop(); return; }
+    if(e.key==='F3'){ e.preventDefault(); this.nav('alarms'); return; }
+    if(e.key==='F4'){ e.preventDefault(); if(this.state.sel) this.nav('detail',this.state.sel); else this.msgZone('NO POINT SELECTED'); return; }
+  }
+
+  // ---------- render ----------
+  renderVals(){
+    if(!this.L) this.initSim();
+    const S=this.state, L=this.L, P=this.P, V=this.V;
+    const blink=S.blink;
+    const HC=this.props.highColor??'#FFE000';
+    const pc=(p)=>this.prioColor(p), pd=(p)=>this.prioDark(p);
+    const almSty=(a)=>{
+      const c=pc(a.prio), dk=pd(a.prio), wht=a.prio==='Urgent';
+      if(a.active&&!a.ack) return blink?{bg:c,fg:wht?'#FFFFFF':'#000000'}:{bg:'transparent',fg:dk};
+      if(a.active&&a.ack) return {bg:c,fg:wht?'#FFFFFF':'#000000'};
+      return blink?{bg:'#FFFFFF',fg:dk}:{bg:dk,fg:'#FFFFFF'};
+    };
+    const setS=(o)=>()=>this.setState(o);
+    // menus
+    const mkItems=(arr)=>arr.map(it=>it.sep?{sep:true}:{label:it.l,cb:()=>{this.setState({menu:null});it.f();}});
+    const menusDef=[
+      {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
+      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
+      {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');}},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
+      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Panel…',f:()=>this.setState({dlg:{type:'instr'}})}]},
+      {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
+    ];
+    const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
+    // toolbar
+    const tb=(label,f,title)=>({label,cb:f,title:title||label,bg:'#D4D0C8'});
+    const tbtns=[
+      tb('SYS MENU',()=>this.setState({dlg:{type:'sysmenu'}}),'System Menu'), tb('◄',()=>this.goBack(),'Back'), tb('►',()=>this.goFwd(),'Forward'), {sep:true},
+      tb('ALM SUMM',()=>this.nav('alarms'),'Alarm Summary (F3)'), tb('EVENT',()=>this.nav('events'),'Event Summary'), tb('MSG',()=>this.nav('msgs'),'Message Summary'), {sep:true},
+      tb('GRAPHIC',()=>this.nav('graphic'),'Unit graphic'), tb('TREND',()=>this.nav('trend'),'Trend display'), {sep:true},
+      tb('DETAIL',()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');},'Point Detail of selected (F4)'),
+      tb('ASSOC DISP',()=>{const a=this.alarms.find(x=>x.id===S.selAlm); const t=a?a.tag:S.sel; if(t&&this.L[t]){this.nav('graphic');this.openFp(t);}else if(t){this.nav('graphic');}else this.msgZone('NO POINT SELECTED');},'Associated display'), {sep:true},
+      tb('SILENCE',()=>this.silence(),'Silence horn (F1)'), tb('ACK',()=>this.ackTop(),'Acknowledge (F2)'), tb('ACK PAGE',()=>this.ackPage(),'Acknowledge page'),
+      tb('SHELVE',()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');},'Shelve selected alarm'), {sep:true},
+      tb('ASSIST',()=>this.setState({assist:!S.assist}),'Ops Assistant panel')
+    ];
+    // alarm line
+    const top=this.topUnack();
+    let al={bg:'#C9C5BD',fg:'#55524c',txt:'',click:()=>{}};
+    if(top){ const st=almSty(top); al={bg:st.bg==='transparent'?'#C9C5BD':st.bg,fg:st.fg,txt:this.fT(top.t)+'   '+top.tag+'   '+top.cond+'   '+this.fmt(top.val,1)+' '+top.eu+'   '+top.desc,click:()=>{this.setState({selAlm:top.id,sel:this.L[top.tag]?top.tag:S.sel}); if(this.L[top.tag]){this.nav('graphic');this.openFp(top.tag);}}}; }
+    const unack=this.alarms.filter(a=>!a.ack&&!a.shelved);
+    const cnt=(p)=>this.alarms.filter(a=>a.prio===p&&!a.shelved&&a.active).length;
+    // graphic values
+    const mCh={MAN:'M',AUTO:'A',CAS:'C'};
+    const gpts=[
+      {tag:'FI100',x:18,y:96},{tag:'LIC101',x:246,y:208},{tag:'FIC102',x:296,y:368},{tag:'P101',x:150,y:528},
+      {tag:'TIC201',x:684,y:326},{tag:'TIC202',x:222,y:588},{tag:'TIC301',x:900,y:296},{tag:'LIC401',x:1206,y:470},{tag:'PIC401',x:1096,y:78}
+    ];
+    const mkGv=(ptsArr)=>ptsArr.map(g=>{
+      const l=L[g.tag];
+      const aa=this.alarms.filter(x=>x.tag===g.tag&&!x.shelved&&(x.active||!x.ack)).sort((a,b)=>({Urgent:3,High:2,Low:1}[b.prio]||0)-({Urgent:3,High:2,Low:1}[a.prio]||0))[0];
+      let aBg='none',aFg='none',aTxt='',aBd='none';
+      if(aa){ const st=almSty(aa); aBg=st.bg==='transparent'?'#D8D8D8':st.bg; aFg=st.fg; aTxt=aa.prio[0]; aBd='#55524c'; }
+      const pvT=l.kind==='motor'?(l.run?'RUN':'STOP'):this.fmt(l.pv,l.dec);
+      return {tag:g.tag,x:g.x,y:g.y,tagX:g.x+6,tagY:g.y+14,pvX:g.x+6,pvY:g.y+36,euX:g.x+78,modeX:g.x+86,
+        pvT,euT:l.eu,modeT:l.kind==='pid'?mCh[l.mode]||'':'',hatchOp:l.badPv?0.85:0,
+        bd:S.sel===g.tag?'#31548F':'#8a8a86', bw:S.sel===g.tag?2.5:1.2,
+        aX:g.x+108,aY:g.y+4,aTx:g.x+115,aTy:g.y+15,aBg,aFg,aTxt,aBd,
+        click:()=>{this.openFp(g.tag);}, dbl:()=>this.nav('detail',g.tag)};
+    });
+    const gvList=mkGv(gpts);
+    const gv2=mkGv([{tag:'FIC211',x:180,y:60},{tag:'M202',x:790,y:96},{tag:'PI214',x:790,y:236},{tag:'TIC212',x:790,y:326},{tag:'LI215',x:790,y:416},{tag:'TIC213',x:150,y:560}]);
+    const gv3=mkGv([{tag:'FIC310',x:40,y:300},{tag:'FIC313',x:470,y:60},{tag:'TIC311',x:500,y:232},{tag:'TI312',x:840,y:400}]);
+    const mkVl=(defs)=>defs.map(v=>({...v,fill:V[v.id].pos>0.05?'#4a4a4a':'#FFFFFF',pos:Math.round(V[v.id].pos*100)+'%',tx:v.rot===90?v.x+22:v.x-24,ty:v.rot===90?v.y+4:v.y+28}));
+    const vlist=mkVl([{id:'FV102',x:330,y:470,rot:0,label:'FV-102'},{id:'TV202',x:420,y:640,rot:0,label:'TV-202'},{id:'TV301',x:815,y:494,rot:90,label:'TV-301'},{id:'PV401',x:1250,y:150,rot:0,label:'PV-401'},{id:'LV401',x:1250,y:620,rot:0,label:'LV-401'}]);
+    const vl2=mkVl([{id:'MV211',x:330,y:120,rot:0,label:'MV-211'},{id:'JV213',x:420,y:600,rot:0,label:'JV-213'}]);
+    const vl3=mkVl([{id:'FV310',x:150,y:400,rot:0,label:'FV-310'},{id:'FV311',x:370,y:560,rot:90,label:'FV-311'},{id:'QV313',x:620,y:120,rot:0,label:'QV-313'}]);
+    const gfx={ tankY:388-236*P.tankL/100, tankH:236*P.tankL/100, drumY:548-276*P.drumL/100, drumH:276*P.drumL/100,
+      pumpFill:L.P101.run?'#4a4a4a':'#FFFFFF', pumpGlyph:L.P101.run?'#FFFFFF':'#4a4a4a',
+      rTripOp:P.trips.rx?(blink?1:0.25):0, ovfOp:P.trips.ovf?(blink?1:0.25):0, psvOp:P.trips.psv?(blink?1:0.25):0 };
+    // alarm summary view
+    const rows=this.visAlarms().map(a=>{
+      const st=almSty(a);
+      return {t:this.fT(a.t),tag:a.tag,cond:a.cond,prio:a.prio.toUpperCase(),desc:a.desc+(a.shelved?'  [SHELVED '+Math.max(0,Math.ceil((a.until-P.t)/60000))+' MIN]':''),val:this.fmt(a.val,1),eu:a.eu,ackT:a.ack?'ACK':'',icon:a.prio[0],
+        bg:st.bg==='transparent'?'transparent':st.bg,fg:st.fg,sel:S.selAlm===a.id?'inset 0 0 0 2px #31548F':'none',
+        click:()=>this.setState({selAlm:a.id,sel:this.L[a.tag]?a.tag:S.sel}), dbl:()=>{if(this.L[a.tag])this.nav('detail',a.tag);}};
+    });
+    const selA=this.alarms.find(x=>x.id===S.selAlm);
+    const av={rows,
+      filters:['MAIN','UNACK','SHELVED'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
+      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');}},{label:'UNSHELVE',cb:()=>this.unshelve()}],
+      selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — trip point '+(this.L[selA.tag]&&this.L[selA.tag].alm[selA.cond]?this.fmt(this.L[selA.tag].alm[selA.cond][0],1)+' '+selA.eu:'n/a')+' · double-click for Point Detail'):'Click a row to select; double-click for Point Detail. Columns are site-configurable in Experion.',
+      countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · SHELVED '+this.alarms.filter(a=>a.shelved).length};
+    // events
+    const evF=['ALL','ALARM','OPERATOR','SYSTEM'];
+    const evR=this.events.filter(e=>S.evtFilter==='ALL'||e.type===S.evtFilter).slice(0,220).map(e=>({t:this.fD(e.t)+' '+this.fT(e.t),type:e.type,src:e.src,desc:e.desc,oldV:e.oldV,newV:e.newV,lvl:e.lvl,fg:e.type==='ALARM'?'#5a1a00':(e.type==='OPERATOR'?'#0a3a12':'#1c1c50')}));
+    const evFilters=evF.map(f=>({label:f,bg:S.evtFilter===f?'#B8C4D4':'#D4D0C8',bc:S.evtFilter===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({evtFilter:f})}));
+    const msgsR=this.msgs.slice(0,120).map(m=>({t:this.fD(m.t)+' '+this.fT(m.t),txt:m.txt}));
+    // trend
+    const TGS={TG01:{title:'TG01 · REACTOR',pens:[['TIC201','pv','#C00000'],['TIC201','sp','#C00000','6,5'],['TIC202','pv','#0050C0'],['TIC202','op','#008000']]},
+               TG02:{title:'TG02 · FEED / TANK',pens:[['LIC101','pv','#C00000'],['FIC102','pv','#0050C0'],['FIC102','op','#008000'],['FI100','pv','#806000']]},
+               TG03:{title:'TG03 · SEPARATION',pens:[['PIC401','pv','#C00000'],['LIC401','pv','#0050C0'],['TIC301','pv','#008000'],['PIC401','op','#B000B0']]},
+               TG04:{title:'TG04 · BATCH R-202',pens:[['TIC212','pv','#C00000'],['TIC212','sp','#C00000','6,5'],['TIC213','pv','#0050C0'],['FIC211','pv','#008000']]},
+               TG05:{title:'TG05 · FIRED REACTOR',pens:[['TI312','pv','#C00000'],['TIC311','pv','#0050C0'],['TIC311','sp','#0050C0','6,5'],['FIC313','pv','#008000']]}};
+    const mkPens=(defs,span)=>{
+      const t0=P.t-span*60000;
+      return defs.map(d=>{
+        const [tag,fld,color,dash]=d; const l=L[tag]; const idx=fld==='pv'?1:fld==='sp'?2:3;
+        const isOp=fld==='op'; const lo=isOp?0:l.lo, hi=isOp?100:l.hi;
+        const h=this.hist[tag]; const pts=[];
+        const start=Math.max(0,h.length-Math.ceil(span*120));
+        const stride=Math.max(1,Math.floor((h.length-start)/420));
+        for(let i=start;i<h.length;i+=stride){ const r=h[i]; if(r[0]<t0) continue; const x=44+(r[0]-t0)/(span*60000)*1006; const y=404-((r[idx]-lo)/(hi-lo))*394; pts.push(x.toFixed(1)+','+Math.max(6,Math.min(410,y)).toFixed(1)); }
+        const cur=fld==='pv'?l.pv:fld==='sp'?l.sp:l.op;
+        return {pts:pts.join(' '),color,dash:dash||'none',label:tag+'.'+fld.toUpperCase(),desc:l.desc,val:this.fmt(cur,isOp?1:l.dec),eu:isOp?'%':l.eu,range:this.fmt(lo,0)+' – '+this.fmt(hi,0)};
+      });
+    };
+    const tg=TGS[S.tg];
+    const gridY=[0,25,50,75,100].map(v=>({y:404-v*3.94,ty:404-v*3.94+3,label:v+'%'}));
+    const gridX=[0,1,2,3,4].map(i=>{const x=44+i*251.5;return {x,tx:x-14,label:this.fT(P.t-S.span*60000+i*S.span*15000)};});
+    const tv={title:tg.title,pens:mkPens(tg.pens,S.span),gridY,gridX,
+      groups:Object.keys(TGS).map(k=>({label:k,bg:S.tg===k?'#B8C4D4':'#D4D0C8',bc:S.tg===k?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({tg:k})})),
+      spans:[5,15,60].map(sp=>({label:sp+' MIN',bg:S.span===sp?'#B8C4D4':'#D4D0C8',bc:S.span===sp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({span:sp})}))};
+    // detail
+    const dl=L[S.detailTag]||L.FIC102;
+    const isPid=dl.kind==='pid';
+    const hasH=!!this.hist[dl.tag];
+    const tabsDef=isPid?['main','alarms','tuning','chart','cm']:(dl.kind==='motor'?['main','cm']:(hasH?['main','alarms','chart','cm']:['main','alarms','cm']));
+    const tabL={main:'MAIN',alarms:'ALARMS',tuning:'LOOP TUNE',chart:'CHART',cm:'CONTROL MODULE'};
+    const tab=tabsDef.includes(S.detailTab)?S.detailTab:'main';
+    const eq=(p)=>S.entry&&S.entry.tag===dl.tag&&S.entry.param===p;
+    const mRow=(label,param,value,canEdit,note,cb)=>({label,param,value,note:note||'',editing:canEdit&&eq(param),notEditing:!(canEdit&&eq(param)),cur:canEdit?'pointer':'default',und:canEdit?'underline dotted':'none',cb:canEdit?(cb||(()=>this.openEntry(dl.tag,param))):()=>{},rowBg:'transparent'});
+    let mainRows,tuneRows=[],almRows=[];
+    if(isPid){
+      mainRows=[
+        mRow('Process variable','PV',this.fmt(dl.pv,dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':''),
+        mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),
+        mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),
+        mRow('Mode attribute','MODEATTR',dl.modeAttr,false,'operator may store SP/OP/MODE'),
+        mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
+        mRow('Bad-PV shed option','SHED',dl.shed,false,'sheds to MAN, holds last good OP'),
+        mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave):'NONE'),false,dl.init?'INITMAN — tracking secondary':'')
+      ];
+      tuneRows=[
+        mRow('Overall gain','K',this.fmt(dl.K,2),true,'dimensionless'),
+        mRow('Integral time','T1',this.fmt(dl.T1,2),true,'minutes (0 = none)'),
+        mRow('Derivative time','T2',this.fmt(dl.T2,2),true,'minutes (0 = none)'),
+        {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>{if(!this.can('ENGR'))return;const o=dl.act;dl.act=o==='DIR'?'REV':'DIR';this.addEvent('OPERATOR',dl.tag,'CONTROL ACTION CHANGE',o,dl.act);},rowBg:'transparent'},
+        mRow('SP high limit','SPHILM',this.fmt(dl.sphilm,dl.dec),true,dl.eu),
+        mRow('SP low limit','SPLOLM',this.fmt(dl.splolm,dl.dec),true,dl.eu),
+        mRow('OP high limit','OPHILM',this.fmt(dl.ophilm,1),true,'%'),
+        mRow('OP low limit','OPLOLM',this.fmt(dl.oplolm,1),true,'%'),
+        mRow('Safe output','SAFEOP',this.fmt(dl.safeop,1),true,'% — used by SHEDSAFE')
+      ];
+      const condNote={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low',DEVHI:'PV−SP deviation high'};
+      almRows=Object.keys(dl.alm).map(c=>{
+        const [tp,prio]=dl.alm[c]; const act=dl._as[c];
+        return {cond:c,tp:this.fmt(tp,dl.dec)+' '+dl.eu,prio:prio.toUpperCase(),prioFg:pd(prio),state:act?'ACTIVE':'NORMAL',stFg:act?'#A00000':'#0a3a12',note:condNote[c]||'',
+          editing:eq('TP:'+c),notEditing:!eq('TP:'+c),cb:()=>this.openEntry(dl.tag,'TP:'+c),
+          prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=dl.alm[c][1];dl.alm[c][1]=order[(order.indexOf(o)+1)%4];this.addEvent('OPERATOR',dl.tag,c+' PRIORITY CHANGE',o,dl.alm[c][1]);}};
+      });
+    } else if(dl.kind==='motor'){
+      const m=dl; const permOk=dl.tag!=='P101'||P.tankL>=5;
+      mainRows=[
+        mRow('State','PV',m.run?'RUNNING':'STOPPED',false,''),
+        mRow('Command','CMD',m.cmd,false,'START / STOP from faceplate'),
+        mRow('Trip status','TRIP',m.trip?'TRIPPED — '+(m.tripWhy||''):'NORMAL',false,''),
+        mRow('Start permissive','PERM',permOk?'MET':'NOT MET',false,dl.tag==='P101'?'TK-101 level > 5%':'none configured'),
+        mRow('Restart lockout','LOCK',m.lock>0?Math.ceil(m.lock)+' S':'CLEAR',false,'30 s after trip, 15 s after stop')
+      ];
+    } else {
+      mainRows=[
+        mRow('Process variable','PV',this.fmt(dl.pv,dl.dec)+' '+dl.eu,false,''),
+        mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
+        mRow('Point type','KIND','DATAACQ INDICATION',false,'no control output')
+      ];
+      const condNote2={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low'};
+      almRows=Object.keys(dl.alm).map(c=>{
+        const [tp,prio]=dl.alm[c]; const act=dl._as[c];
+        return {cond:c,tp:this.fmt(tp,dl.dec)+' '+dl.eu,prio:prio.toUpperCase(),prioFg:pd(prio),state:act?'ACTIVE':'NORMAL',stFg:act?'#A00000':'#0a3a12',note:condNote2[c]||'',
+          editing:eq('TP:'+c),notEditing:!eq('TP:'+c),cb:()=>this.openEntry(dl.tag,'TP:'+c),
+          prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=dl.alm[c][1];dl.alm[c][1]=order[(order.indexOf(o)+1)%4];this.addEvent('OPERATOR',dl.tag,c+' PRIORITY CHANGE',o,dl.alm[c][1]);}};
+      });
+    }
+    const cmBlocks=isPid?[
+      {x:60,name:dl.tag.replace(/[A-Z]+/,'AI')+'_CH',type:'AICHANNEL',ord:10,note:'field input'},
+      {x:265,name:'DACA',type:'DATAACQ',ord:20,note:'PV ranging + alarms'},
+      {x:470,name:'PIDA',type:'PID',ord:30,note:'K·T1·T2 · '+(dl.act==='DIR'?'DIRECT':'REVERSE')},
+      {x:675,name:dl.tag.replace(/[A-Z]+/,'AO')+'_CH',type:'AOCHANNEL',ord:40,note:'valve output'}
+    ].map(b=>({...b,lx:b.x+10})):(dl.kind==='motor'?[
+      {x:60,name:'DI_RUNFB',type:'DICHANNEL',ord:10,note:'run feedback'},
+      {x:340,name:'MOTOR',type:'DEVCTL/MOTOR',ord:20,note:'permissives + interlocks'},
+      {x:620,name:'DO_START',type:'DOCHANNEL',ord:30,note:'starter output'}
+    ]:[
+      {x:120,name:dl.tag+'_AI',type:'AICHANNEL',ord:10,note:'field input'},
+      {x:420,name:'DACA',type:'DATAACQ',ord:20,note:'PV ranging + alarms'}
+    ]).map(b=>({...b,lx:b.x+10}));
+    const cmWires=isPid?[
+      {d:'M210,135 H265',tx:222,ty:128,label:'P1'},{d:'M415,135 H470',tx:428,ty:128,label:'PV'},{d:'M620,135 H675',tx:632,ty:128,label:'OP'},
+      {d:'M545,60 V90',tx:552,ty:70,label:dl.master?('SP ← '+dl.master+'.OP (CAS)'):'SP (operator)'},
+      {d:'M545,180 V210',tx:552,ty:224,label:'BKCAL / initialization'}
+    ]:(dl.kind==='motor'?[{d:'M210,135 H340',tx:250,ty:128,label:'FB'},{d:'M490,135 H620',tx:530,ty:128,label:'CMD'}]:[{d:'M270,135 H420',tx:320,ty:128,label:'P1 → PV'}]);
+    const chartPens=isPid?mkPens([[dl.tag,'pv','#C00000'],[dl.tag,'sp','#0050C0','6,5'],[dl.tag,'op','#008000']],15):(hasH?mkPens([[dl.tag,'pv','#C00000']],15):[]);
+    const dpt={tag:dl.tag,desc:dl.desc,cm:dl.cm,kindT:isPid?'REGULATORY PID POINT':(dl.kind==='motor'?'DEVICE CONTROL POINT':'DATA ACQUISITION POINT'),
+      tabs:tabsDef.map(t=>({label:tabL[t],bg:tab===t?'#C6C6C6':'#BEBAB2',bb:tab===t?'1px solid #C6C6C6':'1px solid #9a968e',cb:setS({detailTab:t})})),
+      isMain:tab==='main',isAlm:tab==='alarms',isTune:tab==='tuning',isChart:tab==='chart',isCm:tab==='cm',
+      mainRows,tuneRows,almRows,chartPens,chartGrid:gridY,cmBlocks,cmWires,
+      modes:isPid?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:dl.mode===mm?'#B8C4D4':'#D4D0C8',bc:dl.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(dl.tag,mm)})):[],
+      shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
+      cmNote:'Execution order within the CM (ORDERINCM) runs DATAACQ before PID so the PID acts on the freshest PV. '+(dl.master?('This is the cascade secondary: its SP is the initializable input driven by '+dl.master+'.OP; back-calculation keeps the primary tracking for bumpless return.'):(dl.slave?('This is the cascade primary of '+dl.slave+': when the secondary leaves CAS, INITMAN raises and the primary output tracks the secondary SP.'):'Single-loop regulatory control.'))};
+    // faceplates
+    const fps=S.fps.map((f,i)=>{
+      const l=L[f.tag]; const isP=l.kind==='pid'; const isM=l.kind==='motor'; const bh=isP?166:126;
+      const aa=this.alarms.filter(x=>x.tag===f.tag&&!x.shelved&&(x.active||!x.ack)).sort((a,b)=>b.t-a.t)[0];
+      let almBg='#C9C5BD',almFg='#55524c',almTxt='NO ALARM';
+      if(aa){ const st=almSty(aa); almBg=st.bg==='transparent'?'#C9C5BD':st.bg; almFg=st.fg; almTxt=aa.cond+' '+aa.prio.toUpperCase()+(aa.ack?' · ACK':''); }
+      const span=l.hi-l.lo||1;
+      const pvH=Math.max(0,Math.min(166,((l.pv-l.lo)/span)*166));
+      const spY=Math.max(0,Math.min(164,166-((l.sp-l.lo)/span)*166));
+      const tcol={PVHH:'#FF0000',PVLL:'#FF0000',PVHI:HC,PVLO:'#00D8D8'};
+      const ticks=(!isM&&l.alm)?Object.keys(l.alm).filter(c=>tcol[c]).map(c=>({y:Math.max(0,Math.min(bh-1,bh-((l.alm[c][0]-l.lo)/span)*bh)),c:tcol[c]})):[];
+      const selP=l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
+      return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',indH:Math.max(0,Math.min(126,((l.pv-l.lo)/span)*126)),
+        pin:f.pin,pinBg:f.pin?'#B8C4D4':'#41608A',pinFg:f.pin?'#000':'#FFF',
+        pinCb:()=>{const fps2=S.fps.map(x=>x===f?{...x,pin:!x.pin}:x);this.setState({fps:fps2});},
+        close:()=>this.setState({fps:S.fps.filter(x=>x!==f)}),
+        front:()=>{if(S.fps[S.fps.length-1]!==f)this.setState({fps:[...S.fps.filter(x=>x!==f),f]});},
+        dragStart:(e)=>{this.setState({drag:{tag:f.tag,dx:e.clientX-f.x,dy:e.clientY-f.y}});},
+        almBg,almFg,almTxt,eu:l.eu,hiT:this.fmt(l.hi,0),loT:this.fmt(l.lo,0),
+        pvH,spY,ticks,pvT:this.fmt(l.pv,l.dec),spT:this.fmt(l.sp,l.dec),opT:this.fmt(l.op,1),opW:Math.max(0,Math.min(100,l.op)),
+        spEditing:eq2(f.tag,'SP'),spNotEditing:!eq2(f.tag,'SP'),opEditing:eq2(f.tag,'OP'),opNotEditing:!eq2(f.tag,'OP'),
+        spBd:selP==='SP'?'2px dashed #31548F':'2px solid transparent',opBd:selP==='OP'?'2px dashed #31548F':'2px solid transparent',
+        spClick:()=>this.openEntry(f.tag,'SP'),opClick:()=>this.openEntry(f.tag,'OP'),
+        modes:isP?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:l.mode===mm?'#B8C4D4':'#D4D0C8',bc:l.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(f.tag,mm)})):[],
+        raise:()=>this.raiseLower(f.tag,1),lower:()=>this.raiseLower(f.tag,-1),selT:selP?('→ '+selP):'',
+        noteT:l.badPv?'BADPV — SHED ('+l.shed.replace('SHED','')+')':'',
+        sil:()=>this.silence(),ack:()=>{const a2=this.alarms.find(x=>x.tag===f.tag&&!x.ack);if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
+        detail:()=>this.nav('detail',f.tag),
+        modeLine:isP?('MODE '+l.mode+' · MODEATTR '+l.modeAttr):(isM?'DEVCTL':'DATAACQ'),initT:l.init?'INITMAN':'',
+        stT:l.run?'RUN':(l.trip?'TRIP':'STOP'),stBg:l.run?'#37474F':(l.trip?'#FF0000':'#E8E8E4'),stFg:l.run?'#FFFFFF':(l.trip?'#FFFFFF':'#000'),
+        cmdT:l.cmd||'',fbT:l.run?'RUNNING':'STOPPED',
+        permT:(f.tag==='P101'?'PERMISSIVE (TK-101 LVL > 5%): '+(P.tankL>=5?'MET':'NOT MET'):'PERMISSIVE: NONE CONFIGURED')+(l.lock>0?' · LOCKOUT '+Math.ceil(l.lock)+' S':''),permFg:(f.tag!=='P101'||P.tankL>=5)?'#0a3a12':'#A00000',
+        start:()=>this.motorCmd(f.tag,true),stop:()=>this.motorCmd(f.tag,false)};
+    });
+    function eq2(tag,p){ return S.entry&&S.entry.tag===tag&&S.entry.param===p; }
+    // units / batch / assistant
+    const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({unit:u[0]})}));
+    const bb=P.b, phasesL=['CHARGE','HEATUP','FEED','REACT','COOL','DRAIN'];
+    const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?'#FFFFFF':'#000000', pt:this.mmss(bb.pt*1000),
+      phBg:P.trips.batch?'#FF0000':(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
+      startCb:()=>this.seqCmd('START'), holdCb:()=>this.seqCmd('HOLD'), abortCb:()=>this.seqCmd('ABORT'), holdT:bb.held?'RESUME':'HOLD',
+      phaseRows:phasesL.map((p2,i)=>({y:290+i*25,label:(bb.phase===p2?'▶ ':'· ')+p2,fill:bb.phase===p2?'#31548F':'#55524c',fw:bb.phase===p2?'700':'400'}))};
+    const gfx2={lvlY:546-330*bb.lvl/100, lvlH:330*bb.lvl/100, agFill:L.M202.run?'#4a4a4a':'#FFFFFF', agFg:L.M202.run?'#FFFFFF':'#4a4a4a',
+      tripOp:P.trips.batch?(blink?1:0.25):0, cmW:Math.max(0,Math.min(272,bb.Cm/60*272)), cmFill:bb.Cm>30?'#CC0000':'#6E86A0', cmT:this.fmt(bb.Cm,1)+' KMOL', cmWarn:bb.Cm>30?(blink?1:0.4):0};
+    const gfx3={tripOp:P.trips.bed?(blink?1:0.25):0, flameOp:P.trips.bed?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250))};
+    const issues=this.diagnose().map(it=>({sev:it.sev,title:it.title,why:it.why,arrow:S.assistSel===it.id?'▾':'▸',open:S.assistSel===it.id,
+      click:()=>this.setState({assistSel:S.assistSel===it.id?'':it.id}),
+      sevBg:it.sev==='URGENT'?'#FF0000':(it.sev==='WARN'?HC:'#B8C4D4'), sevFg:it.sev==='URGENT'?'#FFFFFF':'#000000',
+      steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go||(()=>{})}))}));
+    const qq=S.assistQ.trim().toLowerCase();
+    const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
+    const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ, qChange:(e)=>this.setState({assistQ:e.target.value}),
+      chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>this.setState({assistQ:c3})})),
+      hits, hitsNone:qq.length>2&&hits.length===0};
+    // dialogs
+    const dgT=S.dlg?S.dlg.type:null;
+    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
+    const widths={logon:460,shelve:460,drills:560,instr:520,debrief:600,help:520,about:520,reset:380,sysmenu:420};
+    let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
+      signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
+      shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
+      durs:[5,15,30].map(d=>({label:d+' MIN',bg:(S.dlg&&S.dlg.dur===d)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.dur===d)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,dur:d}})})),
+      shelfGo:()=>this.shelve((S.dlg&&S.dlg.dur)||15),
+      drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
+      randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(Math.random()*ds.length)]);},
+      faults:[{k:'xmtr',label:'FIC102 transmitter failure (BADPV)'},{k:'surge',label:'Feed inflow surge (+50 M3/H, 8 min)'},{k:'pump',label:'P-101 pump trip (one-shot)'},{k:'cool',label:'Cooling water loss (backup in 5 min)'},{k:'stick',label:'TV-202 valve stiction (+ reaction load)'},{k:'vap',label:'Flash drum vapor surge (5 min)'},{k:'air',label:'Instrument air loss — valves to fail state'},{k:'rxn',label:'Reaction rate step +15%'},{k:'foul',label:'E-301 fouling (progressive)'},{k:'agit',label:'M-202 agitator trip (U2, one-shot)'},{k:'bedact',label:'R-310 catalyst activity +35% (U3)'}].map(f=>({label:f.label,on:!!P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck),state:P.faults[f.k]?'ACTIVE':'',cb:()=>this.injectFault(f.k,!(P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck)))})),
+      speeds:[0,1,2,5].map(v=>({label:v===0?'PAUSE':v+'×',bg:S.speed===v?'#B8C4D4':'#D4D0C8',bc:S.speed===v?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({speed:v})})),
+      resetGo:setS({dlg:{type:'reset'}}),
+      resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
+      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
+      dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:''};
+    if(dgT==='debrief' && S.dlg.drill){
+      const d=S.dlg.drill, m=d.m, rel=(t)=>t?this.mmss(t-(m.tAlarm||d.t0)):'—';
+      dg.dbName=d.def.id+' — '+d.def.name; dg.dbReason='Ended: '+d.reason+'. Times relative to first alarm.';
+      dg.dbRows=[
+        {k:'First alarm',v:m.tAlarm?this.fT(m.tAlarm):'never annunciated',fg:'#000'},
+        {k:'Silenced',v:rel(m.tSil),fg:'#000'},
+        {k:'Acknowledged',v:rel(m.tAck),fg:m.tAck?'#0a3a12':'#A00000'},
+        {k:'Correct action taken',v:rel(m.tAct),fg:m.tAct?'#0a3a12':'#A00000'},
+        {k:'Stabilized',v:m.tStable?rel(m.tStable):'no',fg:m.tStable?'#0a3a12':'#A00000'},
+        {k:'Trip / SIS activation',v:m.trip?'YES':'none',fg:m.trip?'#A00000':'#0a3a12'},
+        ...(d.def.peak?[{k:'Peak value',v:this.fmt(m.peak,1),fg:'#000'}]:[])
+      ];
+      if(S.debAns==null||S.dlg.scored){ }
+      dg.dbAsk=!S.dlg.scored; dg.dbScored=!!S.dlg.scored;
+      dg.dbQ=d.def.q;
+      dg.dbOpts=d.def.opts.map((o,i)=>({label:o,bg:S.debAns===i?'#B8C4D4':'#CFCFCB',bc:S.debAns===i?'#31548F':'#B6B6B2',cb:()=>this.setState({debAns:i})}));
+      dg.dbSubmit=()=>{ if(S.debAns<0){this.msgZone('SELECT AN ANSWER');return;} const sc=this.scoreDrill(d,S.debAns); this.setState({dlg:{...S.dlg,scored:true,score:sc}}); this.addEvent('SYSTEM','STN01','DRILL '+d.def.id+' SCORE '+sc+'/100','',''); };
+      if(S.dlg.scored){ dg.dbScore=S.dlg.score; dg.dbGrade=S.dlg.score>=85?'PROFICIENT':S.dlg.score>=65?'COMPETENT':'NEEDS PRACTICE'; }
+    }
+    const drill=S.drill;
+    return {
+      showBadge:this.props.showBadge??true, hcol:HC,
+      menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
+      cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
+      msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'),
+      isG1:S.display==='graphic'&&S.unit==='U1', isG2:S.display==='graphic'&&S.unit==='U2', isG3:S.display==='graphic'&&S.unit==='U3', isAlarms:S.display==='alarms', isEvents:S.display==='events', isMsgs:S.display==='msgs', isTrend:S.display==='trend', isDetail:S.display==='detail', isSys:S.display==='sys',
+      gvList, vlist, gfx, av, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
+      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
+      entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
+      entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
+      entryRef:(el)=>{ if(el&&document.activeElement!==el) el.focus(); },
+      db:{on:!!drill,tm:drill?this.mmss(P.t-drill.t0):'',end:()=>this.endDrill('ENDED BY INSTRUCTOR')},
+      rootMove:(e)=>{ const d=S.drag; if(!d)return; const fps2=S.fps.map(f=>f.tag===d.tag?{...f,x:Math.max(0,e.clientX-d.dx),y:Math.max(0,e.clientY-d.dy)}:f); this.setState({fps:fps2}); },
+      rootUp:()=>{ if(S.drag) this.setState({drag:null}); },
+      sysPanels:[
+        {title:'SERVER A',led:'#00A000',rows:[{k:'Status',v:'OK — BACKUP SYNCED'},{k:'Database',v:'LOADED'},{k:'History',v:'COLLECTING (0.5 S FAST)'}]},
+        {title:'STATION STN01',led:'#00A000',rows:[{k:'Type',v:'CONSOLE (SIM)'},{k:'Security level',v:S.sec},{k:'Asset profile',v:'UNIT 01'}]},
+        {title:'CONTROLLER C300-SIM',led:'#00A000',rows:[{k:'CEE base cycle',v:'50 mS (EMULATED)'},{k:'CM period',v:'500 mS'},{k:'Redundancy',v:'PRIMARY / SYNCED'}]},
+        {title:'NETWORK FTE',led:'#00A000',rows:[{k:'FTE A',v:'OK'},{k:'FTE B',v:'OK'},{k:'Time source',v:'STATION CLOCK'}]},
+        {title:'SIMULATION ENGINE',led:'#31548F',rows:[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'PAUSED':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'20 CMS / 10 VALVES / 3 UNITS'}]},
+        {title:'RELEASE',led:'#00A000',rows:[{k:'Conventions',v:'R530-ERA (REPRESENTATIVE)'},{k:'Build',v:'TRAINING SIM v1.1.0'},{k:'License',v:'EDUCATIONAL'}]}
+      ],
+      ledSrv:'#00A000', ledCee:'#00A000',
+      spdT:S.speed===0?'PAUSED':S.speed+'×', instrOpen:setS({dlg:{type:'instr'}}),
+      audT:((this.props.audible??true)&&S.aud)?'ON':'OFF', audCb:()=>this.setState({aud:!S.aud}),
+      secT:S.sec==='VIEW'?'VIEW ONLY':S.sec, secCb:setS({dlg:{type:'logon'}}),
+      dateT:this.fD(P.t), timeT:this.fT(P.t)
+    };
+  }
+  mmss(ms){ const s=Math.max(0,Math.floor(ms/1000)); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2); }
+}
+</script>
+</body>
+</html>
