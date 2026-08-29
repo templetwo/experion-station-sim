@@ -1436,7 +1436,8 @@ class Component extends DCLogic {
   fD(ms){ const d=new Date(ms); const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return ('0'+d.getDate()).slice(-2)+'-'+M[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2); }
   // Every journal entry carries the operator name captured at logon (logins, operator actions and configuration
   // changes share one event file, RESOURCES 2.1; "who changed what and when", RESOURCES 2.13).
-  addEvent(type,src,desc,oldV,newV){ this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:this.state.sec, who:this.operName()}); if(this.events.length>600) this.events.length=600; }
+  // meta.who / meta.lvl override the stamp for entries an automatic program wrote (e.g. SCM202 phase limit sets).
+  addEvent(type,src,desc,oldV,newV,meta){ const m=meta||{}; this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:m.lvl||this.state.sec, who:m.who||this.operName()}); if(this.events.length>600) this.events.length=600; }
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
   // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------
   // opts.confirm marks a message the operator must confirm; the status bar counts unconfirmed messages and blinks MSG.
@@ -1460,8 +1461,10 @@ class Component extends DCLogic {
   withSignature(desc,need,fn){
     if(this._replayApplying){ fn('REPLAY'); return; }
     if(!this.can(need)) return;
-    this.setState({dlg:{type:'esig',desc,need,fn},dlgPw:'',dlgReason:'',menu:null});
+    const cur=this.state.dlg, prev=(cur&&cur.type!=='esig')?cur:null;   // restored by cancelSignature()
+    this.setState({dlg:{type:'esig',desc,need,fn,prev},dlgPw:'',dlgReason:'',menu:null});
   }
+  cancelSignature(){ const d=this.state.dlg; this.setState({dlg:(d&&d.type==='esig'&&d.prev)?d.prev:null,dlgPw:'',dlgReason:''}); }
   signAction(){
     const d=this.state.dlg; if(!d||d.type!=='esig') return false;
     const pw=(this.state.dlgPw||'').trim().toLowerCase(), reason=(this.state.dlgReason||'').trim();
@@ -1475,10 +1478,14 @@ class Component extends DCLogic {
     return true;
   }
   // ---------- management of change (RESOURCES 2.13): every configuration change is a CONFIG event with old / new, name, level, reason ----------
-  configChange(src,what,oldV,newV,reason){
-    this.mocCount=(this.mocCount||0)+1;
-    this.addEvent('CONFIG',src,what+(reason?' — '+reason:''),oldV,newV);
+  // meta.program='NAME' attributes the entry to an automatic program (who=NAME, level PROGRAM) instead of the logged-on
+  // operator, and leaves the MOC count alone: a sequence applying its configured limit set is not an engineering change.
+  configChange(src,what,oldV,newV,reason,meta){
+    const m=meta||{};
+    if(!m.program) this.mocCount=(this.mocCount||0)+1;
+    this.addEvent('CONFIG',src,what+(reason?' — '+reason:''),oldV,newV,m.program?{who:m.program,lvl:'PROGRAM'}:undefined);
   }
+  isProgramEvent(e){ return e.lvl==='PROGRAM'; }
   // ---------- disable alarms for an asset (MNGR, signed; RESOURCES 2.12) ----------
   // Every condition of every point under the asset goes out of service with disabledBy='ASSET:<id>'; alarms raised on
   // the asset's equipment sources while disabled are parked the same way. Re-enable returns the flagged records to service.
@@ -1504,9 +1511,9 @@ class Component extends DCLogic {
     this.taskDone('abn.disable');
     return true;
   }
-  parkDisabled(tag,cond,by){
+  parkDisabled(tag,cond,by,spec){
     const E=this.alarmEngine, l=this.L[tag];
-    const spec=l&&l.alm[cond]?{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv}:undefined;
+    if(!spec) spec=l&&l.alm[cond]?{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv}:undefined;
     const evs=E.oos(tag+'.'+cond,this.P.t,spec);
     const r=E.get(tag+'.'+cond); if(r) r.disabledBy=by;
     evs.forEach(e=>{ if(e.type==='OOS') this.addEvent('SYSTEM',e.tag,e.cond+' DISABLED — '+by,e.from,'DISABLED'); });
@@ -1703,9 +1710,13 @@ class Component extends DCLogic {
       'R-310.HI TEMP TRIP':['TIC311.PVLO']
     };
   }
+  // A source under a disabled asset is parked BEFORE the engine sees the raise: a condition with no record yet is created
+  // straight in OOSRV from the raise arguments, and the engine's raise on an OOSRV record only marks the condition live
+  // (no ALARM descriptor, so no horn, no ALARM journal line, no KPI alarm-log row); re-enable then annunciates it.
   raiseA(src,cond,prio,val,eu,desc){
-    this.logAlarmEvents(this.alarmEngine.raise({tag:src,cond,prio,subprio:this.subprioOf(src,cond),val,eu,desc,tripValue:this.tripPointOf(src,cond),t:this.P.t}));
-    const dis=this.assetDisabled(src); if(dis){ const r=this.alarmEngine.get(src+'.'+cond); if(r&&r.state!=='OOSRV') this.parkDisabled(src,cond,'ASSET:'+dis); }
+    const spec={tag:src,cond,prio,subprio:this.subprioOf(src,cond),val,eu,desc,tripValue:this.tripPointOf(src,cond)};
+    const dis=this.assetDisabled(src); if(dis) this.parkDisabled(src,cond,'ASSET:'+dis,spec);
+    this.logAlarmEvents(this.alarmEngine.raise(Object.assign({t:this.P.t},spec)));
   }
   clearA(src,cond,val){ this.logAlarmEvents(this.alarmEngine.rtn(src,cond,this.P.t,val)); }
   alarmTick(){ this.logAlarmEvents(this.alarmEngine.tick(this.P.t)); }
@@ -1926,7 +1937,7 @@ class Component extends DCLogic {
       }
     }
     this.phaseSet=key;
-    if(!silent) this.configChange('SCM202','ALARM LIMIT SET '+key+' — '+parts.join(' · '),prev||'',key,'STATE-BASED LIMITS');
+    if(!silent) this.configChange('SCM202','ALARM LIMIT SET '+key+' — '+parts.join(' · '),prev||'',key,'STATE-BASED LIMITS',{program:'SCM202'});
   }
   seqCmd(cmd,silent){
     const b=this.P.b;
@@ -2203,7 +2214,7 @@ class Component extends DCLogic {
     const r=this.rand;
     try{
       return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
-        eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,
+        eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,disabledAssets:[...this.disabledAssets],
         seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,drill:this.drillData()},name);
     }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
   }
@@ -2211,6 +2222,7 @@ class Component extends DCLogic {
     const I=ESS.Instructor;
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
     this.alarmEngine.restore(snap.alarms);
+    this.restoreDisabledAssets(snap.disabledAssets);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
     this.seed=snap.seed||this.seed; this.rand=ESS.Models.createRand(this.seed); if(snap.randState!=null) this.rand.setState(snap.randState);
     this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={}; this._lastPhase=this.P.b.phase;
@@ -2220,6 +2232,15 @@ class Component extends DCLogic {
     I.trimAfter(this.instr,t,snap.journalSeq);
     this.setState({drill:this.drillFromData(snap.drill),entry:null,selAlm:null,msg:''});
     this.instrLog((why||'SNAPSHOT RESTORED')+' — SIM TIME '+this.fT(t));
+  }
+  // The disabled-asset set travels with the snapshot so it agrees with the restored records' disabledBy flags; a
+  // snapshot without the list (older ring entries) derives it from the flags. Any flag left over for an asset that is
+  // not disabled in the restored state is cleared and the record returned to service, so nothing stays parked unseen.
+  restoreDisabledAssets(list){
+    const E=this.alarmEngine;
+    const ids=Array.isArray(list)?list:E.list().filter(r=>r.disabledBy&&r.disabledBy.startsWith('ASSET:')).map(r=>r.disabledBy.slice(6));
+    this.disabledAssets=new Set(ids);
+    for(const r of E.list()){ if(!r.disabledBy) continue; const id=r.disabledBy.startsWith('ASSET:')?r.disabledBy.slice(6):''; if(!this.disabledAssets.has(id)){ r.disabledBy=''; E.rts(r,this.P.t); this.addEvent('SYSTEM',r.tag,r.cond+' RE-ENABLED — '+id+' NOT DISABLED IN RESTORED STATE','DISABLED',r.state); } }
   }
   saveSlot(i,name){
     const nm=(name||'').trim()||('SNAP '+(i+1)+' '+this.fT(this.P.t));
@@ -2722,7 +2743,7 @@ class Component extends DCLogic {
     const helpSel=selA?this.alarmHelpFor(selA.tag,selA.cond):null;
     const av={rows,tree,views,tracker,trackerSpan:TRK,trackerNow:this.fT(P.t),
       filters:['MAIN','UNACK','SHELVED','SUPPRESSED','OOS'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
-      helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:()=>{this.setState({almHelp:!S.almHelp});if(!S.almHelp)this.taskDone('alm.help');},
+      helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:()=>{const on=!S.almHelp;this.setState({almHelp:on});if(on)this.taskDone('alm.help');},
       help:{title:helpSel?(selA.tag+' '+selA.cond+' — '+selA.desc):'No alarm selected — click a row.',fields:helpSel?this.helpFields(helpSel):[],comment:selA&&selA.comment?selA.comment:'none'},
       btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()},{label:assetDis?'ENABLE ASSET':'DISABLE ASSET',cb:()=>this.toggleAssetAlarms(asset)}],
       selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — first '+this.fT(selA.t)+(selA.count>1?', last '+this.fT(selA.lastT)+', ×'+selA.count:'')+(selA.comment?' · comment: '+selA.comment:'')+' · double-click for Point Detail'):('Location '+asset+' · '+S.shelfView+' · click a row to select; double-click for Point Detail.'),
@@ -2732,7 +2753,8 @@ class Component extends DCLogic {
     const evFg={ALARM:'#5a1a00',OPERATOR:'#0a3a12',CONFIG:'#4a1a6a',SYSTEM:'#1c1c50'};
     const evR=this.events.filter(e=>S.evtFilter==='ALL'||e.type===S.evtFilter).slice(0,220).map(e=>({t:this.fD(e.t)+' '+this.fT(e.t),type:e.type,src:e.src,desc:e.desc,oldV:e.oldV,newV:e.newV,lvl:e.lvl,who:e.who||'',fg:evFg[e.type]||'#1c1c50'}));
     const evFilters=evF.map(f=>({label:f==='CONFIG'?'CONFIG (MOC)':f,bg:S.evtFilter===f?'#B8C4D4':'#D4D0C8',bc:S.evtFilter===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>{this.setState({evtFilter:f});this.taskDone('trn.evfilter');if(f==='CONFIG')this.taskDone('sec.moc');}}));
-    const evTitle=S.evtFilter==='CONFIG'?'CHANGE LOG (MOC) — '+this.mocCount+' configuration changes since startup':'EVENT SUMMARY';
+    const nProg=S.evtFilter==='CONFIG'?this.events.filter(e=>e.type==='CONFIG'&&this.isProgramEvent(e)).length:0;
+    const evTitle=S.evtFilter==='CONFIG'?'CHANGE LOG (MOC) — '+this.mocCount+' configuration changes since startup'+(nProg?' · '+nProg+' program-driven limit sets listed, not counted (level PROGRAM)':''):'EVENT SUMMARY';
     // messages: rows that need a confirm carry a CONFIRM button; confirmed rows show who and when
     const msgsR=this.msgs.slice(0,120).map(m=>({t:this.fD(m.t)+' '+this.fT(m.t),txt:m.txt,needs:!!(m.confirm&&!m.confirmed),confirmed:!!m.confirmed,
       confT:m.confirmed?'CONFIRMED '+this.fT(m.confirmT)+' BY '+m.confirmedBy:'',bg:m.confirm&&!m.confirmed?(blink?'#F2E2B0':'#E8DCC0'):'transparent',fw:m.confirm&&!m.confirmed?'700':'400',confCb:()=>this.confirmMsg(m.id)}));
@@ -2955,7 +2977,7 @@ class Component extends DCLogic {
       detail:r.breakdown.map(b=>b.label+' '+b.earned+'/'+b.max).join(' · ')}));
     const byOper={}; this.trainingRecords.forEach(r=>{ const o=byOper[r.oper]||(byOper[r.oper]={n:0,pass:0,sum:0}); o.n++; o.sum+=r.score; if(r.pass)o.pass++; });
     const recOpers=Object.keys(byOper).map(k=>({oper:k,txt:byOper[k].n+' drill'+(byOper[k].n===1?'':'s')+', '+byOper[k].pass+' passed, average '+Math.round(byOper[k].sum/byOper[k].n)}));
-    let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
+    let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:()=>{ if(dgT==='esig') this.cancelSignature(); else this.setState({dlg:null}); },
       isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
       isEsig:dgT==='esig',isRecord:dgT==='record',isCoverage:dgT==='coverage',
       logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'Enter your name and the level password. The name goes on every journal entry, message confirmation, signature and training record.',

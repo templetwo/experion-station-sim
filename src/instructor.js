@@ -13,7 +13,7 @@
 //   create(opts)                 -> instructor state {auth, hidden, seed, seq, snapshots[8], ring, journal, replay, log}
 //   resetRun(I)                  clear ring / journal / replay for a fresh process (snapshots, auth, hidden, seed stay)
 //   clone(o)                     JSON deep clone (process state is plain data)
-//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, journalSeq, tadShed, phaseSet, seed,
+//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, journalSeq, tadShed, phaseSet, disabledAssets, seed,
 //                                randState, drill}; throws when P, L or V hold a non-finite number (JSON would turn it
 //                                into null and a restore would corrupt the process state)
 //   nonFinitePath(o, prefix)     first path holding NaN / Infinity, or null
@@ -81,6 +81,7 @@
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
+      disabledAssets: Array.isArray(src.disabledAssets) ? src.disabledAssets.slice() : [],
       drill: src.drill ? clone(src.drill) : null
     };
   }

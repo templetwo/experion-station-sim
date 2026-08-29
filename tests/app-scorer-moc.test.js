@@ -346,7 +346,7 @@ test('every configuration change produces a CONFIG event with old and new values
   c.renderVals().dpt.almRows.find((r) => r.cond === 'PVHI').prioCb(); sign(c, 'engr', 'r4'); expect.push(['PVHI PRIORITY CHANGE', 'High', 'Urgent']);
   c.setState({ detailTab: 'tuning' });
   c.renderVals().dpt.tuneRows.find((r) => r.param === 'CTLACTN').cb(); expect.push(['CONTROL ACTION CHANGE', 'REV', 'DIR']);
-  c.seqCmd('START'); expect.push(['ALARM LIMIT SET CHARGE', 'IDLE', 'CHARGE']);
+  c.seqCmd('START');
   c.setState({ sec: 'MNGR' });
   c.toggleAssetAlarms('R-310'); sign(c, 'mngr', 'r5'); expect.push(['ALARMS DISABLED FOR ASSET', '0 DISABLED', '1 DISABLED']);
   const cfg = cfgEvents(c);
@@ -358,6 +358,9 @@ test('every configuration change produces a CONFIG event with old and new values
     assert.ok(['ENGR', 'MNGR'].includes(ev.lvl));
   }
   assert.equal(c.mocCount - before, expect.length);
+  // a sequence-driven limit set is listed as CONFIG but attributed to the program and not counted (verification round 1)
+  const ps = cfg.find((e) => e.desc.startsWith('ALARM LIMIT SET CHARGE'));
+  assert.ok(ps); assert.equal(ps.oldV, 'IDLE'); assert.equal(ps.newV, 'CHARGE'); assert.equal(ps.who, 'SCM202'); assert.equal(ps.lvl, 'PROGRAM');
   // signed changes carry the reason
   assert.match(cfg.find((e) => e.desc.startsWith('K CHANGE')).desc, /r1/);
   // deadband / delay took effect on the point
@@ -370,7 +373,8 @@ test('every configuration change produces a CONFIG event with old and new values
   assert.equal(v.evR.length, cfg.length);
   assert.match(v.evTitle, new RegExp('CHANGE LOG \\(MOC\\) — ' + c.mocCount));
   assert.ok(v.evFilters.some((f) => /CONFIG/.test(f.label)));
-  assert.ok(v.evR.every((e) => e.who === 'ENG TWO'));
+  assert.ok(v.evR.every((e) => e.who === 'ENG TWO' || e.who === 'SCM202'));
+  assert.match(v.evTitle, /1 program-driven limit sets listed, not counted/);
   const sys = v.sysPanels.find((p) => p.title === 'ALARM SYSTEM');
   assert.equal(sys.rows.find((r) => r.k === 'Config changes').v, c.mocCount + ' SINCE STARTUP (MOC)');
   assert.ok(c.tasksDone.has('sec.moc'));
@@ -405,4 +409,117 @@ test('logon captures the operator name; it lands on every event, and sign off ke
   const v = c.renderVals();
   assert.equal(v.dg.logonIsOper, true);
   assert.equal(v.dg.operCur, 'J. DOE');
+});
+
+test('a full batch attributes its phase limit sets to SCM202 at level PROGRAM and adds nothing to the MOC count', () => {
+  const c = boot('OPER');
+  c.setState({ oper: 'JANE' });
+  run(c, 2);
+  const before = c.mocCount;
+  c.seqCmd('START');
+  for (let i = 0; i < 60 * 60 * 2 && c.P.b.phase !== 'IDLE'; i++) c.step(0.5);
+  assert.equal(c.P.b.phase, 'IDLE', 'the batch ran to completion');
+  const sets = c.events.filter((e) => e.type === 'CONFIG' && e.src === 'SCM202');
+  assert.ok(sets.length >= 6, 'six phase transitions journaled: ' + sets.length);
+  assert.ok(sets.every((e) => e.who === 'SCM202' && e.lvl === 'PROGRAM'));
+  assert.ok(!c.events.some((e) => e.type === 'CONFIG' && e.who === 'JANE'), 'nothing is attributed to the trainee');
+  assert.equal(c.mocCount, before);
+});
+
+test('the disabled-asset set travels with an instructor snapshot in both directions', () => {
+  // direction A: snapshot before the disable, restore after it -> nothing is disabled and new alarms annunciate
+  const c = boot('MNGR');
+  run(c, 2);
+  c.instr.auth = true;
+  const before = c.snapshotData('before');
+  assert.deepEqual(before.disabledAssets, []);
+  c.toggleAssetAlarms('R-201'); sign(c, 'mngr', 'outage');
+  assert.ok(c.disabledAssets.has('R-201'));
+  c.restoreSnapshot(before, 'r');
+  let v = c.renderVals();
+  assert.equal(c.disabledAssets.size, 0);
+  assert.equal(v.disOn, false); assert.equal(v.cDis, 0);
+  assert.ok(c.alarmEngine.list().every((r) => !r.disabledBy));
+  c.setState({ silenced: true });
+  c.raiseA('TIC201', 'PVHI', 'High', 170, 'DEG C', 'x');
+  assert.equal(c.alarmEngine.get('TIC201.PVHI').state, 'UNACK');
+  assert.equal(c.state.silenced, false, 'the horn re-armed');
+  // direction B: snapshot while disabled, restore after the re-enable -> the asset is disabled again and ENABLE works
+  const c2 = boot('MNGR');
+  run(c2, 2);
+  c2.instr.auth = true;
+  c2.toggleAssetAlarms('R-201'); sign(c2, 'mngr', 'outage');
+  const during = c2.snapshotData('during');
+  assert.deepEqual(during.disabledAssets, ['R-201']);
+  c2.toggleAssetAlarms('R-201'); sign(c2, 'mngr', 'back');
+  assert.equal(c2.disabledAssets.size, 0);
+  c2.restoreSnapshot(during, 'r');
+  v = c2.renderVals();
+  assert.ok(c2.disabledAssets.has('R-201'));
+  assert.equal(v.disOn, true);
+  assert.ok(v.cDis >= 12);
+  assert.equal(c2.alarmEngine.list().filter((r) => r.disabledBy === 'ASSET:R-201').length, v.cDis);
+  c2.setState({ sec: 'ENGR' });
+  c2.setOos('TIC201', 'PVHI', false);
+  assert.equal(c2.alarmEngine.get('TIC201.PVHI').state, 'OOSRV', 'per-condition RTS still refused while disabled');
+  c2.setState({ sec: 'MNGR' });
+  c2.toggleAssetAlarms('R-201'); sign(c2, 'mngr', 'restored');
+  assert.equal(c2.disabledAssets.size, 0);
+  assert.ok(c2.alarmEngine.list().every((r) => !r.disabledBy));
+  assert.equal(c2.renderVals().cDis, 0);
+  // a snapshot without the list (older ring entry) derives the set from the record flags
+  const legacy = c2.snapshotData('legacy');
+  c2.toggleAssetAlarms('R-310'); sign(c2, 'mngr', 'o');
+  const flagged = c2.snapshotData('flagged'); delete flagged.disabledAssets;
+  c2.restoreSnapshot(legacy, 'r');
+  assert.equal(c2.disabledAssets.size, 0);
+  c2.restoreSnapshot(flagged, 'r');
+  assert.deepEqual([...c2.disabledAssets], ['R-310']);
+});
+
+test('an alarm key with no prior record on a disabled asset is parked without horn, journal line or KPI row', () => {
+  const c = boot('MNGR');
+  run(c, 2);
+  c.toggleAssetAlarms('R-201'); sign(c, 'mngr', 'outage');
+  assert.equal(c.alarmEngine.get('R-201.HI TEMP TRIP'), undefined);
+  c.setState({ silenced: true });
+  const nAlarm = c.events.filter((e) => e.type === 'ALARM').length;
+  const nLog = c.alarmLog.length;
+  c.raiseA('R-201', 'HI TEMP TRIP', 'Urgent', 186, 'DEG C', 'trip');
+  const r = c.alarmEngine.get('R-201.HI TEMP TRIP');
+  assert.equal(r.state, 'OOSRV'); assert.equal(r.disabledBy, 'ASSET:R-201'); assert.equal(r.prio, 'Urgent'); assert.equal(r.val, 186);
+  assert.equal(c.state.silenced, true, 'the horn stayed silent');
+  assert.equal(c.hornTop(), null);
+  assert.equal(c.events.filter((e) => e.type === 'ALARM').length, nAlarm, 'no ALARM journal line');
+  assert.equal(c.alarmLog.length, nLog, 'no KPI alarm-log row');
+  assert.ok(c.events.some((e) => e.type === 'SYSTEM' && e.src === 'R-201' && /HI TEMP TRIP DISABLED — ASSET:R-201/.test(e.desc)));
+  // an existing parked record gets the new value but no second journal line
+  c.raiseA('R-201', 'HI TEMP TRIP', 'Urgent', 190, 'DEG C', 'trip');
+  assert.equal(c.alarmEngine.get('R-201.HI TEMP TRIP').val, 190);
+  assert.equal(c.events.filter((e) => e.type === 'ALARM').length, nAlarm);
+  // re-enable: the trip alarm comes back into service and annunciates
+  c.toggleAssetAlarms('R-201'); sign(c, 'mngr', 'done');
+  assert.equal(c.alarmEngine.get('R-201.HI TEMP TRIP').state, 'UNACK');
+});
+
+test('the ALARM HELP button ticks its coverage task and the signature dialog restores the dialog it replaced', () => {
+  const c = boot('OPER');
+  c.setState({ display: 'alarms' });
+  c.renderVals().av.helpToggle();
+  assert.equal(c.state.almHelp, true);
+  assert.ok(c.tasksDone.has('alm.help'));
+  c.renderVals().av.helpToggle();
+  assert.equal(c.state.almHelp, false);
+  // e-signature over an open dialog: cancel brings the previous dialog back, signing closes both
+  c.setState({ sec: 'ENGR', dlg: { type: 'help' } });
+  c.openEntry('FIC102', 'K'); c.setState({ entryText: '9' }); c.commitEntry();
+  assert.equal(c.state.dlg.type, 'esig');
+  c.renderVals().dg.close();
+  assert.equal(c.state.dlg && c.state.dlg.type, 'help');
+  assert.equal(c.L.FIC102.K !== 9, true);
+  c.setState({ dlg: { type: 'help' } });
+  c.openEntry('FIC102', 'K'); c.setState({ entryText: '9' }); c.commitEntry();
+  sign(c, 'engr', 'retune');
+  assert.equal(c.state.dlg, null);
+  assert.equal(c.L.FIC102.K, 9);
 });
