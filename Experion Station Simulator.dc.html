@@ -10,6 +10,7 @@
 <script src="./src/models.js"></script>
 <script src="./src/alarm-help.js"></script>
 <script src="./src/philosophy.js"></script>
+<script src="./src/instructor.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -697,6 +698,154 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </sc-if>
 
+<sc-if value="{{ isInstr }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Instructor Station" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:#41608A;color:#FFFFFF;border-bottom:1px solid #22344e;user-select:none">
+    <div style="font-weight:700;font-size:13px">INSTRUCTOR STATION</div>
+    <div style="font-size:10.5px;padding:1px 8px;background:#D4D0C8;color:#000">{{ instr.authT }}</div>
+    <div style="font-size:11px">SIM {{ instr.run.simT }} · UPTIME {{ instr.run.upT }} · {{ instr.run.stateT }}</div>
+    <div style="flex:1"></div>
+    <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#000;background:{{ instr.hidden.bg }};border:2px solid;border-color:{{ instr.hidden.bc }}" onClick="{{ instr.hidden.cb }}">{{ instr.hidden.label }}</div>
+    <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#000;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ instr.close }}">TRAINEE VIEW</div>
+    <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#000;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ instr.lock }}">LOCK</div>
+  </div>
+  <div style="font-size:10.5px;color:#3c3c3c;padding:4px 10px;background:#CCC8C0;border-bottom:1px solid #9a968e">{{ instr.hiddenNote }}</div>
+  <div style="flex:1;overflow-y:auto;padding:10px 12px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px;max-width:1400px">
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">RUN CONTROL</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div style="padding:4px 12px;font-weight:700;cursor:pointer;background:{{ instr.run.freeze.bg }};border:2px solid;border-color:{{ instr.run.freeze.bc }}" onClick="{{ instr.run.freeze.cb }}">{{ instr.run.freeze.label }}</div>
+          <div style="padding:4px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ instr.run.stepOne.cb }}">{{ instr.run.stepOne.label }}</div>
+          <div style="padding:4px 12px;font-weight:700;cursor:pointer;background:{{ instr.run.runBtn.bg }};border:2px solid;border-color:{{ instr.run.runBtn.bc }}" onClick="{{ instr.run.runBtn.cb }}">{{ instr.run.runBtn.label }}</div>
+          <sc-for list="{{ instr.run.speeds }}" as="s" hint-placeholder-count="3">
+            <div style="padding:4px 10px;font-weight:700;cursor:pointer;background:{{ s.bg }};border:2px solid;border-color:{{ s.bc }}" onClick="{{ s.cb }}">{{ s.label }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:11.5px">
+          <div>Random seed <b>{{ instr.seedT }}</b></div>
+          <input value="{{ instr.seedVal }}" onChange="{{ instr.seedChange }}" onKeyDown="{{ instr.seedKey }}" placeholder="new seed" style="width:110px;padding:2px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none;font-size:11.5px" />
+          <div style="padding:2px 10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ instr.seedGo }}">SET SEED</div>
+        </div>
+        <div style="font-size:10.5px;color:#55524c;margin-top:4px">Every random draw (measurement noise, drill timing) comes from this seed. Snapshots store the seed and the generator position, so a restore or a replay repeats the same run.</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">BACKTRACK</div>
+        <div style="font-size:11.5px;margin-bottom:6px">{{ instr.back.count }} automatic snapshots, one every 30 s of sim time, covering the last {{ instr.back.spanT }} (oldest {{ instr.back.oldestT }}).</div>
+        <div style="display:flex;gap:6px">
+          <sc-for list="{{ instr.back.btns }}" as="b" hint-placeholder-count="3">
+            <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ b.cb }}">{{ b.label }}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">A backtrack restores the process, the alarm list, the trends and the journal to that moment; the trainee's later actions are dropped.</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">SNAPSHOTS</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:11.5px">
+          <div>Name for the next save:</div>
+          <input value="{{ instr.snapName }}" onChange="{{ instr.snapNameChange }}" placeholder="optional" style="flex:1;padding:2px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none;font-size:11.5px" />
+        </div>
+        <sc-for list="{{ instr.slots }}" as="s" hint-placeholder-count="8">
+          <div style="display:flex;align-items:center;gap:6px;padding:3px 4px;border-bottom:1px solid #B6B6B2;font-size:11.5px">
+            <div style="width:16px;font-weight:700">{{ s.n }}</div>
+            <div style="flex:1">{{ s.name }}</div>
+            <div style="width:60px;color:#55524c">{{ s.t }}</div>
+            <div style="padding:2px 8px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ s.save }}">SAVE</div>
+            <sc-if value="{{ s.has }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:2px 8px;font-weight:700;cursor:pointer;background:#B8C4D4;border:1px solid #31548F" onClick="{{ s.restore }}">RESTORE</div>
+              <div style="padding:2px 8px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ s.replay }}">REPLAY</div>
+              <div style="padding:2px 8px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ s.clear }}">✕</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">INITIAL CONDITIONS</div>
+        <sc-for list="{{ instr.presets }}" as="p" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:8px;padding:4px 4px;border-bottom:1px solid #B6B6B2">
+            <div style="flex:1"><div style="font-size:11.5px;font-weight:700">{{ p.label }}</div><div style="font-size:10.5px;color:#55524c">{{ p.desc }}</div></div>
+            <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ p.cb }}">LOAD</div>
+          </div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">Loading an initial condition resets the process, runs it to the stated condition with the current seed and loads the result as a snapshot. Saved slots are kept.</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="display:flex;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:12px;flex:1">UPSETS</div>
+          <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ instr.clearUpsets }}">CLEAR ALL</div></div>
+        <sc-for list="{{ instr.upsets }}" as="u" hint-placeholder-count="12">
+          <div style="display:flex;align-items:center;gap:8px;padding:2px 4px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.06)">
+            <input type="checkbox" checked="{{ u.on }}" onChange="{{ u.cb }}" />
+            <div style="width:26px;font-size:10px;color:#55524c">{{ u.unit }}</div>
+            <div style="flex:1">{{ u.label }}</div>
+            <sc-if value="{{ u.hasMag }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:10.5px;color:#55524c">{{ u.magLabel }}</div>
+              <input type="range" min="{{ u.magMin }}" max="{{ u.magMax }}" step="{{ u.magStep }}" value="{{ u.magVal }}" onChange="{{ u.magChange }}" style="width:90px" />
+              <div style="width:74px;font-size:10.5px;font-weight:700">{{ u.magT }}</div>
+            </sc-if>
+            <div style="width:48px;text-align:right;font-size:10px;font-weight:700;color:#A00000">{{ u.stateT }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">INSTRUCTOR VARIABLES</div>
+        <sc-for list="{{ instr.vars }}" as="v" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:8px;padding:3px 4px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.06)">
+            <div style="width:150px">{{ v.label }}</div>
+            <input type="range" min="{{ v.min }}" max="{{ v.max }}" step="{{ v.step }}" value="{{ v.val }}" onChange="{{ v.change }}" style="flex:1" />
+            <div style="width:96px;font-weight:700">{{ v.valT }}</div>
+            <div style="padding:1px 6px;font-size:10px;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ v.reset }}">DESIGN</div>
+          </div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">Plant conditions the trainee cannot see: the models read them directly, and they travel with snapshots and initial conditions.</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="display:flex;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:12px;flex:1">ACTION JOURNAL ({{ instr.journal.count }})</div>
+          <sc-if value="{{ instr.journal.replayOn }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:10.5px;font-weight:700;color:#31548F;margin-right:8px">{{ instr.journal.replayT }}</div>
+            <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E;margin-right:4px" onClick="{{ instr.journal.toEnd }}">TO END</div>
+            <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E;margin-right:4px" onClick="{{ instr.journal.stop }}">STOP</div>
+          </sc-if>
+          <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ instr.journal.clear }}">CLEAR</div></div>
+        <sc-if value="{{ instr.journal.empty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#55524c">No operator actions yet.</div></sc-if>
+        <sc-for list="{{ instr.journal.rows }}" as="j" hint-placeholder-count="8">
+          <div style="font-family:Consolas,Menlo,monospace;font-size:11px;padding:1px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">{{ j.txt }}</div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">{{ instr.journal.note }}</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">ASSESSMENT</div>
+        <div style="font-size:11.5px;font-weight:700">{{ instr.assess.name }}</div>
+        <sc-if value="{{ instr.assess.on }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:#55524c;margin:2px 0 6px"><div>Elapsed {{ instr.assess.tm }} · {{ instr.assess.phase }}</div><div style="flex:1"></div>
+            <div style="padding:2px 10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E;color:#000" onClick="{{ instr.assess.end }}">END DRILL</div></div>
+          <sc-for list="{{ instr.assess.rows }}" as="r" hint-placeholder-count="6">
+            <div style="display:flex;padding:2px 4px;font-size:11.5px;border-bottom:1px solid #B6B6B2"><div style="width:200px;color:#3c3c3c">{{ r.k }}</div><div style="font-weight:700;color:{{ r.fg }}">{{ r.v }}</div></div>
+          </sc-for>
+        </sc-if>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">{{ instr.assess.stats }}</div>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">INSTRUCTOR LOG</div>
+        <sc-if value="{{ instr.logEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#55524c">Nothing yet.</div></sc-if>
+        <sc-for list="{{ instr.log }}" as="e" hint-placeholder-count="8">
+          <div style="display:flex;gap:8px;font-size:11px;padding:1px 4px;border-bottom:1px solid rgba(0,0,0,0.05)"><div style="width:60px;color:#55524c">{{ e.t }}</div><div>{{ e.txt }}</div></div>
+        </sc-for>
+      </div>
+
+    </div>
+  </div>
+</div>
+</sc-if>
+
 <sc-if value="{{ isSys }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="System Status" style="position:absolute;inset:0;overflow-y:auto;padding:16px">
   <div style="font-weight:700;font-size:14px;margin-bottom:12px">SYSTEM STATUS</div>
@@ -906,6 +1055,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 
       <sc-if value="{{ dg.isLogon }}" hint-placeholder-val="{{ false }}">
         <div style="font-size:12px;margin-bottom:8px">Current security level: <b>{{ secT }}</b></div>
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:8px;line-height:1.5">{{ dg.logonNote }}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
           <div style="font-size:12px">Password:</div>
           <input type="password" value="{{ dg.pw }}" onChange="{{ dg.pwChange }}" onKeyDown="{{ dg.pwKey }}" style="width:150px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
@@ -965,26 +1115,6 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         </div>
       </sc-if>
 
-      <sc-if value="{{ dg.isInstr }}" hint-placeholder-val="{{ false }}">
-        <div style="font-size:12px;font-weight:700;margin-bottom:6px">MALFUNCTION INJECTION</div>
-        <sc-for list="{{ dg.faults }}" as="f" hint-placeholder-count="8">
-          <div style="display:flex;align-items:center;gap:8px;padding:3px 4px;font-size:12px">
-            <input type="checkbox" checked="{{ f.on }}" onChange="{{ f.cb }}" />
-            <div style="flex:1">{{ f.label }}</div>
-            <div style="font-size:10px;color:#55524c">{{ f.state }}</div>
-          </div>
-        </sc-for>
-        <div style="height:1px;background:#9a968e;margin:10px 0"></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="font-size:12px;font-weight:700">SIM SPEED:</div>
-          <sc-for list="{{ dg.speeds }}" as="s" hint-placeholder-count="4">
-            <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:{{ s.bg }};border:2px solid;border-color:{{ s.bc }}" onClick="{{ s.cb }}">{{ s.label }}</div>
-          </sc-for>
-          <div style="flex:1"></div>
-          <div style="padding:4px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.resetGo }}">RESET PROCESS</div>
-        </div>
-      </sc-if>
-
       <sc-if value="{{ dg.isDebrief }}" hint-placeholder-val="{{ false }}">
         <div style="font-weight:700;font-size:13px;margin-bottom:2px">{{ dg.dbName }}</div>
         <div style="font-size:11px;color:#55524c;margin-bottom:10px">{{ dg.dbReason }}</div>
@@ -1014,7 +1144,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           Entries outside SPHILM/SPLOLM or OPHILM/OPLOLM are rejected.<br /><br />
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
           <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
-          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder.
+          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder.<br /><br />
+          <b>Instructor station</b><br />Command <b>INSTR</b>, Drills → Instructor Station…, or the SIM link in the status bar. Needs the instructor or manager password: run control (freeze / step / fast time), snapshots, initial conditions, backtrack, upsets (optionally hidden), plant variables, action journal with replay, live drill assessment.
         </div>
       </sc-if>
 
@@ -1149,7 +1280,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null };
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'' };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -1194,7 +1325,14 @@ class Component extends DCLogic {
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4)
     this.P = ESS.Models.createState(now);
-    this.rand = null;              // optional seeded generator (ESS.Models.createRand) for deterministic runs; null = Math.random
+    // Instructor station state survives a process reset (snapshots, password, hidden flag, seed); the run-bound parts
+    // (backtrack ring, action journal, replay) start fresh. Every random draw goes through the seeded generator so a
+    // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4).
+    if(!this.instr) this.instr = ESS.Instructor.create();
+    ESS.Instructor.resetRun(this.instr);
+    this.seed = this.instr.seed;
+    this.rand = ESS.Models.createRand(this.seed);
+    this.vLag = {};                // valve id -> seconds the valve has not followed its controller output (assistant symptom)
     this.callouts = {};            // tag -> {txt, until}: inline operator callouts (write rejections), shown ~5 s
     this.phaseSet = null;          // applied U2 state-based alarm limit set (phaseSetKey())
     this.tadShed = false;          // TI216 Urgent interlock latched
@@ -1209,7 +1347,7 @@ class Component extends DCLogic {
 
   // ---------- helpers ----------
   rank(l){ return {VIEW:0,OPER:1,SUPV:2,ENGR:3,MNGR:4}[l]??0; }
-  can(need){ if(this.rank(this.state.sec)>=this.rank(need)) return true; this.msgZone('HIGHER SECURITY LEVEL REQUIRED ('+need+')'); return false; }
+  can(need){ if(this.replaying()) return true; if(this.rank(this.state.sec)>=this.rank(need)) return true; this.msgZone('HIGHER SECURITY LEVEL REQUIRED ('+need+')'); return false; }
   msgZone(t){ this.setState({msg:t, msgT:this.P.t}); }
   fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
   fT(ms){ const d=new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
@@ -1478,6 +1616,7 @@ class Component extends DCLogic {
 
   step(dt){
     const P=this.P, L=this.L;
+    this.applyReplayDue();
     ESS.Models.advanceClock(P,dt);
     ESS.Models.stepU1(P,L,this.V,dt,this.modelCtx());
     L.AI205.pv=P.x*100+this.noise(0.2);          // reactor conversion from the CSTR balance (indication)
@@ -1487,9 +1626,18 @@ class Component extends DCLogic {
     this.scan(dt);
     this.interlocks();
     this.alarmTick();
+    this.valveWatch(dt);
     this.drillWatch(dt);
     for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift(); }
+    this.backtrackTick();
+    this.replayCheckDone();
   }
+  // Valve response watch for the assistant: seconds each valve has failed to follow the position its controller (or an
+  // active trip) asks for. A stuck valve shows on one valve; an instrument-air loss shows on several at once.
+  valveMap(){ return {FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'}; }
+  valveTarget(tag,id){ const P=this.P; if(id==='FV102'&&P.trips.rx) return 0; if((id==='MV211'||id==='JV213')&&P.trips.batch) return 0; if(id==='FV311'&&(P.trips.bed||P.trips.skin)) return 0; return this.L[tag].op/100; }
+  valveWatch(dt){ const map=this.valveMap(); for(const tag in map){ const id=map[tag]; const miss=Math.abs(this.valveTarget(tag,id)-this.V[id].pos)>0.12; this.vLag[id]=miss?(this.vLag[id]||0)+dt:0; } }
+  laggingValves(){ const out=[]; for(const id in this.vLag) if(this.vLag[id]>=10) out.push(id); return out; }
   // U2: Lucia/Engell semi-batch model + SCM202 (ESS.Models), then the station-side additions: the adiabatic end
   // temperature indication and the state-based alarm limit set that follows the sequence phase (ISA-TR18.2.6, RESOURCES 2.19).
   stepU2(dt){
@@ -1604,6 +1752,7 @@ class Component extends DCLogic {
     if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.confirmInterlockHold(); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
     if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
     this.syncPhaseSet();
+    if(!silent) this.journal('SEQ','SCM202',cmd);
   }
   unitOf(tag){
     if(['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202'].includes(tag)) return 'U2';
@@ -1635,14 +1784,15 @@ class Component extends DCLogic {
     if(!P.trips.skin && L.TI315.alm.PVHI && skinHi>L.TI315.alm.PVHI[0]) out.push({id:'risk.skin',sev:'WARN',title:'H-310 tube skin high ('+Math.round(skinHi)+' °C)',why:'Tube metal is running hotter than its continuous rating — usually firing raised faster than the feed can absorb, or low flow through the passes. The fuel trips at the Urgent limit.',steps:[{t:'Reduce the TIC311 setpoint or, in MAN, lower the output.',go:gFp('TIC311')},{t:'Confirm FIC310 feed flow through the tubes.',go:gFp('FIC310')},{t:'Watch TI314 / TI315 against the outlet on TG05.',go:gTg('TG05')}]});
     if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
     if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned during FEED).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
-    for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here when the fault clears.'}]}); }
+    for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here once the signal is repaired.'}]}); }
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'};
-    if(!P.faults.air){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&v.stuck&&Math.abs(l.op/100-v.pos)>0.12) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
+    const lagging=this.laggingValves(), airLoss=lagging.length>=3;
+    if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
     for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!l.badPv&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=Object.keys(l.alm).some(c=>l._as[c]); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
     for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.slave&&l.init) out.push({id:'init.'+k,sev:'INFO',title:k+' in INITMAN — cascade broken',why:'Its secondary '+l.slave+' is not in CAS, so the primary is initialized and tracks for a bumpless return.',steps:[{t:'Return '+l.slave+' to CAS when ready.',go:gFp(l.slave)}]}); }
     const un=this.alarmEngine.counts().unack;
     if(un>=6) out.push({id:'flood',sev:'WARN',title:'Alarm flood — '+un+' unacknowledged',why:'Do not blind-acknowledge. Triage by priority: Urgent first, then High. Look for a common cause.',steps:[{t:'Silence the horn (F1).'},{t:'Work the summary Urgent-first.',go:()=>gAlm()},{t:'Check for a common cause: pump, air, cooling.'}]});
-    if(P.faults.air) out.push({id:'air',sev:'URGENT',title:'Instrument air loss — valves at fail positions',why:'All control valves have driven to their fail-safe states; controllers are ineffective until air returns.',steps:[{t:'Recognize the common cause — do not chase individual loops.'},{t:'Note which valves failed open vs closed on the graphics.'},{t:'Triage alarms by priority.',go:()=>gAlm()}]});
+    if(airLoss) out.push({id:'air',sev:'URGENT',title:'Instrument air loss suspected — '+lagging.length+' valves not following their outputs',why:'Several control valves have stopped following their controllers at once and sit at their fail positions; a common cause (instrument air) is far more likely than several valve failures. Controllers are ineffective until air returns.',steps:[{t:'Recognize the common cause — do not chase individual loops.'},{t:'Note which valves failed open vs closed on the graphics.'},{t:'Triage alarms by priority.',go:()=>gAlm()}]});
     if(L.PIC401.mode==='MAN'&&P.drumP>700) out.push({id:'man401',sev:'WARN',title:'PIC401 in MAN while pressure rises',why:'The vent will not move in MAN.',steps:[{t:'Put PIC401 back in AUTO.',go:gFp('PIC401')}]});
     for(const mt of ['P101','M202']){ const m=L[mt]; if(!m.trip&&!m.run&&m.lock>0) out.push({id:'lock.'+mt,sev:'INFO',title:(mt==='P101'?'P-101':'M-202')+' restart lockout — '+Math.ceil(m.lock)+' s remaining',why:'A lockout timer protects the motor after a stop or trip.',steps:[{t:'Wait for the lockout, then START from the faceplate.',go:gFp(mt)}]}); }
     const sevR={URGENT:2,WARN:1,INFO:0};
@@ -1662,7 +1812,7 @@ class Component extends DCLogic {
     {k:['tuning','tune','gain','t1','t2','engr','action'],t:'Cannot change tuning',a:'K, T1, T2, limits and control action need ENGR level or above: Station menu → Security Level, password engr. Experion PID uses overall gain K with T1 and T2 in minutes.'},
     {k:['batch','sequence','scm','phase','stuck','hold','charge'],t:'Batch sequence control',a:'SCM202 on Unit 02 runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. START begins a batch; HOLD stops the monomer feed without losing the phase; ABORT forces COOL. During FEED the FIC211 SP is program-driven (MODEATTR = PROGRAM).'},
     {k:['raise','lower','arrow','keys','select'],t:'RAISE / LOWER keys',a:'The raise/lower buttons act on the auto-selected target: SP in AUTO, OP in MAN (dashed highlight on the faceplate). In an entry field, arrow keys nudge the typed value; Enter stores, Esc cancels.'},
-    {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. A fault injects unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
+    {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. An upset begins unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
     {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
     {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. TIC212 is PROGRAM for the whole batch, FIC211 during FEED. HOLD the sequence to take the monomer feed back (the attribute returns to OPERATOR), or wait for the sequence to end.'},
     {k:['pv tracking','pvtrack','track','bumpless','bump'],t:'PV tracking and bumpless transfer',a:'With PV tracking ON (Loop Tune, ENGR) the SP follows the PV while the loop is in MAN, so a return to AUTO starts at zero error and the output does not step. The integrator is re-initialised on every mode change so MAN → AUTO and AUTO → CAS are bumpless either way. Default ON for the cascade secondaries FIC102, TIC202 and TIC213.'},
@@ -1746,7 +1896,7 @@ class Component extends DCLogic {
     if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
     if(d.needBatch && this.P.b.phase==='IDLE') this.seqCmd('START',true);
     if(d.setup) d.setup(this);   // pre-existing condition the drill relies on (e.g. a loop left in MAN)
-    const delay=8000+Math.random()*7000;
+    const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0},dlg:null});
     this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
   }
@@ -1815,6 +1965,188 @@ class Component extends DCLogic {
     return s;
   }
 
+  // ---------- instructor station (Forge PTS instructor features, RESOURCES 2.14; seeded replay / snapshot / backtrack per the cstr-ots notes, RESOURCES 4) ----------
+  // Instructor state lives in this.instr, never in a trainee display. Entry needs the instructor password ('instr') or
+  // the MNGR level; a trainee at OPER / SUPV is sent to the logon dialog and the display falls back to the graphic.
+  instructorAllowed(){ return this.state.sec==='MNGR' || !!(this.instr&&this.instr.auth); }
+  openInstructor(){
+    if(this.instructorAllowed()){ this.nav('instr'); return; }
+    this.msgZone('INSTRUCTOR STATION — PASSWORD REQUIRED');
+    this.setState({dlg:{type:'logon',instr:true},dlgPw:'',menu:null});
+  }
+  lockInstructor(){
+    this.instr.auth=false;
+    ESS.Instructor.logAdd(this.instr,this.P.t,'INSTRUCTOR STATION LOCKED');
+    if(this.state.display==='instr') this.nav('graphic');
+  }
+  effDisplay(){ const d=this.state.display; return d==='instr'&&!this.instructorAllowed()?'graphic':d; }
+  // Instructor-only log; mirrored into the station journal only while upsets are not hidden.
+  instrLog(txt){
+    ESS.Instructor.logAdd(this.instr,this.P.t,txt);
+    if(!this.instr.hidden) this.addEvent('SYSTEM','INSTR',txt,'','');
+  }
+  replaying(){ return !!(this.instr&&this.instr.replay); }
+  // --- run control: FREEZE stops the clock (speed 0), STEP advances exactly one 0.5 s tick, RUN / 2 / 5 / 10 set the speed
+  setSpeed(v){ this.setState({speed:v}); }
+  freeze(){ this.setSpeed(0); }
+  stepOnce(){ if(this.state.speed!==0) this.setState({speed:0}); this.step(0.5); this.setState(s=>({tk:s.tk+1})); }
+  setSeed(n){
+    const seed=(Number(n)>>>0)||ESS.Instructor.DEFAULT_SEED;
+    this.instr.seed=seed; this.seed=seed; this.rand=ESS.Models.createRand(seed);
+    this.instrLog('RANDOM SEED SET '+seed);
+    this.setState({instrSeedTxt:''});
+  }
+  // --- snapshots: the full process state (P, L, V, alarm records, interlock flags, seed and generator cursor)
+  snapshotData(name){
+    const r=this.rand;
+    return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
+      eventsCount:this.events.length,tadShed:this.tadShed,phaseSet:this.phaseSet,
+      seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null},name);
+  }
+  restoreSnapshot(snap,why){
+    const I=ESS.Instructor;
+    this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
+    this.alarmEngine.restore(snap.alarms);
+    this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
+    this.seed=snap.seed||this.seed; this.rand=ESS.Models.createRand(this.seed); if(snap.randState!=null) this.rand.setState(snap.randState);
+    this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={};
+    const t=this.P.t;
+    for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
+    this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
+    I.trimAfter(this.instr,t);
+    this.setState({drill:null,entry:null,selAlm:null,msg:''});
+    this.instrLog((why||'SNAPSHOT RESTORED')+' — SIM TIME '+this.fT(t));
+  }
+  saveSlot(i,name){
+    const nm=(name||'').trim()||('SNAP '+(i+1)+' '+this.fT(this.P.t));
+    this.instr.snapshots[i]=this.snapshotData(nm);
+    this.instrLog('SNAPSHOT SAVED: '+nm);
+    this.setState({instrSnapName:''});
+  }
+  restoreSlot(i){ const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; } this.instr.replay=null; this.restoreSnapshot(s,'SNAPSHOT RESTORED: '+s.name); }
+  clearSlot(i){ this.instr.snapshots[i]=null; }
+  // --- backtrack: an automatic snapshot every 30 sim-seconds covering the last 10 sim-minutes (taken after the step so it carries that step's history row)
+  backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS) I.pushRing(this.instr,this.snapshotData(''),this.P.t); }
+  backtrack(ms){
+    const s=ESS.Instructor.ringPick(this.instr,this.P.t,ms);
+    if(!s){ this.msgZone('NO BACKTRACK POINT YET'); return; }
+    this.instr.replay=null;
+    this.restoreSnapshot(s,'BACKTRACK '+this.mmss(ms));
+  }
+  // --- initial conditions: fresh process + preset data, run to the stated condition, loaded through a snapshot restore
+  applyPreset(id){
+    const p=ESS.Instructor.presets().find(x=>x.id===id); if(!p) return;
+    this.initSim();
+    if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
+    if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
+    if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
+    for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
+    const snap=this.snapshotData('IC '+p.label);
+    this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
+    this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase(),'','');
+    this.setState({fps:[],unit:p.id.slice(0,2)});
+  }
+  // --- upsets (the faults) with a hidden switch and magnitudes; instructor variables through the P fields the models read
+  upsetOn(k){ return !!this.P.faults[k]||(k==='stick'&&this.V.TV202.stuck); }
+  setUpset(k,on){
+    this.injectFault(k,on);
+    if(k==='drift'&&!on) this.P.driftOff=0;
+    const def=ESS.Instructor.upsetDefs().find(d=>d.k===k);
+    this.instrLog('UPSET '+(on?'ON':'OFF')+': '+(def?def.label:k)+(this.instr.hidden?' (HIDDEN)':''));
+  }
+  clearUpsets(){ for(const d of ESS.Instructor.upsetDefs()) if(this.upsetOn(d.k)) this.setUpset(d.k,false); }
+  setHidden(on){ this.instr.hidden=!!on; ESS.Instructor.logAdd(this.instr,this.P.t,'HIDDEN UPSETS '+(on?'ON':'OFF')); }
+  setMagnitude(key,v){ const n=Number(v); if(!isFinite(n)) return; this.P.mag[key]=n; ESS.Instructor.logAdd(this.instr,this.P.t,'UPSET MAGNITUDE '+key.toUpperCase()+' = '+n); }
+  setVariable(k,v){
+    const def=ESS.Instructor.variableDefs().find(d=>d.k===k); const n=Number(v); if(!def||!isFinite(n)) return;
+    const val=Math.max(def.min,Math.min(def.max,n));
+    ESS.Instructor.setPath(this.P,def.path,val);
+    this.instrLog('VARIABLE '+def.label.toUpperCase()+' = '+this.fmt(val,def.dec)+(def.eu?' '+def.eu:''));
+  }
+  variableValue(k){ const def=ESS.Instructor.variableDefs().find(d=>d.k===k); const v=def?ESS.Instructor.getPath(this.P,def.path):undefined; return v==null?(def?def.def:0):v; }
+  // --- action journal: every accepted operator action with its sim time; a replay restores a snapshot and re-applies the
+  // journal at the same sim times, so with the same seed the trajectory repeats exactly.
+  journal(op,tag,arg,extra){ ESS.Instructor.journalAdd(this.instr,Object.assign({t:this.P.t,op,tag:tag||'',arg:arg==null?'':arg},extra||{})); }
+  startReplay(i){
+    const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; }
+    const plan=ESS.Instructor.replayPlan(this.instr,s,this.P.t);
+    if(!plan.entries.length){ this.msgZone('NO OPERATOR ACTIONS RECORDED AFTER SNAPSHOT '+s.name); return; }
+    this.restoreSnapshot(s,'REPLAY FROM SNAPSHOT: '+s.name);
+    this.instr.replay=plan;
+    this.instrLog('REPLAY STARTED — '+plan.entries.length+' ACTIONS TO '+this.fT(plan.toT));
+    if(this.state.speed===0) this.setSpeed(1);
+  }
+  stopReplay(){ if(this.instr.replay){ this.instr.replay=null; this.instrLog('REPLAY STOPPED'); } }
+  // Runs the replay to its end synchronously; the trajectory is deterministic, so this equals watching it live.
+  replayToEnd(){ let guard=0; while(this.instr.replay&&guard++<200000) this.step(0.5); }
+  applyReplayDue(){ const r=this.instr&&this.instr.replay; if(!r) return; for(const e of ESS.Instructor.replayDue(r,this.P.t)) this.applyJournalEntry(e); }
+  replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
+  applyJournalEntry(e){
+    switch(e.op){
+      case 'MODE': this.setMode(e.tag,e.arg); break;
+      case 'STORE': this.storeEntry(e.tag,e.param,Number(e.arg)); break;
+      case 'RAISE': this.raiseLower(e.tag,1); break;
+      case 'LOWER': this.raiseLower(e.tag,-1); break;
+      case 'START': this.motorCmd(e.tag,true); break;
+      case 'STOP': this.motorCmd(e.tag,false); break;
+      case 'SEQ': this.seqCmd(e.arg); break;
+      case 'ACK': { const a=this.alarmEngine.get(e.arg); if(a) this.ackAlarm(a); break; }
+      case 'ACKPAGE': this.ackKeys(e.keys||[]); break;
+      case 'SIL': this.silence(); break;
+      case 'SHELVE': this.shelveAlarm(e.arg,e.mins,e.reason); break;
+      case 'UNSHELVE': this.unshelveAlarm(e.arg); break;
+    }
+  }
+  // Drill timeline rows, shared by the debrief dialog and the instructor's live assessment.
+  drillRows(d){
+    const m=d.m, rel=(t)=>t?this.mmss(t-(m.tAlarm||d.t0)):'—';
+    return [
+      {k:'First alarm',v:m.tAlarm?this.fT(m.tAlarm):'never annunciated',fg:'#000'},
+      {k:'Silenced',v:rel(m.tSil),fg:'#000'},
+      {k:'Acknowledged',v:rel(m.tAck),fg:m.tAck?'#0a3a12':'#A00000'},
+      {k:'Correct action taken',v:rel(m.tAct),fg:m.tAct?'#0a3a12':'#A00000'},
+      {k:'Stabilized',v:m.tStable?rel(m.tStable):'no',fg:m.tStable?'#0a3a12':'#A00000'},
+      {k:'Trip / SIS activation',v:m.trip?'YES':'none',fg:m.trip?'#A00000':'#0a3a12'},
+      ...(d.def.peak?[{k:'Peak value',v:this.fmt(m.peak,1),fg:'#000'}]:[])
+    ];
+  }
+  // View model for the INSTRUCTOR display; {on:false} for anyone who is not the instructor, so no instructor data is rendered.
+  instructorView(){
+    const S=this.state, P=this.P, I=this.instr, X=ESS.Instructor;
+    if(!this.instructorAllowed()) return {on:false};
+    const chip=(label,on,cb)=>({label,bg:on?'#B8C4D4':'#D4D0C8',bc:on?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb});
+    const bump=()=>this.setState(s=>({tk:s.tk+1}));
+    const frozen=S.speed===0;
+    const run={stateT:frozen?'FROZEN':'RUNNING '+S.speed+'×',simT:this.fT(P.t),upT:this.mmss(P.up*1000),
+      freeze:chip('FREEZE',frozen,()=>this.freeze()),stepOne:{label:'STEP 0.5 S',cb:()=>this.stepOnce()},runBtn:chip('RUN 1×',S.speed===1,()=>this.setSpeed(1)),
+      speeds:X.speeds().filter(v=>v>1).map(v=>chip(v+'×',S.speed===v,()=>this.setSpeed(v)))};
+    const slots=I.snapshots.map((s,i)=>({n:String(i+1),name:s?s.name:'— empty —',t:s?this.fT(s.t):'',has:!!s,
+      save:()=>{this.saveSlot(i,S.instrSnapName);},restore:()=>this.restoreSlot(i),replay:()=>this.startReplay(i),clear:()=>{this.clearSlot(i);bump();}}));
+    const presets=X.presets().map(p=>({label:p.label,desc:p.desc,cb:()=>this.applyPreset(p.id)}));
+    const oldest=I.ring.length?I.ring[0].t:null;
+    const back={count:String(I.ring.length),spanT:oldest!=null?this.mmss(P.t-oldest):'00:00',oldestT:oldest!=null?this.fT(oldest):'—',
+      btns:[[30000,'−30 S'],[120000,'−2 MIN'],[600000,'−10 MIN']].map(b=>({label:b[1],cb:()=>this.backtrack(b[0])}))};
+    const upsets=X.upsetDefs().map(d=>{ const on=this.upsetOn(d.k), m=d.mag; return {k:d.k,label:d.label,unit:d.unit,on,stateT:on?'ACTIVE':'',hasMag:!!m,
+      magLabel:m?m.label:'',magVal:m?String(P.mag[m.key]):'0',magT:m?(String(P.mag[m.key])+(m.eu?' '+m.eu:'')):'',magMin:m?String(m.min):'0',magMax:m?String(m.max):'1',magStep:m?String(m.step):'1',
+      cb:()=>{this.setUpset(d.k,!on);bump();},magChange:m?(e)=>{this.setMagnitude(m.key,e.target.value);bump();}:()=>{}}; });
+    const vars=X.variableDefs().map(d=>{ const v=this.variableValue(d.k); return {k:d.k,label:d.label,valT:this.fmt(v,d.dec)+(d.eu?' '+d.eu:''),val:String(v),min:String(d.min),max:String(d.max),step:String(d.step),
+      change:(e)=>{this.setVariable(d.k,e.target.value);bump();},reset:()=>{this.setVariable(d.k,d.def);bump();}}; });
+    const r=I.replay;
+    const journal={count:String(I.journal.length),empty:!I.journal.length,rows:I.journal.slice(-16).reverse().map(e=>({txt:X.journalText(e,(t)=>this.fT(t))})),
+      replayOn:!!r,replayT:r?('REPLAYING '+r.i+' / '+r.entries.length+' · RUNS TO '+this.fT(r.toT)):'',stop:()=>{this.stopReplay();bump();},toEnd:()=>{this.replayToEnd();bump();},
+      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies the actions taken after it at the same sim times; with the same seed the trajectory repeats exactly.'};
+    const d=S.drill;
+    const assess={on:!!d,name:d?d.def.id+' — '+d.def.name:'No drill running — start one from the Drills menu; live metrics appear here.',tm:d?this.mmss(P.t-d.t0):'',
+      phase:d?(d.injected?'UPSET ACTIVE':'ARMED — waiting for the injection'):'',rows:d?this.drillRows(d):[],end:()=>this.endDrill('ENDED BY INSTRUCTOR'),
+      stats:'Actions journaled: '+I.journal.length+' · alarms acknowledged this session: '+this.alarmLog.filter(a=>a.type==='ack').length+' · active alarms: '+this.alarmEngine.counts().total};
+    const log=I.log.slice(0,12).map(e=>({t:this.fT(e.t),txt:e.txt}));
+    return {on:true,authT:I.auth?'INSTRUCTOR PASSWORD':'MNGR LEVEL',hiddenOn:I.hidden,hidden:chip(I.hidden?'HIDDEN UPSETS: ON':'HIDDEN UPSETS: OFF',I.hidden,()=>{this.setHidden(!I.hidden);bump();}),
+      hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row. The assistant still diagnoses from process symptoms.':'Instructor actions are mirrored into the station journal (source INSTR) and System Status lists active upsets.',
+      lock:()=>this.lockInstructor(),close:()=>this.nav('graphic'),
+      seedT:String(this.seed),seedVal:S.instrSeedTxt,seedChange:(e)=>this.setState({instrSeedTxt:e.target.value}),seedKey:(e)=>{if(e.key==='Enter')this.setSeed(S.instrSeedTxt);},seedGo:()=>this.setSeed(S.instrSeedTxt),
+      run,slots,snapName:S.instrSnapName,snapNameChange:(e)=>this.setState({instrSnapName:e.target.value}),presets,back,upsets,clearUpsets:()=>{this.clearUpsets();bump();},vars,journal,assess,log,logEmpty:!log.length};
+  }
+
   // ---------- operator actions ----------
   nav(d,arg){
     const h=this.state.hist.slice(0,this.state.hi+1); h.push({d,arg});
@@ -1838,9 +2170,10 @@ class Component extends DCLogic {
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
     if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return; }
     if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return; }
+    if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return; }
     this.msgZone('DISPLAY NOT FOUND: '+c);
   }
-  silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); }
+  silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); this.journal('SIL'); }
   ackAlarm(a){
     if(!this.can('OPER')) return;
     const r=this.alarmEngine.get(a); if(!r) return;
@@ -1848,13 +2181,19 @@ class Component extends DCLogic {
     if(!evs.length){ this.msgZone('ALARM ALREADY ACKNOWLEDGED'); return; }
     this.logAlarmEvents(evs);
     this.dHook('ACK',r.tag);
+    this.journal('ACK',r.tag,r.key);
   }
   ackTop(){ const a=this.state.selAlm!=null? this.alarmEngine.get(this.state.selAlm) : this.topUnack(); if(!a){this.msgZone('NO UNACKNOWLEDGED ALARM');return;} this.ackAlarm(a); }
   ackPage(){
     if(!this.can('OPER')) return;
-    let n=0;
-    for(const a of this.visAlarms()){ if(a.ack) continue; const evs=this.alarmEngine.ack(a,this.P.t); if(evs.length){ n++; this.logAlarmEvents(evs); this.dHook('ACK',a.tag); } }
+    this.ackKeys(this.visAlarms().filter(a=>!a.ack).map(a=>a.key));
+  }
+  // Acknowledge a list of alarm keys as one page acknowledge (the journal keeps the keys so a replay acks the same alarms).
+  ackKeys(keys){
+    let n=0; const done=[];
+    for(const key of keys){ const a=this.alarmEngine.get(key); if(!a||a.ack) continue; const evs=this.alarmEngine.ack(a,this.P.t); if(evs.length){ n++; done.push(key); this.logAlarmEvents(evs); this.dHook('ACK',a.tag); } }
     this.addEvent('OPERATOR','STN01','PAGE ACKNOWLEDGE ('+n+' ALARMS)','','');
+    this.journal('ACKPAGE','','',{keys:done});
   }
   // Alarm Summary views: MAIN = annunciated set (UNACK/ACKED/RTNUN), UNACK, SHELVED, SUPPRESSED (DAS), OOS. Sorted by the engine comparator.
   visAlarms(){
@@ -1879,18 +2218,25 @@ class Component extends DCLogic {
     const reason=this.shelveReasonText();
     if(!reason){ this.msgZone('SHELVE REASON REQUIRED'); return; }
     if(!(Number(mins)>0)){ this.msgZone('SHELVE DURATION REQUIRED'); return; }
+    if(this.shelveAlarm(a.key,mins,reason)) this.setState({dlg:null,dlgReason:''});
+  }
+  // The shelve itself, by alarm key (the dialog and the journal replay both come through here).
+  shelveAlarm(key,mins,reason){
+    const a=this.alarmEngine.get(key); if(!a) return false;
     mins=Math.max(1,Math.min(60,Number(mins)));
     const evs=this.alarmEngine.shelve(a,{reason,durationMs:mins*60000,t:this.P.t});
-    if(!evs.length){ this.msgZone('ALARM CANNOT BE SHELVED IN STATE '+a.state); return; }
+    if(!evs.length){ this.msgZone('ALARM CANNOT BE SHELVED IN STATE '+a.state); return false; }
     this.logAlarmEvents(evs);
     this.msgs.unshift({t:this.P.t,txt:'ALARM SHELVED '+mins+' MIN: '+a.tag+' '+a.cond+' — '+reason});
-    this.setState({dlg:null,dlgReason:''});
+    this.journal('SHELVE',a.tag,a.key,{mins,reason});
+    return true;
   }
   unshelve(){
     const a=this.alarmEngine.get(this.state.selAlm); if(!a||!a.shelved){this.msgZone('SELECT A SHELVED ALARM');return;}
     if(!this.can('OPER')) return;
-    this.logAlarmEvents(this.alarmEngine.unshelve(a,this.P.t,false));
+    this.unshelveAlarm(a.key);
   }
+  unshelveAlarm(key){ const a=this.alarmEngine.get(key); if(!a||!a.shelved) return; this.logAlarmEvents(this.alarmEngine.unshelve(a,this.P.t,false)); this.journal('UNSHELVE',a.tag,a.key); }
   // Operator write gate for the PROGRAM mode attribute (EXP-01 control conventions, RESOURCES 2.12): while the
   // sequence owns the loop, SP / OP / MODE stores are refused with an inline callout on the faceplate and detail
   // display (about 5 s), a message-zone notice and an OPERATOR journal entry. Engineering parameters stay writable.
@@ -1918,6 +2264,7 @@ class Component extends DCLogic {
     if(!r.ok){ this.msgZone(r.reason); return; }
     this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=r.from; this.events[0].newV=m;
     this.dAct('MODE',tag,m,0);
+    this.journal('MODE',tag,m);
   }
   openEntry(tag,param){
     const l=this.L[tag];
@@ -1933,17 +2280,24 @@ class Component extends DCLogic {
   }
   commitEntry(){
     const en=this.state.entry; if(!en) return;
-    const l=this.L[en.tag]; const v=parseFloat(this.state.entryText);
+    const v=parseFloat(this.state.entryText);
     if(isNaN(v)){ this.msgZone('INVALID ENTRY'); this.setState({entry:null}); return; }
-    if((en.param==='SP'||en.param==='OP') && !this.operatorMayWrite(en.tag,en.param)){ this.setState({entry:null}); return; }
-    const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',en.tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.setState({entry:null}); };
-    if(en.param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',en.tag,v,v-o); return; }
-    if(en.param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',en.tag,v,v-o);
-      if(en.tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return; }
-    if(en.param.startsWith('TP:')){ const c=en.param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return; }
-    if(en.param==='TGTHI'||en.param==='TGTLO'){ const b=this.limitBand(l); const lo=en.param==='TGTLO'?v:b.tgtLo, hi=en.param==='TGTHI'?v:b.tgtHi; const o=en.param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return; done(o,()=>{},en.param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return; }
-    const key=en.param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
-    const o=l[key]??l[en.param]; done(o,()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; }, map[key]||en.param);
+    if(this.storeEntry(en.tag,en.param,v)) this.setState({entry:null});
+  }
+  // Stores a typed value on a point: SP / OP, engineering parameters, trip points, target band. Returns true when the
+  // entry field should close (store accepted, or refused by the mode attribute); false keeps it open after a limit rejection.
+  storeEntry(tag,param,v){
+    const l=this.L[tag]; if(!l) return true;
+    if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return true;
+    const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.journal('STORE',tag,this.fmt(v,3),{param}); };
+    if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); return true; }
+    if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o);
+      if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
+    if(param.startsWith('TP:')){ const c=param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return true; }
+    if(param==='TGTHI'||param==='TGTLO'){ const b=this.limitBand(l); const lo=param==='TGTLO'?v:b.tgtLo, hi=param==='TGTHI'?v:b.tgtHi; const o=param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return false; done(o,()=>{},param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return true; }
+    const key=param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
+    const o=l[key]??l[param]; done(o,()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; }, map[key]||param);
+    return true;
   }
   raiseLower(tag,dir){
     const l=this.L[tag]; if(!this.can('OPER')) return;
@@ -1952,6 +2306,7 @@ class Component extends DCLogic {
     if(!this.operatorMayWrite(tag,p)) return;
     if(p==='SP'){ const step=(l.hi-l.lo)/100; const o=l.sp; const nv=Math.max(l.splolm,Math.min(l.sphilm,o+dir*step)); l.sp=nv; this.addEvent('OPERATOR',tag,'SP CHANGE','',''); this.events[0].oldV=this.fmt(o,l.dec); this.events[0].newV=this.fmt(nv,l.dec); this.dAct('SP',tag,nv,nv-o); }
     else { const o=l.op; const nv=Math.max(l.oplolm,Math.min(l.ophilm,o+dir)); l.op=nv; l.I=nv; this.addEvent('OPERATOR',tag,'OP CHANGE','',''); this.events[0].oldV=this.fmt(o,1); this.events[0].newV=this.fmt(nv,1); this.dAct('OP',tag,nv,nv-o); }
+    this.journal(dir>0?'RAISE':'LOWER',tag);
   }
   motorCmd(tag,start){
     const m=this.L[tag]; if(!m||!this.can('OPER')) return;
@@ -1959,10 +2314,10 @@ class Component extends DCLogic {
       if(m.run) return;
       if(m.lock>0){ this.msgZone('START INHIBITED — LOCKOUT '+Math.ceil(m.lock)+' S'); return; }
       if(tag==='P101' && this.P.tankL<5){ this.raiseA('P101','CMDFAIL','High',0,'','START PERMISSIVE NOT MET — TK-101 LEVEL LOW'); this.msgZone('PERMISSIVE NOT MET: TK-101 LEVEL < 5%'); return; }
-      m.run=true; m.trip=false; m.cmd='START'; this.addEvent('OPERATOR',tag,'START COMMAND','STOP','RUN'); if(tag==='P101') this.clearA('P101','CMDFAIL'); this.dAct('START',tag,'',0);
+      m.run=true; m.trip=false; m.cmd='START'; this.addEvent('OPERATOR',tag,'START COMMAND','STOP','RUN'); if(tag==='P101') this.clearA('P101','CMDFAIL'); this.dAct('START',tag,'',0); this.journal('START',tag);
     } else {
       if(!m.run) return;
-      m.run=false; m.cmd='STOP'; m.lock=15; this.addEvent('OPERATOR',tag,'STOP COMMAND','RUN','STOP');
+      m.run=false; m.cmd='STOP'; m.lock=15; this.addEvent('OPERATOR',tag,'STOP COMMAND','RUN','STOP'); this.journal('STOP',tag);
     }
   }
   openFp(tag){
@@ -1976,6 +2331,11 @@ class Component extends DCLogic {
   logon(){
     const pw=this.state.dlgPw.trim().toLowerCase();
     const map={oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'};
+    const forInstr=!!(this.state.dlg&&this.state.dlg.instr);
+    if(pw==='instr'||(forInstr&&pw==='mngr')){
+      if(pw==='mngr'&&this.state.sec!=='MNGR'){ const o=this.state.sec; this.setState({sec:'MNGR'}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,'MNGR'); }
+      this.instr.auth=true; this.setState({dlg:null,dlgPw:''}); this.instrLog('INSTRUCTOR STATION OPENED'); this.nav('instr'); return;
+    }
     if(map[pw]){ const o=this.state.sec; this.setState({sec:map[pw],dlg:null,dlgPw:''}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,map[pw]); this.msgZone('SECURITY LEVEL: '+map[pw]); }
     else { this.msgZone('INVALID PASSWORD'); this.setState({dlgPw:''}); }
   }
@@ -2012,7 +2372,7 @@ class Component extends DCLogic {
         ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
       {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
-      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Panel…',f:()=>this.setState({dlg:{type:'instr'}})}]},
+      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
     const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
@@ -2311,10 +2671,11 @@ class Component extends DCLogic {
       hits, hitsNone:qq.length>2&&hits.length===0};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
-    const widths={logon:460,shelve:460,comment:520,drills:560,instr:520,debrief:600,help:520,philosophy:680,about:520,reset:380,sysmenu:420};
+    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
+    const widths={logon:460,shelve:460,comment:520,drills:560,debrief:600,help:520,philosophy:680,about:520,reset:380,sysmenu:420};
     let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
-      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'',
       pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
       signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
       shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
@@ -2324,24 +2685,13 @@ class Component extends DCLogic {
       commentCur:selA&&selA.comment?selA.comment:'(none)',commentGo:()=>this.commentAlarm(S.dlgReason),commentKey:(e)=>{if(e.key==='Enter')this.commentAlarm(S.dlgReason);},
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
       randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(Math.random()*ds.length)]);},
-      faults:[{k:'xmtr',label:'FIC102 transmitter failure (BADPV)'},{k:'surge',label:'Feed inflow surge (+50 M3/H, 8 min)'},{k:'pump',label:'P-101 pump trip (one-shot)'},{k:'cool',label:'Cooling water loss (backup in 5 min)'},{k:'stick',label:'TV-202 valve stiction (+ reaction load)'},{k:'vap',label:'Flash drum vapor surge (5 min)'},{k:'air',label:'Instrument air loss — valves to fail state'},{k:'rxn',label:'Reaction rate step +15%'},{k:'foul',label:'E-301 fouling (progressive)'},{k:'agit',label:'M-202 agitator trip (U2, one-shot)'},{k:'bedact',label:'R-310 catalyst activity +35% (U3)'}].map(f=>({label:f.label,on:!!P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck),state:P.faults[f.k]?'ACTIVE':'',cb:()=>this.injectFault(f.k,!(P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck)))})),
-      speeds:[0,1,2,5].map(v=>({label:v===0?'PAUSE':v+'×',bg:S.speed===v?'#B8C4D4':'#D4D0C8',bc:S.speed===v?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({speed:v})})),
-      resetGo:setS({dlg:{type:'reset'}}),
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:''};
     if(dgT==='debrief' && S.dlg.drill){
-      const d=S.dlg.drill, m=d.m, rel=(t)=>t?this.mmss(t-(m.tAlarm||d.t0)):'—';
+      const d=S.dlg.drill;
       dg.dbName=d.def.id+' — '+d.def.name; dg.dbReason='Ended: '+d.reason+'. Times relative to first alarm.';
-      dg.dbRows=[
-        {k:'First alarm',v:m.tAlarm?this.fT(m.tAlarm):'never annunciated',fg:'#000'},
-        {k:'Silenced',v:rel(m.tSil),fg:'#000'},
-        {k:'Acknowledged',v:rel(m.tAck),fg:m.tAck?'#0a3a12':'#A00000'},
-        {k:'Correct action taken',v:rel(m.tAct),fg:m.tAct?'#0a3a12':'#A00000'},
-        {k:'Stabilized',v:m.tStable?rel(m.tStable):'no',fg:m.tStable?'#0a3a12':'#A00000'},
-        {k:'Trip / SIS activation',v:m.trip?'YES':'none',fg:m.trip?'#A00000':'#0a3a12'},
-        ...(d.def.peak?[{k:'Peak value',v:this.fmt(m.peak,1),fg:'#000'}]:[])
-      ];
+      dg.dbRows=this.drillRows(d);
       if(S.debAns==null||S.dlg.scored){ }
       dg.dbAsk=!S.dlg.scored; dg.dbScored=!!S.dlg.scored;
       dg.dbQ=d.def.q;
@@ -2351,12 +2701,17 @@ class Component extends DCLogic {
     }
     const kpi=this.kpiView(setS);
     const drill=S.drill;
+    const disp=this.effDisplay();
+    const instr=this.instructorView();
+    const activeUpsets=ESS.Instructor.upsetDefs().filter(d=>this.upsetOn(d.k)).map(d=>d.k.toUpperCase());
+    const simRows=[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'FROZEN':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'24 CMS / 10 VALVES / 3 UNITS'}];
+    if(!this.instr.hidden) simRows.push({k:'Upsets',v:activeUpsets.length?activeUpsets.join(', '):'NONE'});
     return {
       showBadge:this.props.showBadge??true, hcol:HC, cnts,
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
       cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
-      isG1:S.display==='graphic'&&S.unit==='U1', isG2:S.display==='graphic'&&S.unit==='U2', isG3:S.display==='graphic'&&S.unit==='U3', isAlarms:S.display==='alarms', isEvents:S.display==='events', isMsgs:S.display==='msgs', isTrend:S.display==='trend', isDetail:S.display==='detail', isSys:S.display==='sys', isKpi:S.display==='kpi',
+      isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isInstr:disp==='instr'&&instr.on, instr,
       gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
       utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
@@ -2370,11 +2725,11 @@ class Component extends DCLogic {
         {title:'STATION STN01',led:'#00A000',rows:[{k:'Type',v:'CONSOLE (SIM)'},{k:'Security level',v:S.sec},{k:'Asset profile',v:'UNIT 01'}]},
         {title:'CONTROLLER C300-SIM',led:'#00A000',rows:[{k:'CEE base cycle',v:'50 mS (EMULATED)'},{k:'CM period',v:'500 mS'},{k:'Redundancy',v:'PRIMARY / SYNCED'}]},
         {title:'NETWORK FTE',led:'#00A000',rows:[{k:'FTE A',v:'OK'},{k:'FTE B',v:'OK'},{k:'Time source',v:'STATION CLOCK'}]},
-        {title:'SIMULATION ENGINE',led:'#31548F',rows:[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'PAUSED':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'24 CMS / 10 VALVES / 3 UNITS'}]},
+        {title:'SIMULATION ENGINE',led:'#31548F',rows:simRows},
         {title:'RELEASE',led:'#00A000',rows:[{k:'Conventions',v:'R530-ERA (REPRESENTATIVE)'},{k:'Build',v:'TRAINING SIM v2.0.0-b1'},{k:'License',v:'EDUCATIONAL'}]}
       ],
       ledSrv:'#00A000', ledCee:'#00A000',
-      spdT:S.speed===0?'PAUSED':S.speed+'×', instrOpen:setS({dlg:{type:'instr'}}),
+      spdT:S.speed===0?'FROZEN':S.speed+'×', instrOpen:()=>this.openInstructor(),
       audT:((this.props.audible??true)&&S.aud)?'ON':'OFF', audCb:()=>this.setState({aud:!S.aud}),
       secT:S.sec==='VIEW'?'VIEW ONLY':S.sec, secCb:setS({dlg:{type:'logon'}}),
       dateT:this.fD(P.t), timeT:this.fT(P.t)

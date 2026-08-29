@@ -528,6 +528,23 @@
     return out;
   };
 
+  // ---- snapshot / restore (instructor station, RESOURCES 2.14) --------------
+  // Every record (including NORM ones still inside the fold window) and the id
+  // counter, as plain data. restore() rebuilds the maps from such a snapshot so
+  // ids and keys survive a backtrack.
+  P.snapshot = function () {
+    return { nextId: this._nextId, recs: JSON.parse(JSON.stringify(this._recs)) };
+  };
+  P.restore = function (s) {
+    var recs = JSON.parse(JSON.stringify(s.recs || []));
+    this._recs = []; this._byKey = new Map(); this._byId = new Map();
+    this._nextId = s.nextId || this.opts.idStart;
+    for (var i = 0; i < recs.length; i++) {
+      var r = recs[i];
+      this._recs.push(r); this._byKey.set(r.key, r); this._byId.set(r.id, r);
+    }
+  };
+
   // convenience mirrors so a single engine handle carries the helpers
   P.evaluateLimit = evaluateLimit;
   P.indication = indication;

@@ -6,7 +6,10 @@
 // API
 //   createState(now?)                  -> P   fresh process state (superset of the
 //                                              Component's this.P shape, see below)
-//   createRand(seed)                   -> fn  deterministic mulberry32 generator in [0,1)
+//   createRand(seed)                   -> fn  deterministic mulberry32 generator in [0,1);
+//                                              fn.seed, fn.getState(), fn.setState(v) expose the
+//                                              cursor so a snapshot can resume the same sequence
+//   envDefaults() / magDefaults()      -> the instructor variable / upset magnitude defaults
 //   advanceClock(P, dt)                        P.t += dt*1000, P.up += dt
 //   stepU1(P, L, V, dt, ctx)                   feed tank, pump, valves, R-201 CSTR,
 //                                              fouling, E-301, V-401 flash drum,
@@ -49,6 +52,11 @@
 // modeAttr PROGRAM handling, and every field read by renderVals()/diagnose().
 //
 // New readable fields (all engineering units, none are written into L here):
+//   Instructor inputs (B5, Forge PTS instructor variables and upset magnitudes, RESOURCES 2.14):
+//       P.env  {feedConc, Tamb, foulRate, catAct, monoPurity}   plant variables, 1 / 25 C / 1 / 1 / 1 at design
+//       P.mag  {surge, coolLoss, bedact, drift}                  magnitude of the surge / cool / bedact / drift upsets
+//       P.driftOff  accumulated LIC101 transmitter drift, % of span (the 'drift' upset)
+//       Cooling water supply temperature is P.Tcw (already read by U1 and U2).
 //   U1  P.Ca    reactor reactant concentration, fraction of design feed (0..1.6)
 //       P.x     reactor conversion 0..1                (design 0.85)
 //       P.Tjo   jacket coolant outlet temperature, C   (Tj is the jacket supply)
@@ -161,14 +169,25 @@
   // ---------------------------------------------------------------- utilities
   function createRand(seed) {
     let a = (seed >>> 0) || 1;
-    return function () {
+    const fn = function () {
       a = (a + 0x6D2B79F5) >>> 0;
       let t = a;
       t = Math.imul(t ^ (t >>> 15), t | 1);
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+    fn.seed = (seed >>> 0) || 1;
+    fn.getState = () => a;
+    fn.setState = (v) => { a = (v >>> 0) || 1; };
+    return fn;
   }
+
+  // Instructor variables (plant conditions the trainee cannot see) and upset magnitudes; both live in P so
+  // they travel with snapshots and initial conditions (cstr-ots architecture notes, RESOURCES 4).
+  function envDefaults() { return { feedConc: 1, Tamb: 25, foulRate: 1, catAct: 1, monoPurity: 1 }; }
+  function magDefaults() { return { surge: 50, coolLoss: 1, bedact: 1.35, drift: 1 }; }
+  const envOf = (P) => P.env || (P.env = envDefaults());
+  const magOf = (P) => P.mag || (P.mag = magDefaults());
 
   function noiseFn(ctx) {
     const r = (ctx && ctx.rand) || Math.random;
@@ -181,7 +200,8 @@
       qin: 60, tankL: 50, flow: 60, conc: 1, rT: 150, Tj: 40, Tcw: 8, hxT: 180,
       drumL: 45, drumP: 600, foulF: 1,
       Ca: 0.15, x: 0.85, Tjo: 72.5, Qr: 100,
-      trips: {}, faults: {}, faultT: {},
+      trips: {}, faults: {}, faultT: {}, driftOff: 0,
+      env: envDefaults(), mag: magDefaults(),
       b: { phase: 'IDLE', pt: 0, Cm: 0, lvl: 12, T: 25, Tj: 20, mf: 0, held: false,
            Ts: 25, Tehe: 25, mP: 0, accM: 0, Tad: 25, conv: 0, _last: 'IDLE' },
       h: { f: 40, pre: 320, bed: 380, q: 10, fb: 575, t1: 318, t2: 322, ts1: 364, ts2: 378,
@@ -204,7 +224,7 @@
   // ---------------------------------------------------------------- unit 1
   function feedDisturbance(P, n) {
     const F = P.faults;
-    let qin = 60 + 2 * Math.sin(P.up / 120) + n(0.6) + (F.surge ? PARAMS.U1.surge : 0);
+    let qin = 60 + 2 * Math.sin(P.up / 120) + n(0.6) + (F.surge ? magOf(P).surge : 0);
     if (F.surge && P.t - P.faultT.surge > 480000) F.surge = false;
     if (P.trips.ovf) qin = 0;
     P.qin = qin;
@@ -238,24 +258,25 @@
   // Henson/Seborg CSTR (RESOURCES 4): dCa/dt = (Caf - Ca)/tau - k(T) Ca;
   // dT/dt = feed + reaction - jacket - loss, k(T) = kRef exp(-E/R (1/T - 1/Tref)).
   function cstr(P, L, V, dt, ctx) {
-    const c = PARAMS.U1, F = P.faults;
+    const c = PARAMS.U1, F = P.faults, env = envOf(P);
     P.conc = Math.max(0, lag(P.conc, Math.min(P.flow / c.designFlow, 1.6), 45, dt));   // feed loading, relative to design (indication only)
     const TK = P.rT + 273.15;
     const k = c.kRef * Math.exp(-c.E_R * (1 / TK - 1 / c.Tref)) * (F.rxn ? c.rxnRate : 1);
     const tau = c.tauRes * c.designFlow / Math.max(P.flow, 1);
     // Feed concentration is a property of the feed, not of the flow (Henson/Seborg: Caf fixed). Throughput acts through
     // the residence time only: more feed = less conversion = more unreacted reactant = more heat, and more sensible cooling.
-    const Caf = F.rxn ? c.rxnConc : 1;
+    const Caf = (F.rxn ? c.rxnConc : 1) * env.feedConc;
     P.Ca = Math.max(0, P.Ca + ((Caf - P.Ca) / tau - k * P.Ca) * dt);
     P.x = Caf > 1e-6 ? clamp(1 - P.Ca / Caf, 0, 1) : 0;
     // jacket: tempered coolant supply, effectiveness from valve position (previous calibration)
-    const eEff = F.cool ? ((P.t - P.faultT.cool > 300000) ? 0.75 : 0) : 1;
+    // 'cool' upset: the instructor's coolLoss fraction is lost for 5 min, then backup cooling restores 75 %
+    const eEff = F.cool ? ((P.t - P.faultT.cool > 300000) ? 0.75 : 1 - magOf(P).coolLoss) : 1;
     const e = 0.9 * Math.sqrt(Math.max(V.TV202.pos, 0)) * eEff;
     P.Tj = lag(P.Tj, P.Tcw * e + P.rT * (1 - e), c.tauJ, dt);
     P.Tjo = lag(P.Tjo, P.Tj + (P.rT - P.Tj) * (1 - Math.exp(-c.NTUj)), c.tauJo, dt);
     const Qr = c.J * k * P.Ca * (F.rxn ? c.rxnHeat : F.stick ? c.stickHeat : 1);
     P.Qr = Qr / c.Qdesign * 100;
-    const dTdt = (Qr - c.UA * (P.rT - P.Tj) - c.Ufeed * P.flow * (P.rT - c.Tfeed) - c.Uloss * (P.rT - c.Tamb)) / c.Cth;
+    const dTdt = (Qr - c.UA * (P.rT - P.Tj) - c.Ufeed * P.flow * (P.rT - c.Tfeed) - c.Uloss * (P.rT - env.Tamb)) / c.Cth;
     P.rT += dTdt * dt;
     if (P.rT >= c.tripT && !P.trips.rx) { P.trips.rx = true; raiseTrip(ctx, 'R-201', 'HI TEMP TRIP', P.rT, 'DEG C', 'REACTOR HIGH TEMPERATURE TRIP — FEED VALVE CLOSED'); }
     if (P.trips.rx && P.rT < c.resetT) { P.trips.rx = false; ctx.clear('R-201', 'HI TEMP TRIP'); }
@@ -263,7 +284,7 @@
 
   function exchangerAndDrum(P, V, dt, ctx) {
     const F = P.faults;
-    P.foulF = F.foul ? Math.max(0.6, P.foulF - dt / 600 * 0.4) : Math.min(1, P.foulF + dt / 300);
+    P.foulF = F.foul ? Math.max(0.6, P.foulF - dt / 600 * 0.4 * envOf(P).foulRate) : Math.min(1, P.foulF + dt / 300);
     P.hxT = lag(P.hxT, P.rT + 60 * V.TV301.pos * P.foulF, 90, dt);
     // flash drum: vapour fraction rises with feed temperature (LearnChemE flash, RESOURCES 4)
     const vapf = clamp(0.02 + (P.hxT - 165) * 0.004, 0, 0.3);
@@ -287,7 +308,9 @@
   function measureU1(P, L, dt, ctx, n) {
     const F = P.faults;
     L.FI100.pv = P.qin + n(0.2);
-    L.LIC101.pv = P.tankL + n(0.12);
+    // 'drift' upset: the level transmitter walks upward at mag.drift % of span per minute; clearing it recalibrates
+    P.driftOff = F.drift ? P.driftOff + magOf(P).drift / 60 * dt : 0;
+    L.LIC101.pv = clamp(P.tankL + P.driftOff, 0, 100) + n(0.12);
     if (F.xmtr) {
       const ft = P.t - P.faultT.xmtr;
       if (ft > 5000 && !L.FIC102.badPv) {
@@ -350,7 +373,7 @@
     const mfSS = 40 * V.MV211.pos * (P.trips.batch ? 0 : 1);
     b.mf = lag(b.mf, mfSS, 3, dt);
     if (b.phase === 'FEED' && b.mf > 0.1) b.lvl = Math.min(100, b.lvl + b.mf * c.lvlPerFlow * dt);
-    const feedIn = b.mf * c.feedKmol;                       // kmol/s
+    const feedIn = b.mf * c.feedKmol * envOf(P).monoPurity; // kmol/s of reactive monomer
     // heat capacity relative to the charged water; unmixed, the reaction is confined to the
     // monomer-rich layer and the water heel is no longer an effective heat sink
     const cap = M.run ? Math.max(0.3, b.lvl / 40) : 1;
@@ -417,7 +440,7 @@
     const lambda = h.air / Math.max(fuel, 1e-3);
     h.o2 = lambda > 1 ? 21 * (lambda - 1) / lambda : 0;
     const fuelEff = fuel * Math.min(1, lambda);             // sub-stoichiometric firing wastes fuel
-    h.fb = lag(h.fb, c.Tamb + c.G * Math.pow(fuelEff, c.n), c.tauFb, dt);
+    h.fb = lag(h.fb, envOf(P).Tamb + c.G * Math.pow(fuelEff, c.n), c.tauFb, dt);
     const fi = Math.max(h.f / 2, 0.5);
     const outs = c.split.map((s) => {
       const eff = 1 - Math.exp(-c.h * 2 * s / fi);
@@ -435,7 +458,7 @@
   function fixedBed(P, V, dt, ctx) {
     const c = PARAMS.U3, h = P.h;
     h.q = lag(h.q, 40 * V.QV313.pos, c.tauFlow, dt);
-    const act = P.faults.bedact ? c.bedactGain : 1;
+    const act = envOf(P).catAct * (P.faults.bedact ? magOf(P).bedact : 1);
     const bedSS = h.pre + c.bedGain * act * Math.exp((h.bed - c.bedRef) / c.bedScale) * (h.f / 40) - c.quench * h.q;
     h.bed = lag(h.bed, bedSS, c.tauBed, dt);
     h.dT = h.bed - h.pre;
@@ -468,5 +491,5 @@
     stepU3(P, L, V, dt, ctx);
   }
 
-  return { createState, createRand, advanceClock, stepU1, stepU2, stepU3, step, PARAMS };
+  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, step, PARAMS };
 });
