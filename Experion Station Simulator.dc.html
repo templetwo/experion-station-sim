@@ -935,7 +935,7 @@ class Component extends DCLogic {
       LIC101:P({tag:'LIC101',desc:'FEED TANK TK-101 LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.5,T1:3,act:'DIR',sphilm:95,splolm:5,slave:'FIC102',cm:'CM1_LIC101',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[80,'High'],PVHH:[90,'Urgent']}}),
       FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
       P101:  {kind:'motor',tag:'P101',desc:'FEED PUMP P-101',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM2A_P101',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
-      TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent']}}),
+      TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent'],DEVHI:[15,'High']}}),
       TIC202:P({tag:'TIC202',desc:'R-201 JACKET COOLANT TEMP',eu:'DEG C',lo:0,hi:100,pv:40,sp:40,op:74,K:1.2,T1:1.5,act:'DIR',mode:'CAS',master:'TIC201',sphilm:80,splolm:5,cm:'CM4_TIC202',alm:{PVLL:[10,'Journal'],PVLO:[20,'Low'],PVHI:[70,'High'],PVHH:[85,'Urgent'],DEVHI:[12,'High']}}),
       TIC301:P({tag:'TIC301',desc:'E-301 PRODUCT OUTLET TEMP',eu:'DEG C',lo:0,hi:250,pv:180,sp:180,op:50,K:1.8,T1:4,T2:0.3,act:'REV',sphilm:210,splolm:120,cm:'CM5_TIC301',alm:{PVLL:[150,'Journal'],PVLO:[165,'Low'],PVHI:[200,'High'],PVHH:[215,'Urgent']}}),
       LIC401:P({tag:'LIC401',desc:'FLASH DRUM V-401 LEVEL',eu:'%',lo:0,hi:100,pv:45,sp:45,op:73,K:1.2,T1:2.5,act:'DIR',sphilm:90,splolm:10,cm:'CM6_LIC401',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[75,'High'],PVHH:[90,'Urgent']}}),
@@ -980,11 +980,17 @@ class Component extends DCLogic {
   subprioOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; return (tup&&tup[2]!=null)?tup[2]:this.subprioDefault(cond); }
   tripPointOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; return tup?tup[0]:undefined; }
   // Dynamic Alarm Suppression map (Experion Alarming PIN, RESOURCES 2.2): a live trigger parks its consequential alarms in DSUPR.
+  // Dynamic Alarm Suppression map: trigger alarm key -> consequential alarm keys
+  // (Experion Alarming PIN, RESOURCES 2.2). Deviation from the v2 plan: the
+  // plan names FIC211 PVLO under M202 TRIP, but the monomer feed idles at zero
+  // flow outside the FEED phase, so a fixed PVLO would be a standing alarm.
+  // The agitator trip therefore suppresses the jacket-temperature consequence
+  // (TIC213 PVHI) until state-based limits arrive in B4.
   dasRules(){
     return {
       'P101.TRIP':['FIC102.PVLO','FIC102.PVLL','LIC101.PVHI','LIC101.PVHH'],
       'TK-101.HIHI TRIP':['LIC101.PVHI','LIC101.PVHH'],
-      'R-201.HI TEMP TRIP':['TIC202.DEVHI','TIC202.PVHI','FIC102.PVLO','FIC102.PVLL'],
+      'R-201.HI TEMP TRIP':['TIC201.DEVHI','TIC202.DEVHI','TIC202.PVHI','FIC102.PVLO','FIC102.PVLL'],
       'R-202.HI TEMP TRIP':['TIC212.PVHI','TIC212.PVHH'],
       'M202.TRIP':['TIC213.PVHI'],
       'R-310.HI TEMP TRIP':['TIC311.PVLO']
@@ -1441,12 +1447,20 @@ class Component extends DCLogic {
   shelveReasons(){ return ['NUISANCE / CHATTERING','MAINTENANCE IN PROGRESS','KNOWN PROCESS UPSET','INSTRUMENT FAULT','OTHER']; }
   // Reason text from the dialog: a standard reason, optionally with free-text detail; OTHER requires the detail. Empty means "not given".
   shelveReasonText(){ const d=this.state.dlg||{}, txt=(this.state.dlgReason||'').trim(), sel=d.reasonSel||''; if(!sel) return ''; if(sel==='OTHER') return txt; return txt?sel+' — '+txt:sel; }
+  shelveDurations(){ return [5,15,30,60]; }
+  // Opens the shelve dialog with the default duration pre-selected so the operator sees the choice; the reason stays empty and mandatory.
+  openShelve(){
+    if(this.state.selAlm==null){ this.msgZone('NO ALARM SELECTED'); return; }
+    this.setState({dlg:{type:'shelve',dur:15},dlgReason:''});
+  }
+  // Shelve the selected alarm; both the reason and a duration (minutes, 1..60) are mandatory (Siemens shelving UX, RESOURCES 2.6).
   shelve(mins){
     const a=this.alarmEngine.get(this.state.selAlm); if(!a){this.msgZone('NO ALARM SELECTED');return;}
     if(!this.can('OPER')) return;
     const reason=this.shelveReasonText();
     if(!reason){ this.msgZone('SHELVE REASON REQUIRED'); return; }
-    mins=Math.max(1,Math.min(60,Number(mins)||15));
+    if(!(Number(mins)>0)){ this.msgZone('SHELVE DURATION REQUIRED'); return; }
+    mins=Math.max(1,Math.min(60,Number(mins)));
     const evs=this.alarmEngine.shelve(a,{reason,durationMs:mins*60000,t:this.P.t});
     if(!evs.length){ this.msgZone('ALARM CANNOT BE SHELVED IN STATE '+a.state); return; }
     this.logAlarmEvents(evs);
@@ -1555,7 +1569,7 @@ class Component extends DCLogic {
     const menusDef=[
       {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
       {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
-      {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');}},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
+      {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Panel…',f:()=>this.setState({dlg:{type:'instr'}})}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
@@ -1569,7 +1583,7 @@ class Component extends DCLogic {
       tb('DETAIL',()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');},'Point Detail of selected (F4)'),
       tb('ASSOC DISP',()=>{const a=E.get(S.selAlm); const t=a?a.tag:S.sel; if(t&&this.L[t]){this.nav('graphic');this.openFp(t);}else if(t){this.nav('graphic');}else this.msgZone('NO POINT SELECTED');},'Associated display'), {sep:true},
       tb('SILENCE',()=>this.silence(),'Silence horn (F1)'), tb('ACK',()=>this.ackTop(),'Acknowledge (F2)'), tb('ACK PAGE',()=>this.ackPage(),'Acknowledge page'),
-      tb('SHELVE',()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');},'Shelve selected alarm'), {sep:true},
+      tb('SHELVE',()=>this.openShelve(),'Shelve selected alarm'), {sep:true},
       tb('ASSIST',()=>this.setState({assist:!S.assist}),'Ops Assistant panel')
     ];
     // alarm line
@@ -1622,7 +1636,7 @@ class Component extends DCLogic {
     const selA=E.get(S.selAlm);
     const av={rows,
       filters:['MAIN','UNACK','SHELVED','SUPPRESSED','OOS'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
-      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>{S.selAlm!=null?this.setState({dlg:{type:'shelve'}}):this.msgZone('NO ALARM SELECTED');}},{label:'UNSHELVE',cb:()=>this.unshelve()}],
+      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()}],
       selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — trip point '+(this.L[selA.tag]&&this.L[selA.tag].alm[selA.cond]?this.fmt(this.L[selA.tag].alm[selA.cond][0],1)+' '+selA.eu:'n/a')+' · double-click for Point Detail'):'Click a row to select; double-click for Point Detail. Columns are site-configurable in Experion.',
       countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length};
     // events
@@ -1805,9 +1819,9 @@ class Component extends DCLogic {
       pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
       signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
       shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
-      durs:[5,15,30,60].map(d=>({label:d+' MIN',bg:(S.dlg&&S.dlg.dur===d)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.dur===d)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,dur:d}})})),
+      durs:this.shelveDurations().map(d=>({label:d+' MIN',bg:(S.dlg&&S.dlg.dur===d)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.dur===d)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,dur:d}})})),
       reasons:this.shelveReasons().map(r=>({label:r,bg:(S.dlg&&S.dlg.reasonSel===r)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.reasonSel===r)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,reasonSel:r}})})),
-      shelfGo:()=>this.shelve((S.dlg&&S.dlg.dur)||15),
+      shelfGo:()=>this.shelve(S.dlg&&S.dlg.dur),
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
       randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(Math.random()*ds.length)]);},
       faults:[{k:'xmtr',label:'FIC102 transmitter failure (BADPV)'},{k:'surge',label:'Feed inflow surge (+50 M3/H, 8 min)'},{k:'pump',label:'P-101 pump trip (one-shot)'},{k:'cool',label:'Cooling water loss (backup in 5 min)'},{k:'stick',label:'TV-202 valve stiction (+ reaction load)'},{k:'vap',label:'Flash drum vapor surge (5 min)'},{k:'air',label:'Instrument air loss — valves to fail state'},{k:'rxn',label:'Reaction rate step +15%'},{k:'foul',label:'E-301 fouling (progressive)'},{k:'agit',label:'M-202 agitator trip (U2, one-shot)'},{k:'bedact',label:'R-310 catalyst activity +35% (U3)'}].map(f=>({label:f.label,on:!!P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck),state:P.faults[f.k]?'ACTIVE':'',cb:()=>this.injectFault(f.k,!(P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck)))})),

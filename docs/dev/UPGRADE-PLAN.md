@@ -9,7 +9,7 @@ Read `docs/dev/CODE-MAP.md` before touching the app. Read the relevant section o
 2. Do not edit `support.js` (generated runtime; the only local patch is the SVG tspan fix). Do not hand-edit `dist/`; regenerate it with `python3 tools/build-dist.py`.
 3. The app stays a single `.dc.html` page plus plain-script modules. No bundler, no ES modules, no npm dependencies, no network calls. Everything must work from `file://` and inside the standalone.
 4. Keep every existing feature working: three units, drills D1–D12, command zone, F-keys, faceplates, Point Detail, trends, security levels, Ops Assistant. The existing trip thresholds (98 % tank, 185 °C R-201, 950 kPa PSV, 110 °C R-202, 480 °C R-310) stay unless a cited source justifies a change.
-5. Before every commit: `node --test tests/` passes, `python3 tools/build-dist.py` runs, `tools/smoke.sh` reports ok for both builds. Commit messages end with the standard Co-Authored-By / Claude-Session trailer used in this repo's history.
+5. Before every commit: `node --test tests/*.test.js` passes (the glob form works on every node 22 build; a bare `tests/` path is rejected by newer builds), `python3 tools/build-dist.py` runs, `tools/smoke.sh` reports ok for both builds. Commit messages end with the standard Co-Authored-By / Claude-Session trailer used in this repo's history.
 
 ## Module convention (`src/*.js`)
 UMD-style plain scripts that work both as browser globals and under node:

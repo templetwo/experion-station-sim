@@ -368,6 +368,17 @@ test('queries: active/unacked/shelved/suppressed/oos/byUnit/counts', () => {
   assert.deepEqual(c, { Urgent: 1, High: 1, Low: 0, Journal: 0, total: 2, unack: 1 });
 });
 
+test('counts: RTNUN is excluded from the priority buckets but still counted as unacked', () => {
+  const e = mk();
+  e.raise({ tag: 'TIC201', cond: 'PVHI', prio: 'High', t: 1 });
+  e.raise({ tag: 'LIC101', cond: 'PVLO', prio: 'Low', t: 2 });
+  e.rtn('TIC201', 'PVHI', 3);
+  assert.equal(e.get('TIC201.PVHI').state, 'RTNUN');
+  assert.deepEqual(e.counts(), { Urgent: 0, High: 0, Low: 1, Journal: 0, total: 1, unack: 2 });
+  e.ack('TIC201.PVHI', 4);
+  assert.deepEqual(e.counts(), { Urgent: 0, High: 0, Low: 1, Journal: 0, total: 1, unack: 1 });
+});
+
 // ---- indication table ------------------------------------------------------------
 
 test('indication: Siemens per-state table', () => {

@@ -65,7 +65,9 @@
  *   engine.suppressed()  DSUPR
  *   engine.oos()         OOSRV
  *   engine.byUnit(fn)    records whose tag satisfies fn(tag)
- *   engine.counts()      {Urgent, High, Low, Journal, total, unack}
+ *   engine.counts()      {Urgent, High, Low, Journal, total, unack}; the
+ *                        buckets and total are UNACK+ACKED only, unack is
+ *                        UNACK+RTNUN
  *   engine.topUnack()    highest priority unacked record or null
  *   engine.dasView()     [{trigger, key, suppressedKeys:[...]}] for a DAS tab
  *
@@ -491,13 +493,16 @@
   P.oosList = function () { return this._recs.filter(function (r) { return r.state === 'OOSRV'; }); };
   P.byUnit = function (fn) { return this._recs.filter(function (r) { return r.state !== 'NORM' && fn(r.tag, r); }); };
 
+  // Priority buckets and total cover the ACTIVE annunciated alarms only
+  // (UNACK + ACKED). A RTNUN record is no longer a live condition, so it is
+  // excluded from the buckets but still counted in `unack` because it is
+  // waiting for an acknowledge (Siemens indication table, RESOURCES 2.6).
   P.counts = function () {
     var c = { Urgent: 0, High: 0, Low: 0, Journal: 0, total: 0, unack: 0 };
     for (var i = 0; i < this._recs.length; i++) {
       var r = this._recs[i];
-      if (r.state === 'NORM' || r.state === 'SHLVD' || r.state === 'DSUPR' || r.state === 'OOSRV') continue;
-      c[r.prio]++; c.total++;
-      if (!r.ack) c.unack++;
+      if (r.state === 'UNACK' || r.state === 'ACKED') { c[r.prio]++; c.total++; }
+      if (r.state === 'UNACK' || r.state === 'RTNUN') c.unack++;
     }
     return c;
   };

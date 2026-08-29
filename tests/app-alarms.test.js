@@ -66,6 +66,7 @@ test('on-delay: a 5 s excursion on a flow loop does not alarm, a sustained one d
 test('deadband prevents chatter around the trip point', () => {
   const c = boot();
   const l = c.L.TIC201;                                     // span 200 -> 2 DEG C deadband, no delay
+  l.sp = 165;                                               // keep DEVHI (PV-SP > 15) out of this test
   assert.equal(c.almDelay(l), 0);
   hold(c, () => { l.pv = 165; }, 0.5);
   assert.equal(rec(c, 'TIC201.PVHI').state, 'UNACK');
@@ -135,6 +136,7 @@ test('out of service: ENGR gate, never annunciates, return to service re-annunci
   c.setState({ sec: 'ENGR' });
   c.setOos('TIC201', 'PVHI', true);
   assert.equal(c.isOos('TIC201', 'PVHI'), true);
+  c.L.TIC201.sp = 165;                                      // keep DEVHI out of this test
   hold(c, () => { c.L.TIC201.pv = 172; }, 2);
   const r = rec(c, 'TIC201.PVHI');
   assert.equal(r.state, 'OOSRV'); assert.equal(r.active, true);
@@ -152,6 +154,7 @@ test('out of service: ENGR gate, never annunciates, return to service re-annunci
 
 test('journal: two events per alarm (entry with priority and sub-priority, return to normal) plus ACK', () => {
   const c = boot();
+  c.L.TIC201.sp = 170;                                      // keep DEVHI out of this test
   hold(c, () => { c.L.TIC201.pv = 176; }, 0.5);             // PVHI 165 and PVHH 175 together
   hold(c, () => { c.L.TIC201.pv = 150; }, 0.5);
   const d = evDesc(c, 'TIC201');
@@ -199,4 +202,68 @@ test('every display and dialog renders after an upset without throwing', () => {
   assert.ok(['UNACK', 'ACKED', 'RTNUN', 'DSUPR', 'ACTIVE', 'NORMAL'].includes(row.state));
   assert.equal(row.oosT, 'OOS');
   assert.equal(row.prio, 'URGENT 12');
+});
+
+// ---- verification round 1 regressions -----------------------------------------
+
+test('priority counters exclude a RTNUN record but the UNACK status count keeps it', () => {
+  const c = boot();
+  c.raiseA('TIC201', 'PVHI', 'High', 170, 'DEG C', 'Reactor temp');
+  c.clearA('TIC201', 'PVHI', 150);
+  assert.equal(rec(c, 'TIC201.PVHI').state, 'RTNUN');
+  const v = c.renderVals();
+  assert.equal(v.cH, 0); assert.equal(v.cU, 0); assert.equal(v.cL, 0);
+  assert.equal(v.cUn, 1, 'still waiting for an acknowledge');
+  c.setState({ display: 'alarms' });
+  assert.match(c.renderVals().av.countTxt, /ACTIVE: URGENT 0 · HIGH 0 · LOW 0 · UNACK 1/);
+  assert.equal(c.renderVals().av.rows.length, 1, 'RTNUN row stays visible until acknowledged');
+});
+
+test('DAS map honours the plan where the conditions exist: TIC201 DEVHI is suppressed by the R-201 trip', () => {
+  const c = boot();
+  assert.ok('DEVHI' in c.L.TIC201.alm, 'TIC201 has a DEVHI condition');
+  assert.ok(c.dasRules()['R-201.HI TEMP TRIP'].includes('TIC201.DEVHI'));
+  c.raiseA('TIC201', 'DEVHI', 'High', 172, 'DEG C', 'Reactor temp');
+  c.raiseA('R-201', 'HI TEMP TRIP', 'Urgent', 186, 'DEG C', 'Reactor trip');
+  assert.equal(rec(c, 'TIC201.DEVHI').state, 'DSUPR');
+  assert.equal(rec(c, 'TIC201.DEVHI').suppressedBy, 'R-201.HI TEMP TRIP');
+  // every key in the map must exist as a configured condition so the map cannot silently rot
+  for (const keys of Object.values(c.dasRules())) for (const k of keys) {
+    const [tag, cond] = k.split('.');
+    assert.ok(c.L[tag] && cond in c.L[tag].alm, k + ' is a configured condition');
+  }
+});
+
+test('TIC201 DEVHI scans from PV-SP with its own deadband and stays quiet at baseline', () => {
+  const c = boot();
+  for (let i = 0; i < 1200; i++) c.step(0.5);
+  assert.equal(c.alarms.length, 0, 'no alarms in 10 sim-minutes of steady state');
+  const l = c.L.TIC201;
+  l.pv = l.sp + 20; c.scan(0.5);
+  assert.equal(rec(c, 'TIC201.DEVHI').state, 'UNACK');
+  l.pv = l.sp + 14; c.scan(0.5);
+  assert.equal(rec(c, 'TIC201.DEVHI').active, true, 'inside the deadband the alarm holds');
+  l.pv = l.sp; c.scan(0.5);
+  assert.equal(rec(c, 'TIC201.DEVHI').state, 'RTNUN');
+});
+
+test('shelve dialog opens with 15 MIN pre-selected and refuses an unset duration', () => {
+  const c = boot();
+  c.raiseA('TIC201', 'PVHI', 'High', 170, 'DEG C', 'Reactor temp');
+  const r = rec(c, 'TIC201.PVHI');
+  c.openShelve();
+  assert.match(c.state.msg, /NO ALARM SELECTED/);
+  c.setState({ selAlm: r.id });
+  c.openShelve();
+  assert.deepEqual(c.state.dlg, { type: 'shelve', dur: 15 });
+  const dg = c.renderVals().dg;
+  assert.equal(dg.durs.find(d => d.label === '15 MIN').bg, '#B8C4D4', 'the default chip is highlighted');
+  c.setState({ dlg: { type: 'shelve', reasonSel: 'INSTRUMENT FAULT' } });
+  c.renderVals().dg.shelfGo();
+  assert.match(c.state.msg, /SHELVE DURATION REQUIRED/);
+  assert.equal(r.state, 'UNACK');
+  c.setState({ dlg: { type: 'shelve', reasonSel: 'INSTRUMENT FAULT', dur: 30 } });
+  c.renderVals().dg.shelfGo();
+  assert.equal(r.state, 'SHLVD');
+  assert.equal(r.until - c.P.t, 30 * MIN);
 });
