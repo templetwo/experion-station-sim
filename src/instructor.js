@@ -10,15 +10,16 @@
 // app owns the process state and calls these helpers with plain data.
 //
 // API
-//   create(opts)                 -> instructor state {auth, hidden, seed, snapshots[8], ring, journal, replay, log}
+//   create(opts)                 -> instructor state {auth, hidden, seed, seq, snapshots[8], ring, journal, replay, log}
 //   resetRun(I)                  clear ring / journal / replay for a fresh process (snapshots, auth, hidden, seed stay)
 //   clone(o)                     JSON deep clone (process state is plain data)
-//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, tadShed, phaseSet, seed, randState}
+//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, journalSeq, tadShed, phaseSet, seed, randState}
 //   pushRing(I, snap, t)         30 s ring buffer covering the last 10 sim-minutes; returns true when stored
 //   ringPick(I, t, backMs)       newest ring entry at or before t - backMs (oldest if none is that old)
-//   trimAfter(I, t)              drop ring / journal entries later than t (after a restore)
-//   journalAdd(I, entry)         append {t, op, tag, ...}; capped
-//   replayPlan(I, snap, nowT)    entries later than the snapshot up to nowT, ordered
+//   trimAfter(I, t, seq)         drop ring entries later than t and journal entries after sequence seq (time when seq is null)
+//   journalAdd(I, entry)         append {t, op, tag, ...} stamped with the next sequence number; capped
+//   replayPlan(I, snap, nowT)    entries journaled after the snapshot (by sequence, so actions taken while frozen at the
+//                                snapshot time count) up to nowT, ordered; instructor entries (instr:true) included
 //   replayDue(replay, t)         entries whose time has come, advancing the cursor
 //   journalText(e, fmtT)         one-line text for a journal entry
 //   presets()                    initial-condition definitions (data only)
@@ -47,6 +48,7 @@
       auth: false,                // instructor password given this session
       hidden: false,              // upsets leave no trace in trainee displays
       seed: opts.seed || DEFAULT_SEED,
+      seq: 0,                     // journal sequence counter; a snapshot records the value at save time
       snapshots: [], ring: [], journal: [], replay: null, log: [], lastRingT: -Infinity
     };
     for (var i = 0; i < SLOTS; i++) I.snapshots.push(null);
@@ -62,7 +64,7 @@
       name: name || '', t: src.t, wall: src.wall || 0,
       seed: src.seed, randState: src.randState == null ? null : src.randState,
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
-      alarms: clone(src.alarms), eventsCount: src.eventsCount || 0,
+      alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null
     };
   }
@@ -83,13 +85,16 @@
     return best || I.ring[0];
   }
 
-  function trimAfter(I, t) {
+  // Journal entries are cut by sequence when the snapshot carries one: with the sim frozen, actions taken after the
+  // save share its sim time, and only the sequence tells which side of the snapshot they belong to.
+  function trimAfter(I, t, seq) {
     I.ring = I.ring.filter(function (s) { return s.t <= t; });
-    I.journal = I.journal.filter(function (e) { return e.t <= t; });
+    I.journal = I.journal.filter(function (e) { return seq == null ? e.t <= t : e.seq <= seq; });
     I.lastRingT = I.ring.length ? I.ring[I.ring.length - 1].t : -Infinity;
   }
 
   function journalAdd(I, entry) {
+    entry.seq = ++I.seq;
     I.journal.push(entry);
     if (I.journal.length > JOURNAL_CAP) I.journal.splice(0, I.journal.length - JOURNAL_CAP);
   }
@@ -100,8 +105,9 @@
   }
 
   function replayPlan(I, snap, nowT) {
-    var list = I.journal.filter(function (e) { return e.t > snap.t && e.t <= nowT; })
-      .sort(function (a, b) { return a.t - b.t; }).map(clone);
+    var afterSnap = snap.journalSeq == null ? function (e) { return e.t > snap.t; } : function (e) { return e.seq > snap.journalSeq; };
+    var list = I.journal.filter(function (e) { return afterSnap(e) && e.t <= nowT; })
+      .sort(function (a, b) { return a.t - b.t || a.seq - b.seq; }).map(clone);
     return { entries: list, i: 0, fromT: snap.t, endT: list.length ? list[list.length - 1].t : snap.t, toT: nowT };
   }
 
@@ -126,6 +132,10 @@
       case 'SIL': body = 'SILENCE'; break;
       case 'SHELVE': body = 'SHELVE ' + e.arg + ' ' + e.mins + ' MIN'; break;
       case 'UNSHELVE': body = 'UNSHELVE ' + e.arg; break;
+      case 'UPSET': body = 'INSTR UPSET ' + e.tag + ' ' + e.arg; break;
+      case 'MAG': body = 'INSTR MAGNITUDE ' + e.tag + ' = ' + e.arg; break;
+      case 'VAR': body = 'INSTR VARIABLE ' + e.tag + ' = ' + e.arg; break;
+      case 'SEED': body = 'INSTR SEED ' + e.arg; break;
       default: body = e.op + (e.tag ? ' ' + e.tag : '') + (e.arg != null ? ' ' + e.arg : '');
     }
     return tt + '  ' + body;

@@ -813,7 +813,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E;margin-right:4px" onClick="{{ instr.journal.stop }}">STOP</div>
           </sc-if>
           <div style="padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ instr.journal.clear }}">CLEAR</div></div>
-        <sc-if value="{{ instr.journal.empty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#55524c">No operator actions yet.</div></sc-if>
+        <sc-if value="{{ instr.journal.empty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#55524c">No actions journaled yet.</div></sc-if>
         <sc-for list="{{ instr.journal.rows }}" as="j" hint-placeholder-count="8">
           <div style="font-family:Consolas,Menlo,monospace;font-size:11px;padding:1px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">{{ j.txt }}</div>
         </sc-for>
@@ -1347,7 +1347,7 @@ class Component extends DCLogic {
 
   // ---------- helpers ----------
   rank(l){ return {VIEW:0,OPER:1,SUPV:2,ENGR:3,MNGR:4}[l]??0; }
-  can(need){ if(this.replaying()) return true; if(this.rank(this.state.sec)>=this.rank(need)) return true; this.msgZone('HIGHER SECURITY LEVEL REQUIRED ('+need+')'); return false; }
+  can(need){ if(this._replayApplying) return true; if(this.rank(this.state.sec)>=this.rank(need)) return true; this.msgZone('HIGHER SECURITY LEVEL REQUIRED ('+need+')'); return false; }
   msgZone(t){ this.setState({msg:t, msgT:this.P.t}); }
   fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
   fT(ms){ const d=new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
@@ -1985,6 +1985,9 @@ class Component extends DCLogic {
     ESS.Instructor.logAdd(this.instr,this.P.t,txt);
     if(!this.instr.hidden) this.addEvent('SYSTEM','INSTR',txt,'','');
   }
+  // Instructor-only note: never mirrored. Instructor variables, magnitudes and the seed are plant conditions the
+  // trainee is not told about, whatever the hidden switch says.
+  instrNote(txt){ ESS.Instructor.logAdd(this.instr,this.P.t,txt); }
   replaying(){ return !!(this.instr&&this.instr.replay); }
   // --- run control: FREEZE stops the clock (speed 0), STEP advances exactly one 0.5 s tick, RUN / 2 / 5 / 10 set the speed
   setSpeed(v){ this.setState({speed:v}); }
@@ -1993,14 +1996,15 @@ class Component extends DCLogic {
   setSeed(n){
     const seed=(Number(n)>>>0)||ESS.Instructor.DEFAULT_SEED;
     this.instr.seed=seed; this.seed=seed; this.rand=ESS.Models.createRand(seed);
-    this.instrLog('RANDOM SEED SET '+seed);
+    this.instrNote('RANDOM SEED SET '+seed);
+    this.journal('SEED','',seed,{instr:true});
     this.setState({instrSeedTxt:''});
   }
   // --- snapshots: the full process state (P, L, V, alarm records, interlock flags, seed and generator cursor)
   snapshotData(name){
     const r=this.rand;
     return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
-      eventsCount:this.events.length,tadShed:this.tadShed,phaseSet:this.phaseSet,
+      eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,
       seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null},name);
   }
   restoreSnapshot(snap,why){
@@ -2013,7 +2017,7 @@ class Component extends DCLogic {
     const t=this.P.t;
     for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
     this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
-    I.trimAfter(this.instr,t);
+    I.trimAfter(this.instr,t,snap.journalSeq);
     this.setState({drill:null,entry:null,selAlm:null,msg:''});
     this.instrLog((why||'SNAPSHOT RESTORED')+' — SIM TIME '+this.fT(t));
   }
@@ -2036,6 +2040,8 @@ class Component extends DCLogic {
   // --- initial conditions: fresh process + preset data, run to the stated condition, loaded through a snapshot restore
   applyPreset(id){
     const p=ESS.Instructor.presets().find(x=>x.id===id); if(!p) return;
+    this.instr.replay=null;
+    if(this.state.drill) this.setState({drill:null});   // an armed drill must not inject during the run-forward below
     this.initSim();
     if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
     if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
@@ -2053,24 +2059,32 @@ class Component extends DCLogic {
     if(k==='drift'&&!on) this.P.driftOff=0;
     const def=ESS.Instructor.upsetDefs().find(d=>d.k===k);
     this.instrLog('UPSET '+(on?'ON':'OFF')+': '+(def?def.label:k)+(this.instr.hidden?' (HIDDEN)':''));
+    this.journal('UPSET',k,on?'ON':'OFF',{instr:true});
   }
   clearUpsets(){ for(const d of ESS.Instructor.upsetDefs()) if(this.upsetOn(d.k)) this.setUpset(d.k,false); }
-  setHidden(on){ this.instr.hidden=!!on; ESS.Instructor.logAdd(this.instr,this.P.t,'HIDDEN UPSETS '+(on?'ON':'OFF')); }
-  setMagnitude(key,v){ const n=Number(v); if(!isFinite(n)) return; this.P.mag[key]=n; ESS.Instructor.logAdd(this.instr,this.P.t,'UPSET MAGNITUDE '+key.toUpperCase()+' = '+n); }
+  setHidden(on){
+    this.instr.hidden=!!on;
+    let scrubbed=0;
+    if(on){ const n=this.events.length; this.events=this.events.filter(e=>e.src!=='INSTR'); scrubbed=n-this.events.length; }
+    this.instrNote('HIDDEN UPSETS '+(on?'ON':'OFF')+(scrubbed?' — '+scrubbed+' INSTR EVENTS REMOVED FROM THE STATION JOURNAL':''));
+  }
+  setMagnitude(key,v){ const n=Number(v); if(!isFinite(n)) return; this.P.mag[key]=n; this.instrNote('UPSET MAGNITUDE '+key.toUpperCase()+' = '+n); this.journal('MAG',key,n,{instr:true}); }
   setVariable(k,v){
     const def=ESS.Instructor.variableDefs().find(d=>d.k===k); const n=Number(v); if(!def||!isFinite(n)) return;
     const val=Math.max(def.min,Math.min(def.max,n));
     ESS.Instructor.setPath(this.P,def.path,val);
-    this.instrLog('VARIABLE '+def.label.toUpperCase()+' = '+this.fmt(val,def.dec)+(def.eu?' '+def.eu:''));
+    this.instrNote('VARIABLE '+def.label.toUpperCase()+' = '+this.fmt(val,def.dec)+(def.eu?' '+def.eu:''));
+    this.journal('VAR',k,val,{instr:true});
   }
   variableValue(k){ const def=ESS.Instructor.variableDefs().find(d=>d.k===k); const v=def?ESS.Instructor.getPath(this.P,def.path):undefined; return v==null?(def?def.def:0):v; }
-  // --- action journal: every accepted operator action with its sim time; a replay restores a snapshot and re-applies the
-  // journal at the same sim times, so with the same seed the trajectory repeats exactly.
+  // --- action journal: every accepted operator action and every instructor intervention (upset, magnitude, variable,
+  // seed; flagged instr) with its sim time; a replay restores a snapshot and re-applies the journal at the same sim
+  // times, so with the same seed the trajectory repeats exactly, upsets included.
   journal(op,tag,arg,extra){ ESS.Instructor.journalAdd(this.instr,Object.assign({t:this.P.t,op,tag:tag||'',arg:arg==null?'':arg},extra||{})); }
   startReplay(i){
     const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; }
     const plan=ESS.Instructor.replayPlan(this.instr,s,this.P.t);
-    if(!plan.entries.length){ this.msgZone('NO OPERATOR ACTIONS RECORDED AFTER SNAPSHOT '+s.name); return; }
+    if(!plan.entries.length){ this.msgZone('NO ACTIONS RECORDED AFTER SNAPSHOT '+s.name); return; }
     this.restoreSnapshot(s,'REPLAY FROM SNAPSHOT: '+s.name);
     this.instr.replay=plan;
     this.instrLog('REPLAY STARTED — '+plan.entries.length+' ACTIONS TO '+this.fT(plan.toT));
@@ -2079,7 +2093,9 @@ class Component extends DCLogic {
   stopReplay(){ if(this.instr.replay){ this.instr.replay=null; this.instrLog('REPLAY STOPPED'); } }
   // Runs the replay to its end synchronously; the trajectory is deterministic, so this equals watching it live.
   replayToEnd(){ let guard=0; while(this.instr.replay&&guard++<200000) this.step(0.5); }
-  applyReplayDue(){ const r=this.instr&&this.instr.replay; if(!r) return; for(const e of ESS.Instructor.replayDue(r,this.P.t)) this.applyJournalEntry(e); }
+  // Replayed entries already passed the security gate when they were recorded, so can() is bypassed only while one is
+  // being applied; live input during a replay is gated as usual.
+  applyReplayDue(){ const r=this.instr&&this.instr.replay; if(!r) return; const due=ESS.Instructor.replayDue(r,this.P.t); this._replayApplying=true; try{ for(const e of due) this.applyJournalEntry(e); } finally{ this._replayApplying=false; } }
   replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
   applyJournalEntry(e){
     switch(e.op){
@@ -2095,6 +2111,10 @@ class Component extends DCLogic {
       case 'SIL': this.silence(); break;
       case 'SHELVE': this.shelveAlarm(e.arg,e.mins,e.reason); break;
       case 'UNSHELVE': this.unshelveAlarm(e.arg); break;
+      case 'UPSET': this.setUpset(e.tag,e.arg==='ON'); break;
+      case 'MAG': this.setMagnitude(e.tag,e.arg); break;
+      case 'VAR': this.setVariable(e.tag,e.arg); break;
+      case 'SEED': this.setSeed(e.arg); break;
     }
   }
   // Drill timeline rows, shared by the debrief dialog and the instructor's live assessment.
@@ -2134,14 +2154,14 @@ class Component extends DCLogic {
     const r=I.replay;
     const journal={count:String(I.journal.length),empty:!I.journal.length,rows:I.journal.slice(-16).reverse().map(e=>({txt:X.journalText(e,(t)=>this.fT(t))})),
       replayOn:!!r,replayT:r?('REPLAYING '+r.i+' / '+r.entries.length+' · RUNS TO '+this.fT(r.toT)):'',stop:()=>{this.stopReplay();bump();},toEnd:()=>{this.replayToEnd();bump();},
-      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies the actions taken after it at the same sim times; with the same seed the trajectory repeats exactly.'};
+      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action and every instructor intervention (INSTR rows) is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies everything journaled after it at the same sim times; with the same seed the trajectory repeats exactly.'};
     const d=S.drill;
     const assess={on:!!d,name:d?d.def.id+' — '+d.def.name:'No drill running — start one from the Drills menu; live metrics appear here.',tm:d?this.mmss(P.t-d.t0):'',
       phase:d?(d.injected?'UPSET ACTIVE':'ARMED — waiting for the injection'):'',rows:d?this.drillRows(d):[],end:()=>this.endDrill('ENDED BY INSTRUCTOR'),
       stats:'Actions journaled: '+I.journal.length+' · alarms acknowledged this session: '+this.alarmLog.filter(a=>a.type==='ack').length+' · active alarms: '+this.alarmEngine.counts().total};
     const log=I.log.slice(0,12).map(e=>({t:this.fT(e.t),txt:e.txt}));
     return {on:true,authT:I.auth?'INSTRUCTOR PASSWORD':'MNGR LEVEL',hiddenOn:I.hidden,hidden:chip(I.hidden?'HIDDEN UPSETS: ON':'HIDDEN UPSETS: OFF',I.hidden,()=>{this.setHidden(!I.hidden);bump();}),
-      hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row. The assistant still diagnoses from process symptoms.':'Instructor actions are mirrored into the station journal (source INSTR) and System Status lists active upsets.',
+      hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row; INSTR events mirrored before the switch were removed. The assistant still diagnoses from process symptoms.':'Upsets, snapshots and replays are mirrored into the station journal (source INSTR) and System Status lists active upsets; variables, magnitudes and the seed are never shown to the trainee.',
       lock:()=>this.lockInstructor(),close:()=>this.nav('graphic'),
       seedT:String(this.seed),seedVal:S.instrSeedTxt,seedChange:(e)=>this.setState({instrSeedTxt:e.target.value}),seedKey:(e)=>{if(e.key==='Enter')this.setSeed(S.instrSeedTxt);},seedGo:()=>this.setSeed(S.instrSeedTxt),
       run,slots,snapName:S.instrSnapName,snapNameChange:(e)=>this.setState({instrSnapName:e.target.value}),presets,back,upsets,clearUpsets:()=>{this.clearUpsets();bump();},vars,journal,assess,log,logEmpty:!log.length};

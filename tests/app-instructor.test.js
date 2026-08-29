@@ -138,7 +138,8 @@ test('replay of the action journal onto a snapshot reproduces the same PV trajec
   assert.deepEqual(c.alarms.map((x) => x.key + ':' + x.state).sort(), origAlarms);
   const replayEvents = c.events.filter((e) => e.t > t0 && e.type === 'OPERATOR').map((e) => e.t + ' ' + e.src + ' ' + e.desc + ' ' + e.oldV + ' ' + e.newV);
   assert.deepEqual(replayEvents, origEvents, 'the operator journal is reproduced');
-  assert.deepEqual(clone(c.instr.journal.filter((e) => e.t > t0)), journal, 'the action journal is rebuilt identically by the replay');
+  const noSeq = (list) => list.map((e) => { const o = clone(e); delete o.seq; return o; });
+  assert.deepEqual(noSeq(c.instr.journal.filter((e) => e.t > t0)), noSeq(journal), 'the action journal is rebuilt identically by the replay (sequence numbers are fresh)');
 });
 
 test('a different seed gives a different trajectory; the same seed repeats it', () => {
@@ -296,4 +297,128 @@ test('live assessment shows drill metrics on the instructor display and the jour
   assert.ok(rows.length >= 1);
   assert.match(rows[0].txt, /TIC202 MODE MAN/);
   c.endDrill('TEST');
+});
+
+// --- verification round 1 regressions
+
+test('replay reproduces instructor interventions made after the snapshot (upset, magnitude, variable)', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 30);
+  c.saveSlot(2, 'quiet');
+  const t0 = c.P.t;
+  run(c, 1); c.setMagnitude('surge', 30); c.setUpset('surge', true);
+  run(c, 60); c.setVariable('cwT', 14);
+  run(c, 360);
+  const sig = () => c.alarms.map((a) => a.key + ':' + a.state).sort();
+  const orig = sig();
+  assert.ok(orig.length > 0, 'the surge raised alarms');
+  c.setMode('TIC202', 'MAN');
+  run(c, 10);
+  const t1 = c.P.t, origPv = c.hist.LIC101.filter((r) => r[0] > t0).map((r) => r[1]);
+  const instrEntries = c.instr.journal.filter((e) => e.instr);
+  assert.deepEqual(instrEntries.map((e) => e.op), ['MAG', 'UPSET', 'VAR']);
+  assert.ok(instrEntries.every((e) => e.t > t0));
+  c.startReplay(2);
+  assert.ok(!c.P.faults.surge, 'restored to the quiet snapshot');
+  assert.equal(c.P.Tcw, 8);
+  c.replayToEnd();
+  assert.equal(c.P.t, t1);
+  assert.equal(c.P.faults.surge, true, 'the upset is re-injected by the replay');
+  assert.equal(c.P.mag.surge, 30);
+  assert.equal(c.P.Tcw, 14);
+  assert.deepEqual(sig(), orig, 'the alarm picture is reproduced');
+  assert.deepEqual(c.hist.LIC101.filter((r) => r[0] > t0).map((r) => r[1]), origPv, 'the LIC101 trajectory is reproduced');
+  c.setState({ display: 'instr' });
+  assert.ok(c.renderVals().instr.journal.rows.some((r) => /INSTR UPSET surge ON/.test(r.txt)), 'instructor rows read in the journal list');
+});
+
+test('instructor variables, magnitudes and the seed never reach the trainee journal, hidden or not', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 10);
+  assert.equal(c.instr.hidden, false);
+  c.setVariable('cwT', 14);
+  c.setMagnitude('coolLoss', 0.5);
+  c.setSeed(77);
+  c.instr.auth = false;
+  c.setState({ display: 'events' });
+  const rows = c.renderVals().evR.map((r) => r.src + ' ' + r.desc);
+  assert.ok(rows.every((r) => !/VARIABLE|MAGNITUDE|SEED|COOLING WATER SUPPLY/.test(r)), rows.join(' | '));
+  assert.ok(c.events.every((e) => e.src !== 'INSTR'));
+  assert.ok(c.instr.log.some((e) => /VARIABLE COOLING WATER SUPPLY = 14.0 DEG C/.test(e.txt)), 'the instructor log keeps it');
+  assert.ok(c.instr.log.some((e) => /UPSET MAGNITUDE COOLLOSS = 0.5/.test(e.txt)));
+  assert.ok(c.instr.log.some((e) => /RANDOM SEED SET 77/.test(e.txt)));
+});
+
+test('actions taken while frozen at the snapshot time replay; actions journaled before the save do not', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 30);
+  c.setMode('TIC202', 'MAN');            // before the save: part of the snapshot state
+  c.freeze();
+  c.saveSlot(0, 'frozen');
+  const snap = c.instr.snapshots[0];
+  assert.equal(typeof snap.journalSeq, 'number');
+  c.storeEntry('TIC202', 'OP', 30);      // after the save, same sim time
+  assert.equal(c.instr.journal[c.instr.journal.length - 1].t, snap.t);
+  c.setSpeed(1); run(c, 60);
+  const op = c.L.TIC202.op, pv = c.hist.TIC202.map((r) => r[1]);
+  c.startReplay(0);
+  assert.ok(c.instr.replay, 'replay armed: ' + c.state.msg);
+  assert.deepEqual(c.instr.replay.entries.map((e) => e.op), ['STORE'], 'only the entry after the save is replayed');
+  assert.equal(c.instr.journal.filter((e) => e.op === 'MODE').length, 1, 'the earlier MODE entry survives the restore untouched');
+  c.replayToEnd();
+  assert.equal(c.L.TIC202.mode, 'MAN');
+  assert.equal(c.L.TIC202.op, op);
+  assert.deepEqual(c.hist.TIC202.map((r) => r[1]), pv);
+  assert.deepEqual(c.instr.journal.map((e) => e.op), ['MODE', 'STORE'], 'no duplicate entries after the replay');
+});
+
+test('loading an initial condition disarms a pending drill so its fault is not baked into the condition', () => {
+  const c = boot('MNGR');
+  run(c, 40);
+  c.startDrill(c.drillDefs().find((d) => d.id === 'D4'));
+  assert.ok(c.state.drill);
+  c.applyPreset('U1_SS');
+  assert.equal(c.state.drill, null);
+  assert.ok(!c.P.faults.cool, 'no cooling-loss fault in the loaded condition');
+  assert.ok(Object.values(c.P.faults).every((v) => !v), 'no fault at all');
+  assert.equal(c.alarms.filter((a) => a.active).length, 0);
+  assert.equal(c.instr.replay, null);
+});
+
+test('switching HIDDEN UPSETS on scrubs instructor events already mirrored into the trainee journal', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 10);
+  c.setUpset('rxn', true);
+  assert.ok(c.events.some((e) => e.src === 'INSTR' && /UPSET ON/.test(e.desc)), 'mirrored while not hidden');
+  c.setHidden(true);
+  assert.ok(c.events.every((e) => e.src !== 'INSTR'));
+  c.setState({ display: 'events' });
+  const rows = c.renderVals().evR.map((r) => r.src + ' ' + r.desc);
+  assert.ok(rows.every((r) => !/INSTR|UPSET|reaction rate/i.test(r)), rows.join(' | '));
+  assert.match(c.instr.log[0].txt, /HIDDEN UPSETS ON — 1 INSTR EVENTS REMOVED/);
+  const sys = c.renderVals().sysPanels.find((p) => p.title === 'SIMULATION ENGINE');
+  assert.ok(!sys.rows.some((r) => r.k === 'Upsets'));
+});
+
+test('the security gate stays in force for live input while a replay runs; replayed entries bypass it', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 30);
+  c.saveSlot(0, 'a');
+  run(c, 10); c.setMode('TIC202', 'MAN');
+  run(c, 60);
+  c.setState({ sec: 'VIEW' });
+  c.startReplay(0);
+  assert.ok(c.instr.replay);
+  c.setMode('TIC201', 'MAN');
+  assert.equal(c.L.TIC201.mode, 'AUTO', 'VIEW cannot change a mode live during the replay');
+  assert.match(c.state.msg, /HIGHER SECURITY LEVEL REQUIRED/);
+  assert.ok(!c.instr.journal.some((e) => e.tag === 'TIC201'), 'the refused action is not journaled');
+  c.replayToEnd();
+  assert.equal(c.L.TIC202.mode, 'MAN', 'the replayed MODE entry was applied although the live level is VIEW');
+  assert.equal(c._replayApplying, false);
 });
