@@ -1,0 +1,146 @@
+# Code map: `Experion Station Simulator.dc.html`
+
+Structural map produced 2026-08-29 (v1.1.1, 1798 lines). Line numbers drift as the file changes; use them as anchors, then grep. Single `.dc.html` page: HTML template inside `<x-dc>` (lines 9–903) + one `<script type="text/x-dc" data-dc-script>` (904–1796) holding `class Component extends DCLogic` (905–1795). Runtime is `support.js` (generated bundle, do not edit; the only local patch is the SVG `tspan` fix documented in CHANGELOG 1.1.1).
+
+## 0. Runtime / `DCLogic` base class API (support.js)
+
+```js
+// support.js:819
+var StreamableLogic = class {
+  constructor(props) { this.props = props || {}; this.state = {}; }
+  setState(update, cb) {}   // delegates to host: patch = fn(prev) or object; SHALLOW merge; re-renders
+  forceUpdate() {}
+  componentDidMount() {}    // fires after mount (and again after a hot logic swap)
+  componentDidUpdate(_prevProps) {}
+  componentWillUnmount() {}
+  renderVals() { return {}; } // the flat object the template renders against (merged over props)
+};
+```
+
+Facts:
+- The script is evaluated with `new Function("DCLogic","StreamableLogic","React", src)` and must define a top-level `class Component extends DCLogic`.
+- `setState` does a shallow merge and re-renders. **Mutating instance fields (`this.L`, `this.P`, `this.alarms`) does NOT re-render**; the UI is pumped at 2 Hz by `tick()` calling `setState({tk,blink})`.
+- Render: `vals = {...userProps, ...renderVals()}`. A throwing `renderVals()` shows a red overlay.
+- Lifecycle names are React-style only (`componentDidMount`, `componentDidUpdate`, `componentWillUnmount`). No timers are provided; the app owns `setInterval`.
+- `data-props` on the script tag declares editor-editable props merged into `this.props` (`highColor`, `audible`, `showBadge`).
+- Template directives: `sc-if`, `sc-else`, `sc-for list="{{ }}" as="x"` (`$index` available), `hint-placeholder-count` (streaming only). Attributes: `class`→className, `on*` → React handlers (`onClick`, `onDoubleClick`, `onChange`, `onKeyDown`, `onMouseDown`...), `style-hover="css"` / `style-active="css"` generate pseudo-class CSS, everything else (incl. `ref`, `value`, `checked`) passes straight to React. `{{ expr }}` interpolation is a property path resolved against the render object (no JS expressions); inside SVG `<text>` it renders as `<tspan>` (runtime patch 1.1.1).
+- Handlers are closures created fresh inside `renderVals()` and referenced by name in the template (`onClick="{{ p.click }}"`).
+
+## 1. Template map (lines 9–903)
+
+| Lines | Region | Key bound names |
+|---|---|---|
+| 1–8 | head, loads `./support.js` (line 6) | |
+| 11–20 | `<helmet><style>` global CSS | |
+| 21 | root container (fixed, flex column, Tahoma 12px) | `rootMove`, `rootUp` (faceplate drag) |
+| 23–43 | menu bar: `sc-for menus as m`, nested `m.items` | `menus[].{name,bg,fg,toggle,open,items[].{sep,label,cb}}`, `showBadge` |
+| 45–52 | toolbar `sc-for tbtns` | `tbtns[].{sep,label,title,bg,cb}` |
+| 54–64 | command zone, message zone, alarm line, priority counters | `cmdVal,onCmd,onCmdKey,msgTxt,al.{bg,fg,txt,click},cU,cH,cL,hcol` |
+| 66–67 | main row (`onMouseDown="{{ closeMenus }}"`), left pane; displays are absolutely positioned siblings | |
+| 69–164 | U1 graphic (`sc-if isG1`): unit tabs 71–77, SVG viewBox 0 0 1420 720, equipment 89–139, valves `sc-for vlist` 141–147, point boxes `sc-for gvList` 149–160 | `utabs`, `gfx.{tankY,tankH,drumY,drumH,pumpFill,pumpGlyph,rTripOp,ovfOp,psvOp}`, `vlist[].{x,y,rot,fill,label,pos,tx,ty}`, `gvList[].{x,y,tag,tagX,tagY,pvX,pvY,pvT,euX,euT,modeX,modeT,bd,bw,hatchOp,aX,aY,aBg,aBd,aFg,aTx,aTy,aTxt,click,dbl}` |
+| 166–248 | U2 graphic (`sc-if isG2`): batch header + SCM202 phase pill + START/HOLD/ABORT 168–179, phase list `batch.phaseRows` 217–219, monomer bar 220–225, valves `vl2`, points `gv2` | `batch.{phase,phBg,phFg,pt,startCb,holdCb,holdT,abortCb,phaseRows}`, `gfx2.{lvlY,lvlH,agFill,agFg,tripOp,cmW,cmFill,cmT,cmWarn}` |
+| 250–319 | U3 graphic (`sc-if isG3`): flames 274–276, bed glow 288–289, valves `vl3`, points `gv3` | `gfx3.{flameOp,bedGlow,tripOp}` |
+| 321–347 | Alarm Summary (`sc-if isAlarms`): filter chips 325–327, buttons 329–331, hard-coded header row 334 (26 icon / 80 Time / 80 Source / 90 Condition / 70 Priority / flex Description / 80 Value / 64 Units / 46 Ack), rows `sc-for av.rows` 337–341, footer 343–345 | `av.{filters,btns,rows[].{icon,t,tag,cond,prio,desc,val,eu,ackT,bg,fg,sel,click,dbl},selInfo,countTxt}` |
+| 349–369 | Event Summary (`sc-if isEvents`): filters, header 359 (132 Date/Time, 86 Type, 84 Source, flex Desc, 90 Old, 90 New, 60 Level, 56 Station) | `evFilters`, `evR[].{t,type,src,desc,oldV,newV,lvl,fg}` |
+| 371–383 | Message Summary (`sc-if isMsgs`) | `msgsR[].{t,txt}`, `msgsEmpty` |
+| 385–426 | Trend (`sc-if isTrend`): group chips, span chips, chart SVG 1060x430 (400–412), legend 414–424 | `tv.{title,groups,spans,gridY,gridX,pens[].{pts,color,dash,label,desc,val,eu,range}}` |
+| 428–562 | Point Detail (`sc-if isDetail`): header 430–435, tabs 436–441, MAIN 444–473 (`dpt.mainRows`, mode buttons 462–464), ALARMS 475–496 (`dpt.almRows`), LOOP TUNE 498–516 (PID equation text at 514), CHART 518–536, CONTROL MODULE 538–558 | `dpt.{tag,desc,cm,kindT,tabs,isMain,isAlm,isTune,isChart,isCm,mainRows[].{label,param,value,note,editing,notEditing,cur,und,cb,rowBg},almRows[].{cond,tp,prio,prioFg,state,stFg,note,editing,notEditing,cb,prioCb},tuneRows,chartGrid,chartPens,cmBlocks,cmWires,modes,shedNote,tuneGate,cmNote}` + shared `entryText,entryChange,entryKey,entryRef` |
+| 564–584 | System Status (`sc-if isSys`) | `sysPanels[].{title,led,rows[].{k,v}}` |
+| 586–691 | Faceplates `sc-for fps as fp` (draggable): PID 596–646, indication 648–667, motor 669–682, shared SILENCE/ACK/DETAIL 684–688 | `fps[].{tag,desc,x,y,z,pin,...,isPid,isInd,isMotor,hiT,loT,pvH,spY,ticks,pvT,spT,opT,opW,indH,eu,spEditing,...,modes,raise,lower,selT,noteT,sil,ack,detail,modeLine,initT,stT,stBg,stFg,cmdT,fbT,permT,permFg,start,stop}` |
+| 693–698 | Drill banner (`sc-if db.on`) | `db.{on,tm,end}` |
+| 700–829 | Modal dialog (`sc-if dg.open`): logon 709–718, shelve 720–735, drills 737–749, instructor 751–769, debrief 771–789, help 791–800, about 802–808, reset 810–816, sysmenu 818–824 | `dg.{open,title,w,close,isLogon,isShelve,isDrills,isInstr,isDebrief,isHelp,isAbout,isReset,isSysMenu,pw,pwChange,pwKey,pwGo,signOff,shelfTag,reason,reasonChange,durs,shelfGo,drills,randomDrill,faults[].{label,on,state,cb},speeds,resetGo,resetYes,sysLinks,dbName,dbReason,dbRows,dbAsk,dbQ,dbOpts,dbSubmit,dbScored,dbScore,dbGrade}`, `secT` |
+| 833–886 | Ops Assistant dock (`sc-if asst.on`): issues 842–864 with steps + GO, ask box 865–873, hits 874–879 | `asst.{on,close,issues[].{sev,sevBg,sevFg,title,why,arrow,open,click,steps[].{n,txt,hasGo,go}},q,qChange,chips,hits,hitsNone}` |
+| 890–901 | Status bar | `ledSrv,ledCee,spdT,instrOpen,audT,audCb,secT,secCb,dateT,timeT` |
+| 904 | `<script data-dc-script data-props="{highColor,audible,showBadge}">` | |
+
+## 2. Component map (lines 905–1795)
+
+### 2.1 React state (line 906)
+`{ tk, blink, unit:'U1', assist, assistSel, assistQ, display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg, msgT, cmd, fps:[], entry, entryText, sel, selAlm, aud, silenced, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu, dlg, dlgPw, dlgReason, debAns, drill, drag, speed:1 }`
+- `display` ∈ graphic|alarms|events|msgs|trend|detail|sys; `sec` ∈ VIEW|OPER|SUPV|ENGR|MNGR; `shelfView` ∈ MAIN|UNACK|SHELVED; `evtFilter` ∈ ALL|ALARM|OPERATOR|SYSTEM; `speed` ∈ 0|1|2|5.
+- `fps`: `{tag,x,y,pin}` array, order = z-order. `entry`: `{tag,param}` with param ∈ SP,OP,K,T1,T2,SPHILM,SPLOLM,OPHILM,OPLOLM,SAFEOP,`TP:<COND>`. `drill`: `{def,t0,ti,injected,m,stableFor,reason?}`.
+
+### 2.2 Non-reactive instance fields (`initSim`, 916–946)
+- `this.L` tag database (19 points keyed by tag); `this.V` valves `{pos,stuck,fail}` for FV102,TV202,TV301,PV401,LV401,MV211,JV213,FV310,FV311,QV313; `this.P` process state; `this.alarms`, `this.events`, `this.msgs` (newest first); `this.hist` `{tag:[[t,pv,sp,op],...]}` cap 7200; `this.aid`, `this.eid`; `this.iv` interval; `this.kd` keydown listener; `this.actx` AudioContext.
+
+### 2.3 Methods
+| Lines | Method | Purpose |
+|---|---|---|
+| 908–913 | componentDidMount | initSim; `setInterval(()=>this.tick(),500)`; keydown listener |
+| 916–946 | initSim | builds L,V,P; clears alarms/events/msgs/hist; seeds PID integrators |
+| 949–950 | rank(l) / can(need) | security ranks VIEW0 OPER1 SUPV2 ENGR3 MNGR4; gate with message |
+| 951–957 | msgZone, fmt, fT, fD, addEvent(type,src,desc,oldV,newV), prioColor, prioDark | helpers; events capped 600 |
+| 959–970 | raiseA(src,cond,prio,val,eu,desc) / clearA(src,cond) | raise (Journal = event only; re-arm inactive record), RTN (remove if acked) |
+| 971–972 | hornNew / beep(freq,dur) | horn re-arm; WebAudio beep |
+| 975–988 | tick | runs `step(0.5)` `speed` times; expires msg zone; horn by priority; `setState({tk,blink})` |
+| 989 | topUnack | highest-priority unacked unshelved alarm |
+| 991–1069 | step(dt) | U1 model, valves, measurements, then stepU2, stepU3, pids, scan, shelfScan, drillWatch, history push |
+| 1071–1104 | stepU2(dt) | semi-batch reactor + SCM202 CHARGE→HEATUP→FEED→REACT→COOL→DRAIN→IDLE; modeAttr PROGRAM during sequence; trip 110 °C |
+| 1105–1121 | stepU3(dt) | fired preheater + fixed bed; trip 480 °C |
+| 1122–1133 | seqCmd(cmd) / unitOf(tag) | START/HOLD/ABORT; tag→unit (hard-coded lists) |
+| 1135–1181 | diagnose() / topics() | Ops Assistant rules (max 8 issues) and 14 Q&A topics |
+| 1182–1203 | pids(dt) | PID for 13 loops (see 2.5) |
+| 1205–1210 | applyShed(l) | bad-PV shed NOSHED/SHEDLOW/SHEDHIGH/SHEDSAFE/default hold in MAN |
+| 1212–1230 | scan() | alarm limit scan PVHI/PVHH/PVLO/PVLL/DEVHI, deadband 1% span, latch in `l._as`; motor TRIP |
+| 1232–1240 | shelfScan() | auto-unshelve on timer |
+| 1242–1246 | tripMotor(tag,why) | |
+| 1249–1339 | drillDefs, startDrill, injectFault, drillWatch, dHook, dAct, dTrip, endDrill, scoreDrill | drills D1,D2,D3,D4,D6,D9,D11,D12; verbs ACK,OUTFLOW,CUTFEED,MAN202,AUTO401,START,CUTMONO,QUENCH; score ack latency 25 + action 30 + no trip 20 + stabilized 15 + quiz 10 |
+| 1342–1363 | nav, goBack, goFwd, parseCmd | navigation history; command parser (U1/U2/U3, ASSIST, tag→detail, ALM/EVT/MSG/TRN/GR/SYS/DETAIL, HELP, DRILL) |
+| 1364–1398 | silence, ackAlarm, ackTop, ackPage, visAlarms, shelve(mins), unshelve | |
+| 1399–1450 | setMode, openEntry, commitEntry, raiseLower, motorCmd | mode rules (CAS needs master; bad PV locks), clamps to SPHILM/SPLOLM/OPHILM/OPLOLM, events with old/new |
+| 1451–1470 | openFp, logon (oper/supv/engr/mngr), onKey (F1 silence, F2 ack, F3 alarm summary, F4 detail) | |
+| 1473–1793 | renderVals() | builds the entire view model; returned literal at 1765–1792 |
+| 1794 | mmss | |
+
+### 2.4 Point model (`this.L`, 918–940)
+PID defaults from factory `P(o)`: `{kind:'pid', mode:'AUTO', modeAttr:'OPERATOR', T2:0, ophilm:100, oplolm:0, opexhi:105, opexlo:-5, safeop:0, shed:'SHEDHOLD', badPv:false, init:false, dec:1, _as:{}}`.
+PID fields: `tag, desc, eu, lo, hi, dec, kind, pv, sp, op, I, lastPv, K, T1, T2, act:'DIR'|'REV', mode, modeAttr, master, slave, init, sphilm, splolm, ophilm, oplolm, opexhi, opexlo, safeop, shed, badPv, cm, alm:{COND:[tripPoint, priority]}, _as:{COND:bool}`.
+Indication points (`kind:'ind'`): FI100, PI214, LI215, TI312. Motor points (`kind:'motor'`): P101, M202 with `run,cmd,lock,trip,tripWhy`.
+Points: FI100, LIC101, FIC102, P101, TIC201, TIC202, TIC301, LIC401, PIC401, FIC211, TIC212, TIC213, PI214, LI215, M202, FIC310, TIC311, TI312, FIC313. Cascades: LIC101→FIC102, TIC201→TIC202, TIC212→TIC213.
+
+### 2.5 PID (1182–1203)
+Loop order (primaries first): LIC101, TIC201, TIC212, FIC102, TIC202, TIC213, TIC301, LIC401, PIC401, FIC211, FIC310, TIC311, FIC313. `casMap` FIC102:op*1.2, TIC202:10+0.6*op, TIC213:op*1.3 (+ inverse map). INITMAN back-calculation when slave not in CAS. Error in % of span; `Pt=K*e`; `I += K*e*dt/(T1*60)` (T1 minutes); derivative on PV `D = -K*T2*60*dpv/dt`; `op=Pt+I+D` clamped to OPHILM/OPLOLM with integral back-calc. Equation text at template line 514.
+
+### 2.6 Process state `this.P` (942)
+`{ t, qin, tankL, flow, conc, rT, Tj, Tcw:8, hxT, drumL, drumP, foulF:1, up:0, trips:{ovf,rx,psv,batch,bed}, faults:{surge,xmtr,cool,rxn,foul,vap,air,pump,agit,stick,bedact}, faultT:{}, b:{phase:'IDLE',pt,Cm,lvl:12,T:25,Tj:20,mf,held}, h:{f:40,pre:320,bed:380,q:10} }`
+U1: feed `qin=60+2sin(up/120)+noise(+50 surge)`; valve lag /3; flow `120*FV102.pos*pump*sqrt(tankL/50)` lag /4; tank `+= (qin-flow)*0.0023148*dt`, HIHI trip 98 % (reset <90), cavitation trip <2 %; jacket effectiveness `0.9*sqrt(TV202.pos)*eEff`; exotherm `Qr=213700*exp(-1600/(rT+273))*conc*(rxn?1.15:1)`, `rT += (Qr - 30(rT-Tj) - 0.2 flow (rT-40) - 2(rT-25))*dt/20000`, R-201 trip 185 °C (reset <160); fouling to 0.6 over ~10 min; HX `rT + 60*TV301.pos*foulF` lag /90; flash drum vapour fraction, level, `drumP += (vap-vent)*dt/8`, PSV lift 950 kPa; measurement noise; xmtr fault → BADPV after 5 s + shed; pump fault one-shot trip.
+U2: monomer inflow lag; jacket `med=15+105*JV213.pos`; kinetics `kk=0.9*exp((T-80)/22)*(M202.run?1:0.18)`, `UA` 1 or 0.3; monomer inventory Cm; energy balance; R-202 trip 110 °C forces COOL.
+U3: `preSS=150+420*FV311.pos-0.9(f-40)` lag /22; `bedSS=pre+92*act*exp((bed-380)/150)*(f/40)-3.2q` lag /35; bedact ×1.35; R-310 fuel trip 480 °C (reset <400).
+
+### 2.7 Alarm system
+Alarm record (963): `{ id, key:'SRC.COND', t, tag, cond, prio, val, eu, desc, ack:false, active:true, shelved:false, until:0 }`. Event record (955): `{ id, t, type:'ALARM'|'OPERATOR'|'SYSTEM', src, desc, oldV, newV, lvl }`. Message record: `{t, txt}`.
+Priorities Urgent/High/Low/Journal (Journal = event only). Scan conditions PVHI, PVHH, PVLO, PVLL, DEVHI; motor TRIP; CMDFAIL ad hoc; trip alarms raised from models with equipment tags TK-101, R-201, V-401, R-202, R-310. Flash: `almSty(a)` 1479–1484 (unacked+active alternate; acked steady; RTN-unacked inverse blink). Horn in tick 982–986 (Urgent double 880 Hz, High 640, Low 460 every 4th tick). Shelve auto-acks + silences + writes message; unshelve re-arms horn if still active.
+
+### 2.8 Drills (1249–1339)
+Def: `{id,name,fault,rel:[tags],act,stable:'contain'|'alarms',peak?,needBatch?,when?,q,opts:[4],a}`. Metrics `d.m = {tAlarm,tSil,tAck,tAct,tStable,trip,peak}`. Grades (1762): ≥85 PROFICIENT, ≥65 COMPETENT, else NEEDS PRACTICE.
+
+### 2.9 Instructor (1739–1742)
+11 fault checkboxes (xmtr, surge, pump, cool, stick, vap, air, rxn, foul, agit, bedact), speed chips [0,1,2,5], RESET PROCESS → initSim().
+
+### 2.10 Ops Assistant (1135–1181)
+Rule ids: trip.rx, trip.b, trip.bed, trip.ovf, trip.psv, mtrip.<motor>, risk.rx (slope helper 1141), risk.bed, risk.acc, badpv.<tag>, stuck.<tag>, sat.<tag>, init.<tag>, flood (≥6 unacked), air, man401, lock.<motor>, fallback ok. Severity URGENT|WARN|INFO. Steps may carry `go` closures (gFp, gDet, gAlm, gTg). Q&A: 14 topics, keyword scoring at 1722, top 3.
+
+### 2.11 Security
+`can('OPER')` for ack/shelve/mode/entry/motor/sequence; `can('ENGR')` for tuning, trip points, priority cycling, control action. SUPV and MNGR are never used as gates (help text at 717 claims alarm-disable needs MNGR).
+
+### 2.12 Trends (1561–1578)
+TG01 reactor, TG02 feed/tank, TG03 separation, TG04 batch, TG05 fired reactor. Pen tuple `[tag,'pv'|'sp'|'op',color,dash?]`; `mkPens` maps history to polylines; axis constants x=44+…*1006, y=404-…*394.
+
+## 3. Render contract
+- `renderVals()` returns one flat object (literal at 1765–1792); keys: showBadge, hcol, menus, tbtns, closeMenus, cmdVal, onCmd, onCmdKey, msgTxt, al, cU, cH, cL, isG1..isG3, isAlarms, isEvents, isMsgs, isTrend, isDetail, isSys, gvList, vlist, gfx, av, evR, evFilters, msgsR, msgsEmpty, tv, dpt, fps, dg, utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst, entryText, entryChange, entryKey, entryRef, db, rootMove, rootUp, sysPanels, ledSrv, ledCee, spdT, instrOpen, audT, audCb, secT, secCb, dateT, timeT.
+- Handlers are closures created fresh inside renderVals (`setS(o)` factory at 1485); closures capture `S=this.state` at render time.
+- Process mutations become visible on the next tick's setState; handlers that only mutate L/alarms rely on the 2 Hz pump.
+- `entryRef` is a React ref callback that focuses the entry input.
+
+## 4. Extension points and hazards
+- New alarm condition/state: `scan()` 1218–1220, point `alm{}` literals 921–938, `condNote` maps 1616 and 1638, faceplate tick colours 1681, priority cycle 1621/1643, colour maps 956/957, rank maps 989 and 1522.
+- New alarm-summary column: header row 334 + row markup 339 + row object 1543–1547 (literal px widths).
+- New display: `isXxx` flag at 1770, an `sc-if` block, a `nav()` target, View menu 1490, toolbar 1498–1507, sysLinks 1743, parseCmd map 1357.
+- New point: `this.L`; both history tag arrays at 944 and 1066 (must stay in sync); `gpts` 1516–1519 or `mkGv` lists 1533/1534; `unitOf` 1129–1131; PID loop order 1186 + casMap/invMap.
+- New unit: utabs 1708, isG4, sc-if SVG block, stepU4 from step(), unitOf, TGS group, peakOf keys, gfx helpers.
+- New drill: drillDefs, dAct verb, injectFault, endDrill clear list, instructor checkbox.
+- Global side effects: setInterval 500 ms (910), keydown listener (912, F1–F4 preventDefault), lazy AudioContext (972), `entryRef` focus. No localStorage, fetch, or persistence; reset = initSim().
+- Fragile: `l.alm[cond]` is a bare `[tripPoint, priority]` tuple mutated by index (1216, 1428, 1621, 1643, 1553, 1682); history rows are 4-tuples with positional index map at 1569; `this.events[0].oldV=` mutation right after addEvent (1407, 1424, 1436, 1437); `eq2()` hoisted function declaration at 1706 used at 1692 (do not convert to const); string-typed enums everywhere; tick 500 ms coupled to `step(0.5)` (speed multiplies iterations, does not scale dt); magic numbers (viewBoxes 1420x720, trend 1060x430, trip thresholds 98/185/950/110/480 repeated in assistant prose 1142–1149 and help 1179); caps events 600, hist 7200, event view 220, messages 120, issues 8; `state.fps` object identity coupling (1686–1688 vs 1777); `this.state.msg=''` direct mutation at 979; `initSim()` called lazily from 909, 976, 1474; dead code at 1757; `pump`/`agit` faults are one-shot (1279–1280); `foul`/`air` not in endDrill cleanup.
+
+## 5. Size
+Template 895 lines (~52 KB; unit SVGs 251 lines, dialogs 130). Script 891 lines; `renderVals()` is 321 lines (36 %); models 131 lines; assistant 47 lines. No module boundaries; comment banners at 948 helpers, 974 simulation, 1248 drills, 1341 operator actions, 1472 render are the natural seams.
