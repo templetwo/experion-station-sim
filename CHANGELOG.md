@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to the simulator. Semantic versioning.
 
+## [1.1.1] — 2026-08-29
+### Fixed
+- Process-graphic value boxes (tag / PV / EU / mode / alarm tick) and valve position labels rendered as empty rectangles on all three units: the page runtime (`support.js`) emitted an HTML `<span>` for every `{{ }}` interpolation, and browsers do not paint HTML elements inside SVG `<text>`. The runtime now emits `<tspan>` when the interpolation's parent is an SVG `text` / `tspan` / `textPath`. The same patched runtime is re-embedded in `dist/` (gzip+base64 manifest entry `cb5343e5…`). Verified in headless Chrome, online (folder build) and with DNS blocked (dist build).
+
 ## [1.1.0] — 2026-08-29
 ### Added
 - Unit 02: semi-batch polymerization reactor (R-202) — SCM202 sequence (CHARGE→HEATUP→FEED→REACT→COOL→DRAIN), agitator M-202, program-driven monomer SP (MODEATTR=PROGRAM), monomer-accumulation model with 110 °C trip

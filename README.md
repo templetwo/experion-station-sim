@@ -23,13 +23,13 @@ A browser-based, single-page training simulator that reproduces the conventions 
 
 ## Create the private repo (from this folder)
 ```bash
-git init && git add -A && git commit -m "v1.1.0 — three-unit operator station simulator"
+git init && git add -A && git commit -m "v1.1.1 — three-unit operator station simulator"
 gh repo create experion-station-sim --private --source=. --push
 ```
 (or create an empty private repo on github.com, then `git remote add origin … && git push -u origin main`)
 
 ## Versioning
-Semantic versioning; see `CHANGELOG.md`. Current: **v1.1.0**.
+Semantic versioning; see `CHANGELOG.md`. Current: **v1.1.1**.
 
 ## Files
 - `Experion Station Simulator.dc.html` — the full application (UI + process models + drills)

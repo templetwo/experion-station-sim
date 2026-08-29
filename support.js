@@ -573,6 +573,8 @@
       return () => txt;
     }
     const parts = txt.split(/\{\{([\s\S]+?)\}\}/g);
+    const parentTag = (node.parentElement?.tagName || "").toLowerCase();
+    const interpTag = parentTag === "text" || parentTag === "tspan" || parentTag === "textpath" ? "tspan" : "span";
     return (vals, ctx, key) => h(
       getReact().Fragment,
       { key },
@@ -583,7 +585,7 @@
           if (!ctx?.__streamingNow) {
             if (document.body?.hasAttribute("data-dc-editor-on")) {
               return h(
-                "span",
+                interpTag,
                 { key: i, className: "sc-interp sc-unresolved" },
                 "{{ " + p.trim() + " }}"
               );
@@ -595,7 +597,7 @@
             return null;
           }
           return h(
-            "span",
+            interpTag,
             { key: i, className: "sc-interp sc-missing" },
             p.trim()
           );
@@ -604,7 +606,7 @@
           return h(getReact().Fragment, { key: i }, v);
         }
         if (v === null || typeof v === "boolean") return null;
-        return h("span", { key: i, className: "sc-interp" }, String(v));
+        return h(interpTag, { key: i, className: "sc-interp" }, String(v));
       })
     );
   }
