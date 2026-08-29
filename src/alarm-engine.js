@@ -48,7 +48,8 @@
  *   engine.unshelve(ref, t)
  *   engine.suppress(ref, triggerKey, t)    designed suppression (DSUPR)
  *   engine.unsuppress(ref, t)
- *   engine.oos(ref, t)                     out of service (OOSRV)
+ *   engine.oos(ref, t, spec?)              out of service (OOSRV); spec creates
+ *                                          the record when none exists yet
  *   engine.rts(ref, t)                     return to service
  *   engine.comment(ref, text)              per-alarm comment (no event)
  *   engine.tick(t)                         shelve expiry + pruning of stale
@@ -406,10 +407,15 @@
     return [this._ev('UNSUPPRESS', r, t, from, { suppressedBy: by })];
   };
 
-  P.oos = function (ref, t) {
+  // spec ({tag, cond, prio, subprio, val, eu, desc, tripValue}) lets a condition that
+  // has never alarmed be taken out of service: the record is created directly in OOSRV.
+  P.oos = function (ref, t, spec) {
     var r = this.get(ref);
-    if (!r || r.state === 'OOSRV') return [];
     t = t || 0;
+    if (!r && spec && spec.tag && spec.cond) {
+      r = this._new({ tag: spec.tag, cond: spec.cond, prio: PRIORITIES.indexOf(spec.prio) >= 0 ? spec.prio : 'Low', subprio: spec.subprio, val: spec.val, eu: spec.eu, desc: spec.desc, tripValue: spec.tripValue }, t);
+    }
+    if (!r || r.state === 'OOSRV') return [];
     var from = r.state;
     this._set(r, 'OOSRV');
     return [this._ev('OOS', r, t, from)];
@@ -526,7 +532,7 @@
   // engine.oos(ref,t) is the transition; the query lives on oosList(). Keep the
   // spec'd query name too, dispatching on argument count.
   var oosTransition = P.oos;
-  P.oos = function (ref, t) { return arguments.length === 0 ? this.oosList() : oosTransition.call(this, ref, t); };
+  P.oos = function (ref, t, spec) { return arguments.length === 0 ? this.oosList() : oosTransition.call(this, ref, t, spec); };
 
   function createEngine(opts) { return new Engine(opts); }
 

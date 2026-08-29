@@ -452,3 +452,15 @@ test('performance: 500 records, 200 mixed operations plus list/sort in well unde
   }
   assert.ok(Date.now() - t0 < 1000);
 });
+
+test('oos with a spec creates the record straight into OOSRV; raise while OOS is silent, rts re-annunciates', () => {
+  const e = mk();
+  const ev = e.oos('TIC201.PVHI', 1000, { tag: 'TIC201', cond: 'PVHI', prio: 'High', subprio: 8, eu: 'degC', desc: 'Reactor temp', tripValue: 165 });
+  assert.deepEqual(types(ev), ['OOS']);
+  assert.equal(e.get('TIC201.PVHI').state, 'OOSRV');
+  assert.deepEqual(hi(e, 2000), [], 'no ALARM event while out of service');
+  assert.equal(e.counts().unack, 0);
+  assert.deepEqual(types(e.rts('TIC201.PVHI', 3000)), ['RTS']);
+  assert.equal(e.get('TIC201.PVHI').state, 'UNACK');
+  assert.deepEqual(e.oos('NOPE.X', 1000), [], 'no record and no spec -> nothing');
+});
