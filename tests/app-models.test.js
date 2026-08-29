@@ -230,3 +230,115 @@ test('tube-skin Urgent trips the fuel like the bed trip; a fast fuel step drops 
   c.setState({ unit: 'U1' });
   assert.ok(c.renderVals().gvList.some((p) => p.tag === 'AI205'));
 });
+
+// ---- verification round 1: TI216 interlock is level-held and the batch is recoverable without ABORT ----
+function shedBatch(seed) {
+  const c = boot(seed, 'OPER');
+  c.seqCmd('START', true);
+  assert.ok(run(c, 2400, () => c.P.b.phase === 'FEED' && c.P.b.Cm > 8), 'reached FEED');
+  c.injectFault('agit', true);
+  assert.ok(run(c, 600, () => c.tadShed), 'TI216 interlock latched; alarms ' + activeKeys(c));
+  return c;
+}
+
+test('TI216 interlock is level-held: AUTO and RESUME are refused while the Urgent alarm stands and the feed cannot restart', () => {
+  const c = shedBatch(6);
+  c.step(0.5);
+  assert.equal(c.P.b.held, true);
+  const nEv = c.events.length;
+  c.setMode('FIC211', 'AUTO');
+  assert.equal(c.L.FIC211.mode, 'MAN', 'interlock keeps FIC211 in MAN');
+  assert.match(c.calloutOf('FIC211'), /TI216 URGENT INTERLOCK/);
+  assert.ok(c.events.slice(0, c.events.length - nEv).some((e) => e.type === 'OPERATOR' && e.src === 'FIC211' && /WRITE REJECTED/.test(e.desc)));
+  c.seqCmd('HOLD');                                   // RESUME attempt
+  assert.equal(c.P.b.held, true, 'RESUME refused while the interlock stands');
+  assert.match(c.state.msg, /RESUME REFUSED/);
+  assert.ok(c.events.some((e) => e.src === 'SCM202' && /RESUME REFUSED/.test(e.desc)));
+  c.openEntry('FIC211', 'OP'); c.setState({ entryText: '50' }); c.commitEntry();
+  assert.equal(c.L.FIC211.op, 0);
+  assert.ok(c.diagnose().some((i) => i.id === 'shed.tad' && /HELD/.test(i.title)));
+  let checked = 0;
+  while (c.L.TI216._as.PVHH && checked < 120) {           // every scan while the Urgent alarm stands
+    c.step(0.5); checked++;
+    assert.equal(c.L.FIC211.mode, 'MAN'); assert.equal(c.L.FIC211.op, 0); assert.equal(c.L.FIC211.sp, 0);
+    if (checked > 24) assert.ok(c.P.b.mf < 1, 'no monomer flows once MV-211 has closed (3 s lag): ' + c.P.b.mf);
+    assert.equal(c.P.b.held, true);
+  }
+  assert.ok(checked > 24, 'interlock stood long enough to observe the closed valve: ' + checked);
+  assert.ok(c.V.MV211.pos < 0.02, 'MV-211 closed');
+});
+
+test('after a TI216 shed clears, RESUME lets the SCM restore FIC211 to AUTO and the batch completes without ABORT', () => {
+  const c = shedBatch(6);
+  run(c, 5);
+  assert.ok(run(c, 600, () => c.L.M202.lock <= 0), 'lockout expired');
+  c.motorCmd('M202', true);
+  assert.equal(c.L.M202.run, true, 'agitator restarted');
+  assert.ok(run(c, 1800, () => !c.tadShed), 'interlock released; alarms ' + activeKeys(c));
+  assert.ok(c.events.some((e) => e.type === 'SYSTEM' && e.src === 'TI216' && /SHED RELEASED/.test(e.desc) && /RESUME PERMITTED/.test(e.desc)));
+  assert.equal(c.P.b.held, true, 'sequence stays held until the operator resumes');
+  assert.equal(c.L.FIC211.mode, 'MAN', 'the shed left FIC211 in MAN');
+  c.seqCmd('HOLD');                                   // RESUME
+  assert.equal(c.P.b.held, false);
+  c.step(0.5);
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM');
+  assert.equal(c.L.FIC211.mode, 'AUTO', 'SCM restored the loop mode it owns');
+  assert.ok(c.events.some((e) => e.type === 'SYSTEM' && e.src === 'SCM202' && /FIC211 MODE RESTORED BY SEQUENCE \(MAN → AUTO\)/.test(e.desc)));
+  assert.ok(run(c, 300, () => c.P.b.mf > 5), 'monomer feed resumed: ' + c.P.b.mf);
+  assert.ok(run(c, 4800, () => c.P.b.phase === 'REACT'), 'FEED completed');
+  assert.ok(run(c, 7200, () => c.P.b.phase === 'IDLE'), 'batch completed; phase ' + c.P.b.phase);
+  assert.ok(!c.P.trips.batch, 'no R-202 trip');
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR');
+});
+
+test('TI216 Urgent outside FEED sheds the feed but journals no HOLD', () => {
+  const c = boot(3);
+  c.P.b.phase = 'REACT'; c.syncPhaseSet();
+  c.L.TI216.pv = 150; c.L.TI216.almDelay = 0;
+  c.scan(0.5); c.interlocks();
+  assert.equal(c.tadShed, true);
+  assert.equal(c.P.b.held, false);
+  const ev = c.events.find((e) => e.src === 'TI216' && /SHED/.test(e.desc));
+  assert.ok(ev && !/HOLD/.test(ev.desc), 'event: ' + (ev && ev.desc));
+  assert.doesNotMatch(c.state.msg, /HELD/);
+  assert.ok(c.diagnose().some((i) => i.id === 'shed.tad' && !/HELD/.test(i.title)));
+});
+
+test('tube-skin trip reset threshold is 400 DEG C in the model, the assistant and the alarm help', () => {
+  const c = boot(2, 'OPER');
+  run(c, 60);
+  c.L.TIC311.mode = 'MAN'; c.L.TIC311.op = 100;
+  assert.ok(run(c, 300, () => c.P.trips.skin), 'skin trip');
+  const rule = c.diagnose().find((i) => i.id === 'trip.skin');
+  assert.match(rule.why, /below 400 °C/);
+  const h = c.alarmHelpFor('H-310', 'TUBE SKIN TRIP');
+  assert.match(h.consequence, /below 400 DEG C/);
+  assert.doesNotMatch(rule.why + h.consequence + h.correctiveAction, /420/);
+  c.L.TIC311.op = 0;
+  assert.ok(run(c, 900, () => !c.P.trips.skin), 'trip reset');
+  assert.ok(c.P.h.ts1 < 400 && c.P.h.ts2 < 400, 'reset only once both skins are below 400: ' + c.P.h.ts1 + ' / ' + c.P.h.ts2);
+});
+
+test('M202-trip advice tells the operator to HOLD (FIC211 is program-owned during FEED) and its GO opens the U2 graphic', () => {
+  const c = boot(4, 'OPER');
+  c.seqCmd('START', true);
+  assert.ok(run(c, 2400, () => c.P.b.phase === 'FEED' && c.P.b.Cm > 8), 'reached FEED');
+  c.injectFault('agit', true);
+  c.step(0.5);
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM');
+  c.setMode('FIC211', 'MAN');
+  assert.equal(c.L.FIC211.mode, 'AUTO', 'MAN store rejected under PROGRAM');
+  const rule = c.diagnose().find((i) => i.id === 'mtrip.M202');
+  assert.match(rule.steps[0].t, /HOLD the sequence/);
+  assert.doesNotMatch(rule.steps[0].t, /FIC211 to MAN/);
+  c.setState({ unit: 'U1', display: 'alarms' });
+  rule.steps[0].go();
+  assert.equal(c.state.unit, 'U2'); assert.equal(c.state.display, 'graphic');
+  const acc = c.diagnose().find((i) => i.id === 'risk.acc');
+  if (acc) assert.match(acc.steps[0].t, /HOLD the sequence/);
+  c.seqCmd('HOLD');
+  assert.equal(c.P.b.held, true);
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'attribute follows on the next scan');
+  c.step(0.5);
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR');
+});
