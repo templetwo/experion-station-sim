@@ -30,7 +30,7 @@
 //        shed(point)                             optional  bad-PV shed (Component.applyShed);
 //                                                          default: mode -> MAN, hold OP
 //        message(txt)                            optional  message zone (Component.msgZone)
-//        onTrip()                                optional  called once per equipment trip
+//        onTrip(src, cond)                       optional  called once per equipment trip with the alarm source and condition
 //                                                          (Component.dTrip for drill scoring)
 //
 // Calibration notes (B4 verification round 2):
@@ -117,6 +117,11 @@
       Uloss: 2,             // ambient loss coefficient
       Tfeed: 40, Tamb: 25,  // C
       Cth: 20000,           // reactor thermal capacity (sim heat units per C/s)
+      coolBackupMs: 180000, // 'cool' upset: the instructor's coolLoss fraction is lost for this long (3 min), then
+      coolBackup: 1.0,      //   backup cooling restores this fraction of the jacket effectiveness (1 = spare pump gives
+                            //   full cooling back). Final QA 2026-08-29: at 5 min / 0.75 the exotherm peaked within
+                            //   2 C of the 185 C trip even with feed cut at the first alarm, and TIC201 stayed saturated
+                            //   on the 75 % jacket, so drill D4 could not be passed by its own recommended action.
       tauJ: 15, tauJo: 20,  // s jacket supply / outlet lags
       NTUj: 0.35,           // jacket outlet approach
       // 'rxn' fault = off-spec feed: richer, more exothermic, faster kinetics
@@ -214,7 +219,7 @@
 
   function raiseTrip(ctx, src, cond, val, eu, desc) {
     ctx.raise(src, cond, 'Urgent', val, eu, desc);
-    if (ctx.onTrip) ctx.onTrip();
+    if (ctx.onTrip) ctx.onTrip(src, cond);
   }
 
   function defaultShed(l, ctx) {
@@ -272,8 +277,8 @@
     P.Ca = Math.max(0, P.Ca + ((Caf - P.Ca) / tau - k * P.Ca) * dt);
     P.x = Caf > 1e-6 ? clamp(1 - P.Ca / Caf, 0, 1) : 0;
     // jacket: tempered coolant supply, effectiveness from valve position (previous calibration)
-    // 'cool' upset: the instructor's coolLoss fraction is lost for 5 min, then backup cooling restores 75 %
-    const eEff = F.cool ? ((P.t - P.faultT.cool > 300000) ? 0.75 : 1 - magOf(P).coolLoss) : 1;
+    // 'cool' upset: the instructor's coolLoss fraction is lost for PARAMS.U1.coolBackupMs, then backup cooling restores coolBackup
+    const eEff = F.cool ? ((P.t - P.faultT.cool > c.coolBackupMs) ? c.coolBackup : 1 - magOf(P).coolLoss) : 1;
     const e = 0.9 * Math.sqrt(Math.max(V.TV202.pos, 0)) * eEff;
     P.Tj = lag(P.Tj, P.Tcw * e + P.rT * (1 - e), c.tauJ, dt);
     P.Tjo = lag(P.Tjo, P.Tj + (P.rT - P.Tj) * (1 - Math.exp(-c.NTUj)), c.tauJo, dt);

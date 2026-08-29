@@ -6,6 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Training = require('../src/training.js');
 const Kpi = require('../src/kpi.js');
+const Models = require('../src/models.js');
 const { load } = require('../tools/logic-harness');
 
 const { Component } = load();
@@ -46,13 +47,13 @@ test('scoring breakdown sums to the score, pass mark is 80 and labelled independ
   assert.equal(Training.PASS_MARK, 80);
   assert.match(Training.PASS_LABEL, /independent/i);
   assert.match(Training.PASS_LABEL, /not a vendor certification/i);
-  assert.deepEqual(sc.breakdown.map((r) => r.id), ['ack', 'action', 'trip', 'stable', 'load', 'quiz']);
+  assert.deepEqual(sc.breakdown.map((r) => r.id), ['ack', 'action', 'trip', 'stable', 'load', 'quiz', 'othertrips']);
   // the debrief renders the breakdown and the label, and the record is stored under the logon name
   c.setState({ debAns: d.a });
   const r = c.submitDebrief(ended.drill, d.a);
   assert.equal(r.score, sc.score);
   const v = c.renderVals();
-  assert.equal(v.dg.dbBreak.length, 6);
+  assert.equal(v.dg.dbBreak.length, 7);
   assert.match(v.dg.dbPassT, /80 % pass mark/);
   assert.match(v.dg.dbPassT, /independent training threshold, not a vendor certification/);
   assert.equal(c.trainingRecords.length, 1);
@@ -611,4 +612,119 @@ test('a rejected command zone entry does not tick the nav.command coverage task;
   const sets = cfgEvents(c).filter((e) => /ALARM LIMIT SET/.test(e.desc));
   assert.ok(sets.length >= 2);
   assert.ok(sets.every((e) => e.who === 'SCM202' && e.lvl === 'PROGRAM'), sets.map((e) => e.who + '/' + e.lvl).join());
+});
+
+// ---- final QA (2026-08-29): drill D4 must be passable by its own recommended action ----
+
+// Drives drill D4 from a settled plant with a seeded generator. `policy(c, d, ctx)` runs after every step once the first
+// alarm is in; ctx.since is the seconds since that alarm. Every unacknowledged alarm is acknowledged as it comes.
+function runD4(seed, policy) {
+  const c = boot('OPER');
+  c.rand = Models.createRand(seed);
+  run(c, 60);
+  const def = c.drillDefs().find((d) => d.id === 'D4');
+  c.startDrill(def);
+  const peak = { rT: 0, tankL: 0 };
+  let tAlarm = null;
+  for (let i = 0; i < 1600 && c.state.drill; i++) {
+    c.step(0.5);
+    const d = c.state.drill; if (!d) break;
+    peak.rT = Math.max(peak.rT, c.P.rT); peak.tankL = Math.max(peak.tankL, c.P.tankL);
+    if (d.m.tAlarm) {
+      if (tAlarm == null) tAlarm = c.P.t;
+      policy(c, d, { since: (c.P.t - tAlarm) / 1000 });
+      for (const a of c.alarmEngine.unacked()) c.ackAlarm(a);
+    }
+  }
+  const d = c.state.dlg && c.state.dlg.drill;
+  assert.ok(d && d.reason, 'D4 seed ' + seed + ': reached the debrief');
+  return { c, d, def, peak, score: c.scoreDrill(d, def.a) };
+}
+const setOp = (c, tag, v) => { c.openEntry(tag, 'OP'); c.setState({ entryText: String(v) }); c.commitEntry(); };
+// the guidance, followed literally: cut feed to 20 % (here 60 s after the first alarm), then when TIC201 is falling and
+// TK-101 passes 80 % restore FIC102 toward 60 %, acknowledging as alarms come
+function guidance(state) {
+  return (c, d, ctx) => {
+    if (!state.cut && ctx.since >= 60) { c.silence(); c.setMode('FIC102', 'MAN'); setOp(c, 'FIC102', 20); state.cut = true; }
+    state.rT = state.rT || []; state.rT.push(c.P.rT); if (state.rT.length > 40) state.rT.shift();
+    const falling = state.rT.length >= 40 && state.rT[state.rT.length - 1] < state.rT[0] - 0.3;
+    if (state.cut && !state.restored && falling && c.P.tankL >= 80) { setOp(c, 'FIC102', 60); state.restored = true; }
+  };
+}
+
+test('D4: following the recommended sequence literally passes (>= 80) inside the drill window with no trip on any unit', () => {
+  for (const seed of [3, 5, 11]) {
+    const st = {};
+    const { c, d, peak, score } = runD4(seed, guidance(st));
+    assert.ok(st.cut && st.restored, 'seed ' + seed + ': feed was cut and restored');
+    assert.equal(d.reason, 'STABILIZED', 'seed ' + seed + ': ' + d.reason);
+    assert.ok(d.m.tAct && d.m.tAck, 'seed ' + seed + ': ack and action credited');
+    assert.equal(!!d.m.trip, false, 'seed ' + seed + ': no R-201 trip');
+    assert.equal(d.m.otherTrips || 0, 0, 'seed ' + seed + ': no other trip');
+    assert.deepEqual(Object.keys(c.P.trips).filter((k) => c.P.trips[k]), [], 'seed ' + seed + ': no trip standing');
+    assert.ok(peak.rT < 185 && peak.tankL < 90, 'seed ' + seed + ': peaks ' + peak.rT.toFixed(1) + ' / ' + peak.tankL.toFixed(1));
+    assert.ok(score.score >= 80 && score.pass, 'seed ' + seed + ': score ' + score.score);
+    assert.equal(score.breakdown.find((r) => r.id === 'trip').earned, 20);
+    assert.equal(score.breakdown.find((r) => r.id === 'stable').earned, 15);
+  }
+});
+
+test('D4: doing nothing still fails, and cutting feed without restoring it does not pass either', () => {
+  const idle = runD4(5, () => {});
+  assert.ok(idle.d.m.trip, 'the reactor tripped with no operator action');
+  assert.ok(idle.score.score < 80 && !idle.score.pass, 'nothing: ' + idle.score.score);
+  assert.equal(idle.score.breakdown.find((r) => r.id === 'trip').earned, 0);
+  // feed cut at the first alarm and left cut: TK-101 fills and trips — counted as an other-equipment deduction, not as
+  // the drill's trip, and the drill does not stabilise (LIC101 is a related point), so the trainee does not pass
+  const cut = runD4(5, (c, d, ctx) => { if (!c._cut) { c.setMode('FIC102', 'MAN'); setOp(c, 'FIC102', 20); c._cut = true; } });
+  assert.equal(!!cut.d.m.trip, false, 'no R-201 trip after cutting feed');
+  assert.ok(cut.peak.tankL >= 98 && cut.d.m.otherTrips === 1, 'TK-101 tripped: ' + cut.peak.tankL.toFixed(1) + ' / ' + cut.d.m.otherTrips);
+  assert.deepEqual(cut.d.m.otherTripList, ['TK-101 HIHI TRIP']);
+  assert.notEqual(cut.d.reason, 'STABILIZED');
+  const rows = cut.score.breakdown;
+  assert.equal(rows.find((r) => r.id === 'trip').earned, 20, 'the drill trip criterion is R-201 only');
+  assert.equal(rows.find((r) => r.id === 'othertrips').earned, -10, 'the tank trip deducts 10');
+  assert.ok(cut.score.score < 80 && !cut.score.pass, 'cut only: ' + cut.score.score);
+  // the debrief shows both rows and the guidance text, and the quiz answer names the whole sequence
+  cut.c.setState({ debAns: cut.def.a });
+  cut.c.submitDebrief(cut.d, cut.def.a);
+  const v = cut.c.renderVals();
+  assert.ok(v.dg.dbRows.some((r) => r.k === 'Other equipment trips' && /TK-101 HIHI TRIP/.test(r.v)));
+  assert.ok(v.dg.dbGuideOn && /restore feed/i.test(v.dg.dbGuide) && /TK-101/.test(v.dg.dbGuide));
+  assert.match(cut.def.opts[cut.def.a], /restore feed/i);
+  assert.ok(v.dg.dbBreak.some((b) => b.label === 'Other equipment trips' && b.pts === '-10 / 0'));
+});
+
+test('drill trip lists: the drill equipment decides the trip criterion; a drill without a list owns every trip; the scorer deducts and caps other trips', () => {
+  const c = boot('OPER');
+  const defs = c.drillDefs();
+  const keys = ['ovf', 'rx', 'psv', 'batch', 'bed', 'skin'];
+  for (const d of defs) if (d.trips) for (const k of d.trips) assert.ok(keys.includes(k), d.id + ' lists ' + k);
+  assert.deepEqual(defs.find((d) => d.id === 'D4').trips, ['rx']);
+  assert.deepEqual(defs.find((d) => d.id === 'D2').trips, ['ovf', 'rx']);
+  assert.deepEqual(defs.find((d) => d.id === 'D9').trips, ['psv']);
+  assert.deepEqual(defs.find((d) => d.id === 'D11').trips, ['batch']);
+  assert.deepEqual(defs.find((d) => d.id === 'D12').trips, ['bed']);
+  assert.equal(defs.find((d) => d.id === 'D1').trips, undefined);
+  // dTrip with a running D4: TK-101 is 'other', R-201 is the drill's
+  c.setState({ drill: { def: defs.find((d) => d.id === 'D4'), t0: c.P.t, ti: c.P.t, injected: true, m: {}, stableFor: 0 } });
+  c.dTrip('TK-101', 'HIHI TRIP');
+  assert.equal(c.state.drill.m.trip, undefined); assert.equal(c.state.drill.m.otherTrips, 1);
+  c.dTrip('R-201', 'HI TEMP TRIP');
+  assert.equal(c.state.drill.m.trip, true);
+  // D1 has no list: any trip is the drill's
+  c.setState({ drill: { def: defs.find((d) => d.id === 'D1'), t0: c.P.t, ti: c.P.t, injected: true, m: {}, stableFor: 0 } });
+  c.dTrip('V-401', 'PSV LIFT');
+  assert.equal(c.state.drill.m.trip, true); assert.equal(c.state.drill.m.otherTrips, undefined);
+  c.setState({ drill: null });
+  // the module: no row without the metric, -10 per trip capped at -20, score never below 0
+  const base = { tAlarm: 0, tAck: 10000, tAct: 20000, tStable: 60000, trip: false, quizCorrect: true, alarmsPer10min: 0 };
+  assert.ok(!Kpi.scoreDrill(base).breakdown.some((r) => r.id === 'othertrips'));
+  assert.equal(Kpi.scoreDrill(base).score, 100);
+  const one = Kpi.scoreDrill(Object.assign({}, base, { otherTrips: 1 }));
+  assert.equal(one.score, 90); assert.equal(one.breakdown.find((r) => r.id === 'othertrips').earned, -10);
+  const three = Kpi.scoreDrill(Object.assign({}, base, { otherTrips: 3 }));
+  assert.equal(three.score, 80, 'capped at 20');
+  assert.equal(three.breakdown.reduce((a, r) => a + r.max, 0), 100, 'the deduction row carries no maximum');
+  assert.equal(Kpi.scoreDrill({ otherTrips: 3, trip: true }).score, 0, 'clamped at 0');
 });

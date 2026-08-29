@@ -20,7 +20,7 @@ function boot(props, sec) {
 }
 
 test('switching the palette changes alarm summary row colours and the alarm line', () => {
-  const c = boot();
+  const c = boot(null, 'SUPV');
   c.raiseA('TIC201', 'PVHI', 'High', 170, 'DEG C', 'Reactor temp');
   c.setState({ display: 'alarms', blink: true });
   let v = c.renderVals();
@@ -52,7 +52,7 @@ test('the palette data-prop and highColor both feed the getter', () => {
   const c = boot({ palette: 'isa101' });
   assert.equal(c.paletteName(), 'isa101');
   assert.equal(c.prioColor('Urgent'), '#E22028');
-  const d = boot({ highColor: '#FFA500' });
+  const d = boot({ highColor: '#FFA500' }, 'SUPV');
   assert.equal(d.prioColor('High'), '#FFA500', 'highColor overrides High on the representative preset');
   d.setPalette('isa101');
   assert.equal(d.prioColor('High'), '#EC8629', 'the ISA-101 preset keeps its documented value');
@@ -61,7 +61,7 @@ test('the palette data-prop and highColor both feed the getter', () => {
 
 test('every priority/text pair is at least 3:1 in both presets as the app draws them', () => {
   for (const props of [{}, { highColor: '#FFA500' }]) {
-    const c = boot(props);
+    const c = boot(props, 'SUPV');
     for (const name of Palette.list()) {
       c.setPalette(name);
       const p = c.colours();
@@ -174,4 +174,36 @@ test('Loop Tune shows ISA-equivalent tuning, a PV tracking toggle and a step-res
   const o = boot(null, 'OPER');
   o.setPvTrack('TIC201', true);
   assert.equal(o.L.TIC201.pvtrack, false, 'PV tracking needs ENGR');
+});
+
+// ---- final QA (2026-08-29): the colour philosophy switch is a station-wide configuration and needs SUPV ----
+
+test('the palette switch is refused below SUPV with the standard message and no CONFIG event; SUPV and above switch and journal it', () => {
+  for (const sec of ['VIEW', 'OPER']) {
+    const c = boot(null, sec);
+    const before = c.events.filter((e) => e.type === 'CONFIG').length;
+    c.setState({ menu: 'Station' });
+    c.setPalette('isa101');
+    assert.equal(c.paletteName(), 'representative', sec + ': palette unchanged');
+    assert.equal(c.state.msg, 'HIGHER SECURITY LEVEL REQUIRED (SUPV)', sec + ': message');
+    assert.equal(c.events.filter((e) => e.type === 'CONFIG').length, before, sec + ': no CONFIG event');
+    assert.equal(c.state.menu, null, sec + ': the menu closes');
+    // the philosophy page chip goes through the same gate
+    c.setState({ dlg: { type: 'philosophy' } });
+    c.renderVals().dg.phil.palettes.find((p) => p.label === 'ISA-101').cb();
+    assert.equal(c.paletteName(), 'representative', sec + ': philosophy chip refused too');
+  }
+  for (const sec of ['SUPV', 'ENGR', 'MNGR']) {
+    const c = boot(null, sec);
+    c.setPalette('isa101');
+    assert.equal(c.paletteName(), 'isa101', sec + ': switched');
+    const ev = c.events.find((e) => e.type === 'CONFIG' && e.desc.startsWith('ALARM COLOUR PHILOSOPHY CHANGE'));
+    assert.ok(ev && ev.oldV === 'REPRESENTATIVE' && ev.newV === 'ISA-101', sec + ': CONFIG event with old / new');
+  }
+  // the help text and the philosophy page say who may change it
+  const c = boot(null, 'SUPV');
+  c.setState({ dlg: { type: 'help' } });
+  const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8');
+  assert.match(html, /switching the colour philosophy \(Station menu\) needs SUPV/);
+  assert.match(html, /Switching the colour philosophy is a station-wide display configuration: SUPV or above/);
 });

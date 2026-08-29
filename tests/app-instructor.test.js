@@ -71,7 +71,7 @@ test('backtrack ring buffer holds the last 10 sim-minutes at 30 s spacing and th
   assert.ok(ring[ring.length - 1].t <= c.P.t);
   const now = c.P.t;
   c.backtrack(120000);
-  assert.ok(now - c.P.t >= 120000 && now - c.P.t < 150000, 'restored about two minutes back: ' + (now - c.P.t));
+  assert.ok(Math.abs((now - c.P.t) - 120000) <= Instr.RING_MS / 2, 'restored about two minutes back: ' + (now - c.P.t));
   assert.ok(c.instr.ring.every((s) => s.t <= c.P.t), 'ring entries later than the restored time are gone');
   const after2 = c.P.t;
   c.backtrack(600000);
@@ -167,7 +167,7 @@ test('hidden upset leaves no trace in the trainee-visible displays; the assistan
   assert.ok(c.alarms.length > 0, 'the upsets are real: alarms came in');
   assert.ok(c.events.every((e) => e.src !== 'INSTR'), 'no instructor events in the journal');
   const skip = ['menus', 'instr', 'dg.reasons', 'dg.drills'];
-  const forbidden = /instructor|inject|malfunction|upset|backup in 5 min|air loss — valves/i;
+  const forbidden = /instructor|inject|malfunction|upset|backup in \d+ min|air loss — valves/i;
   for (const display of ['graphic', 'alarms', 'events', 'msgs', 'trend', 'detail', 'sys', 'kpi', 'instr']) {
     c.setState({ display, detailTag: 'TIC202', detailTab: 'alarms' });
     const v = c.renderVals();
@@ -684,4 +684,28 @@ test('R-310 stays finite for 60 sim-minutes at every slider extreme on the high-
     for (const t of Object.keys(c.L)) assert.ok(Number.isFinite(c.L[t].pv), t + ' finite');
     assert.ok(c.snapshotData('ok'));
   }
+});
+
+// ---- final QA (2026-08-29): backtrack picks the ring entry nearest the requested age ----
+
+test('backtrack −30 S restores the ring entry nearest 30 s back, not the first one at least 30 s old', () => {
+  const c = boot('MNGR');
+  run(c, 660);
+  const now = c.P.t;
+  for (const back of [30000, 120000, 600000]) {
+    const ring = c.instr.ring.slice();
+    const nearest = ring.reduce((b, s) => (Math.abs(s.t - (now - back)) < Math.abs(b.t - (now - back)) ? s : b), ring[0]);
+    assert.equal(Instr.ringPick(c.instr, now, back).t, nearest.t, 'ringPick ' + back + ' picks the nearest entry');
+    assert.ok(Math.abs((now - nearest.t) - back) <= Instr.RING_MS / 2, back + ': nearest entry is within half the ring spacing');
+  }
+  c.backtrack(30000);
+  const moved = now - c.P.t;
+  assert.ok(moved >= 15000 && moved <= 45000, '−30 S moved ' + moved + ' ms');
+  // module level: entries 0, 30 and 60 s old — 30 s back is the middle one, 45 s back (an exact tie) the older one,
+  // 10 min back the oldest, and an empty ring gives null
+  const I = { ring: [{ t: 940000 }, { t: 970000 }, { t: 1000000 }], lastRingT: 1000000 };
+  assert.equal(Instr.ringPick(I, 1000000, 30000).t, 970000);
+  assert.equal(Instr.ringPick(I, 1000000, 45000).t, 940000, 'a tie goes to the older entry');
+  assert.equal(Instr.ringPick(I, 1000000, 600000).t, 940000);
+  assert.equal(Instr.ringPick({ ring: [], lastRingT: -Infinity }, 1000000, 30000), null);
 });

@@ -25,13 +25,17 @@
  *   health = { verdict:'GOOD'|'ACCEPTABLE'|'MANAGEABLE'|'OVERLOADED',
  *       checks:[{id,label,value,limit,pass}] }
  *   scoreDrill(metrics, rubric) -> {score, pass, passMark, passLabel, breakdown}
- *     metrics: { tAlarm, tAck, tAct, tStable (ms or null), trip (bool),
- *       actionCorrect (bool, default true when tAct set), quizCorrect (bool),
+ *     metrics: { tAlarm, tAck, tAct, tStable (ms or null), trip (bool: a trip
+ *       on the drill's own equipment), otherTrips (number, optional: trips on
+ *       other equipment during the drill; each deducts otherTripPenalty, capped
+ *       at otherTripMax, as a 'othertrips' row with max 0), actionCorrect
+ *       (bool, default true when tAct set), quizCorrect (bool),
  *       alarmsPer10min (number, load during the drill) }
  *     rubric (all optional): weights {ack,action,trip,stable,load,quiz}
  *       (default 20/25/20/15/10/10), ackFast/ackOk/ackSlow seconds
  *       (30/60/120), actionFast/actionOk seconds (180/360), loadTarget/
- *       loadMax per 10 min (1/10), passMark (80).
+ *       loadMax per 10 min (1/10), otherTripPenalty/otherTripMax (10/20),
+ *       passMark (80). The score is clamped to 0..100.
  *     The 80 % pass mark is the sim's own threshold, labelled independent of
  *     any vendor certification scheme (RESOURCES 2.12).
  *   thresholds -> the exida/ISA numbers used by the health verdict.
@@ -195,7 +199,8 @@
   var DEFAULT_RUBRIC = {
     weights: { ack: 20, action: 25, trip: 20, stable: 15, load: 10, quiz: 10 },
     ackFast: 30, ackOk: 60, ackSlow: 120, actionFast: 180, actionOk: 360,
-    loadTarget: THRESHOLDS.per10minTarget, loadMax: THRESHOLDS.per10minMax, passMark: 80
+    loadTarget: THRESHOLDS.per10minTarget, loadMax: THRESHOLDS.per10minMax, passMark: 80,
+    otherTripPenalty: 10, otherTripMax: 20
   };
 
   function latencySec(from, to) { return (typeof from === 'number' && typeof to === 'number') ? (to - from) / 1000 : null; }
@@ -224,9 +229,17 @@
 
     rows.push({ id: 'quiz', label: 'Debrief question', earned: m.quizCorrect ? W.quiz : 0, max: W.quiz, note: m.quizCorrect ? 'correct' : 'incorrect' });
 
+    // trips on equipment outside the drill's scope (e.g. flooding TK-101 while handling an R-201 exotherm) are not the
+    // drill's trip, but they are not free either: a flat deduction per trip, capped, shown as a row with no maximum
+    if (typeof m.otherTrips === 'number') {
+      var n = Math.max(0, Math.round(m.otherTrips));
+      var pen = Math.min(R.otherTripMax, n * R.otherTripPenalty);
+      rows.push({ id: 'othertrips', label: 'Other equipment trips', earned: -pen, max: 0, note: n ? n + ' trip' + (n > 1 ? 's' : '') + ' outside the drill scope (−' + pen + ')' : 'none' });
+    }
+
     var max = rows.reduce(function (a, r) { return a + r.max; }, 0);
     var earned = rows.reduce(function (a, r) { return a + r.earned; }, 0);
-    var score = Math.round(max > 0 ? earned / max * 100 : 0);
+    var score = Math.max(0, Math.min(100, Math.round(max > 0 ? earned / max * 100 : 0)));
     return { score: score, pass: score >= R.passMark, passMark: R.passMark, passLabel: R.passMark + ' % pass mark (sim-defined; independent of any vendor certification)', breakdown: rows };
   }
 

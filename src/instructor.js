@@ -18,7 +18,8 @@
 //                                into null and a restore would corrupt the process state)
 //   nonFinitePath(o, prefix)     first path holding NaN / Infinity, or null
 //   pushRing(I, snap, t)         30 s ring buffer covering the last 10 sim-minutes; returns true when stored
-//   ringPick(I, t, backMs)       newest ring entry at or before t - backMs (oldest if none is that old)
+//   ringPick(I, t, backMs)       ring entry nearest to t - backMs (the ring is sampled every RING_MS, so the first
+//                                entry at least backMs old could be almost RING_MS further back than asked)
 //   trimAfter(I, t, seq)         drop ring entries later than t and journal entries after sequence seq (time when seq is null)
 //   journalAdd(I, entry)         append {t, op, tag, ...} stamped with the next sequence number; capped
 //   replayPlan(I, snap, nowT)    entries journaled after the snapshot (by sequence, so actions taken while frozen at the
@@ -97,9 +98,12 @@
 
   function ringPick(I, t, backMs) {
     if (!I.ring.length) return null;
-    var want = t - backMs, best = null;
-    for (var i = 0; i < I.ring.length; i++) if (I.ring[i].t <= want) best = I.ring[i];
-    return best || I.ring[0];
+    var want = t - backMs, best = null, bestD = Infinity;
+    for (var i = 0; i < I.ring.length; i++) {
+      var d = Math.abs(I.ring[i].t - want);
+      if (d < bestD || (d === bestD && I.ring[i].t < want)) { best = I.ring[i]; bestD = d; }
+    }
+    return best;
   }
 
   // Journal entries are cut by sequence when the snapshot carries one: with the sim frozen, actions taken after the
@@ -190,7 +194,7 @@
       { k: 'drift', label: 'LIC101 transmitter drift', unit: 'U1', mag: { key: 'drift', label: 'Drift rate', min: 0.2, max: 5, step: 0.1, eu: '% / MIN' } },
       { k: 'surge', label: 'Feed inflow surge (8 min)', unit: 'U1', mag: { key: 'surge', label: 'Surge', min: 10, max: 80, step: 5, eu: 'M3/H' } },
       { k: 'pump', label: 'P-101 pump trip (one-shot)', unit: 'U1' },
-      { k: 'cool', label: 'Cooling water loss (backup in 5 min)', unit: 'U1', mag: { key: 'coolLoss', label: 'Fraction lost', min: 0.25, max: 1, step: 0.05, eu: '' } },
+      { k: 'cool', label: 'Cooling water loss (backup in 3 min)', unit: 'U1', mag: { key: 'coolLoss', label: 'Fraction lost', min: 0.25, max: 1, step: 0.05, eu: '' } },
       { k: 'stick', label: 'TV-202 valve stiction (+ reaction load)', unit: 'U1' },
       { k: 'vap', label: 'Flash drum vapor surge (5 min)', unit: 'U1' },
       { k: 'air', label: 'Instrument air loss — valves to fail state', unit: 'ALL' },

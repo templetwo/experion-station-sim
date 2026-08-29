@@ -139,7 +139,7 @@
     'TIC202.PVHH': e(RT.now,
       'Cooling has effectively been lost; the reactor is heading for the high-temperature trip.',
       'Total loss of cooling water; valve failed closed on air loss.',
-      'Cut feed to R-201, open TV-202 by hand if it responds, and stand by for the trip.'),
+      'Cut feed to R-201 (FIC102 to MAN, output low) to arrest the exotherm, open TV-202 by hand if it responds, then restore feed before TK-101 reaches high level and confirm TIC201 is falling.'),
     'TIC202.DEVHI': e(RT.short,
       'Jacket loop not following its cascade setpoint; reactor control will degrade.',
       'Valve stiction or saturation on TV-202; cooling water temperature above design.',

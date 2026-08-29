@@ -1143,6 +1143,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <sc-for list="{{ dg.dbRows }}" as="r" hint-placeholder-count="6">
           <div style="display:flex;padding:3px 6px;font-size:12px;border-bottom:1px solid #B6B6B2"><div style="width:280px;color:#3c3c3c">{{ r.k }}</div><div style="font-weight:700;color:{{ r.fg }}">{{ r.v }}</div></div>
         </sc-for>
+        <sc-if value="{{ dg.dbGuideOn }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:8px;padding:6px 8px;font-size:11.5px;line-height:1.45;color:#1f2a3c;background:#E6E4DE;border:1px solid #B6B6B2">{{ dg.dbGuide }}</div>
+        </sc-if>
         <sc-if value="{{ dg.dbAsk }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:12px;font-size:12px;font-weight:700">{{ dg.dbQ }}</div>
           <sc-for list="{{ dg.dbOpts }}" as="o" hint-placeholder-count="4">
@@ -1159,7 +1162,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           <sc-for list="{{ dg.dbBreak }}" as="b" hint-placeholder-count="6">
             <div style="display:flex;padding:3px 6px;font-size:12px;border-bottom:1px solid #B6B6B2"><div style="width:220px;color:#3c3c3c">{{ b.label }}</div><div style="width:70px;font-weight:700;color:{{ b.fg }}">{{ b.pts }}</div><div style="flex:1;color:#55524c">{{ b.note }}</div></div>
           </sc-for>
-          <div style="font-size:10.5px;color:#55524c;margin-top:6px;line-height:1.4">Weights 20 / 25 / 20 / 15 / 10 / 10: acknowledge within 30 s scores full marks; the correct action within 3 min scores full marks; alarm load during the drill is measured by the KPI module (≤ 1 per 10 min full marks, ≥ 10 none). The result is stored in the Training record under the trainee's logon name.</div>
+          <div style="font-size:10.5px;color:#55524c;margin-top:6px;line-height:1.4">Weights 20 / 25 / 20 / 15 / 10 / 10: acknowledge within 30 s scores full marks; the correct action within 3 min scores full marks; alarm load during the drill is measured by the KPI module (≤ 1 per 10 min full marks, ≥ 10 none). 'Trip avoided' covers the drill's own equipment; a trip elsewhere during the drill deducts 10 points each (at most 20). The result is stored in the Training record under the trainee's logon name.</div>
         </sc-if>
       </sc-if>
 
@@ -1216,7 +1219,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           Entries outside SPHILM/SPLOLM or OPHILM/OPLOLM are rejected.<br /><br />
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
           <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
-          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder.<br /><br />
+          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder; switching the colour philosophy (Station menu) needs SUPV and is journaled as a CONFIG change.<br /><br />
           <b>Instructor station</b><br />Command <b>INSTR</b>, Drills → Instructor Station…, or the SIM link in the status bar. Needs the instructor or manager password: run control (freeze / step / fast time), snapshots, initial conditions, backtrack, upsets (optionally hidden), plant variables, action journal with replay, live drill assessment.<br /><br />
           <b>Training and audit</b><br />Logon takes an operator name; it goes on every journal entry. Messages flagged CONFIRM count in the status bar (blinking MSG) until confirmed in the Message Summary. Critical changes (trip point, priority, out of service, PID tuning, disabling an asset's alarms, snapshot restore during a drill) need an electronic signature — password and reason. Every configuration change is a CONFIG event: command <b>MOC</b> opens the change log. Drills are scored against the 80 % mark ({{ dg.dbPassT }}); commands <b>RECORD</b> and <b>COVERAGE</b> open the training record and the operator task coverage matrix.
         </div>
@@ -1245,6 +1248,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
               <div style="padding:2px 6px;font-size:10px;font-weight:700;background:{{ sw.bg }};color:{{ sw.fg }};border:1px solid {{ sw.bd }}">{{ sw.label }}</div>
             </sc-for>
           </div>
+          <div style="margin-top:4px;font-size:10.5px;color:#55524c">Switching the colour philosophy is a station-wide display configuration: SUPV or above, recorded as a CONFIG (MOC) change.</div>
         </div>
       </sc-if>
 
@@ -1554,9 +1558,11 @@ class Component extends DCLogic {
   prioDark(p){ return this.colours().prioDim[p]; }
   prioText(p){ return this.colours().prioText[p]; }
   paletteLabel(n){ return n==='isa101'?'ISA-101':'REPRESENTATIVE'; }
+  // The colour philosophy is a station-wide display configuration: SUPV or above, journaled as a CONFIG (MOC) change.
   setPalette(name){
     if(!ESS.Palette.list().includes(name)) return;
     const o=this.paletteName(); if(o===name){ this.setState({menu:null}); return; }
+    if(!this.can('SUPV')){ this.setState({menu:null}); return; }
     this.setState({palette:name,menu:null});
     this.configChange('STN01','ALARM COLOUR PHILOSOPHY CHANGE',this.paletteLabel(o),this.paletteLabel(name),'');
     this.msgZone('COLOUR PHILOSOPHY: '+this.paletteLabel(name));
@@ -1824,7 +1830,7 @@ class Component extends DCLogic {
       rand:()=>this.rand?this.rand():Math.random(),
       shed:(l)=>this.applyShed(l),
       message:(t)=>this.msgZone(t),
-      onTrip:()=>this.dTrip()
+      onTrip:(src,cond)=>this.dTrip(src,cond)
     };
     return this._ctx;
   }
@@ -1892,7 +1898,7 @@ class Component extends DCLogic {
     if(!P.trips.skin && (L.TI314._as.PVHH || L.TI315._as.PVHH)){
       P.trips.skin=true;
       this.raiseA('H-310','TUBE SKIN TRIP','Urgent',Math.max(P.h.ts1,P.h.ts2),'DEG C','TUBE SKIN OVERTEMP — FUEL GAS SHUT OFF');
-      this.dTrip();
+      this.dTrip('H-310','TUBE SKIN TRIP');
     }
   }
   // TI216 Urgent: the interlock owns FIC211 (MAN, OP 0, MV-211 closed) for as long as the condition stands, and holds
@@ -2003,7 +2009,7 @@ class Component extends DCLogic {
     if(this.tadShed) out.push({id:'shed.tad',sev:'URGENT',title:'Monomer feed shed by TI216'+(P.b.held?' — sequence HELD':''),why:'The adiabatic end temperature reached its Urgent limit ('+this.fmt(L.TI216.alm.PVHH?L.TI216.alm.PVHH[0]:106,0)+' °C): the unreacted monomer alone could carry the batch to the 110 °C trip. The interlock holds FIC211 in MAN with MV-211 closed and refuses RESUME until the Urgent alarm clears.',steps:[{t:'Confirm M-202 running and the jacket on full cooling.',go:gFp('TIC213')},{t:'Wait for the monomer inventory and TI216 to fall.',go:gTg('TG04')},{t:'When the Urgent alarm clears, RESUME the sequence — the SCM returns FIC211 to AUTO itself.',go:gSeq}]});
     if(P.trips.psv) out.push({id:'trip.psv',sev:'URGENT',title:'V-401 relief valve lifted',why:'Drum pressure exceeded 950 kPa and is venting to flare.',steps:[{t:'Verify PIC401 is in AUTO and the vent is opening.',go:gFp('PIC401')},{t:'Reduce heat input at TIC301.',go:gFp('TIC301')}]});
     for(const mt of ['P101','M202']){ const m=L[mt]; if(m.trip) out.push({id:'mtrip.'+mt,sev:'URGENT',title:(mt==='P101'?'P-101 pump tripped':'M-202 agitator tripped')+(m.lock>0?' — lockout '+Math.ceil(m.lock)+' s':''),why:(m.tripWhy||'Uncommanded stop')+'. '+(mt==='M202'?'Without agitation heat transfer collapses and unreacted monomer accumulates — it reacts all at once on restart.':'Downstream flow is lost and affected controllers wind up.'),steps: mt==='M202'?[{t:'Cut monomer feed first — HOLD the sequence (FIC211 is program-owned during FEED; its faceplate refuses MAN / OP stores).',go:gSeq},{t:'Watch TIC212 and the monomer inventory bar.',go:gFp('TIC212')},{t:'Restart the agitator only after the feed is stopped.',go:gFp('M202')}]:[{t:'Put FIC102 in MAN, OP 0 to prevent windup.',go:gFp('FIC102')},{t:'Wait out the lockout, then START.',go:gFp('P101')},{t:'Restore AUTO / CAS and bring flow back gently.'}]}); }
-    if(!P.trips.rx && P.rT>162 && slope('TIC201',20)>0.04) out.push({id:'risk.rx',sev:'URGENT',title:'R-201 temperature rising — runaway risk',why:'Reaction heat rises exponentially with temperature while jacket cooling is only linear. Act before the 185 °C trip.',steps:[{t:'Check TV-202 position against TIC202 output.',go:gFp('TIC202')},{t:'Cut feed — FIC102 to MAN, reduce OP.',go:gFp('FIC102')},{t:'Track the exotherm on trend TG01.',go:gTg('TG01')}]});
+    if(!P.trips.rx && P.rT>162 && slope('TIC201',20)>0.04) out.push({id:'risk.rx',sev:'URGENT',title:'R-201 temperature rising — runaway risk',why:'Reaction heat rises exponentially with temperature while jacket cooling is only linear. Act before the 185 °C trip.',steps:[{t:'Check TV-202 position against TIC202 output.',go:gFp('TIC202')},{t:'Cut feed — FIC102 to MAN, OP about 20 % — to arrest the exotherm.',go:gFp('FIC102')},{t:'Track the exotherm on trend TG01; wait for TIC201 to turn down.',go:gTg('TG01')},{t:'Feed cut fills TK-101: before LIC101 reaches high level (80 %) and once TIC201 is falling, restore feed — FIC102 OP back toward 60 % or CAS so LIC101 draws the tank down.',go:gFp('LIC101')},{t:'Confirm R-201 is cooling before returning TIC201 / TIC202 to normal operation.',go:gFp('TIC201')}]});
     if(!P.trips.bed && P.h.bed>435) out.push({id:'risk.bed',sev:'WARN',title:'R-310 bed hotspot climbing ('+Math.round(P.h.bed)+' °C)',why:'The bed exotherm grows with temperature; the fuel trip operates at 480 °C.',steps:[{t:'Raise quench flow FIC313.',go:gFp('FIC313')},{t:'Lower the preheater SP at TIC311.',go:gFp('TIC311')}]});
     if(!this.tadShed && !P.trips.batch && (P.b.phase==='FEED'||P.b.phase==='REACT') && L.TI216.alm.PVHI && P.b.Tad>L.TI216.alm.PVHI[0]-4) out.push({id:'risk.tad',sev:'WARN',title:'R-202 adiabatic end temperature '+Math.round(P.b.Tad)+' °C',why:'If cooling were lost now, the unreacted monomer would take the batch to about '+Math.round(P.b.Tad)+' °C. Reduce the inventory before it reaches the Urgent limit, where the station sheds the feed automatically.',steps:[{t:'Reduce the monomer feed or HOLD the sequence.',go:gFp('FIC211')},{t:'Confirm the agitator is running.',go:gFp('M202')},{t:'Watch TI216 against TIC212 on TG04.',go:gTg('TG04')}]});
     const skinHi=Math.max(P.h.ts1,P.h.ts2);
@@ -2039,7 +2045,7 @@ class Component extends DCLogic {
     {k:['batch','sequence','scm','phase','stuck','hold','charge'],t:'Batch sequence control',a:'SCM202 on Unit 02 runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. START begins a batch; HOLD stops the monomer feed without losing the phase; ABORT forces COOL. During FEED the FIC211 SP is program-driven (MODEATTR = PROGRAM).'},
     {k:['raise','lower','arrow','keys','select'],t:'RAISE / LOWER keys',a:'The raise/lower buttons act on the auto-selected target: SP in AUTO, OP in MAN (dashed highlight on the faceplate). In an entry field, arrow keys nudge the typed value; Enter stores, Esc cancels.'},
     {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. An upset begins unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
-    {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
+    {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Then, once the reactor is falling, restore feed before the feed tank reaches high level (a cut feed fills TK-101) and confirm the reactor keeps cooling. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
     {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. TIC212 is PROGRAM for the whole batch, FIC211 during FEED. HOLD the sequence to take the monomer feed back (the attribute returns to OPERATOR), or wait for the sequence to end.'},
     {k:['pv tracking','pvtrack','track','bumpless','bump'],t:'PV tracking and bumpless transfer',a:'With PV tracking ON (Loop Tune, ENGR) the SP follows the PV while the loop is in MAN, so a return to AUTO starts at zero error and the output does not step. The integrator is re-initialised on every mode change so MAN → AUTO and AUTO → CAS are bumpless either way. Default ON for the cascade secondaries FIC102, TIC202 and TIC213.'},
     {k:['state','phase set','limit set','state-based','disabled','batch alarm'],t:'State-based alarm limits',a:'Unit 02 alarm limits follow the SCM202 phase: the level low alarm is off during CHARGE, DRAIN and IDLE, the monomer flow low alarm is active only in FEED, and the temperature limits tighten in REACT. Every phase change journals the limit set applied; Point Detail → Alarms shows the phase set in force and any conditions it disabled.'},
@@ -2101,20 +2107,23 @@ class Component extends DCLogic {
     return [
       {id:'D1',name:'Flow transmitter failure (FIC102)',fault:'xmtr',rel:['FIC102'],act:'ACK',stable:'contain',
        q:'FIC102 PV went BAD. What did the PID do (shed option SHEDHOLD)?',opts:['Shed to MAN and held OP at the last good value','Drove OP to SAFEOP and stayed in AUTO','Closed the valve immediately','Kept controlling on the bad PV'],a:0},
-      {id:'D2',name:'Feed surge — tank level rising',fault:'surge',rel:['LIC101','FIC102','TK-101'],act:'OUTFLOW',stable:'alarms',peak:'tankL',
+      {id:'D2',name:'Feed surge — tank level rising',fault:'surge',rel:['LIC101','FIC102','TK-101'],trips:['ovf','rx'],act:'OUTFLOW',stable:'alarms',peak:'tankL',
        q:'Best first control action for rising level?',opts:['Increase outlet flow (raise FIC102/LIC101 output)','Shelve the level alarms','Stop the feed pump','Lower the outlet flow setpoint'],a:0},
       {id:'D3',name:'Feed pump trip',fault:'pump',rel:['P101','FIC102','LIC101','TK-101'],act:'START',stable:'alarms',
        q:'Correct restart sequence?',opts:['FIC102 to MAN / OP 0, START P-101 after lockout, restore AUTO','Immediately drive FIC102 OP to 100%','Repeatedly press START until it holds','Shelve the TRIP alarm and wait'],a:0},
-      {id:'D4',name:'Cooling water loss — exotherm',fault:'cool',rel:['TIC201','TIC202','R-201'],act:'CUTFEED',stable:'alarms',peak:'rT',
-       q:'Reactor temperature climbing with no cooling. Best action?',opts:['Cut feed (FIC102 to MAN, OP low) to remove reaction heat','Raise TIC201 SP to reduce the error','Put TIC202 in MAN with OP 0','Acknowledge the alarms and monitor'],a:0},
-      {id:'D6',name:'Stuck coolant valve (stiction)',fault:'stick',rel:['TIC202','TIC201'],act:'MAN202',stable:'alarms',peak:'rT',
+      // D4: the reactor is the drill's equipment (trips:['rx']); LIC101 is related because cutting feed fills TK-101 and
+      // the trainee must restore feed before the tank reaches high level — a TK-101 trip is an 'other equipment' deduction
+      {id:'D4',name:'Cooling water loss — exotherm',fault:'cool',rel:['TIC201','TIC202','R-201','LIC101'],trips:['rx'],act:'CUTFEED',stable:'alarms',peak:'rT',
+       debrief:'Expected response: cut reactor feed (FIC102 to MAN, output about 20 %) to arrest the exotherm; when TIC201 is falling and before TK-101 reaches high level (LIC101 PVHI 80 %), restore feed — FIC102 output back toward 60 %, or return it to CAS so LIC101 draws the tank down — and confirm R-201 is cooling on TG01. Feed left cut fills the tank; feed restored while R-201 is still climbing re-lights the exotherm.',
+       q:'Reactor temperature climbing with no cooling. Best action?',opts:['Cut feed (FIC102 to MAN, OP low) to arrest the exotherm, then restore feed before TK-101 reaches high level and confirm R-201 is cooling','Raise TIC201 SP to reduce the error','Put TIC202 in MAN with OP 0','Acknowledge the alarms and monitor'],a:0},
+      {id:'D6',name:'Stuck coolant valve (stiction)',fault:'stick',rel:['TIC202','TIC201'],trips:['rx'],act:'MAN202',stable:'alarms',peak:'rT',
        q:'TIC202 OP moves but jacket temperature does not. Root cause?',opts:['Control valve TV-202 stuck (stiction)','Transmitter failure on the jacket RTD','Wrong control action configured','Cascade initialization error'],a:0},
-      {id:'D9',name:'Flash drum pressure high',fault:'vap',rel:['PIC401','V-401'],act:'AUTO401',stable:'alarms',peak:'drumP',
+      {id:'D9',name:'Flash drum pressure high',fault:'vap',rel:['PIC401','V-401'],trips:['psv'],act:'AUTO401',stable:'alarms',peak:'drumP',
        setup:(c)=>{ const l=c.L.PIC401; if(l.mode!=='MAN'){ ESS.Pid.transferMode(l,'MAN',c.pidCtx()); c.addEvent('SYSTEM','PIC401','MODE LEFT IN MAN BY PREVIOUS SHIFT'+(c.instr.hidden?'':' (DRILL SETUP)'),'AUTO','MAN'); } },
        q:'PIC401 did not respond to rising pressure. Why?',opts:['It had been left in MAN — the vent never moved','The vent valve was stuck','The setpoint was too high','Transmitter drift'],a:0},
-      {id:'D11',name:'Agitator trip during semi-batch feed (Unit 02)',fault:'agit',needBatch:true,when:(P)=>P.b.phase==='FEED'&&P.b.Cm>8,rel:['M202','TIC212','R-202','FIC211','SCM202'],act:'CUTMONO',stable:'alarms',peak:'T212',
+      {id:'D11',name:'Agitator trip during semi-batch feed (Unit 02)',fault:'agit',needBatch:true,when:(P)=>P.b.phase==='FEED'&&P.b.Cm>8,rel:['M202','TIC212','R-202','FIC211','SCM202'],trips:['batch'],act:'CUTMONO',stable:'alarms',peak:'T212',
        q:'The agitator tripped during monomer feed. Why is restarting it later dangerous?',opts:['Accumulated monomer reacts at once when mixing resumes — stop feed and max cooling before restart','It will trip the breaker again','The jacket cannot heat without agitation','It pulls a vacuum in the reactor'],a:0},
-      {id:'D12',name:'Catalyst activity surge — bed overtemp (Unit 03)',fault:'bedact',rel:['TI312','TIC311','FIC313','R-310'],act:'QUENCH',stable:'alarms',peak:'bed',
+      {id:'D12',name:'Catalyst activity surge — bed overtemp (Unit 03)',fault:'bedact',rel:['TI312','TIC311','FIC313','R-310'],trips:['bed'],act:'QUENCH',stable:'alarms',peak:'bed',
        q:'Bed temperature climbing at constant preheat. Correct response?',opts:['Raise quench flow and/or lower the preheater SP — the fuel trips at 480 °C','Raise the preheater SP to burn off deposits','Put FIC313 in MAN and close the quench','Increase feed to sweep the heat out'],a:0}
     ];
   }
@@ -2177,7 +2186,18 @@ class Component extends DCLogic {
     if(A==='QUENCH') hit=(tag==='FIC313'&&(type==='SP'||type==='OP')&&delta>0)||(tag==='TIC311'&&type==='SP'&&delta<0);
     if(hit) d.m.tAct=this.P.t;
   }
-  dTrip(){ const d=this.state.drill; if(d&&d.injected) d.m.trip=true; }
+  // Equipment trip during a drill. A drill definition may list the trip keys of its own equipment (`trips`, e.g. D4 →
+  // ['rx']); a trip on that list is the drill's trip (the 'Trip avoided' criterion), any other trip is counted in
+  // m.otherTrips and deducted separately, so a trainee who floods TK-101 while handling an R-201 exotherm is not scored
+  // as if the reactor had tripped, and not rewarded either. Without a list every trip is the drill's trip.
+  tripKeyOf(src){ return ({'TK-101':'ovf','R-201':'rx','V-401':'psv','R-202':'batch','R-310':'bed','H-310':'skin'})[src]||src; }
+  dTrip(src,cond){
+    const d=this.state.drill; if(!d||!d.injected) return;
+    const key=this.tripKeyOf(src), rel=!d.def.trips||!src||d.def.trips.includes(key);
+    if(rel){ d.m.trip=true; return; }
+    d.m.otherTrips=(d.m.otherTrips||0)+1;
+    (d.m.otherTripList=d.m.otherTripList||[]).push(src+(cond?' '+cond:''));
+  }
   endDrill(reason){
     const d=this.state.drill; if(!d) return;
     // every fault a drill can inject is cleared (drillFaults() is derived from the definitions, so a new drill fault
@@ -2196,7 +2216,7 @@ class Component extends DCLogic {
   scoreDrill(d,ans){
     const m=d.m, t0=d.t0, t1=d.tEnd||this.P.t;
     const load=ESS.Kpi.computeMetrics(this.alarmLog,{t0,t1:Math.max(t1,t0+1)}).per10min.avg;
-    return ESS.Kpi.scoreDrill({tAlarm:m.tAlarm,tAck:m.tAck,tAct:m.tAct,tStable:m.tStable,trip:!!m.trip,actionCorrect:!!m.tAct,quizCorrect:ans===d.def.a,alarmsPer10min:load},{passMark:ESS.Training.PASS_MARK});
+    return ESS.Kpi.scoreDrill({tAlarm:m.tAlarm,tAck:m.tAck,tAct:m.tAct,tStable:m.tStable,trip:!!m.trip,otherTrips:m.otherTrips||0,actionCorrect:!!m.tAct,quizCorrect:ans===d.def.a,alarmsPer10min:load},{passMark:ESS.Training.PASS_MARK});
   }
   // Debrief submit: score, journal, training record (last 20 per session, keyed by the trainee's logon name).
   submitDebrief(d,ans){
@@ -2401,7 +2421,8 @@ class Component extends DCLogic {
       {k:'Acknowledged',v:rel(m.tAck),fg:m.tAck?'#0a3a12':'#A00000'},
       {k:'Correct action taken',v:rel(m.tAct),fg:m.tAct?'#0a3a12':'#A00000'},
       {k:'Stabilized',v:m.tStable?rel(m.tStable):'no',fg:m.tStable?'#0a3a12':'#A00000'},
-      {k:'Trip / SIS activation',v:m.trip?'YES':'none',fg:m.trip?'#A00000':'#0a3a12'},
+      {k:'Trip / SIS activation'+(d.def.trips?' (drill equipment)':''),v:m.trip?'YES':'none',fg:m.trip?'#A00000':'#0a3a12'},
+      ...(m.otherTrips?[{k:'Other equipment trips',v:(m.otherTripList||[]).join(', ')||String(m.otherTrips),fg:'#7a4a00'}]:[]),
       ...(d.def.peak?[{k:'Peak value',v:this.fmt(m.peak,1),fg:'#000'}]:[])
     ];
   }
@@ -3048,11 +3069,12 @@ class Component extends DCLogic {
       randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
-      dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:''};
+      dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:'',dbGuide:'',dbGuideOn:false};
     if(dgT==='debrief' && S.dlg.drill){
       const d=S.dlg.drill;
       dg.dbName=d.def.id+' — '+d.def.name; dg.dbReason='Ended: '+d.reason+'. Times relative to first alarm. Trainee: '+this.operName()+'.';
       dg.dbRows=this.drillRows(d);
+      dg.dbGuide=d.def.debrief||''; dg.dbGuideOn=!!dg.dbGuide;
       dg.dbAsk=!S.dlg.scored; dg.dbScored=!!S.dlg.scored;
       dg.dbQ=d.def.q;
       dg.dbOpts=d.def.opts.map((o,i)=>({label:o,bg:S.debAns===i?'#B8C4D4':'#CFCFCB',bc:S.debAns===i?'#31548F':'#B6B6B2',cb:()=>this.setState({debAns:i})}));
