@@ -9,6 +9,7 @@
 <script src="./src/palette.js"></script>
 <script src="./src/models.js"></script>
 <script src="./src/alarm-help.js"></script>
+<script src="./src/philosophy.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -63,9 +64,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="width:270px;padding:4px 6px;background:#C9C5BD;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:11px;color:#7a1a00;font-weight:700;height:24px;overflow:hidden;white-space:nowrap">{{ msgTxt }}</div>
   <div style="flex:1;display:flex;align-items:center;padding:0 6px;background:{{ al.bg }};color:{{ al.fg }};border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:12px;font-weight:700;height:24px;overflow:hidden;white-space:nowrap;cursor:pointer" onClick="{{ al.click }}">{{ al.txt }}</div>
   <div style="display:flex;gap:3px;align-items:center;font-size:10px;font-weight:700">
-    <div style="padding:2px 6px;background:#FF0000;color:#FFFFFF;border:1px solid #7a0000">U {{ cU }}</div>
-    <div style="padding:2px 6px;background:{{ hcol }};color:#000000;border:1px solid #7a6a00">H {{ cH }}</div>
-    <div style="padding:2px 6px;background:#00D8D8;color:#000000;border:1px solid #006a6d">L {{ cL }}</div>
+    <sc-for list="{{ cnts }}" as="c" hint-placeholder-count="3">
+      <div title="{{ c.title }}" style="padding:2px 6px;background:{{ c.bg }};color:{{ c.fg }};border:1px solid {{ c.bd }}">{{ c.label }} {{ c.n }}</div>
+    </sc-for>
   </div>
 </div>
 
@@ -156,6 +157,13 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch)" opacity="{{ p.hatchOp }}"></rect>
+      <sc-if value="{{ p.bandOn }}" hint-placeholder-val="{{ true }}">
+        <rect x="{{ p.bx }}" y="{{ p.y }}" width="5" height="46" fill="#D8D8D8" stroke="#8a8a86" stroke-width="0.6"></rect>
+        <sc-for list="{{ p.band }}" as="b" hint-placeholder-count="5">
+          <rect x="{{ p.bx }}" y="{{ b.y }}" width="5" height="{{ b.h }}" fill="{{ b.fill }}" opacity="0.6"></rect>
+        </sc-for>
+        <rect x="{{ p.bmx }}" y="{{ p.bmy }}" width="9" height="2" fill="{{ p.bmFill }}"></rect>
+      </sc-if>
       <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
       <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
       <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
@@ -240,6 +248,13 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch2)" opacity="{{ p.hatchOp }}"></rect>
+      <sc-if value="{{ p.bandOn }}" hint-placeholder-val="{{ true }}">
+        <rect x="{{ p.bx }}" y="{{ p.y }}" width="5" height="46" fill="#D8D8D8" stroke="#8a8a86" stroke-width="0.6"></rect>
+        <sc-for list="{{ p.band }}" as="b" hint-placeholder-count="5">
+          <rect x="{{ p.bx }}" y="{{ b.y }}" width="5" height="{{ b.h }}" fill="{{ b.fill }}" opacity="0.6"></rect>
+        </sc-for>
+        <rect x="{{ p.bmx }}" y="{{ p.bmy }}" width="9" height="2" fill="{{ p.bmFill }}"></rect>
+      </sc-if>
       <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
       <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
       <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
@@ -311,6 +326,13 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
       <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch3)" opacity="{{ p.hatchOp }}"></rect>
+      <sc-if value="{{ p.bandOn }}" hint-placeholder-val="{{ true }}">
+        <rect x="{{ p.bx }}" y="{{ p.y }}" width="5" height="46" fill="#D8D8D8" stroke="#8a8a86" stroke-width="0.6"></rect>
+        <sc-for list="{{ p.band }}" as="b" hint-placeholder-count="5">
+          <rect x="{{ p.bx }}" y="{{ b.y }}" width="5" height="{{ b.h }}" fill="{{ b.fill }}" opacity="0.6"></rect>
+        </sc-for>
+        <rect x="{{ p.bmx }}" y="{{ p.bmy }}" width="9" height="2" fill="{{ p.bmFill }}"></rect>
+      </sc-if>
       <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
       <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
       <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
@@ -513,9 +535,40 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             <div style="font-size:11px;color:#7a1a00;font-weight:700;padding-left:8px">{{ dpt.shedNote }}</div>
           </div>
         </div>
-        <div style="flex:1;font-size:11.5px;color:#3c3c3c;background:#CFCFCB;border:1px solid #B6B6B2;padding:10px;max-width:420px">
-          <div style="font-weight:700;margin-bottom:6px">OPERATION NOTES</div>
-          <div style="line-height:1.5">SP entry permitted in AUTO only. OP entry permitted in MAN only. CAS setpoint is driven by the primary controller. Entries are clamped to configured limits and rejected with a Message Zone notice. Tuning and limit changes require ENGR level or above.</div>
+        <div style="flex:1;max-width:460px;display:flex;flex-direction:column;gap:10px">
+          <sc-if value="{{ dpt.hasBand }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#CFCFCB;border:1px solid #B6B6B2;padding:10px">
+              <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">LIMIT LADDER — RANGE / CRITICAL / STANDARD / TARGET</div>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="position:relative;width:22px;height:160px;background:#FFFFFF;border:1px solid #8a8a86;flex:none">
+                  <sc-for list="{{ dpt.band }}" as="b" hint-placeholder-count="5">
+                    <div style="position:absolute;left:0;right:0;top:{{ b.y }}px;height:{{ b.h }}px;background:{{ b.fill }};opacity:0.7"></div>
+                  </sc-for>
+                  <div style="position:absolute;left:-4px;right:-4px;top:{{ dpt.bandMarker }}px;height:2px;background:{{ dpt.bandMarkerFill }}"></div>
+                </div>
+                <div style="flex:1">
+                  <sc-for list="{{ dpt.limitRows }}" as="r" hint-placeholder-count="8">
+                    <div style="display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid #B6B6B2;font-size:11.5px">
+                      <div style="width:104px;color:#3c3c3c">{{ r.label }}</div>
+                      <div style="width:60px;font-weight:700;color:#55524c;font-size:10.5px">{{ r.param }}</div>
+                      <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+                        <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:90px;padding:1px 4px;font-size:11.5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
+                      </sc-if>
+                      <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
+                        <div style="width:100px;font-weight:700;cursor:{{ r.cur }};text-decoration:{{ r.und }}" onClick="{{ r.cb }}">{{ r.value }}</div>
+                      </sc-if>
+                      <div style="flex:1;font-size:10.5px;color:#55524c">{{ r.note }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="font-size:10.5px;color:#55524c;margin-top:6px;line-height:1.4">{{ dpt.bandNote }}</div>
+            </div>
+          </sc-if>
+          <div style="font-size:11.5px;color:#3c3c3c;background:#CFCFCB;border:1px solid #B6B6B2;padding:10px">
+            <div style="font-weight:700;margin-bottom:6px">OPERATION NOTES</div>
+            <div style="line-height:1.5">SP entry permitted in AUTO only. OP entry permitted in MAN only. CAS setpoint is driven by the primary controller. Entries are clamped to configured limits and rejected with a Message Zone notice. Tuning and limit changes require ENGR level or above.</div>
+          </div>
         </div>
       </div>
     </sc-if>
@@ -568,13 +621,24 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
               <input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:100px;padding:2px 5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" />
             </sc-if>
             <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
-              <div style="width:110px;font-weight:700;cursor:pointer;text-decoration:underline dotted" onClick="{{ r.cb }}">{{ r.value }}</div>
+              <div style="width:110px;font-weight:700;cursor:{{ r.cur }};text-decoration:{{ r.und }}" onClick="{{ r.cb }}">{{ r.value }}</div>
             </sc-if>
             <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
           </div>
         </sc-for>
         <div style="margin-top:10px;font-size:11px;color:#7a1a00;font-weight:700">{{ dpt.tuneGate }}</div>
         <div style="margin-top:4px;font-size:11px;color:#55524c">Experion PID form: OP = K·e% + K/(T1·60)·∫e%·dt − K·T2·60·dPV%/dt, with back-calculation anti-windup and bumpless transfer. T1, T2 in minutes.</div>
+        <div style="margin-top:4px;font-size:11px;color:#55524c">ISA standard form: OP = Kc·( e + (1/Ti)·∫e·dt + Td·de/dt ) with Kc = K, Ti = T1, Td = T2 (minutes); the parallel gains are Kp = K, Ki = K/(Ti·60) per second, Kd = K·Td·60 seconds.</div>
+        <div style="margin-top:12px;background:#CFCFCB;border:1px solid #B6B6B2;padding:8px">
+          <div style="display:flex;font-size:11px;font-weight:700;margin-bottom:4px"><div style="flex:1">STEP RESPONSE — LAST {{ dpt.spark.span }}</div><div style="color:#C00000">PV</div><div style="color:#0050C0;margin-left:8px">SP</div><div style="color:#008000;margin-left:8px">OP</div></div>
+          <svg viewBox="0 0 320 90" preserveAspectRatio="none" style="width:100%;height:90px;background:#FFFFFF;border:1px solid #9a968e;display:block">
+            <line x1="0" y1="45" x2="320" y2="45" stroke="#DDDDDD" stroke-width="1"></line>
+            <polyline points="{{ dpt.spark.op }}" fill="none" stroke="#008000" stroke-width="1.2"></polyline>
+            <polyline points="{{ dpt.spark.sp }}" fill="none" stroke="#0050C0" stroke-width="1.2" stroke-dasharray="4,3"></polyline>
+            <polyline points="{{ dpt.spark.pv }}" fill="none" stroke="#C00000" stroke-width="1.6"></polyline>
+          </svg>
+          <div style="font-size:10.5px;color:#55524c;margin-top:4px">{{ dpt.spark.note }}</div>
+        </div>
       </div>
     </sc-if>
 
@@ -714,7 +778,10 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <div style="display:flex;flex-direction:column;align-items:center">
         <div style="font-size:9px;color:#55524c">{{ fp.hiT }}</div>
         <div style="position:relative;width:30px;height:170px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E">
-          <div style="position:absolute;left:0;right:0;bottom:0;height:{{ fp.pvH }}px;background:#2E5F8A"></div>
+          <sc-for list="{{ fp.bands }}" as="b" hint-placeholder-count="5">
+            <div style="position:absolute;left:0;right:0;top:{{ b.y }}px;height:{{ b.h }}px;background:{{ b.fill }};opacity:0.55"></div>
+          </sc-for>
+          <div style="position:absolute;left:0;width:16px;bottom:0;height:{{ fp.pvH }}px;background:#2E5F8A"></div>
           <div style="position:absolute;left:0;right:0;top:{{ fp.spY }}px;height:0;border-top:2px solid #000"></div>
           <sc-for list="{{ fp.ticks }}" as="tk" hint-placeholder-count="4">
             <div style="position:absolute;right:-8px;top:{{ tk.y }}px;width:7px;height:3px;background:{{ tk.c }}"></div>
@@ -766,7 +833,10 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <div style="display:flex;flex-direction:column;align-items:center">
         <div style="font-size:9px;color:#55524c">{{ fp.hiT }}</div>
         <div style="position:relative;width:30px;height:130px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E">
-          <div style="position:absolute;left:0;right:0;bottom:0;height:{{ fp.indH }}px;background:#2E5F8A"></div>
+          <sc-for list="{{ fp.bands }}" as="b" hint-placeholder-count="5">
+            <div style="position:absolute;left:0;right:0;top:{{ b.y }}px;height:{{ b.h }}px;background:{{ b.fill }};opacity:0.55"></div>
+          </sc-for>
+          <div style="position:absolute;left:0;width:16px;bottom:0;height:{{ fp.indH }}px;background:#2E5F8A"></div>
           <sc-for list="{{ fp.ticks }}" as="tk" hint-placeholder-count="2">
             <div style="position:absolute;right:-8px;top:{{ tk.y }}px;width:7px;height:3px;background:{{ tk.c }}"></div>
           </sc-for>
@@ -932,7 +1002,33 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           Entries outside SPHILM/SPLOLM or OPHILM/OPLOLM are rejected.<br /><br />
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
           <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
-          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display.
+          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isPhil }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;line-height:1.6">
+          <sc-for list="{{ dg.phil.sections }}" as="sec" hint-placeholder-count="6">
+            <div style="font-weight:700;margin-top:8px;margin-bottom:2px">{{ sec.title }}</div>
+            <div>{{ sec.body }}</div>
+          </sc-for>
+          <div style="font-weight:700;margin-top:10px;margin-bottom:4px">The ladder, outermost first</div>
+          <sc-for list="{{ dg.phil.ladder }}" as="r" hint-placeholder-count="8">
+            <div style="display:flex;font-size:11.5px;border-bottom:1px solid #B6B6B2;padding:2px 0"><div style="width:110px;font-weight:700">{{ r.level }}</div><div style="width:64px;color:#55524c">{{ r.param }}</div><div style="flex:1">{{ r.meaning }}</div></div>
+          </sc-for>
+          <div style="font-weight:700;margin-top:10px;margin-bottom:4px">Sources (public documents, cited by name; no text is reproduced)</div>
+          <sc-for list="{{ dg.phil.sources }}" as="src" hint-placeholder-count="4">
+            <div style="display:flex;font-size:11.5px;padding:2px 0"><div style="width:230px;font-weight:700">{{ src.name }}</div><div style="flex:1;color:#3c3c3c">{{ src.use }}</div></div>
+          </sc-for>
+          <div style="margin-top:10px;display:flex;gap:6px;align-items:center;font-size:11.5px">
+            <div>Colour philosophy:</div>
+            <sc-for list="{{ dg.phil.palettes }}" as="pp" hint-placeholder-count="2">
+              <div style="padding:3px 10px;font-weight:700;cursor:pointer;background:{{ pp.bg }};border:2px solid;border-color:{{ pp.bc }}" onClick="{{ pp.cb }}">{{ pp.label }}</div>
+            </sc-for>
+            <sc-for list="{{ dg.phil.swatches }}" as="sw" hint-placeholder-count="4">
+              <div style="padding:2px 6px;font-size:10px;font-weight:700;background:{{ sw.bg }};color:{{ sw.fg }};border:1px solid {{ sw.bd }}">{{ sw.label }}</div>
+            </sc-for>
+          </div>
         </div>
       </sc-if>
 
@@ -1039,9 +1135,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30 };
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -1053,9 +1149,9 @@ class Component extends DCLogic {
 
   initSim(){
     const now = Date.now();
-    const P = (o)=>Object.assign({kind:'pid',mode:'AUTO',modeAttr:'OPERATOR',T2:0,ophilm:100,oplolm:0,opexhi:105,opexlo:-5,safeop:0,shed:'SHEDHOLD',badPv:false,init:false,dec:1,_as:{}}, o);
+    const P = (o)=>Object.assign({kind:'pid',mode:'AUTO',modeAttr:'OPERATOR',T2:0,ophilm:100,oplolm:0,opexhi:105,opexlo:-5,safeop:0,shed:'SHEDHOLD',badPv:false,init:false,dec:1,tgtLo:null,tgtHi:null,pvtrack:false,_as:{}}, o);
     this.L = {
-      FI100: {kind:'ind',tag:'FI100',desc:'UNIT FEED SUPPLY FLOW',eu:'M3/H',lo:0,hi:150,dec:1,pv:60,cm:'CM0_FI100',alm:{},_as:{}},
+      FI100: {kind:'ind',tag:'FI100',desc:'UNIT FEED SUPPLY FLOW',eu:'M3/H',lo:0,hi:150,dec:1,pv:60,cm:'CM0_FI100',alm:{},tgtLo:50,tgtHi:70,_as:{}},
       LIC101:P({tag:'LIC101',desc:'FEED TANK TK-101 LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.5,T1:3,act:'DIR',sphilm:95,splolm:5,slave:'FIC102',cm:'CM1_LIC101',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[80,'High'],PVHH:[90,'Urgent']}}),
       FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
       P101:  {kind:'motor',tag:'P101',desc:'FEED PUMP P-101',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM2A_P101',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
@@ -1067,12 +1163,12 @@ class Component extends DCLogic {
       FIC211:P({tag:'FIC211',desc:'R-202 MONOMER FEED FLOW',eu:'M3/H',lo:0,hi:40,pv:0,sp:0,op:0,K:0.4,T1:0.15,act:'REV',sphilm:30,splolm:0,cm:'CM10_FIC211',alm:{PVHI:[28,'High']}}),
       TIC212:P({tag:'TIC212',desc:'R-202 BATCH REACTOR TEMP',eu:'DEG C',lo:0,hi:150,pv:25,sp:40,op:8,K:1.8,T1:6,T2:0.4,act:'REV',mode:'MAN',slave:'TIC213',sphilm:95,splolm:20,cm:'CM11_TIC212',alm:{PVHI:[95,'High'],PVHH:[105,'Urgent']}}),
       TIC213:P({tag:'TIC213',desc:'R-202 JACKET MEDIUM TEMP',eu:'DEG C',lo:0,hi:130,pv:20,sp:20,op:45,K:1.2,T1:1.2,act:'REV',mode:'CAS',master:'TIC212',sphilm:120,splolm:5,cm:'CM12_TIC213',alm:{PVHI:[115,'High']}}),
-      PI214: {kind:'ind',tag:'PI214',desc:'R-202 VAPOR PRESSURE',eu:'KPA',lo:0,hi:600,dec:0,pv:100,cm:'CM13_PI214',alm:{PVHI:[420,'High'],PVHH:[520,'Urgent']},_as:{}},
-      LI215: {kind:'ind',tag:'LI215',desc:'R-202 BATCH LEVEL',eu:'%',lo:0,hi:100,dec:1,pv:12,cm:'CM14_LI215',alm:{PVHI:[85,'High']},_as:{}},
+      PI214: {kind:'ind',tag:'PI214',desc:'R-202 VAPOR PRESSURE',eu:'KPA',lo:0,hi:600,dec:0,pv:100,cm:'CM13_PI214',alm:{PVHI:[420,'High'],PVHH:[520,'Urgent']},tgtLo:80,tgtHi:320,_as:{}},
+      LI215: {kind:'ind',tag:'LI215',desc:'R-202 BATCH LEVEL',eu:'%',lo:0,hi:100,dec:1,pv:12,cm:'CM14_LI215',alm:{PVHI:[85,'High']},tgtLo:10,tgtHi:80,_as:{}},
       M202:  {kind:'motor',tag:'M202',desc:'R-202 AGITATOR',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM15_M202',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
       FIC310:P({tag:'FIC310',desc:'R-310 FRESH FEED FLOW',eu:'M3/H',lo:0,hi:80,pv:40,sp:40,op:50,K:0.4,T1:0.15,act:'REV',sphilm:70,splolm:0,cm:'CM16_FIC310',alm:{PVLO:[10,'Low'],PVHI:[65,'High']}}),
       TIC311:P({tag:'TIC311',desc:'H-310 PREHEATER OUTLET TEMP',eu:'DEG C',lo:0,hi:500,dec:0,pv:320,sp:320,op:40,K:1.0,T1:2.5,T2:0.2,act:'REV',sphilm:380,splolm:150,cm:'CM17_TIC311',alm:{PVLO:[260,'Low'],PVHI:[360,'High'],PVHH:[400,'Urgent']}}),
-      TI312: {kind:'ind',tag:'TI312',desc:'R-310 CATALYST BED HOTSPOT',eu:'DEG C',lo:0,hi:600,dec:0,pv:380,cm:'CM18_TI312',alm:{PVHI:[440,'High'],PVHH:[480,'Urgent']},_as:{}},
+      TI312: {kind:'ind',tag:'TI312',desc:'R-310 CATALYST BED HOTSPOT',eu:'DEG C',lo:0,hi:600,dec:0,pv:380,cm:'CM18_TI312',alm:{PVHI:[440,'High'],PVHH:[480,'Urgent']},tgtLo:360,tgtHi:420,_as:{}},
       FIC313:P({tag:'FIC313',desc:'R-310 QUENCH FLOW',eu:'M3/H',lo:0,hi:40,pv:10,sp:10,op:25,K:0.5,T1:0.2,act:'REV',sphilm:38,splolm:0,cm:'CM19_FIC313',alm:{PVLO:[4,'Low'],PVLL:[2,'Urgent']}})
     };
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
@@ -1094,8 +1190,74 @@ class Component extends DCLogic {
   fT(ms){ const d=new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
   fD(ms){ const d=new Date(ms); const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return ('0'+d.getDate()).slice(-2)+'-'+M[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2); }
   addEvent(type,src,desc,oldV,newV){ this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:this.state.sec}); if(this.events.length>600) this.events.length=600; }
-  prioColor(p){ return {Urgent:'#FF0000', High:(this.props.highColor??'#FFE000'), Low:'#00D8D8', Journal:'#909090'}[p]; }
-  prioDark(p){ return {Urgent:'#A00000', High:'#7a6400', Low:'#00696d', Journal:'#666666'}[p]; }
+  // ---------- colour philosophy ----------
+  // One getter for every priority colour the display draws (ESS.Palette). Presets: the representative defaults and the
+  // ISA-101 values from the Rockwell process HMI style guide (RESOURCES 2.4). Chrome and equipment stay grey (ASM, 2.11).
+  // The highColor data-prop keeps overriding High on the representative preset; the palette data-prop picks the preset.
+  paletteName(){ const n=this.state.palette||this.props.palette||'representative'; return ESS.Palette.list().includes(n)?n:'representative'; }
+  colours(){
+    const name=this.paletteName(), hc=this.props.highColor??null;
+    if(this._pal && this._pal.name===name && this._pal.hc===hc) return this._pal.p;
+    const p=ESS.Palette.getPalette(name);
+    if(name==='representative' && hc) p.prio.High=hc;
+    this._pal={name,hc,p};
+    return p;
+  }
+  prioColor(p){ return this.colours().prio[p]; }
+  prioDark(p){ return this.colours().prioDim[p]; }
+  prioText(p){ return this.colours().prioText[p]; }
+  paletteLabel(n){ return n==='isa101'?'ISA-101':'REPRESENTATIVE'; }
+  setPalette(name){
+    if(!ESS.Palette.list().includes(name)) return;
+    const o=this.paletteName(); if(o===name){ this.setState({menu:null}); return; }
+    this.setState({palette:name,menu:null});
+    this.addEvent('SYSTEM','STN01','ALARM COLOUR PHILOSOPHY CHANGE',this.paletteLabel(o),this.paletteLabel(name));
+    this.msgZone('COLOUR PHILOSOPHY: '+this.paletteLabel(name));
+  }
+  // ---------- limit ladder (ASM Range / Critical / Standard / Target, RESOURCES 2.11) ----------
+  // range = instrument range, critical = PVLL/PVHH, standard = PVLO/PVHI, target = engineer-set band or SP ± 5 % of range
+  // (indication points carry a configured normal band). Each rung is clamped inside the one outside it, so the ladder
+  // is ordered whatever the trip points say; missing rungs collapse onto the next outer one.
+  limitBand(l){
+    const rangeLo=l.lo, rangeHi=l.hi, span=(rangeHi-rangeLo)||1;
+    const tp=(c)=>l.alm&&l.alm[c]?l.alm[c][0]:null;
+    const critLo=Math.min(rangeHi,Math.max(rangeLo,tp('PVLL')??rangeLo));
+    const critHi=Math.max(critLo,Math.min(rangeHi,tp('PVHH')??rangeHi));
+    const stdLo=Math.min(critHi,Math.max(critLo,tp('PVLO')??critLo));
+    const stdHi=Math.max(stdLo,Math.min(critHi,tp('PVHI')??critHi));
+    const auto=l.tgtLo==null||l.tgtHi==null;
+    let tLo=l.tgtLo, tHi=l.tgtHi;
+    if(auto){ const c=l.kind==='pid'?l.sp:(stdLo+stdHi)/2, half=span*0.05; tLo=c-half; tHi=c+half; }
+    const tgtLo=Math.min(stdHi,Math.max(stdLo,tLo));
+    const tgtHi=Math.max(tgtLo,Math.min(stdHi,tHi));
+    return {rangeLo,critLo,stdLo,tgtLo,tgtHi,stdHi,critHi,rangeHi,auto};
+  }
+  // Band drawn on a vertical bar of height h (top = range high): segments {y,h,fill} plus the live PV marker.
+  // Critical and standard zones take the priority colour of the alarm that guards them; the rest reads palette.band.
+  bandSegments(l,h){
+    const b=this.limitBand(l), C=this.colours(), span=(b.rangeHi-b.rangeLo)||1;
+    const y=(v)=>h-((v-b.rangeLo)/span)*h;
+    const guard=(c)=>l.alm&&l.alm[c]?this.prioColor(l.alm[c][1]):C.band.range;
+    const seg=(lo,hi,fill)=>({y:y(hi),h:y(lo)-y(hi),fill});
+    const segs=[seg(b.rangeLo,b.critLo,guard('PVLL')),seg(b.critLo,b.stdLo,guard('PVLO')),seg(b.stdLo,b.tgtLo,C.band.normal),seg(b.tgtLo,b.tgtHi,C.band.target),
+      seg(b.tgtHi,b.stdHi,C.band.normal),seg(b.stdHi,b.critHi,guard('PVHI')),seg(b.critHi,b.rangeHi,guard('PVHH'))]
+      .filter(x=>x.h>0.05).map(x=>({y:x.y.toFixed(1),h:x.h.toFixed(1),fill:x.fill}));
+    const pv=l.kind==='motor'?(l.run?1:0):l.pv;
+    return {segs,marker:Math.max(0,Math.min(h,y(pv))).toFixed(1),markerFill:C.band.marker,band:b};
+  }
+  setTargetBand(l,lo,hi){
+    const b=this.limitBand(l);
+    if(!(lo<hi)||lo<b.stdLo||hi>b.stdHi){ this.msgZone('ENTRY REJECTED — TARGET BAND MUST LIE INSIDE '+this.fmt(b.stdLo,l.dec)+' TO '+this.fmt(b.stdHi,l.dec)+' AND LOW < HIGH'); return false; }
+    l.tgtLo=lo; l.tgtHi=hi; return true;
+  }
+  // PV tracking (ENGR): in MAN the SP follows the PV so a return to AUTO starts at zero error (ESS.Pid convention, RESOURCES 2.12).
+  setPvTrack(tag,on){
+    const l=this.L[tag]; if(!l||l.kind!=='pid') return;
+    if(!this.can('ENGR')) return;
+    if(!!l.pvtrack===!!on) return;
+    l.pvtrack=!!on;
+    this.addEvent('OPERATOR',tag,'PV TRACKING CHANGE',on?'OFF':'ON',on?'ON':'OFF');
+  }
 
   // ---------- alarm engine wrappers (ISA-18.2 per alerta isa_18_2.py, RESOURCES 2.5) ----------
   // Compatibility view of the engine's records (everything not in NORM), newest state first is not guaranteed: sort with alarmEngine.compare.
@@ -1469,7 +1631,7 @@ class Component extends DCLogic {
       if(l.slave){ const s=L[l.slave]; l.init = s.mode!=='CAS';
         if(l.init){ l.op = Math.max(l.oplolm,Math.min(l.ophilm, invMap[l.slave](s.sp))); l.I=l.op; l.lastPv=l.pv; continue; } }
       if(l.mode==='CAS' && l.master){ const m=L[l.master]; l.sp = Math.max(l.splolm,Math.min(l.sphilm, casMap[k](m.op))); }
-      if(l.mode==='MAN' || l.badPv){ l.I=l.op; l.lastPv=l.pv; continue; }
+      if(l.mode==='MAN' || l.badPv){ if(l.pvtrack&&l.mode==='MAN'&&!l.badPv) l.sp=Math.max(l.splolm,Math.min(l.sphilm,l.pv)); l.I=l.op; l.lastPv=l.pv; continue; }
       const span=l.hi-l.lo;
       const e=((l.act==='DIR'?(l.pv-l.sp):(l.sp-l.pv))/span)*100;
       const Pt=l.K*e;
@@ -1636,6 +1798,7 @@ class Component extends DCLogic {
     if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return; }
     if(map[c]){ this.nav(map[c]); return; }
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
+    if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return; }
     if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return; }
     this.msgZone('DISPLAY NOT FOUND: '+c);
   }
@@ -1706,10 +1869,11 @@ class Component extends DCLogic {
     if(!this.can('OPER')) return;
     if(param==='SP'){ if(l.mode==='CAS'){this.msgZone('SP IS CASCADE-DRIVEN — CHANGE PRIMARY');return;} if(l.mode!=='AUTO'){this.msgZone('INVALID MODE — SP ENTRY REQUIRES AUTO');return;} }
     if(param==='OP' && l.mode!=='MAN'){ this.msgZone('INVALID MODE — OP ENTRY REQUIRES MAN'); return; }
-    const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP'].includes(param)||param.startsWith('TP:');
+    const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP','TGTHI','TGTLO'].includes(param)||param.startsWith('TP:');
     if(engr && !this.can('ENGR')) return;
-    const cur = param==='SP'?l.sp : param==='OP'?l.op : param.startsWith('TP:')? l.alm[param.slice(3)][0] : l[param.toLowerCase()]??l[param];
-    this.setState({entry:{tag,param}, entryText:this.fmt(cur, param==='SP'||param.startsWith('TP:')?l.dec:2)});
+    const isTgt=param==='TGTHI'||param==='TGTLO';
+    const cur = param==='SP'?l.sp : param==='OP'?l.op : param.startsWith('TP:')? l.alm[param.slice(3)][0] : isTgt? this.limitBand(l)[param==='TGTHI'?'tgtHi':'tgtLo'] : l[param.toLowerCase()]??l[param];
+    this.setState({entry:{tag,param}, entryText:this.fmt(cur, param==='SP'||param.startsWith('TP:')||isTgt?l.dec:2)});
   }
   commitEntry(){
     const en=this.state.entry; if(!en) return;
@@ -1720,6 +1884,7 @@ class Component extends DCLogic {
     if(en.param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',en.tag,v,v-o);
       if(en.tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.P.faults.rxn=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return; }
     if(en.param.startsWith('TP:')){ const c=en.param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return; }
+    if(en.param==='TGTHI'||en.param==='TGTLO'){ const b=this.limitBand(l); const lo=en.param==='TGTLO'?v:b.tgtLo, hi=en.param==='TGTHI'?v:b.tgtHi; const o=en.param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return; done(o,()=>{},en.param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return; }
     const key=en.param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
     const o=l[key]??l[en.param]; done(o,()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; }, map[key]||en.param);
   }
@@ -1768,16 +1933,16 @@ class Component extends DCLogic {
     if(!this.L) this.initSim();
     const S=this.state, L=this.L, P=this.P, V=this.V;
     const blink=S.blink;
-    const HC=this.props.highColor??'#FFE000';
-    const pc=(p)=>this.prioColor(p), pd=(p)=>this.prioDark(p);
+    const pc=(p)=>this.prioColor(p), pd=(p)=>this.prioDark(p), pt=(p)=>this.prioText(p);
+    const HC=pc('High'), UC=pc('Urgent'), UT=pt('Urgent');
     const E=this.alarmEngine;
     // per-state indication (RESOURCES 2.6): UNACK blinks, RTNUN inverse-blinks, ACKED steady, SHLVD/DSUPR/OOSRV muted
     const almSty=(a)=>{
-      const c=pc(a.prio), dk=pd(a.prio), wht=a.prio==='Urgent';
+      const c=pc(a.prio), dk=pd(a.prio), tx=pt(a.prio);
       const ind=E.indication(a.state,a.prio);
       if(ind.inverse) return blink?{bg:'#FFFFFF',fg:dk}:{bg:dk,fg:'#FFFFFF'};
-      if(ind.blink) return blink?{bg:c,fg:wht?'#FFFFFF':'#000000'}:{bg:'transparent',fg:dk};
-      if(ind.steady) return {bg:c,fg:wht?'#FFFFFF':'#000000'};
+      if(ind.blink) return blink?{bg:c,fg:tx}:{bg:'transparent',fg:dk};
+      if(ind.steady) return {bg:c,fg:tx};
       return {bg:'#D8D8D8',fg:dk};
     };
     const shown=(x)=>x.state==='UNACK'||x.state==='ACKED'||x.state==='RTNUN';
@@ -1785,11 +1950,12 @@ class Component extends DCLogic {
     // menus
     const mkItems=(arr)=>arr.map(it=>it.sep?{sep:true}:{label:it.l,cb:()=>{this.setState({menu:null});it.f();}});
     const menusDef=[
-      {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
+      {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},
+        ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
       {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Panel…',f:()=>this.setState({dlg:{type:'instr'}})}]},
-      {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
+      {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
     const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
     // toolbar
@@ -1810,6 +1976,7 @@ class Component extends DCLogic {
     if(top){ const st=almSty(top); al={bg:st.bg==='transparent'?'#C9C5BD':st.bg,fg:st.fg,txt:this.fT(top.lastT)+'   '+top.tag+'   '+top.cond+'   '+top.prio.toUpperCase()+' '+top.subprio+'   '+top.state+'   '+this.fmt(top.val,1)+' '+top.eu+'   '+top.desc,click:()=>{this.setState({selAlm:top.id,sel:this.L[top.tag]?top.tag:S.sel}); if(this.L[top.tag]){this.nav('graphic');this.openFp(top.tag);}}}; }
     const counts=E.counts();
     const cnt=(p)=>counts[p];
+    const cnts=['Urgent','High','Low'].map(p=>({label:p[0],n:cnt(p),bg:pc(p),fg:pt(p),bd:pd(p),title:p+' priority alarms active'}));
     // graphic values
     const mCh={MAN:'M',AUTO:'A',CAS:'C'};
     const gpts=[
@@ -1822,7 +1989,9 @@ class Component extends DCLogic {
       let aBg='none',aFg='none',aTxt='',aBd='none';
       if(aa){ const st=almSty(aa); aBg=st.bg==='transparent'?'#D8D8D8':st.bg; aFg=st.fg; aTxt=aa.prio[0]; aBd='#55524c'; }
       const pvT=l.kind==='motor'?(l.run?'RUN':'STOP'):this.fmt(l.pv,l.dec);
+      const bandOn=l.kind!=='motor'; const bs=bandOn?this.bandSegments(l,46):{segs:[],marker:'0',markerFill:'none'};
       return {tag:g.tag,x:g.x,y:g.y,tagX:g.x+6,tagY:g.y+14,pvX:g.x+6,pvY:g.y+36,euX:g.x+78,modeX:g.x+86,
+        bandOn,bx:g.x-8,band:bs.segs.map(b=>({y:(g.y+Number(b.y)).toFixed(1),h:b.h,fill:b.fill})),bmx:g.x-10,bmy:(g.y+Number(bs.marker)-1).toFixed(1),bmFill:bs.markerFill,
         pvT,euT:l.eu,modeT:l.kind==='pid'?mCh[l.mode]||'':'',hatchOp:l.badPv?0.85:0,
         bd:S.sel===g.tag?'#31548F':'#8a8a86', bw:S.sel===g.tag?2.5:1.2,
         aX:g.x+108,aY:g.y+4,aTx:g.x+115,aTy:g.y+15,aBg,aFg,aTxt,aBd,
@@ -1863,7 +2032,7 @@ class Component extends DCLogic {
       bg:on?'#B8C4D4':'transparent',fg:'#000000',cb:setS({almAsset:n.id})};});
     const views=this.builtinViews().concat(S.savedViews).map(v=>({label:v.name,note:v.builtin?'':'saved',bg:(asset===v.asset&&S.shelfView===v.view)?'#B8C4D4':'transparent',cb:()=>this.applyView(v)}));
     const TRK=30, lanes=this.trackerLanes(TRK);
-    const tracker=['U1','U2','U3'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?'#FF0000':n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
+    const tracker=['U1','U2','U3'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?UC:n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
       return {label:u,bars,cb:()=>this.applyView({asset:u,view:'MAIN'})};});
     const helpSel=selA?this.alarmHelpFor(selA.tag,selA.cond):null;
     const av={rows,tree,views,tracker,trackerSpan:TRK,trackerNow:this.fT(P.t),
@@ -1933,11 +2102,15 @@ class Component extends DCLogic {
         mRow('Bad-PV shed option','SHED',dl.shed,false,'sheds to MAN, holds last good OP'),
         mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave):'NONE'),false,dl.init?'INITMAN — tracking secondary':'')
       ];
+      const isa=ESS.Pid.isaForm(dl.K,dl.T1,dl.T2), inf=(v,d,u)=>v===Infinity?'∞':this.fmt(v,d)+u;
       tuneRows=[
-        mRow('Overall gain','K',this.fmt(dl.K,2),true,'dimensionless'),
-        mRow('Integral time','T1',this.fmt(dl.T1,2),true,'minutes (0 = none)'),
-        mRow('Derivative time','T2',this.fmt(dl.T2,2),true,'minutes (0 = none)'),
+        mRow('Overall gain','K',this.fmt(dl.K,2),true,'dimensionless · % OP per % error · '+(dl.act==='DIR'?'DIRECT':'REVERSE')+' acting'),
+        mRow('Integral time','T1',this.fmt(dl.T1,2)+' MIN',true,'minutes per repeat (0 = no integral)'),
+        mRow('Derivative time','T2',this.fmt(dl.T2,2)+' MIN',true,'minutes, derivative on PV (0 = none)'),
         {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>{if(!this.can('ENGR'))return;const o=dl.act;dl.act=o==='DIR'?'REV':'DIR';this.addEvent('OPERATOR',dl.tag,'CONTROL ACTION CHANGE',o,dl.act);},rowBg:'transparent'},
+        mRow('ISA form Kc / Ti / Td','ISA',this.fmt(isa.Kc,2)+' / '+inf(isa.Ti,2,' MIN')+' / '+this.fmt(isa.Td,2)+' MIN',false,'same tuning in ISA standard form (ESS.Pid.isaForm)'),
+        mRow('Parallel gains Kp / Ki / Kd','PARALLEL',this.fmt(isa.Kp,2)+' / '+this.fmt(isa.Ki,4)+' /S / '+this.fmt(isa.Kd,1)+' S',false,'independent-gain equivalent'),
+        {label:'PV tracking',param:'PVTRACK',value:dl.pvtrack?'ON':'OFF',note:'in MAN the SP follows the PV so AUTO starts at zero error · click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>this.setPvTrack(dl.tag,!dl.pvtrack),rowBg:'transparent'},
         mRow('SP high limit','SPHILM',this.fmt(dl.sphilm,dl.dec),true,dl.eu),
         mRow('SP low limit','SPLOLM',this.fmt(dl.splolm,dl.dec),true,dl.eu),
         mRow('OP high limit','OPHILM',this.fmt(dl.ophilm,1),true,'%'),
@@ -1964,6 +2137,27 @@ class Component extends DCLogic {
       const condNote2={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low'};
       almRows=Object.keys(dl.alm).map(c=>mkAlmRow(dl,c,condNote2[c]||''));
     }
+    // limit ladder block (Point Detail > Main); target rows editable at ENGR, alarm rungs edited on the Alarms tab
+    const hasBand=dl.kind!=='motor';
+    let limitRows=[], band=[], bandMarker='0', bandMarkerFill='none', bandNote='';
+    if(hasBand){
+      const bs=this.bandSegments(dl,160), lb=bs.band;
+      const has=(c)=>!!dl.alm[c];
+      const lr=(label,param,v,edit,note)=>mRow(label,param,this.fmt(v,dl.dec)+' '+dl.eu,edit,note);
+      limitRows=[
+        lr('Range high','PVEUHI',lb.rangeHi,false,'instrument range'),
+        lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Standard high','PVHI',lb.stdHi,false,has('PVHI')?'operator must act · Alarms tab':'none configured · follows critical'),
+        lr('Target high','TGTHI',lb.tgtHi,true,lb.auto?(isPid?'auto: SP + 5 % of range':'auto: centre of standard band + 5 %'):'engineer-set'),
+        lr('Target low','TGTLO',lb.tgtLo,true,lb.auto?(isPid?'auto: SP − 5 % of range':'auto: centre of standard band − 5 %'):'engineer-set'),
+        lr('Standard low','PVLO',lb.stdLo,false,has('PVLO')?'operator must act · Alarms tab':'none configured · follows critical'),
+        lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Range low','PVEULO',lb.rangeLo,false,'instrument range')
+      ];
+      band=bs.segs; bandMarker=bs.marker; bandMarkerFill=bs.markerFill;
+      const inT=dl.pv>=lb.tgtLo&&dl.pv<=lb.tgtHi, inS=dl.pv>=lb.stdLo&&dl.pv<=lb.stdHi;
+      bandNote='PV '+this.fmt(dl.pv,dl.dec)+' '+dl.eu+' is '+(inT?'inside the target band.':inS?'inside the standard limits but outside the target band.':'outside the standard limits — an alarm is configured to say so.')+' Range / Critical / Standard / Target ladder after the ASM operator-interface guidance; the marker is the live PV. Target band is ENGR-editable and must sit inside the standard limits.';
+    }
     const condList=Object.keys(dl.alm);
     const helpCond=condList.includes(S.detailAlmCond)?S.detailAlmCond:(condList[0]||'');
     const helpConds=condList.map(c=>({label:c,bg:helpCond===c?'#B8C4D4':'#D4D0C8',bc:helpCond===c?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({detailAlmCond:c})}));
@@ -1986,10 +2180,12 @@ class Component extends DCLogic {
       {d:'M545,180 V210',tx:552,ty:224,label:'BKCAL / initialization'}
     ]:(dl.kind==='motor'?[{d:'M210,135 H340',tx:250,ty:128,label:'FB'},{d:'M490,135 H620',tx:530,ty:128,label:'CMD'}]:[{d:'M270,135 H420',tx:320,ty:128,label:'P1 → PV'}]);
     const chartPens=isPid?mkPens([[dl.tag,'pv','#C00000'],[dl.tag,'sp','#0050C0','6,5'],[dl.tag,'op','#008000']],15):(hasH?mkPens([[dl.tag,'pv','#C00000']],15):[]);
+    const spark=isPid?this.stepSparkline(dl,5):{span:'',pv:'',sp:'',op:'',note:''};
     const dpt={tag:dl.tag,desc:dl.desc,cm:dl.cm,kindT:isPid?'REGULATORY PID POINT':(dl.kind==='motor'?'DEVICE CONTROL POINT':'DATA ACQUISITION POINT'),
       tabs:tabsDef.map(t=>({label:tabL[t],bg:tab===t?'#C6C6C6':'#BEBAB2',bb:tab===t?'1px solid #C6C6C6':'1px solid #9a968e',cb:setS({detailTab:t})})),
       isMain:tab==='main',isAlm:tab==='alarms',isTune:tab==='tuning',isChart:tab==='chart',isCm:tab==='cm',
       mainRows,tuneRows,almRows,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
+      hasBand,limitRows,band,bandMarker,bandMarkerFill,bandNote,spark,
       modes:isPid?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:dl.mode===mm?'#B8C4D4':'#D4D0C8',bc:dl.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(dl.tag,mm)})):[],
       shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
       cmNote:'Execution order within the CM (ORDERINCM) runs DATAACQ before PID so the PID acts on the freshest PV. '+(dl.master?('This is the cascade secondary: its SP is the initializable input driven by '+dl.master+'.OP; back-calculation keeps the primary tracking for bumpless return.'):(dl.slave?('This is the cascade primary of '+dl.slave+': when the secondary leaves CAS, INITMAN raises and the primary output tracks the secondary SP.'):'Single-loop regulatory control.'))};
@@ -2002,8 +2198,9 @@ class Component extends DCLogic {
       const span=l.hi-l.lo||1;
       const pvH=Math.max(0,Math.min(166,((l.pv-l.lo)/span)*166));
       const spY=Math.max(0,Math.min(164,166-((l.sp-l.lo)/span)*166));
-      const tcol={PVHH:'#FF0000',PVLL:'#FF0000',PVHI:HC,PVLO:'#00D8D8'};
-      const ticks=(!isM&&l.alm)?Object.keys(l.alm).filter(c=>tcol[c]).map(c=>({y:Math.max(0,Math.min(bh-1,bh-((l.alm[c][0]-l.lo)/span)*bh)),c:tcol[c]})):[];
+      const tickConds=['PVHH','PVLL','PVHI','PVLO'];
+      const ticks=(!isM&&l.alm)?Object.keys(l.alm).filter(c=>tickConds.includes(c)).map(c=>({y:Math.max(0,Math.min(bh-1,bh-((l.alm[c][0]-l.lo)/span)*bh)),c:pc(l.alm[c][1])})):[];
+      const bands=isM?[]:this.bandSegments(l,bh).segs;
       const selP=l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
       return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',indH:Math.max(0,Math.min(126,((l.pv-l.lo)/span)*126)),
         pin:f.pin,pinBg:f.pin?'#B8C4D4':'#41608A',pinFg:f.pin?'#000':'#FFF',
@@ -2012,7 +2209,7 @@ class Component extends DCLogic {
         front:()=>{if(S.fps[S.fps.length-1]!==f)this.setState({fps:[...S.fps.filter(x=>x!==f),f]});},
         dragStart:(e)=>{this.setState({drag:{tag:f.tag,dx:e.clientX-f.x,dy:e.clientY-f.y}});},
         almBg,almFg,almTxt,eu:l.eu,hiT:this.fmt(l.hi,0),loT:this.fmt(l.lo,0),
-        pvH,spY,ticks,pvT:this.fmt(l.pv,l.dec),spT:this.fmt(l.sp,l.dec),opT:this.fmt(l.op,1),opW:Math.max(0,Math.min(100,l.op)),
+        pvH,spY,ticks,bands,pvT:this.fmt(l.pv,l.dec),spT:this.fmt(l.sp,l.dec),opT:this.fmt(l.op,1),opW:Math.max(0,Math.min(100,l.op)),
         spEditing:eq2(f.tag,'SP'),spNotEditing:!eq2(f.tag,'SP'),opEditing:eq2(f.tag,'OP'),opNotEditing:!eq2(f.tag,'OP'),
         spBd:selP==='SP'?'2px dashed #31548F':'2px solid transparent',opBd:selP==='OP'?'2px dashed #31548F':'2px solid transparent',
         spClick:()=>this.openEntry(f.tag,'SP'),opClick:()=>this.openEntry(f.tag,'OP'),
@@ -2022,7 +2219,7 @@ class Component extends DCLogic {
         sil:()=>this.silence(),ack:()=>{const a2=E.unacked().filter(x=>x.tag===f.tag).sort(E.compare)[0];if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
         detail:()=>this.nav('detail',f.tag),
         modeLine:isP?('MODE '+l.mode+' · MODEATTR '+l.modeAttr):(isM?'DEVCTL':'DATAACQ'),initT:l.init?'INITMAN':'',
-        stT:l.run?'RUN':(l.trip?'TRIP':'STOP'),stBg:l.run?'#37474F':(l.trip?'#FF0000':'#E8E8E4'),stFg:l.run?'#FFFFFF':(l.trip?'#FFFFFF':'#000'),
+        stT:l.run?'RUN':(l.trip?'TRIP':'STOP'),stBg:l.run?'#37474F':(l.trip?UC:'#E8E8E4'),stFg:l.run?'#FFFFFF':(l.trip?UT:'#000'),
         cmdT:l.cmd||'',fbT:l.run?'RUNNING':'STOPPED',
         permT:(f.tag==='P101'?'PERMISSIVE (TK-101 LVL > 5%): '+(P.tankL>=5?'MET':'NOT MET'):'PERMISSIVE: NONE CONFIGURED')+(l.lock>0?' · LOCKOUT '+Math.ceil(l.lock)+' S':''),permFg:(f.tag!=='P101'||P.tankL>=5)?'#0a3a12':'#A00000',
         start:()=>this.motorCmd(f.tag,true),stop:()=>this.motorCmd(f.tag,false)};
@@ -2031,8 +2228,8 @@ class Component extends DCLogic {
     // units / batch / assistant
     const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({unit:u[0]})}));
     const bb=P.b, phasesL=['CHARGE','HEATUP','FEED','REACT','COOL','DRAIN'];
-    const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?'#FFFFFF':'#000000', pt:this.mmss(bb.pt*1000),
-      phBg:P.trips.batch?'#FF0000':(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
+    const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?UT:'#000000', pt:this.mmss(bb.pt*1000),
+      phBg:P.trips.batch?UC:(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
       startCb:()=>this.seqCmd('START'), holdCb:()=>this.seqCmd('HOLD'), abortCb:()=>this.seqCmd('ABORT'), holdT:bb.held?'RESUME':'HOLD',
       phaseRows:phasesL.map((p2,i)=>({y:290+i*25,label:(bb.phase===p2?'▶ ':'· ')+p2,fill:bb.phase===p2?'#31548F':'#55524c',fw:bb.phase===p2?'700':'400'}))};
     const gfx2={lvlY:546-330*bb.lvl/100, lvlH:330*bb.lvl/100, agFill:L.M202.run?'#4a4a4a':'#FFFFFF', agFg:L.M202.run?'#FFFFFF':'#4a4a4a',
@@ -2040,7 +2237,7 @@ class Component extends DCLogic {
     const gfx3={tripOp:P.trips.bed?(blink?1:0.25):0, flameOp:P.trips.bed?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250))};
     const issues=this.diagnose().map(it=>({sev:it.sev,title:it.title,why:it.why,arrow:S.assistSel===it.id?'▾':'▸',open:S.assistSel===it.id,
       click:()=>this.setState({assistSel:S.assistSel===it.id?'':it.id}),
-      sevBg:it.sev==='URGENT'?'#FF0000':(it.sev==='WARN'?HC:'#B8C4D4'), sevFg:it.sev==='URGENT'?'#FFFFFF':'#000000',
+      sevBg:it.sev==='URGENT'?UC:(it.sev==='WARN'?HC:'#B8C4D4'), sevFg:it.sev==='URGENT'?UT:(it.sev==='WARN'?pt('High'):'#000000'),
       steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go||(()=>{})}))}));
     const qq=S.assistQ.trim().toLowerCase();
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
@@ -2049,10 +2246,10 @@ class Component extends DCLogic {
       hits, hitsNone:qq.length>2&&hits.length===0};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
-    const widths={logon:460,shelve:460,comment:520,drills:560,instr:520,debrief:600,help:520,about:520,reset:380,sysmenu:420};
+    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
+    const widths={logon:460,shelve:460,comment:520,drills:560,instr:520,debrief:600,help:520,philosophy:680,about:520,reset:380,sysmenu:420};
     let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
-      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
       pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
       signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
       shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
@@ -2090,7 +2287,7 @@ class Component extends DCLogic {
     const kpi=this.kpiView(setS);
     const drill=S.drill;
     return {
-      showBadge:this.props.showBadge??true, hcol:HC,
+      showBadge:this.props.showBadge??true, hcol:HC, cnts,
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
       cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
@@ -2120,8 +2317,8 @@ class Component extends DCLogic {
   }
   // KPI display view model. Thresholds are the exida / ISA-18.2 figures carried by ESS.Kpi (RESOURCES 2.7, 2.8).
   kpiView(setS){
-    const S=this.state, m=this.kpiMetrics(), T=ESS.Kpi.thresholds, HC=this.props.highColor??'#FFE000';
-    const vcol={GOOD:['#00A000','#FFFFFF'],ACCEPTABLE:['#B8C4D4','#000000'],MANAGEABLE:[HC,'#000000'],OVERLOADED:['#FF0000','#FFFFFF']}[m.health.verdict]||['#D4D0C8','#000000'];
+    const S=this.state, m=this.kpiMetrics(), T=ESS.Kpi.thresholds, pc=(p)=>this.prioColor(p), pt=(p)=>this.prioText(p);
+    const vcol={GOOD:['#00A000','#FFFFFF'],ACCEPTABLE:['#B8C4D4','#000000'],MANAGEABLE:[pc('High'),pt('High')],OVERLOADED:[pc('Urgent'),pt('Urgent')]}[m.health.verdict]||['#D4D0C8','#000000'];
     const mins=Math.max(0,m.window.minutes);
     const tiles=[
       {label:'Alarms in window',value:String(m.total),sub:m.journal+' journal-only',fg:'#000000'},
@@ -2132,7 +2329,7 @@ class Component extends DCLogic {
       {label:'Standing alarms',value:String(m.standing.length),sub:'active > 10 min (sim scale) · target < '+T.standingMax,fg:m.standing.length<T.standingMax?'#0a3a12':'#A00000'}
     ];
     const checks=m.health.checks.map(c=>({label:c.label,value:this.fmt(c.value,c.id==='rate'||c.id==='flood'||c.id==='badActors'?1:0),limit:(c.id==='flood'?'< ':c.id==='standing'?'< ':'≤ ')+c.limit,res:c.pass?'PASS':'FAIL',fg:c.pass?'#0a3a12':'#A00000'}));
-    const pcol={Low:'#00D8D8',High:HC,Urgent:'#FF0000'};
+    const pcol={Low:pc('Low'),High:pc('High'),Urgent:pc('Urgent')};
     const prio=['Low','High','Urgent'].map(k=>({label:k.toUpperCase(),w:Math.min(100,m.priority.pct[k]),color:pcol[k],txt:this.fmt(m.priority.pct[k],0)+' % (target '+m.priority.target[k]+' %)'}));
     const total=m.total||1;
     const actors=m.badActors.map((a,i)=>({rank:String(i+1),key:a.key,count:String(a.count),pct:this.fmt(a.pct,1),w:Math.round(a.count/total*100),cb:()=>{const tag=a.key.split('.')[0]; if(this.L[tag]) this.nav('detail',tag); else this.applyView({asset:this.assetOf(tag)||'PLANT',view:'MAIN'});}}));
@@ -2148,6 +2345,23 @@ class Component extends DCLogic {
       tiles,checks,prio,prioNote:m.priority.total?'Distribution of '+m.priority.total+' annunciated alarms (Journal excluded). Deviation from target: LOW '+m.priority.deviation.Low+', HIGH '+m.priority.deviation.High+', URGENT '+m.priority.deviation.Urgent+' points.':'No annunciated alarms in the window.',
       lists,actors,actorsEmpty:actors.length===0,
       footer:'Thresholds: about '+T.perDayAcceptable+' alarms per day acceptable and '+T.perDayManageable+' manageable; '+T.per10minTarget+' per 10 min target, '+T.per10minManageable+' manageable, '+T.per10minMax+' in 10 min is a flood; time in flood under '+T.floodPctMax+' %; top-10 alarms '+T.top10PctTarget+'–'+T.top10PctMax+' % of load; chattering zero; standing under '+T.standingMax+'; priority split 80 / 15 / 5 (Low / High / Urgent). Figures from the exida white paper on ISA-18.2 performance metrics and the alarm-performance-analyser benchmark notes (RESOURCES 2.7, 2.8), which summarise ISA-18.2 and EEMUA 191. The standing-alarm threshold is scaled to 10 min for a training session; the plant figure is 24 h.'};
+  }
+  // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)
+  philosophyView(){
+    const name=this.paletteName(), C=this.colours();
+    const ctx={paletteName:this.paletteLabel(name),urgentPct:5,highPct:10,lowPct:85,isaLow:80,isaHigh:15,isaUrgent:5,shelveMaxMin:60,defaultDeadbandPct:1};
+    return {sections:ESS.Philosophy.sections(ctx),sources:ESS.Philosophy.sources(),ladder:ESS.Philosophy.limitLadder(),
+      palettes:ESS.Palette.list().map(pn=>({label:this.paletteLabel(pn),bg:name===pn?'#B8C4D4':'#D4D0C8',bc:name===pn?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setPalette(pn)})),
+      swatches:['Urgent','High','Low','Journal'].map(p=>({label:p.toUpperCase(),bg:C.prio[p],fg:C.prioText[p],bd:C.prioDim[p]}))};
+  }
+  // Step-response sparkline for the Loop Tune tab: PV, SP and OP over the last `mins` minutes of history on a 320×90 box.
+  stepSparkline(l,mins){
+    const h=this.hist[l.tag]||[], W=320, H=90, t1=this.P.t, t0=t1-mins*60000, span=(l.hi-l.lo)||1;
+    const start=Math.max(0,h.length-Math.ceil(mins*120)), stride=Math.max(1,Math.floor((h.length-start)/160));
+    const line=(idx,lo,sp)=>{ const pts=[]; for(let i=start;i<h.length;i+=stride){ const r=h[i]; if(r[0]<t0) continue; const x=(r[0]-t0)/(t1-t0)*W, y=H-((r[idx]-lo)/sp)*H; pts.push(x.toFixed(1)+','+Math.max(1,Math.min(H-1,y)).toFixed(1)); } return pts.join(' '); };
+    let lastStep=null; for(let i=Math.max(start,1);i<h.length;i++){ if(h[i][0]>=t0&&Math.abs(h[i][2]-h[i-1][2])>span*0.005) lastStep=h[i][0]; }
+    const note=h.length<4?'History is collecting — the response draws as samples arrive.':(lastStep?'Last SP step at '+this.fT(lastStep)+'; watch how PV settles against SP. Vertical axis is the PV range for PV/SP and 0–100 % for OP.':'No SP step in the window; change the SP (AUTO) to see a step response. Vertical axis is the PV range for PV/SP and 0–100 % for OP.');
+    return {span:mins+' MIN',pv:line(1,l.lo,span),sp:line(2,l.lo,span),op:line(3,0,100),note};
   }
   mmss(ms){ const s=Math.max(0,Math.floor(ms/1000)); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2); }
 }

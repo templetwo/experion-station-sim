@@ -23,6 +23,11 @@
  *     prioDim:  {Urgent, High, Low, Journal}   dark variant used as text on bg
  *     state:    {stopped, running, manual}     equipment state fills
  *     stateText:{stopped, running, manual}     text on those fills
+ *     band:     {target, normal, range, marker}  limit-ladder band fills
+ *               (target = operating band, normal = inside the standard
+ *               limits, range = the rest of the instrument range, marker =
+ *               the live PV pointer); critical and standard zones are drawn
+ *               with the priority colour of the alarm that guards them.
  *   }  (unknown name falls back to 'representative')
  *   list() -> ['representative', 'isa101']
  *   contrastRatio(fg, bg) -> WCAG 2.x luminance contrast ratio (1..21)
@@ -43,7 +48,8 @@
       prioText: { Urgent: '#FFFFFF', High: '#000000', Low: '#000000', Journal: '#000000' },
       prioDim: { Urgent: '#A00000', High: '#7A6400', Low: '#00696D', Journal: '#666666' },
       state: { stopped: '#FFFFFF', running: '#4A4A4A', manual: '#FFE000' },
-      stateText: { stopped: '#4A4A4A', running: '#FFFFFF', manual: '#000000' }
+      stateText: { stopped: '#4A4A4A', running: '#FFFFFF', manual: '#000000' },
+      band: { target: '#6E86A0', normal: '#F2F2F0', range: '#A8A8A4', marker: '#000000' }
     },
     isa101: {
       name: 'isa101', bg: '#E0E0E0', line: '#A0A0A4', text: '#000000',
@@ -51,7 +57,8 @@
       prioText: { Urgent: '#FFFFFF', High: '#000000', Low: '#000000', Journal: '#FFFFFF' },
       prioDim: { Urgent: '#A9161D', High: '#8A4609', Low: '#6E6300', Journal: '#5C3E78' },
       state: { stopped: '#808080', running: '#F0F0F0', manual: '#93C2E4' },
-      stateText: { stopped: '#000000', running: '#000000', manual: '#000000' }
+      stateText: { stopped: '#000000', running: '#000000', manual: '#000000' },
+      band: { target: '#93C2E4', normal: '#F0F0F0', range: '#A0A0A4', marker: '#000000' }
     }
   };
 
