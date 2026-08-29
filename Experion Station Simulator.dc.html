@@ -8,6 +8,7 @@
 <script src="./src/kpi.js"></script>
 <script src="./src/palette.js"></script>
 <script src="./src/models.js"></script>
+<script src="./src/alarm-help.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -330,20 +331,62 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <sc-for list="{{ av.filters }}" as="f" hint-placeholder-count="3">
       <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ f.bc }};background:{{ f.bg }}" onClick="{{ f.cb }}">{{ f.label }}</div>
     </sc-for>
+    <div style="margin-left:10px;padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ av.helpBc }};background:{{ av.helpBg }}" onClick="{{ av.helpToggle }}">ALARM HELP</div>
     <div style="flex:1"></div>
     <sc-for list="{{ av.btns }}" as="b" hint-placeholder-count="4">
-      <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ b.cb }}">{{ b.label }}</div>
+      <div style="padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ b.cb }}">{{ b.label }}</div>
     </sc-for>
   </div>
-  <div style="display:flex;padding:3px 8px;gap:0;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none">
-    <div style="width:26px"></div><div style="width:80px">Time</div><div style="width:80px">Source</div><div style="width:90px">Condition</div><div style="width:82px">Priority</div><div style="width:62px">State</div><div style="flex:1">Description</div><div style="width:80px;text-align:right">Value</div><div style="width:64px;padding-left:10px">Units</div><div style="width:46px">Ack</div>
-  </div>
-  <div style="flex:1;overflow-y:auto;background:#C6C6C6">
-    <sc-for list="{{ av.rows }}" as="a" hint-placeholder-count="6">
-      <div style="display:flex;align-items:center;padding:2px 8px;font-size:12px;background:{{ a.bg }};color:{{ a.fg }};box-shadow:{{ a.sel }};cursor:default;border-bottom:1px solid rgba(0,0,0,0.06)" onClick="{{ a.click }}" onDoubleClick="{{ a.dbl }}">
-        <div style="width:26px;font-weight:700">{{ a.icon }}</div><div style="width:80px">{{ a.t }}</div><div style="width:80px;font-weight:700">{{ a.tag }}</div><div style="width:90px">{{ a.cond }}</div><div style="width:82px">{{ a.prio }}</div><div style="width:62px;font-weight:700">{{ a.state }}</div><div style="flex:1;overflow:hidden;white-space:nowrap">{{ a.desc }}</div><div style="width:80px;text-align:right">{{ a.val }}</div><div style="width:64px;padding-left:10px">{{ a.eu }}</div><div style="width:46px">{{ a.ackT }}</div>
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="width:196px;flex:none;display:flex;flex-direction:column;background:#CFCFCB;border-right:1px solid #9a968e;overflow-y:auto;user-select:none">
+      <div style="padding:4px 8px;font-weight:700;font-size:11px;background:#C8C5BE;border-bottom:1px solid #9a968e;display:flex"><div style="flex:1">LOCATION</div><div style="width:52px;text-align:right" title="active / unacknowledged">ACT/UN</div></div>
+      <sc-for list="{{ av.tree }}" as="n" hint-placeholder-count="6">
+        <div style="display:flex;align-items:center;padding:3px 6px 3px {{ n.pad }}px;font-size:11.5px;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};border-bottom:1px solid rgba(0,0,0,0.05)" onClick="{{ n.cb }}">
+          <div style="width:10px;color:#55524c">{{ n.glyph }}</div><div style="flex:1;font-weight:{{ n.fw }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.label }}</div>
+          <div style="width:26px;text-align:right;font-weight:700;color:{{ n.actFg }}">{{ n.active }}</div><div style="width:26px;text-align:right;font-weight:700;color:{{ n.unFg }}">{{ n.unack }}</div>
+        </div>
+      </sc-for>
+      <div style="padding:4px 8px;margin-top:6px;font-weight:700;font-size:11px;background:#C8C5BE;border-top:1px solid #9a968e;border-bottom:1px solid #9a968e">SAVED VIEWS</div>
+      <sc-for list="{{ av.views }}" as="v" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;padding:3px 8px;font-size:11px;cursor:pointer;background:{{ v.bg }};border-bottom:1px solid rgba(0,0,0,0.05)" onClick="{{ v.cb }}"><div style="flex:1">{{ v.label }}</div><div style="color:#55524c">{{ v.note }}</div></div>
+      </sc-for>
+      <div style="padding:4px 8px;font-size:10.5px;color:#55524c;line-height:1.4">Click a location to filter the list; counts are active / unacknowledged and update live. SAVE VIEW keeps the current location and filter.</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:auto">
+      <div style="display:flex;padding:3px 8px;gap:0;min-width:820px;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none;white-space:nowrap">
+        <div style="width:20px"></div><div style="width:66px">Time</div><div style="width:66px">Source</div><div style="width:84px">Condition</div><div style="width:72px">Priority</div><div style="width:54px">State</div><div style="flex:1;min-width:150px">Description</div><div style="width:62px;text-align:right">Trip</div><div style="width:62px;text-align:right">Live</div><div style="width:48px;padding-left:8px">Units</div><div style="width:30px;text-align:right">Cnt</div><div style="width:22px;text-align:center" title="Comment">C</div><div style="width:34px;padding-left:6px">Ack</div>
       </div>
-    </sc-for>
+      <div style="flex:1;overflow-y:auto;min-width:820px;background:#C6C6C6">
+        <sc-for list="{{ av.rows }}" as="a" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;padding:2px 8px;font-size:12px;background:{{ a.bg }};color:{{ a.fg }};box-shadow:{{ a.sel }};cursor:default;border-bottom:1px solid rgba(0,0,0,0.06);white-space:nowrap" onClick="{{ a.click }}" onDoubleClick="{{ a.dbl }}">
+            <div style="width:20px;font-weight:700">{{ a.icon }}</div><div style="width:66px">{{ a.t }}</div><div style="width:66px;font-weight:700">{{ a.tag }}</div><div style="width:84px">{{ a.cond }}</div><div style="width:72px">{{ a.prio }}</div><div style="width:54px;font-weight:700">{{ a.state }}</div><div style="flex:1;min-width:150px;overflow:hidden;text-overflow:ellipsis">{{ a.desc }}</div><div style="width:62px;text-align:right">{{ a.trip }}</div><div style="width:62px;text-align:right;font-weight:700">{{ a.live }}</div><div style="width:48px;padding-left:8px">{{ a.eu }}</div><div style="width:30px;text-align:right">{{ a.cnt }}</div><div style="width:22px;text-align:center;font-weight:700">{{ a.cmt }}</div><div style="width:34px;padding-left:6px">{{ a.ackT }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#CFCFCB;border-top:1px solid #9a968e;padding:3px 8px;position:sticky;left:0;user-select:none">
+        <div style="display:flex;font-size:10.5px;color:#55524c;margin-bottom:2px"><div style="width:64px;font-weight:700">TRACKER</div><div style="flex:1">alarm raises per minute, last {{ av.trackerSpan }} min · click a cluster to filter that unit</div><div>{{ av.trackerNow }}</div></div>
+        <sc-for list="{{ av.tracker }}" as="ln" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;height:16px">
+            <div style="width:64px;font-size:11px;font-weight:700;cursor:pointer" onClick="{{ ln.cb }}">{{ ln.label }}</div>
+            <svg viewBox="0 0 600 14" preserveAspectRatio="none" style="flex:1;height:14px;background:#BDBDB9;display:block">
+              <sc-for list="{{ ln.bars }}" as="b" hint-placeholder-count="4">
+                <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" fill="{{ b.fill }}" style="cursor:pointer" onClick="{{ b.cb }}"></rect>
+              </sc-for>
+            </svg>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ av.helpOn }}" hint-placeholder-val="{{ false }}">
+      <div style="width:300px;flex:none;background:#CFCFCB;border-left:1px solid #9a968e;overflow-y:auto;padding:8px 10px;font-size:11.5px;line-height:1.5">
+        <div style="font-weight:700;font-size:12px;margin-bottom:4px">ALARM HELP</div>
+        <div style="font-weight:700;color:#31548F;margin-bottom:6px">{{ av.help.title }}</div>
+        <sc-for list="{{ av.help.fields }}" as="h" hint-placeholder-count="6">
+          <div style="margin-bottom:6px"><div style="font-weight:700;color:#55524c;font-size:10.5px;text-transform:uppercase">{{ h.k }}</div><div>{{ h.v }}</div></div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:8px">Rationalisation fields per ISA-18.2 practice; authored for this simulator's process models. Comment: {{ av.help.comment }}</div>
+      </div>
+    </sc-if>
   </div>
   <div style="padding:4px 8px;background:#CCC8C0;border-top:1px solid #9a968e;font-size:11px;color:#3c3c3c;display:flex;gap:18px">
     <div>{{ av.selInfo }}</div><div style="flex:1"></div><div>{{ av.countTxt }}</div>
@@ -498,6 +541,20 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           </div>
         </sc-for>
         <div style="margin-top:10px;font-size:11px;color:#55524c">Trip points editable at ENGR+. Click a priority to cycle Journal → Low → High → Urgent (ENGR+); the number after the priority is the sub-priority (0–15, secondary sort key). OOS takes a condition out of service (ENGR+): it never annunciates until RTS. {{ dpt.almNote }} Journal alarms are logged only — no annunciation.</div>
+        <div style="margin-top:12px;background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="font-weight:700;font-size:12px;flex:1">ALARM HELP</div>
+            <sc-for list="{{ dpt.helpConds }}" as="h" hint-placeholder-count="4">
+              <div style="padding:2px 9px;font-size:11px;font-weight:700;cursor:pointer;background:{{ h.bg }};border:2px solid;border-color:{{ h.bc }}" onClick="{{ h.cb }}">{{ h.label }}</div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:130px 1fr;gap:3px 10px;font-size:11.5px;line-height:1.5">
+            <sc-for list="{{ dpt.help.fields }}" as="h" hint-placeholder-count="6">
+              <div style="font-weight:700;color:#55524c">{{ h.k }}</div><div>{{ h.v }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size:10.5px;color:#55524c;margin-top:6px">Priority and setting come from the live point configuration; consequence, cause and action are this simulator's rationalisation for the condition.</div>
+        </div>
       </div>
     </sc-if>
 
@@ -585,6 +642,59 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   </div>
   <div style="margin-top:16px;max-width:1100px;background:#CFCFCB;border:1px solid #B6B6B2;padding:10px;font-size:11.5px;color:#3c3c3c;line-height:1.55">
     This is an independent, browser-based training simulator that reproduces the behavior, layout, and color logic of an Experion PKS operator station for education. It contains no Honeywell software or artwork and is not affiliated with, endorsed by, or a product of Honeywell. Alarm colors, summary columns, and key legends are representative defaults — real sites configure these. Experion® is a trademark of Honeywell International Inc.
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isKpi }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Alarm KPI" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
+    <div style="font-weight:700;font-size:13px;margin-right:8px">ALARM SYSTEM PERFORMANCE</div>
+    <sc-for list="{{ kpi.spans }}" as="s" hint-placeholder-count="3">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ s.bc }};background:{{ s.bg }}" onClick="{{ s.cb }}">{{ s.label }}</div>
+    </sc-for>
+    <div style="flex:1"></div>
+    <div style="padding:3px 14px;font-weight:700;font-size:12px;background:{{ kpi.verdictBg }};color:{{ kpi.verdictFg }};border:1px solid #55524c">{{ kpi.verdict }}</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:12px 16px">
+    <div style="font-size:11px;color:#55524c;margin-bottom:8px">{{ kpi.windowTxt }}</div>
+    <div style="display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:8px;max-width:1240px;margin-bottom:12px">
+      <sc-for list="{{ kpi.tiles }}" as="t" hint-placeholder-count="6">
+        <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+          <div style="font-size:10.5px;color:#55524c;text-transform:uppercase">{{ t.label }}</div>
+          <div style="font-size:20px;font-weight:700;color:{{ t.fg }}">{{ t.value }}</div>
+          <div style="font-size:10.5px;color:#55524c">{{ t.sub }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:1240px">
+      <div style="background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">HEALTH CHECKS (ISA-18.2 / EEMUA 191 TARGETS)</div>
+        <div style="display:flex;font-size:10.5px;font-weight:700;color:#55524c;border-bottom:1px solid #B6B6B2;padding-bottom:2px"><div style="flex:1">Metric</div><div style="width:80px;text-align:right">Value</div><div style="width:80px;text-align:right">Target</div><div style="width:60px;text-align:right">Result</div></div>
+        <sc-for list="{{ kpi.checks }}" as="c" hint-placeholder-count="7">
+          <div style="display:flex;font-size:11.5px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,0.05)"><div style="flex:1">{{ c.label }}</div><div style="width:80px;text-align:right;font-weight:700">{{ c.value }}</div><div style="width:80px;text-align:right;color:#55524c">{{ c.limit }}</div><div style="width:60px;text-align:right;font-weight:700;color:{{ c.fg }}">{{ c.res }}</div></div>
+        </sc-for>
+      </div>
+      <div style="background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">PRIORITY DISTRIBUTION vs 80 / 15 / 5</div>
+        <sc-for list="{{ kpi.prio }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;font-size:11.5px;padding:3px 0"><div style="width:70px;font-weight:700">{{ p.label }}</div><div style="flex:1;height:12px;background:#BDBDB9;position:relative"><div style="height:12px;width:{{ p.w }}%;background:{{ p.color }}"></div></div><div style="width:110px;text-align:right">{{ p.txt }}</div></div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:4px">{{ kpi.prioNote }}</div>
+        <div style="font-weight:700;font-size:12px;margin:12px 0 6px">FLOODS · CHATTERING · STANDING</div>
+        <sc-for list="{{ kpi.lists }}" as="l" hint-placeholder-count="3">
+          <div style="font-size:11.5px;padding:2px 0"><span style="font-weight:700;color:#55524c">{{ l.k }}</span> {{ l.v }}</div>
+        </sc-for>
+      </div>
+      <div style="background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px;grid-column:1 / span 2">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">TOP-10 BAD ACTORS (SHARE OF ALARM LOAD)</div>
+        <sc-if value="{{ kpi.actorsEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#55524c">No alarms in the window.</div></sc-if>
+        <sc-for list="{{ kpi.actors }}" as="a" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;font-size:11.5px;padding:2px 0;cursor:pointer" onClick="{{ a.cb }}"><div style="width:26px;color:#55524c">{{ a.rank }}</div><div style="width:150px;font-weight:700">{{ a.key }}</div><div style="width:60px;text-align:right">{{ a.count }}</div><div style="width:60px;text-align:right">{{ a.pct }}%</div><div style="flex:1;height:10px;background:#BDBDB9;margin-left:10px"><div style="height:10px;width:{{ a.w }}%;background:#31548F"></div></div></div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="margin-top:12px;max-width:1240px;background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px;font-size:10.5px;color:#3c3c3c;line-height:1.55">{{ kpi.footer }}</div>
   </div>
 </div>
 </sc-if>
@@ -746,6 +856,19 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <div style="font-size:11px;color:#55524c;margin-top:8px;line-height:1.5">A shelved alarm stops annunciating and moves to the SHELVED view until the timer expires or it is unshelved; if the condition is still present when the timer runs out it re-annunciates. Maximum 60 min in this simulator. A record is kept in the Event and Message Summaries. Shelve nuisance alarms only — not a substitute for fixing them.</div>
       </sc-if>
 
+      <sc-if value="{{ dg.isComment }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;margin-bottom:8px">Comment on alarm: <b>{{ dg.shelfTag }}</b></div>
+        <div style="font-size:11px;color:#55524c;margin-bottom:6px">Current: {{ dg.commentCur }}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+          <input value="{{ dg.reason }}" onChange="{{ dg.reasonChange }}" onKeyDown="{{ dg.commentKey }}" placeholder="what was seen, what was done, who was told" style="flex:1;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.commentGo }}">STORE</div>
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.close }}">CANCEL</div>
+        </div>
+        <div style="font-size:11px;color:#55524c;margin-top:8px;line-height:1.5">The comment is stored on the alarm record (shown as C in the summary and in the Alarm Help pane) and written to the Event Summary as an operator event. OPER or above.</div>
+      </sc-if>
+
       <sc-if value="{{ dg.isDrills }}" hint-placeholder-val="{{ false }}">
         <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:10px;line-height:1.5">A fault is injected 8–15 s after start (no announcement). Respond as an operator: <b>Silence → Ack → read condition → check trend → act → verify</b>. Scored on detection, action, trip avoidance, stabilization, and diagnosis.</div>
         <sc-for list="{{ dg.drills }}" as="d" hint-placeholder-count="6">
@@ -808,7 +931,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           Auto-selection: AUTO selects SP, MAN selects OP (RAISE/LOWER act on it).<br />
           Entries outside SPHILM/SPLOLM or OPHILM/OPLOLM are rejected.<br /><br />
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
-          <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.
+          <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
+          <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display.
         </div>
       </sc-if>
 
@@ -917,7 +1041,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1 };
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30 };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -957,6 +1081,7 @@ class Component extends DCLogic {
     // ISA-18.2 engine (RESOURCES 2.5, 2.9); 60 min shelve cap and 15 min default are this sim's alarm-philosophy choice
     this.alarmEngine=ESS.AlarmEngine.createEngine({maxShelveMs:60*60000, defaultShelveMs:15*60000, foldWindowMs:10*60000, dasRules:this.dasRules()});
     this.events=[]; this.msgs=[]; this.hist={}; this.eid=1;
+    this.alarmLog=[]; this.t0=now;   // raise / rtn / ack history for the KPI display (ESS.Kpi, RESOURCES 2.7, 2.8)
     ['FI100','LIC101','FIC102','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','FIC310','TIC311','TI312','FIC313'].forEach(t=>this.hist[t]=[]);
     this.addEvent('SYSTEM','STN01','OPERATOR STATION STARTED — SIMULATION MODE','','');
   }
@@ -978,7 +1103,96 @@ class Component extends DCLogic {
   // Sub-priority 0..15 per condition (Experion LX HMI spec, RESOURCES 2.1); trip-class alarms sit at the top of their priority band.
   subprioDefault(cond){ const m={TRIP:15,PVHH:12,PVLL:12,PVHI:8,PVLO:8,DEVHI:6,CMDFAIL:4,BADPV:10}; if(m[cond]!=null) return m[cond]; return /TRIP|PSV/.test(cond)?15:0; }
   subprioOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; return (tup&&tup[2]!=null)?tup[2]:this.subprioDefault(cond); }
-  tripPointOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; return tup?tup[0]:undefined; }
+  tripPointOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; if(tup) return tup[0]; const eq=ESS.AlarmHelp.EQUIPMENT_TRIPS[tag+'.'+cond]; return eq?eq.value:undefined; }
+  // Alarm Help (RESOURCES 2.2 pane, PAS rationalisation fields 2.10): priority and setting come from the live configuration.
+  alarmHelpFor(tag,cond){
+    const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; const rec=this.alarmEngine.get(tag+'.'+cond);
+    const cfg={tripPoint:this.tripPointOf(tag,cond), eu:l?l.eu:(rec?rec.eu:''), prio:tup?tup[1]:(rec?rec.prio:''), subprio:this.subprioOf(tag,cond)};
+    return ESS.AlarmHelp.resolve(tag,cond,cfg);
+  }
+  helpFields(h){ return [['Priority',h.priority],['Setting',h.setting],['Response time',h.responseTime],['Consequence',h.consequence],['Probable cause',h.probableCause],['Corrective action',h.correctiveAction]].map(x=>({k:x[0],v:x[1]})); }
+  // ---------- asset / location tree (RESOURCES 2.2) ----------
+  assetTree(){
+    return [
+      {id:'PLANT',label:'PLANT',depth:0},
+      {id:'U1',label:'UNIT 01 CONTINUOUS',depth:1,unit:'U1'},
+      {id:'TK-101',label:'TK-101 FEED TANK',depth:2,unit:'U1',tags:['FI100','LIC101','P101','TK-101']},
+      {id:'R-201',label:'R-201 REACTOR',depth:2,unit:'U1',tags:['FIC102','TIC201','TIC202','R-201']},
+      {id:'V-401',label:'V-401 FLASH DRUM',depth:2,unit:'U1',tags:['TIC301','LIC401','PIC401','V-401']},
+      {id:'U2',label:'UNIT 02 BATCH',depth:1,unit:'U2'},
+      {id:'R-202',label:'R-202 BATCH RX',depth:2,unit:'U2',tags:['FIC211','TIC212','TIC213','PI214','LI215','M202','R-202','SCM202']},
+      {id:'U3',label:'UNIT 03 FIRED RX',depth:1,unit:'U3'},
+      {id:'H-310',label:'H-310 PREHEATER',depth:2,unit:'U3',tags:['FIC310','TIC311','H-310']},
+      {id:'R-310',label:'R-310 FIXED BED',depth:2,unit:'U3',tags:['TI312','FIC313','R-310']}
+    ];
+  }
+  assetOf(tag){ const n=this.assetTree().find(x=>x.tags&&x.tags.includes(tag)); return n?n.id:null; }
+  assetMatch(nodeId,tag){
+    if(!nodeId||nodeId==='PLANT') return true;
+    const n=this.assetTree().find(x=>x.id===nodeId); if(!n) return true;
+    if(n.tags) return n.tags.includes(tag);
+    return this.unitOf(tag)===n.unit;
+  }
+  // active = annunciated live alarms (UNACK/ACKED); unack = UNACK + RTNUN, matching the status-bar counter
+  assetCounts(){
+    const out={}; const recs=this.alarmEngine.list();
+    for(const n of this.assetTree()){
+      let active=0, unack=0;
+      for(const a of recs){ if(!this.assetMatch(n.id,a.tag)) continue; if(a.state==='UNACK'||a.state==='ACKED') active++; if(a.state==='UNACK'||a.state==='RTNUN') unack++; }
+      out[n.id]={active,unack};
+    }
+    return out;
+  }
+  // Live value column: the point PV (PV−SP for DEVHI); equipment trips read the model variable they protect.
+  liveValueOf(a){
+    const l=this.L[a.tag], P=this.P;
+    if(l){ if(l.kind==='motor') return l.run?1:0; return a.cond==='DEVHI'?(l.pv-l.sp):l.pv; }
+    return ({'TK-101':P.tankL,'R-201':P.rT,'V-401':P.drumP,'R-202':P.b.T,'R-310':P.h.bed,'H-310':P.h.pre})[a.tag];
+  }
+  liveDec(a){ const l=this.L[a.tag]; return l?l.dec:(({'V-401':0,'R-310':0,'H-310':0})[a.tag]??1); }
+  // ---------- saved views ----------
+  builtinViews(){ return ['U1','U2','U3'].map(u=>({name:u+' ALL',asset:u,view:'MAIN',builtin:true})); }
+  savedViewName(){ return (this.state.almAsset||'PLANT')+' '+(this.state.shelfView==='MAIN'?'ALL':this.state.shelfView); }
+  saveView(){
+    const v={name:this.savedViewName(),asset:this.state.almAsset||'PLANT',view:this.state.shelfView};
+    if(this.builtinViews().concat(this.state.savedViews).some(x=>x.name===v.name)){ this.msgZone('VIEW ALREADY SAVED: '+v.name); return; }
+    this.setState({savedViews:this.state.savedViews.concat([v])});
+    this.addEvent('OPERATOR','STN01','ALARM VIEW SAVED: '+v.name,'','');
+    this.msgZone('VIEW SAVED: '+v.name);
+  }
+  applyView(v){ this.setState({almAsset:v.asset,shelfView:v.view,display:'alarms'}); }
+  // ---------- per-alarm comment (RESOURCES 2.2), OPER+ ----------
+  openComment(){
+    const a=this.alarmEngine.get(this.state.selAlm); if(!a){ this.msgZone('NO ALARM SELECTED'); return; }
+    if(!this.can('OPER')) return;
+    this.setState({dlg:{type:'comment'},dlgReason:a.comment||''});
+  }
+  commentAlarm(text){
+    const a=this.alarmEngine.get(this.state.selAlm); if(!a){ this.msgZone('NO ALARM SELECTED'); return; }
+    if(!this.can('OPER')) return;
+    text=(text==null?'':String(text)).trim();
+    if(!text){ this.msgZone('COMMENT TEXT REQUIRED'); return; }
+    const old=a.comment||'';
+    this.alarmEngine.comment(a,text);
+    this.addEvent('OPERATOR',a.tag,a.cond+' COMMENT: '+text,old,text);
+    this.msgs.unshift({t:this.P.t,txt:'ALARM COMMENT '+a.tag+' '+a.cond+': '+text});
+    this.setState({dlg:null,dlgReason:''});
+  }
+  // ---------- alarm KPI over the raise/rtn/ack log (ESS.Kpi; exida and alarm-performance-analyser thresholds, RESOURCES 2.7, 2.8) ----------
+  kpiSpans(){ return [10,30,60,0]; }   // minutes; 0 = whole session
+  kpiMetrics(span){
+    if(span==null) span=this.state.kpiSpan;
+    const t1=this.P.t, t0=span>0?t1-span*60000:this.t0;
+    // stale threshold scaled for a training session: 10 min standing instead of the 24 h plant figure
+    return ESS.Kpi.computeMetrics(this.alarmLog,{t0,t1,staleAfterMs:10*60000});
+  }
+  // Alarm Tracker (RESOURCES 2.2): raises per minute per unit over the last `mins` minutes
+  trackerLanes(mins){
+    const t1=this.P.t, t0=t1-mins*60000, lanes={U1:[],U2:[],U3:[]};
+    for(const u in lanes) lanes[u]=new Array(mins).fill(0);
+    for(const e of this.alarmLog){ if(e.type!=='raise'||e.prio==='Journal'||e.t<t0||e.t>t1) continue; const u=this.unitOf(e.tag); if(!lanes[u]) continue; const i=Math.min(mins-1,Math.floor((e.t-t0)/60000)); lanes[u][i]++; }
+    return lanes;
+  }
   // Dynamic Alarm Suppression map (Experion Alarming PIN, RESOURCES 2.2): a live trigger parks its consequential alarms in DSUPR.
   // Dynamic Alarm Suppression map: trigger alarm key -> consequential alarm keys
   // (Experion Alarming PIN, RESOURCES 2.2). Deviation from the v2 plan: the
@@ -1020,6 +1234,8 @@ class Component extends DCLogic {
         case 'RTS': this.addEvent('OPERATOR',e.tag,e.cond+' RETURNED TO SERVICE'+(e.to==='UNACK'?' — ALARM ANNUNCIATED':''),'OOSRV',e.to); break;
       }
       if(e.to==='UNACK' && e.prio!=='Journal') horn=true;
+      const kt=e.type==='ALARM'?'raise':e.type==='RTN'?'rtn':e.type==='ACK'?'ack':null;
+      if(kt){ this.alarmLog.push({t:e.t,key:e.key,tag:e.tag,cond:e.cond,prio:e.prio,type:kt}); if(this.alarmLog.length>5000) this.alarmLog.splice(0,this.alarmLog.length-5000); }
     }
     if(horn) this.hornNew();
   }
@@ -1415,7 +1631,8 @@ class Component extends DCLogic {
     if(c==='U2'||c==='UNIT02'){ this.setState({unit:'U2'}); this.nav('graphic'); return; }
     if(c==='U3'||c==='UNIT03'){ this.setState({unit:'U3'}); this.nav('graphic'); return; }
     if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return; }
-    const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail'};
+    const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi'};
+    if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); return; }
     if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return; }
     if(map[c]){ this.nav(map[c]); return; }
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
@@ -1442,7 +1659,8 @@ class Component extends DCLogic {
   visAlarms(){
     const v=this.state.shelfView, E=this.alarmEngine;
     const want={MAIN:['UNACK','ACKED','RTNUN'],UNACK:['UNACK','RTNUN'],SHELVED:['SHLVD'],SUPPRESSED:['DSUPR'],OOS:['OOSRV']}[v]||['UNACK','ACKED','RTNUN'];
-    return E.list().filter(a=>want.includes(a.state)).sort(E.compare);
+    const asset=this.state.almAsset||'PLANT';
+    return E.list().filter(a=>want.includes(a.state)&&this.assetMatch(asset,a.tag)).sort(E.compare);
   }
   shelveReasons(){ return ['NUISANCE / CHATTERING','MAINTENANCE IN PROGRESS','KNOWN PROCESS UPSET','INSTRUMENT FAULT','OTHER']; }
   // Reason text from the dialog: a standard reason, optionally with free-text detail; OTHER requires the detail. Empty means "not given".
@@ -1568,7 +1786,7 @@ class Component extends DCLogic {
     const mkItems=(arr)=>arr.map(it=>it.sep?{sep:true}:{label:it.l,cb:()=>{this.setState({menu:null});it.f();}});
     const menusDef=[
       {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
-      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
+      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Panel…',f:()=>this.setState({dlg:{type:'instr'}})}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
@@ -1579,7 +1797,7 @@ class Component extends DCLogic {
     const tbtns=[
       tb('SYS MENU',()=>this.setState({dlg:{type:'sysmenu'}}),'System Menu'), tb('◄',()=>this.goBack(),'Back'), tb('►',()=>this.goFwd(),'Forward'), {sep:true},
       tb('ALM SUMM',()=>this.nav('alarms'),'Alarm Summary (F3)'), tb('EVENT',()=>this.nav('events'),'Event Summary'), tb('MSG',()=>this.nav('msgs'),'Message Summary'), {sep:true},
-      tb('GRAPHIC',()=>this.nav('graphic'),'Unit graphic'), tb('TREND',()=>this.nav('trend'),'Trend display'), {sep:true},
+      tb('GRAPHIC',()=>this.nav('graphic'),'Unit graphic'), tb('TREND',()=>this.nav('trend'),'Trend display'), tb('KPI',()=>this.nav('kpi'),'Alarm system performance'), {sep:true},
       tb('DETAIL',()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');},'Point Detail of selected (F4)'),
       tb('ASSOC DISP',()=>{const a=E.get(S.selAlm); const t=a?a.tag:S.sel; if(t&&this.L[t]){this.nav('graphic');this.openFp(t);}else if(t){this.nav('graphic');}else this.msgZone('NO POINT SELECTED');},'Associated display'), {sep:true},
       tb('SILENCE',()=>this.silence(),'Silence horn (F1)'), tb('ACK',()=>this.ackTop(),'Acknowledge (F2)'), tb('ACK PAGE',()=>this.ackPage(),'Acknowledge page'),
@@ -1629,16 +1847,32 @@ class Component extends DCLogic {
     };
     const rows=this.visAlarms().map(a=>{
       const st=almSty(a);
-      return {t:this.fT(a.lastT),tag:a.tag,cond:a.cond,prio:a.prio.toUpperCase()+' '+a.subprio,state:a.state,desc:a.desc+almNote(a),val:this.fmt(a.val,1),eu:a.eu,ackT:a.ack&&a.state!=='OOSRV'&&a.state!=='SHLVD'&&a.state!=='DSUPR'?'ACK':'',icon:a.prio[0],
+      const dec=this.liveDec(a), live=this.liveValueOf(a);
+      const trip=a.tripValue!=null?a.tripValue:this.tripPointOf(a.tag,a.cond);
+      return {t:this.fT(a.lastT),tag:a.tag,cond:a.cond,prio:a.prio.toUpperCase()+' '+a.subprio,state:a.state,desc:a.desc+almNote(a),
+        trip:trip!=null?this.fmt(trip,dec):'',live:live!=null?this.fmt(live,dec):this.fmt(a.val,1),eu:a.eu,cnt:a.count>1?String(a.count):'',cmt:a.comment?'C':'',
+        ackT:a.ack&&a.state!=='OOSRV'&&a.state!=='SHLVD'&&a.state!=='DSUPR'?'ACK':'',icon:a.prio[0],
         bg:st.bg==='transparent'?'transparent':st.bg,fg:st.fg,sel:S.selAlm===a.id?'inset 0 0 0 2px #31548F':'none',
         click:()=>this.setState({selAlm:a.id,sel:this.L[a.tag]?a.tag:S.sel}), dbl:()=>{if(this.L[a.tag])this.nav('detail',a.tag);}};
     });
     const selA=E.get(S.selAlm);
-    const av={rows,
+    const asset=S.almAsset||'PLANT';
+    const acnt=this.assetCounts();
+    const tree=this.assetTree().map(n=>{const c=acnt[n.id]; const on=asset===n.id; return {label:n.label,pad:6+n.depth*12,glyph:n.depth===0?'▣':n.depth===1?'▸':'·',fw:n.depth<2?700:400,
+      active:c.active,unack:c.unack,actFg:c.active?'#A00000':'#8a867e',unFg:c.unack?'#A00000':'#8a867e',
+      bg:on?'#B8C4D4':'transparent',fg:'#000000',cb:setS({almAsset:n.id})};});
+    const views=this.builtinViews().concat(S.savedViews).map(v=>({label:v.name,note:v.builtin?'':'saved',bg:(asset===v.asset&&S.shelfView===v.view)?'#B8C4D4':'transparent',cb:()=>this.applyView(v)}));
+    const TRK=30, lanes=this.trackerLanes(TRK);
+    const tracker=['U1','U2','U3'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?'#FF0000':n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
+      return {label:u,bars,cb:()=>this.applyView({asset:u,view:'MAIN'})};});
+    const helpSel=selA?this.alarmHelpFor(selA.tag,selA.cond):null;
+    const av={rows,tree,views,tracker,trackerSpan:TRK,trackerNow:this.fT(P.t),
       filters:['MAIN','UNACK','SHELVED','SUPPRESSED','OOS'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
-      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()}],
-      selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — trip point '+(this.L[selA.tag]&&this.L[selA.tag].alm[selA.cond]?this.fmt(this.L[selA.tag].alm[selA.cond][0],1)+' '+selA.eu:'n/a')+' · double-click for Point Detail'):'Click a row to select; double-click for Point Detail. Columns are site-configurable in Experion.',
-      countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length};
+      helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:setS({almHelp:!S.almHelp}),
+      help:{title:helpSel?(selA.tag+' '+selA.cond+' — '+selA.desc):'No alarm selected — click a row.',fields:helpSel?this.helpFields(helpSel):[],comment:selA&&selA.comment?selA.comment:'none'},
+      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()}],
+      selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — first '+this.fT(selA.t)+(selA.count>1?', last '+this.fT(selA.lastT)+', ×'+selA.count:'')+(selA.comment?' · comment: '+selA.comment:'')+' · double-click for Point Detail'):('Location '+asset+' · '+S.shelfView+' · click a row to select; double-click for Point Detail.'),
+      countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length+' · SHOWN '+rows.length};
     // events
     const evF=['ALL','ALARM','OPERATOR','SYSTEM'];
     const evR=this.events.filter(e=>S.evtFilter==='ALL'||e.type===S.evtFilter).slice(0,220).map(e=>({t:this.fD(e.t)+' '+this.fT(e.t),type:e.type,src:e.src,desc:e.desc,oldV:e.oldV,newV:e.newV,lvl:e.lvl,fg:e.type==='ALARM'?'#5a1a00':(e.type==='OPERATOR'?'#0a3a12':'#1c1c50')}));
@@ -1730,6 +1964,9 @@ class Component extends DCLogic {
       const condNote2={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low'};
       almRows=Object.keys(dl.alm).map(c=>mkAlmRow(dl,c,condNote2[c]||''));
     }
+    const condList=Object.keys(dl.alm);
+    const helpCond=condList.includes(S.detailAlmCond)?S.detailAlmCond:(condList[0]||'');
+    const helpConds=condList.map(c=>({label:c,bg:helpCond===c?'#B8C4D4':'#D4D0C8',bc:helpCond===c?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({detailAlmCond:c})}));
     const cmBlocks=isPid?[
       {x:60,name:dl.tag.replace(/[A-Z]+/,'AI')+'_CH',type:'AICHANNEL',ord:10,note:'field input'},
       {x:265,name:'DACA',type:'DATAACQ',ord:20,note:'PV ranging + alarms'},
@@ -1752,7 +1989,7 @@ class Component extends DCLogic {
     const dpt={tag:dl.tag,desc:dl.desc,cm:dl.cm,kindT:isPid?'REGULATORY PID POINT':(dl.kind==='motor'?'DEVICE CONTROL POINT':'DATA ACQUISITION POINT'),
       tabs:tabsDef.map(t=>({label:tabL[t],bg:tab===t?'#C6C6C6':'#BEBAB2',bb:tab===t?'1px solid #C6C6C6':'1px solid #9a968e',cb:setS({detailTab:t})})),
       isMain:tab==='main',isAlm:tab==='alarms',isTune:tab==='tuning',isChart:tab==='chart',isCm:tab==='cm',
-      mainRows,tuneRows,almRows,almNote:almNoteTxt,chartPens,chartGrid:gridY,cmBlocks,cmWires,
+      mainRows,tuneRows,almRows,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
       modes:isPid?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:dl.mode===mm?'#B8C4D4':'#D4D0C8',bc:dl.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(dl.tag,mm)})):[],
       shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
       cmNote:'Execution order within the CM (ORDERINCM) runs DATAACQ before PID so the PID acts on the freshest PV. '+(dl.master?('This is the cascade secondary: its SP is the initializable input driven by '+dl.master+'.OP; back-calculation keeps the primary tracking for bumpless return.'):(dl.slave?('This is the cascade primary of '+dl.slave+': when the secondary leaves CAS, INITMAN raises and the primary output tracks the secondary SP.'):'Single-loop regulatory control.'))};
@@ -1812,23 +2049,24 @@ class Component extends DCLogic {
       hits, hitsNone:qq.length>2&&hits.length===0};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
-    const widths={logon:460,shelve:460,drills:560,instr:520,debrief:600,help:520,about:520,reset:380,sysmenu:420};
+    const titles={logon:'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',instr:'INSTRUCTOR PANEL',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
+    const widths={logon:460,shelve:460,comment:520,drills:560,instr:520,debrief:600,help:520,about:520,reset:380,sysmenu:420};
     let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
-      isLogon:dgT==='logon',isShelve:dgT==='shelve',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isInstr:dgT==='instr',isDebrief:dgT==='debrief',isHelp:dgT==='help',isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
       pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
       signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
       shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
       durs:this.shelveDurations().map(d=>({label:d+' MIN',bg:(S.dlg&&S.dlg.dur===d)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.dur===d)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,dur:d}})})),
       reasons:this.shelveReasons().map(r=>({label:r,bg:(S.dlg&&S.dlg.reasonSel===r)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.reasonSel===r)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,reasonSel:r}})})),
       shelfGo:()=>this.shelve(S.dlg&&S.dlg.dur),
+      commentCur:selA&&selA.comment?selA.comment:'(none)',commentGo:()=>this.commentAlarm(S.dlgReason),commentKey:(e)=>{if(e.key==='Enter')this.commentAlarm(S.dlgReason);},
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
       randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(Math.random()*ds.length)]);},
       faults:[{k:'xmtr',label:'FIC102 transmitter failure (BADPV)'},{k:'surge',label:'Feed inflow surge (+50 M3/H, 8 min)'},{k:'pump',label:'P-101 pump trip (one-shot)'},{k:'cool',label:'Cooling water loss (backup in 5 min)'},{k:'stick',label:'TV-202 valve stiction (+ reaction load)'},{k:'vap',label:'Flash drum vapor surge (5 min)'},{k:'air',label:'Instrument air loss — valves to fail state'},{k:'rxn',label:'Reaction rate step +15%'},{k:'foul',label:'E-301 fouling (progressive)'},{k:'agit',label:'M-202 agitator trip (U2, one-shot)'},{k:'bedact',label:'R-310 catalyst activity +35% (U3)'}].map(f=>({label:f.label,on:!!P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck),state:P.faults[f.k]?'ACTIVE':'',cb:()=>this.injectFault(f.k,!(P.faults[f.k]||(f.k==='stick'&&V.TV202.stuck)))})),
       speeds:[0,1,2,5].map(v=>({label:v===0?'PAUSE':v+'×',bg:S.speed===v?'#B8C4D4':'#D4D0C8',bc:S.speed===v?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({speed:v})})),
       resetGo:setS({dlg:{type:'reset'}}),
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
-      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
+      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:''};
     if(dgT==='debrief' && S.dlg.drill){
       const d=S.dlg.drill, m=d.m, rel=(t)=>t?this.mmss(t-(m.tAlarm||d.t0)):'—';
@@ -1849,14 +2087,15 @@ class Component extends DCLogic {
       dg.dbSubmit=()=>{ if(S.debAns<0){this.msgZone('SELECT AN ANSWER');return;} const sc=this.scoreDrill(d,S.debAns); this.setState({dlg:{...S.dlg,scored:true,score:sc}}); this.addEvent('SYSTEM','STN01','DRILL '+d.def.id+' SCORE '+sc+'/100','',''); };
       if(S.dlg.scored){ dg.dbScore=S.dlg.score; dg.dbGrade=S.dlg.score>=85?'PROFICIENT':S.dlg.score>=65?'COMPETENT':'NEEDS PRACTICE'; }
     }
+    const kpi=this.kpiView(setS);
     const drill=S.drill;
     return {
       showBadge:this.props.showBadge??true, hcol:HC,
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
       cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
-      isG1:S.display==='graphic'&&S.unit==='U1', isG2:S.display==='graphic'&&S.unit==='U2', isG3:S.display==='graphic'&&S.unit==='U3', isAlarms:S.display==='alarms', isEvents:S.display==='events', isMsgs:S.display==='msgs', isTrend:S.display==='trend', isDetail:S.display==='detail', isSys:S.display==='sys',
-      gvList, vlist, gfx, av, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
+      isG1:S.display==='graphic'&&S.unit==='U1', isG2:S.display==='graphic'&&S.unit==='U2', isG3:S.display==='graphic'&&S.unit==='U3', isAlarms:S.display==='alarms', isEvents:S.display==='events', isMsgs:S.display==='msgs', isTrend:S.display==='trend', isDetail:S.display==='detail', isSys:S.display==='sys', isKpi:S.display==='kpi',
+      gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
       utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
@@ -1878,6 +2117,37 @@ class Component extends DCLogic {
       secT:S.sec==='VIEW'?'VIEW ONLY':S.sec, secCb:setS({dlg:{type:'logon'}}),
       dateT:this.fD(P.t), timeT:this.fT(P.t)
     };
+  }
+  // KPI display view model. Thresholds are the exida / ISA-18.2 figures carried by ESS.Kpi (RESOURCES 2.7, 2.8).
+  kpiView(setS){
+    const S=this.state, m=this.kpiMetrics(), T=ESS.Kpi.thresholds, HC=this.props.highColor??'#FFE000';
+    const vcol={GOOD:['#00A000','#FFFFFF'],ACCEPTABLE:['#B8C4D4','#000000'],MANAGEABLE:[HC,'#000000'],OVERLOADED:['#FF0000','#FFFFFF']}[m.health.verdict]||['#D4D0C8','#000000'];
+    const mins=Math.max(0,m.window.minutes);
+    const tiles=[
+      {label:'Alarms in window',value:String(m.total),sub:m.journal+' journal-only',fg:'#000000'},
+      {label:'Avg per 10 min',value:this.fmt(m.per10min.avg,2),sub:'target ≤ '+T.per10minTarget+', manageable ≤ '+T.per10minManageable,fg:m.per10min.avg<=T.per10minTarget?'#0a3a12':m.per10min.avg<=T.per10minManageable?'#7a6400':'#A00000'},
+      {label:'Peak per 10 min',value:String(m.per10min.peak),sub:'flood at ≥ '+T.per10minMax,fg:m.per10min.peak<T.per10minMax?'#0a3a12':'#A00000'},
+      {label:'Time in flood',value:this.fmt(m.floodPct,1)+' %',sub:m.floods.length+' flood period'+(m.floods.length===1?'':'s')+' · target < '+T.floodPctMax+' %',fg:m.floodPct<T.floodPctMax?'#0a3a12':'#A00000'},
+      {label:'Chattering keys',value:String(m.chattering.length),sub:'≥ 3 raises in 60 s · target 0',fg:m.chattering.length?'#A00000':'#0a3a12'},
+      {label:'Standing alarms',value:String(m.standing.length),sub:'active > 10 min (sim scale) · target < '+T.standingMax,fg:m.standing.length<T.standingMax?'#0a3a12':'#A00000'}
+    ];
+    const checks=m.health.checks.map(c=>({label:c.label,value:this.fmt(c.value,c.id==='rate'||c.id==='flood'||c.id==='badActors'?1:0),limit:(c.id==='flood'?'< ':c.id==='standing'?'< ':'≤ ')+c.limit,res:c.pass?'PASS':'FAIL',fg:c.pass?'#0a3a12':'#A00000'}));
+    const pcol={Low:'#00D8D8',High:HC,Urgent:'#FF0000'};
+    const prio=['Low','High','Urgent'].map(k=>({label:k.toUpperCase(),w:Math.min(100,m.priority.pct[k]),color:pcol[k],txt:this.fmt(m.priority.pct[k],0)+' % (target '+m.priority.target[k]+' %)'}));
+    const total=m.total||1;
+    const actors=m.badActors.map((a,i)=>({rank:String(i+1),key:a.key,count:String(a.count),pct:this.fmt(a.pct,1),w:Math.round(a.count/total*100),cb:()=>{const tag=a.key.split('.')[0]; if(this.L[tag]) this.nav('detail',tag); else this.applyView({asset:this.assetOf(tag)||'PLANT',view:'MAIN'});}}));
+    const fl=m.floods.map(f=>this.fT(f.start)+'–'+this.fT(f.end)).join(', ');
+    const lists=[
+      {k:'Floods:',v:m.floods.length?fl:'none (a flood is 10 or more alarms inside any 10 min)'},
+      {k:'Chattering:',v:m.chattering.length?m.chattering.map(c=>c.key+' ×'+c.count).join(', '):'none'},
+      {k:'Standing:',v:m.standing.length?m.standing.map(x=>x.key+' '+this.mmss(x.durationMs)).join(', '):'none'}
+    ];
+    return {verdict:'HEALTH: '+m.health.verdict,verdictBg:vcol[0],verdictFg:vcol[1],
+      windowTxt:'Window '+this.fT(m.window.t0)+' – '+this.fT(m.window.t1)+' ('+this.fmt(mins,1)+' min of simulated time; equivalent to '+m.perDay+' alarms per day'+(m.window.t0<this.t0?'; session started '+this.fT(this.t0):'')+'). Source: this station\'s alarm journal ('+this.alarmLog.length+' raise / return / acknowledge records).',
+      spans:this.kpiSpans().map(v=>({label:v?v+' MIN':'SESSION',bg:S.kpiSpan===v?'#B8C4D4':'#D4D0C8',bc:S.kpiSpan===v?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({kpiSpan:v})})),
+      tiles,checks,prio,prioNote:m.priority.total?'Distribution of '+m.priority.total+' annunciated alarms (Journal excluded). Deviation from target: LOW '+m.priority.deviation.Low+', HIGH '+m.priority.deviation.High+', URGENT '+m.priority.deviation.Urgent+' points.':'No annunciated alarms in the window.',
+      lists,actors,actorsEmpty:actors.length===0,
+      footer:'Thresholds: about '+T.perDayAcceptable+' alarms per day acceptable and '+T.perDayManageable+' manageable; '+T.per10minTarget+' per 10 min target, '+T.per10minManageable+' manageable, '+T.per10minMax+' in 10 min is a flood; time in flood under '+T.floodPctMax+' %; top-10 alarms '+T.top10PctTarget+'–'+T.top10PctMax+' % of load; chattering zero; standing under '+T.standingMax+'; priority split 80 / 15 / 5 (Low / High / Urgent). Figures from the exida white paper on ISA-18.2 performance metrics and the alarm-performance-analyser benchmark notes (RESOURCES 2.7, 2.8), which summarise ISA-18.2 and EEMUA 191. The standing-alarm threshold is scaled to 10 min for a training session; the plant figure is 24 h.'};
   }
   mmss(ms){ const s=Math.max(0,Math.floor(ms/1000)); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2); }
 }

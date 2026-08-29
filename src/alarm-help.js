@@ -1,0 +1,329 @@
+/*
+ * ESS.AlarmHelp — alarm rationalisation table (Alarm Help) for every alarm
+ * condition in the simulator.
+ *
+ * The six fields follow the rationalisation pop-up described in the PAS /
+ * Hollifield white papers (RESOURCES 2.10): Priority, Setting, Response time,
+ * Consequence, Probable cause, Corrective action. The idea of an Alarm Help
+ * pane beside the Alarm Summary comes from the Experion Alarming PIN feature
+ * list (RESOURCES 2.2). All prose here is our own and describes this
+ * simulator's process models (CODE-MAP section 2.6), not any real plant.
+ *
+ * Priority and Setting are never authored twice: `resolve()` builds them from
+ * the live point configuration passed in by the app (`cfg`), so the help can
+ * never disagree with the trip point or priority the operator sees elsewhere.
+ * Equipment-level trips (TK-101, R-201, ...) are not in the tag database, so
+ * their settings live in EQUIPMENT_TRIPS and are exported for the app to use as
+ * trip values.
+ *
+ * API
+ *   resolve(tag, cond, cfg) -> { found, tag, cond, priority, setting,
+ *       responseTime, consequence, probableCause, correctiveAction }
+ *     cfg (optional): { prio, subprio, tripPoint, eu, kind }
+ *   has(tag, cond) -> boolean
+ *   keys() -> ['TAG.COND', ...]
+ *   EQUIPMENT_TRIPS -> { 'TK-101.HIHI TRIP': { value, eu, prio }, ... }
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else (root.ESS = root.ESS || {}).AlarmHelp = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  // Equipment-level protective trips raised by the process models. The values
+  // are the model thresholds listed as fixed in UPGRADE-PLAN rule 4.
+  var EQUIPMENT_TRIPS = {
+    'TK-101.HIHI TRIP': { value: 98, eu: '%', prio: 'Urgent' },
+    'R-201.HI TEMP TRIP': { value: 185, eu: 'DEG C', prio: 'Urgent' },
+    'V-401.PSV LIFT': { value: 950, eu: 'KPA', prio: 'Urgent' },
+    'R-202.HI TEMP TRIP': { value: 110, eu: 'DEG C', prio: 'Urgent' },
+    'R-310.HI TEMP TRIP': { value: 480, eu: 'DEG C', prio: 'Urgent' }
+  };
+
+  // Response time bands used across the table. Urgent conditions get minutes,
+  // Low conditions get the length of a normal round.
+  var RT = { now: 'Immediately (under 2 min)', short: '5 min', medium: '10 min', long: '30 min' };
+
+  function e(rt, cons, cause, act, setting) {
+    var o = { rt: rt, cons: cons, cause: cause, act: act };
+    if (setting) o.setting = setting;
+    return o;
+  }
+
+  var TABLE = {
+    // ---- Unit 01: feed tank TK-101 -------------------------------------------
+    'LIC101.PVLL': e(RT.now,
+      'Feed pump P-101 loses suction and cavitates; below 2 % level the pump trips and reactor feed stops, which starves R-201 of the cooling effect of fresh feed.',
+      'Feed supply FI100 lost or reduced; FV-102 driven fully open in MAN; level transmitter failure reading low.',
+      'Put FIC102 in MAN and reduce outlet flow, confirm FI100 supply, stop P-101 before the level reaches 2 % if the supply cannot be restored.'),
+    'LIC101.PVLO': e(RT.medium,
+      'Loss of surge capacity; a further supply dip will reach the low-low trip.',
+      'Supply flow FI100 running below the 60 M3/H design point; LIC101 setpoint moved down; outlet flow above supply.',
+      'Check FI100 against FIC102, trim the LIC101 setpoint or move FIC102 to AUTO with a lower setpoint to hold inventory.'),
+    'LIC101.PVHI': e(RT.medium,
+      'Tank approaches the overflow interlock; feed to the reactor may have to be raised beyond the reactor cooling capacity to catch up.',
+      'Feed surge on FI100; FV-102 stuck or throttled; FIC102 in MAN with a low output; pump P-101 stopped or tripped.',
+      'Confirm P-101 is running, raise FIC102 flow (AUTO or CAS), and check FV-102 position against output.'),
+    'LIC101.PVHH': e(RT.now,
+      'At 98 % the overflow protection isolates the feed supply and the unit loses production; a real tank would spill to the bund.',
+      'Same causes as PVHI left unattended; outlet valve failed closed on instrument air loss.',
+      'Open FV-102 by hand from the FIC102 faceplate in MAN, verify P-101 status, and reduce the supply if the operator has control of it.'),
+    'FIC102.PVLL': e(RT.now,
+      'Reactor R-201 loses its feed heat sink and the exotherm runs away toward the 185 DEG C trip within minutes.',
+      'P-101 tripped; FV-102 closed or stuck; TK-101 empty; transmitter failure reading zero.',
+      'Restart P-101 when the restart lockout clears, open FV-102 in MAN, and pre-emptively open TV-202 to increase jacket cooling.'),
+    'FIC102.PVLO': e(RT.short,
+      'Reduced reactor cooling by feed; residence time rises and R-201 temperature will climb.',
+      'Cascade output from LIC101 low; valve stiction on FV-102; suction pressure low from a low tank level.',
+      'Compare OP with the valve position, check the TK-101 level, and consider MAN control of FIC102 while the cause is fixed.'),
+    'FIC102.PVHI': e(RT.short,
+      'Reactor over-fed; conversion drops and downstream V-401 level and pressure rise.',
+      'LIC101 driving hard after a feed surge; FIC102 in MAN with a high output.',
+      'Reduce the LIC101 setpoint or take FIC102 to AUTO with a normal setpoint; watch LIC401 and PIC401.'),
+    'FIC102.PVHH': e(RT.now,
+      'Reactor hydraulically flooded; carry-over to E-301 and V-401 with a pressure excursion toward the PSV.',
+      'FV-102 failed open (air loss fail state) or operator output error.',
+      'Close FV-102 in MAN, verify PIC401 is in AUTO and the flare path is clear.'),
+    'FIC102.BADPV': e(RT.short,
+      'The loop sheds to MAN and holds the last output; the level cascade is broken so TK-101 will drift.',
+      'Transmitter failure on the feed flow (instructor fault XMTR); impulse line or power fault.',
+      'Control FV-102 by hand using LIC101 and FI100 as the reference, and request maintenance on the transmitter.'),
+    'P101.TRIP': e(RT.now,
+      'Reactor feed stops; TK-101 fills toward the HIHI trip and R-201 loses its feed cooling.',
+      'Pump electrical fault (instructor fault PUMP); suction loss from a low tank level.',
+      'Check the trip reason on the P101 faceplate, wait for the 30 s restart lockout, confirm the TK-101 level permissive, then START.'),
+    'P101.CMDFAIL': e(RT.short,
+      'The pump stays stopped; feed cannot be restored until the permissive clears.',
+      'Start requested with the TK-101 level below the 5 % permissive.',
+      'Restore the tank level above 5 % (reduce FIC102 flow, restore FI100 supply) and repeat the START command.'),
+    'TK-101.HIHI TRIP': e(RT.now,
+      'Feed supply is isolated by the overflow interlock; the unit loses feed until the level falls below 90 %.',
+      'Tank level reached 98 % because the outlet could not keep up with the inflow.',
+      'Raise the outlet flow with FIC102, confirm P-101 running, and acknowledge the trip once the level is falling.',
+      '98 % level'),
+
+    // ---- Unit 01: reactor R-201 ------------------------------------------------
+    'TIC201.PVLL': e(RT.short,
+      'Reaction stalls; unconverted feed builds up in the reactor and any later warm-up releases the stored heat at once.',
+      'Cooling water loss recovered with TV-202 still wide open; TIC202 cascade wound down; feed temperature low.',
+      'Move TIC201 to AUTO with the normal setpoint, check TIC202 is in CAS, and reduce jacket cooling gradually.'),
+    'TIC201.PVLO': e(RT.medium,
+      'Lower conversion; product quality drifts and V-401 flash performance falls.',
+      'Setpoint lowered; jacket over-cooling; excessive feed flow.',
+      'Verify the TIC201 setpoint and mode, and trim the jacket setpoint through the cascade.'),
+    'TIC201.PVHI': e(RT.short,
+      'The exotherm accelerates with temperature; without action the reactor reaches the 185 DEG C trip.',
+      'Cooling water loss, TV-202 stiction, reaction rate step, or E-301 fouling raising the feed temperature.',
+      'Confirm TIC202 output is opening TV-202, raise feed flow FIC102 for extra cooling, and prepare to cut feed.'),
+    'TIC201.PVHH': e(RT.now,
+      'Runaway imminent; the trip will close the feed valve and the reactor contents will still need to be cooled.',
+      'Same causes as PVHI with the jacket at its limit.',
+      'Cut feed with FIC102 in MAN to zero, open TV-202 fully in MAN, and monitor the trend until the temperature is falling.'),
+    'TIC201.DEVHI': e(RT.short,
+      'The loop is not holding its setpoint; a growing deviation is the earliest sign of a cooling problem.',
+      'Cascade secondary TIC202 not in CAS, valve stiction, or cooling capacity lost.',
+      'Check TIC202 mode and its output-to-position match, then act as for TIC201 PVHI.'),
+    'TIC202.PVLL': e(RT.long,
+      'Journal only: jacket colder than expected; over-cooling reduces conversion.',
+      'Cooling water supply colder than design or TV-202 fully open with a low load.',
+      'No immediate action; review the cascade setpoint if the reactor temperature is also low.'),
+    'TIC202.PVLO': e(RT.medium,
+      'Jacket is over-cooling; reactor temperature will fall below its operating band.',
+      'TIC202 in MAN with a high output; cascade driving cooling after a load step.',
+      'Return TIC202 to CAS and let TIC201 restore the balance.'),
+    'TIC202.PVHI': e(RT.short,
+      'Jacket cannot remove the reaction heat; reactor temperature will rise.',
+      'Cooling water loss (instructor fault COOL), TV-202 stuck, or reaction load higher than design.',
+      'Confirm cooling water is available, check TV-202 position, and reduce reactor load by cutting feed.'),
+    'TIC202.PVHH': e(RT.now,
+      'Cooling has effectively been lost; the reactor is heading for the high-temperature trip.',
+      'Total loss of cooling water; valve failed closed on air loss.',
+      'Cut feed to R-201, open TV-202 by hand if it responds, and stand by for the trip.'),
+    'TIC202.DEVHI': e(RT.short,
+      'Jacket loop not following its cascade setpoint; reactor control will degrade.',
+      'Valve stiction or saturation on TV-202; cooling water temperature above design.',
+      'Compare output with valve position and stroke the valve in MAN if it is sticking.'),
+    'R-201.HI TEMP TRIP': e(RT.now,
+      'Feed valve FV-102 is driven closed by the interlock; production stops and the reactor must be cooled to below 160 DEG C before reset.',
+      'Reactor temperature reached 185 DEG C after a cooling loss, stiction or reaction rate step.',
+      'Keep maximum jacket cooling, confirm feed is isolated, acknowledge the trip, and restart only after the temperature has recovered.',
+      '185 DEG C reactor temperature'),
+
+    // ---- Unit 01: product cooler E-301 and flash drum V-401 --------------------
+    'TIC301.PVLL': e(RT.long,
+      'Journal only: product too cold for the flash; the drum makes little vapour and level rises.',
+      'TV-301 open too far or reactor outlet cold.',
+      'No immediate action; review the TIC301 setpoint.'),
+    'TIC301.PVLO': e(RT.medium,
+      'Flash duty drops; LIC401 will have to open LV-401 further.',
+      'Reactor temperature low; TIC301 in MAN.',
+      'Check TIC301 mode and the reactor temperature.'),
+    'TIC301.PVHI': e(RT.short,
+      'More vapour flashes in V-401 and drum pressure rises toward the PSV.',
+      'E-301 fouling (instructor fault FOUL) reduces cooling; TV-301 stuck.',
+      'Open TV-301 further or drop the TIC301 setpoint; watch PIC401 output for saturation.'),
+    'TIC301.PVHH': e(RT.now,
+      'Drum pressure will exceed PIC401 capacity; PSV lift likely.',
+      'Severe fouling with a reactor temperature excursion.',
+      'Reduce reactor feed, take PIC401 to AUTO if it is not, and prepare for a relief event.'),
+    'LIC401.PVLL': e(RT.now,
+      'Gas blow-by through LV-401 to the product line.',
+      'LV-401 stuck open; liquid feed to the drum lost.',
+      'Close LV-401 in MAN until the level recovers, then return LIC401 to AUTO.'),
+    'LIC401.PVLO': e(RT.medium,
+      'Reduced liquid seal; a further drop risks blow-by.',
+      'LIC401 setpoint low; feed reduced upstream.',
+      'Check the feed and the LIC401 setpoint.'),
+    'LIC401.PVHI': e(RT.short,
+      'Liquid carry-over into the overhead line and the flare.',
+      'LV-401 stiction or failed closed on air loss; feed surge from the reactor.',
+      'Open LV-401 in MAN and verify the valve stroke.'),
+    'LIC401.PVHH': e(RT.now,
+      'Drum floods and liquid enters the vapour system.',
+      'Outlet valve failed closed; excessive feed.',
+      'Cut reactor feed, open LV-401 by hand, and watch PIC401.'),
+    'PIC401.PVLL': e(RT.short,
+      'Loss of separation pressure; vapour product is lost to flare at low pressure.',
+      'PV-401 stuck open; feed lost.',
+      'Close PV-401 in MAN and confirm feed to the drum.'),
+    'PIC401.PVLO': e(RT.medium,
+      'Flash runs at reduced pressure; product quality drifts.',
+      'PIC401 setpoint lowered; PV-401 over-open.',
+      'Verify the setpoint and return PIC401 to AUTO.'),
+    'PIC401.PVHI': e(RT.short,
+      'Pressure approaching the PSV set pressure of 950 KPA.',
+      'Vapour surge (instructor fault VAP); PV-401 failed closed on air loss; E-301 fouling.',
+      'Open PV-401 further in MAN, reduce TIC301 setpoint, and cut reactor feed if the pressure keeps rising.'),
+    'PIC401.PVHH': e(RT.now,
+      'PSV will lift to flare; flaring is an environmental event.',
+      'Same causes as PVHI left unattended.',
+      'Cut feed to R-201 and open PV-401 fully; expect V-401 PSV LIFT.'),
+    'V-401.PSV LIFT': e(RT.now,
+      'Relief to flare until pressure falls; the event must be reported.',
+      'Drum pressure reached 950 KPA because PIC401 could not vent enough vapour.',
+      'Reduce the vapour load (cut feed, cool the product), then confirm the PSV reseats and acknowledge.',
+      '950 KPA drum pressure'),
+
+    // ---- Unit 02: semi-batch reactor R-202 -------------------------------------
+    'FIC211.PVHI': e(RT.short,
+      'Monomer accumulates faster than it reacts; the adiabatic temperature rise potential grows.',
+      'Setpoint too high for the FEED phase; MV-211 over-open in MAN.',
+      'Reduce the FIC211 setpoint or place it in MAN at a lower output; check the monomer inventory bar.'),
+    'TIC212.PVHI': e(RT.short,
+      'Reaction accelerates with temperature; at 110 DEG C the batch trip cuts feed and floods the jacket with coolant.',
+      'Agitator M-202 trip reduces heat transfer; jacket JV-213 stuck; monomer over-feed.',
+      'Cut monomer feed with FIC211, confirm M-202 running, and reduce the TIC213 cascade setpoint.'),
+    'TIC212.PVHH': e(RT.now,
+      'Runaway imminent; the trip will force the sequence to COOL.',
+      'Same causes as PVHI with the jacket at its limit.',
+      'Cut monomer feed to zero, set TIC213 to MAN with full cooling, and be ready to ABORT the batch.'),
+    'TIC213.PVHI': e(RT.short,
+      'The jacket medium is heating rather than cooling the batch; reactor temperature will follow.',
+      'TIC213 in MAN with a high output; cascade demanding heat during HEATUP for too long.',
+      'Return TIC213 to CAS or reduce its output; check the SCM202 phase.'),
+    'PI214.PVHI': e(RT.short,
+      'Vapour pressure rising with batch temperature; a further rise threatens the vessel rating.',
+      'Batch over-temperature; monomer inventory high.',
+      'Act on TIC212 first: reduce temperature and cut monomer feed.'),
+    'PI214.PVHH': e(RT.now,
+      'Vessel pressure near its design limit; relief or rupture disc actuation likely.',
+      'Uncontrolled exotherm.',
+      'Cut monomer feed, full jacket cooling, ABORT the batch if the temperature is still rising.'),
+    'LI215.PVHI': e(RT.short,
+      'Batch volume near the agitator and overflow limit; heat transfer per unit volume falls.',
+      'Over-charge or over-feed of monomer.',
+      'Stop the monomer feed with FIC211 and HOLD the sequence.'),
+    'M202.TRIP': e(RT.now,
+      'Loss of agitation halves heat transfer; a hot spot forms and the batch can run away with no warning from the bulk temperature.',
+      'Agitator motor fault (instructor fault AGIT).',
+      'Cut monomer feed immediately, apply full jacket cooling, and restart M-202 when the lockout clears.'),
+    'R-202.HI TEMP TRIP': e(RT.now,
+      'Batch is forced to COOL: feed cut and the jacket flooded cold; the batch is lost.',
+      'Batch temperature reached 110 DEG C.',
+      'Confirm the monomer valve MV-211 is closed and the jacket is on full cooling, then acknowledge and prepare to DRAIN.',
+      '110 DEG C batch temperature'),
+
+    // ---- Unit 03: fired preheater H-310 and fixed-bed reactor R-310 -----------
+    'FIC310.PVLO': e(RT.short,
+      'Low feed through the preheater raises the outlet temperature for the same firing and reduces bed cooling.',
+      'FV-310 stiction; upstream supply reduced.',
+      'Check FV-310 position, and lower TIC311 firing until the flow is restored.'),
+    'FIC310.PVHI': e(RT.medium,
+      'Preheater outlet drops and conversion falls.',
+      'FV-310 over-open in MAN.',
+      'Return FIC310 to AUTO at the normal setpoint.'),
+    'TIC311.PVLO': e(RT.medium,
+      'Bed inlet too cold; reaction extinguishes and unconverted feed passes through.',
+      'Fuel gas shut off by the R-310 trip; TIC311 in MAN with low firing.',
+      'Check the R-310 trip status before raising firing; return TIC311 to AUTO.'),
+    'TIC311.PVHI': e(RT.short,
+      'Hot inlet feeds the bed exotherm; hotspot TI312 will rise.',
+      'Firing too high; feed flow low.',
+      'Reduce the TIC311 setpoint and confirm FIC310 flow.'),
+    'TIC311.PVHH': e(RT.now,
+      'Preheater tubes and the bed are both at risk; the bed trip at 480 DEG C follows.',
+      'Runaway firing; TIC311 in MAN with a high output.',
+      'Cut firing in MAN and raise quench flow FIC313.'),
+    'TI312.PVHI': e(RT.short,
+      'Hotspot growing; catalyst sinters above the trip and the reactor is lost for the run.',
+      'Catalyst activity step (instructor fault BEDACT); low quench; high inlet temperature.',
+      'Raise the quench flow FIC313, lower the TIC311 setpoint, and watch the hotspot trend.'),
+    'TI312.PVHH': e(RT.now,
+      'At 480 DEG C the fuel gas is shut off; the bed continues to react on stored heat.',
+      'Same causes as PVHI left unattended.',
+      'Maximum quench, cut firing in MAN, and reduce fresh feed to remove the reactant.'),
+    'FIC313.PVLO': e(RT.short,
+      'Reduced quench lets the bed hotspot rise.',
+      'QV-313 stiction; FIC313 in MAN.',
+      'Check the valve position and return FIC313 to AUTO.'),
+    'FIC313.PVLL': e(RT.now,
+      'Quench lost; the bed will overheat within minutes.',
+      'QV-313 failed on air loss (fail state closed); supply lost.',
+      'Open QV-313 in MAN, reduce TIC311 firing and the fresh feed.'),
+    'R-310.HI TEMP TRIP': e(RT.now,
+      'Fuel gas is shut off; the preheater cools and the bed reaction dies out; restart only after the bed is below 400 DEG C.',
+      'Bed hotspot reached 480 DEG C.',
+      'Keep quench at maximum, confirm firing is off, acknowledge, and plan the restart.',
+      '480 DEG C bed hotspot')
+  };
+
+  function keyOf(tag, cond) { return tag + '.' + cond; }
+
+  function has(tag, cond) { return Object.prototype.hasOwnProperty.call(TABLE, keyOf(tag, cond)); }
+
+  function keys() { return Object.keys(TABLE); }
+
+  function settingText(cond, cfg, entry) {
+    if (entry.setting) return entry.setting;
+    var tp = cfg.tripPoint, eu = cfg.eu ? ' ' + cfg.eu : '';
+    if (typeof tp !== 'number') return 'Discrete condition';
+    if (cond === 'DEVHI') return 'PV minus SP above ' + tp + eu;
+    if (cond === 'PVLO' || cond === 'PVLL') return 'PV below ' + tp + eu;
+    return 'PV above ' + tp + eu;
+  }
+
+  function priorityText(cfg) {
+    var p = cfg.prio ? String(cfg.prio).toUpperCase() : 'UNSET';
+    return typeof cfg.subprio === 'number' ? p + ' ' + cfg.subprio : p;
+  }
+
+  function resolve(tag, cond, cfg) {
+    cfg = cfg || {};
+    var entry = TABLE[keyOf(tag, cond)];
+    var eq = EQUIPMENT_TRIPS[keyOf(tag, cond)];
+    if (eq) {
+      if (typeof cfg.tripPoint !== 'number') cfg.tripPoint = eq.value;
+      if (!cfg.eu) cfg.eu = eq.eu;
+      if (!cfg.prio) cfg.prio = eq.prio;
+    }
+    if (!entry) {
+      return { found: false, tag: tag, cond: cond, priority: priorityText(cfg), setting: settingText(cond, cfg, {}),
+        responseTime: 'Not rationalised', consequence: 'No alarm help has been authored for this condition.',
+        probableCause: 'Not rationalised', correctiveAction: 'Follow the standard response: silence, acknowledge, read the condition, check the trend, act, verify.' };
+    }
+    return { found: true, tag: tag, cond: cond, priority: priorityText(cfg), setting: settingText(cond, cfg, entry),
+      responseTime: entry.rt, consequence: entry.cons, probableCause: entry.cause, correctiveAction: entry.act };
+  }
+
+  return { resolve: resolve, has: has, keys: keys, EQUIPMENT_TRIPS: EQUIPMENT_TRIPS, RESPONSE_TIMES: RT };
+});
