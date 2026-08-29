@@ -121,8 +121,9 @@
     loop.sp = clampSp(loop, cas ? cas(master.op) : master.op);
   }
 
+  // A bad PV must never drag the SP with it (the shed already holds the loop in MAN).
   function applyPvTracking(loop) {
-    if (loop.pvtrack) loop.sp = clampSp(loop, loop.pv);
+    if (loop.pvtrack && !loop.badPv) loop.sp = clampSp(loop, loop.pv);
   }
 
   function stepPid(loop, dt, ctx) {

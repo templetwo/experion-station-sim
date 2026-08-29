@@ -49,6 +49,8 @@
 //       P.b.Ts   reactor wall (steel) temperature, C
 //       P.b.Tehe external heat exchanger outlet temperature, C
 //       P.b.conv batch monomer conversion 0..1
+//   Trips read here but raised by the app: P.trips.skin (H-310 tube-skin trip,
+//   TI314/TI315 Urgent) closes the fuel valve exactly like P.trips.bed.
 //   U3  P.h.fb   firebox temperature, C
 //       P.h.t1, P.h.t2   pass 1 / pass 2 outlet temperatures, C (pre = mixed outlet)
 //       P.h.ts1, P.h.ts2 pass 1 / pass 2 tube-skin temperatures, C
@@ -201,7 +203,7 @@
       FV102: P.trips.rx ? 0 : L.FIC102.op / 100, TV202: L.TIC202.op / 100, TV301: L.TIC301.op / 100,
       PV401: L.PIC401.op / 100, LV401: L.LIC401.op / 100,
       MV211: P.trips.batch ? 0 : L.FIC211.op / 100, JV213: P.trips.batch ? 0 : L.TIC213.op / 100,
-      FV310: L.FIC310.op / 100, FV311: P.trips.bed ? 0 : L.TIC311.op / 100, QV313: L.FIC313.op / 100,
+      FV310: L.FIC310.op / 100, FV311: (P.trips.bed || P.trips.skin) ? 0 : L.TIC311.op / 100, QV313: L.FIC313.op / 100,
     };
     for (const k in V) {
       const v = V[k]; let g = F.air ? v.fail : tgt[k]; if (v.stuck) g = v.pos;
@@ -252,7 +254,9 @@
     const Ql = P.flow * (1 - vapf);
     const Qo = 80 * V.LV401.pos * Math.sqrt(Math.max(P.drumL, 1) / 50);
     P.drumL = clamp(P.drumL + (Ql - Qo) * 0.001852 * dt, 0, 100);
-    const vap = P.flow * vapf * (F.vap ? 1.9 : 1);
+    // 'vap' fault = vapour surge for 5 min. Calibrated (B4) so that PIC401 left in MAN reaches its PVHI
+    // limit inside the drill window while AUTO holds the drum with the vent open (the original 1.9 never alarmed).
+    const vap = P.flow * vapf * (F.vap ? 2.6 : 1);
     if (F.vap && P.t - P.faultT.vap > 300000) F.vap = false;
     const vent = 0.02 * V.PV401.pos * P.drumP;
     P.drumP += (vap - vent) * dt / 8;

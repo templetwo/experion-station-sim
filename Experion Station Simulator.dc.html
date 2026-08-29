@@ -263,7 +263,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
     </g>
   </sc-for>
-  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. During FEED the monomer SP is program-driven (MODEATTR = PROGRAM). HOLD stops the feed without losing the phase.</text>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. TIC212 (whole batch) and FIC211 (FEED) are program-driven (MODEATTR = PROGRAM). Alarm limits follow the phase. TI216 Urgent sheds the feed and HOLDs.</text>
 </svg>
 </div>
 </sc-if>
@@ -296,6 +296,12 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <polygon points="356,505 368,470 380,505" fill="#C06000" opacity="{{ gfx3.flameOp }}"></polygon>
   <polygon points="412,505 424,470 436,505" fill="#C06000" opacity="{{ gfx3.flameOp }}"></polygon>
   <text x="264" y="294" style="font:700 10px Tahoma;fill:#55524c">H-310 PREHEATER</text>
+  <rect x="440" y="236" width="34" height="64" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <path d="M457,236 V222" style="stroke:#4a4a4a;stroke-width:2;fill:none"></path>
+  <text x="440" y="214" style="font:700 10px Tahoma;fill:#4a4a4a">FLUE GAS</text>
+  <path d="M428,193 H436" style="stroke:#55524c;stroke-width:1.5;fill:none"></path>
+  <path d="M168,493 H236 V340 H280" style="stroke:#55524c;stroke-width:1;fill:none;stroke-dasharray:3,3"></path>
+  <path d="M168,553 H248 V410 H280" style="stroke:#55524c;stroke-width:1;fill:none;stroke-dasharray:3,3"></path>
   <path d="M370,640 V586" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
   <path d="M370,534 V520" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
   <text x="388" y="634" style="font:700 10px Tahoma;fill:#8a6a3a">FUEL GAS</text>
@@ -341,7 +347,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
     </g>
   </sc-for>
-  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">TI312 is the bed hotspot (indication only). The fuel trip operates at 480 °C — cool with quench FIC313 or lower the TIC311 preheat SP.</text>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">TI312 is the bed hotspot (indication only). Fuel trips at 480 °C bed or at the TI314 / TI315 tube-skin Urgent limits — cool with quench FIC313 or lower the TIC311 preheat SP; AI316 shows excess O2.</text>
 </svg>
 </div>
 </sc-if>
@@ -534,6 +540,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             </sc-for>
             <div style="font-size:11px;color:#7a1a00;font-weight:700;padding-left:8px">{{ dpt.shedNote }}</div>
           </div>
+          <sc-if value="{{ dpt.calloutOn }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:8px;padding:4px 8px;border:2px solid #CC0000;background:#F6DADA;color:#A00000;font-size:11px;font-weight:700">{{ dpt.calloutT }}</div>
+          </sc-if>
         </div>
         <div style="flex:1;max-width:460px;display:flex;flex-direction:column;gap:10px">
           <sc-if value="{{ dpt.hasBand }}" hint-placeholder-val="{{ true }}">
@@ -764,7 +773,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </sc-if>
 
 <sc-for list="{{ fps }}" as="fp" hint-placeholder-count="1">
-  <div style="position:absolute;left:{{ fp.x }}px;top:{{ fp.y }}px;width:242px;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #5E5E5E #5E5E5E #FFFFFF;box-shadow:4px 4px 10px rgba(0,0,0,0.4);z-index:{{ fp.z }};user-select:none" onMouseDown="{{ fp.front }}">
+  <div style="position:absolute;left:{{ fp.x }}px;top:{{ fp.y }}px;width:242px;background:#D4D0C8;border:2px solid;border-color:{{ fp.frameBc }};box-shadow:4px 4px 10px rgba(0,0,0,0.4);z-index:{{ fp.z }};user-select:none" onMouseDown="{{ fp.front }}">
     <div style="display:flex;align-items:center;background:#41608A;color:#FFFFFF;padding:3px 6px;cursor:move;gap:6px" onMouseDown="{{ fp.dragStart }}">
       <div style="font-weight:700;font-size:12px">{{ fp.tag }}</div>
       <div style="font-size:10px;opacity:0.85;overflow:hidden;white-space:nowrap;flex:1">{{ fp.desc }}</div>
@@ -824,6 +833,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           <div style="font-size:9.5px;color:#55524c;width:74px">RAISE / LOWER {{ fp.selT }}</div>
         </div>
         <div style="font-size:10px;font-weight:700;color:#7a1a00;height:13px">{{ fp.noteT }}</div>
+        <sc-if value="{{ fp.calloutOn }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:3px 5px;border:2px solid #CC0000;background:#F6DADA;color:#A00000;font-size:10px;font-weight:700;line-height:1.3">{{ fp.calloutT }}</div>
+        </sc-if>
       </div>
     </div>
     </sc-if>
@@ -1153,33 +1165,44 @@ class Component extends DCLogic {
     this.L = {
       FI100: {kind:'ind',tag:'FI100',desc:'UNIT FEED SUPPLY FLOW',eu:'M3/H',lo:0,hi:150,dec:1,pv:60,cm:'CM0_FI100',alm:{},tgtLo:50,tgtHi:70,_as:{}},
       LIC101:P({tag:'LIC101',desc:'FEED TANK TK-101 LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.5,T1:3,act:'DIR',sphilm:95,splolm:5,slave:'FIC102',cm:'CM1_LIC101',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[80,'High'],PVHH:[90,'Urgent']}}),
-      FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
+      FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',pvtrack:true,sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
       P101:  {kind:'motor',tag:'P101',desc:'FEED PUMP P-101',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM2A_P101',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
       TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent'],DEVHI:[15,'High']}}),
-      TIC202:P({tag:'TIC202',desc:'R-201 JACKET COOLANT TEMP',eu:'DEG C',lo:0,hi:100,pv:40,sp:40,op:74,K:1.2,T1:1.5,act:'DIR',mode:'CAS',master:'TIC201',sphilm:80,splolm:5,cm:'CM4_TIC202',alm:{PVLL:[10,'Journal'],PVLO:[20,'Low'],PVHI:[70,'High'],PVHH:[85,'Urgent'],DEVHI:[12,'High']}}),
+      AI205: {kind:'ind',tag:'AI205',desc:'R-201 REACTOR CONVERSION',eu:'%',lo:0,hi:100,dec:1,pv:85,cm:'CM3A_AI205',alm:{},tgtLo:75,tgtHi:95,_as:{}},
+      TIC202:P({tag:'TIC202',desc:'R-201 JACKET COOLANT TEMP',eu:'DEG C',lo:0,hi:100,pv:40,sp:40,op:74,K:1.2,T1:1.5,act:'DIR',mode:'CAS',master:'TIC201',pvtrack:true,sphilm:80,splolm:5,cm:'CM4_TIC202',alm:{PVLL:[10,'Journal'],PVLO:[20,'Low'],PVHI:[70,'High'],PVHH:[85,'Urgent'],DEVHI:[12,'High']}}),
       TIC301:P({tag:'TIC301',desc:'E-301 PRODUCT OUTLET TEMP',eu:'DEG C',lo:0,hi:250,pv:180,sp:180,op:50,K:1.8,T1:4,T2:0.3,act:'REV',sphilm:210,splolm:120,cm:'CM5_TIC301',alm:{PVLL:[150,'Journal'],PVLO:[165,'Low'],PVHI:[200,'High'],PVHH:[215,'Urgent']}}),
       LIC401:P({tag:'LIC401',desc:'FLASH DRUM V-401 LEVEL',eu:'%',lo:0,hi:100,pv:45,sp:45,op:73,K:1.2,T1:2.5,act:'DIR',sphilm:90,splolm:10,cm:'CM6_LIC401',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[75,'High'],PVHH:[90,'Urgent']}}),
       PIC401:P({tag:'PIC401',desc:'V-401 OVERHEAD PRESSURE',eu:'KPA',lo:0,hi:1000,dec:0,pv:600,sp:600,op:40,K:0.8,T1:0.8,act:'DIR',sphilm:850,splolm:200,cm:'CM7_PIC401',alm:{PVLL:[350,'Urgent'],PVLO:[450,'Low'],PVHI:[800,'High'],PVHH:[900,'Urgent']}}),
-      FIC211:P({tag:'FIC211',desc:'R-202 MONOMER FEED FLOW',eu:'M3/H',lo:0,hi:40,pv:0,sp:0,op:0,K:0.4,T1:0.15,act:'REV',sphilm:30,splolm:0,cm:'CM10_FIC211',alm:{PVHI:[28,'High']}}),
+      FIC211:P({tag:'FIC211',desc:'R-202 MONOMER FEED FLOW',eu:'M3/H',lo:0,hi:40,pv:0,sp:0,op:0,K:0.4,T1:0.15,act:'REV',sphilm:30,splolm:0,cm:'CM10_FIC211',almDelay:30,alm:{PVHI:[28,'High']}}),
       TIC212:P({tag:'TIC212',desc:'R-202 BATCH REACTOR TEMP',eu:'DEG C',lo:0,hi:150,pv:25,sp:40,op:8,K:1.8,T1:6,T2:0.4,act:'REV',mode:'MAN',slave:'TIC213',sphilm:95,splolm:20,cm:'CM11_TIC212',alm:{PVHI:[95,'High'],PVHH:[105,'Urgent']}}),
-      TIC213:P({tag:'TIC213',desc:'R-202 JACKET MEDIUM TEMP',eu:'DEG C',lo:0,hi:130,pv:20,sp:20,op:45,K:1.2,T1:1.2,act:'REV',mode:'CAS',master:'TIC212',sphilm:120,splolm:5,cm:'CM12_TIC213',alm:{PVHI:[115,'High']}}),
+      TIC213:P({tag:'TIC213',desc:'R-202 JACKET MEDIUM TEMP',eu:'DEG C',lo:0,hi:130,pv:20,sp:20,op:45,K:1.2,T1:1.2,act:'REV',mode:'CAS',master:'TIC212',pvtrack:true,sphilm:120,splolm:5,cm:'CM12_TIC213',alm:{PVHI:[115,'High']}}),
       PI214: {kind:'ind',tag:'PI214',desc:'R-202 VAPOR PRESSURE',eu:'KPA',lo:0,hi:600,dec:0,pv:100,cm:'CM13_PI214',alm:{PVHI:[420,'High'],PVHH:[520,'Urgent']},tgtLo:80,tgtHi:320,_as:{}},
       LI215: {kind:'ind',tag:'LI215',desc:'R-202 BATCH LEVEL',eu:'%',lo:0,hi:100,dec:1,pv:12,cm:'CM14_LI215',alm:{PVHI:[85,'High']},tgtLo:10,tgtHi:80,_as:{}},
+      TI216: {kind:'ind',tag:'TI216',desc:'R-202 ADIABATIC END TEMP',eu:'DEG C',lo:0,hi:200,dec:1,pv:25,cm:'CM14A_TI216',alm:{PVHI:[100,'High'],PVHH:[106,'Urgent']},tgtLo:20,tgtHi:95,_as:{}},
       M202:  {kind:'motor',tag:'M202',desc:'R-202 AGITATOR',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM15_M202',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
       FIC310:P({tag:'FIC310',desc:'R-310 FRESH FEED FLOW',eu:'M3/H',lo:0,hi:80,pv:40,sp:40,op:50,K:0.4,T1:0.15,act:'REV',sphilm:70,splolm:0,cm:'CM16_FIC310',alm:{PVLO:[10,'Low'],PVHI:[65,'High']}}),
       TIC311:P({tag:'TIC311',desc:'H-310 PREHEATER OUTLET TEMP',eu:'DEG C',lo:0,hi:500,dec:0,pv:320,sp:320,op:40,K:1.0,T1:2.5,T2:0.2,act:'REV',sphilm:380,splolm:150,cm:'CM17_TIC311',alm:{PVLO:[260,'Low'],PVHI:[360,'High'],PVHH:[400,'Urgent']}}),
       TI312: {kind:'ind',tag:'TI312',desc:'R-310 CATALYST BED HOTSPOT',eu:'DEG C',lo:0,hi:600,dec:0,pv:380,cm:'CM18_TI312',alm:{PVHI:[440,'High'],PVHH:[480,'Urgent']},tgtLo:360,tgtHi:420,_as:{}},
+      TI314: {kind:'ind',tag:'TI314',desc:'H-310 PASS 1 TUBE SKIN TEMP',eu:'DEG C',lo:0,hi:700,dec:0,pv:364,cm:'CM17A_TI314',alm:{PVHI:[440,'High'],PVHH:[490,'Urgent']},tgtLo:330,tgtHi:400,_as:{}},
+      TI315: {kind:'ind',tag:'TI315',desc:'H-310 PASS 2 TUBE SKIN TEMP',eu:'DEG C',lo:0,hi:700,dec:0,pv:378,cm:'CM17B_TI315',alm:{PVHI:[450,'High'],PVHH:[500,'Urgent']},tgtLo:340,tgtHi:410,_as:{}},
+      AI316: {kind:'ind',tag:'AI316',desc:'H-310 FLUE GAS EXCESS O2',eu:'%',lo:0,hi:21,dec:1,pv:3,cm:'CM17C_AI316',almDelay:10,alm:{PVLO:[1.5,'Low']},tgtLo:2,tgtHi:5,_as:{}},
       FIC313:P({tag:'FIC313',desc:'R-310 QUENCH FLOW',eu:'M3/H',lo:0,hi:40,pv:10,sp:10,op:25,K:0.5,T1:0.2,act:'REV',sphilm:38,splolm:0,cm:'CM19_FIC313',alm:{PVLO:[4,'Low'],PVLL:[2,'Urgent']}})
     };
-    for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
+    for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
-    this.P = { t:now, qin:60, tankL:50, flow:60, conc:1, rT:150, Tj:40, Tcw:8, hxT:180, drumL:45, drumP:600, foulF:1, up:0, trips:{}, faults:{}, faultT:{}, b:{phase:'IDLE',pt:0,Cm:0,lvl:12,T:25,Tj:20,mf:0}, h:{f:40,pre:320,bed:380,q:10} };
+    // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4)
+    this.P = ESS.Models.createState(now);
+    this.rand = null;              // optional seeded generator (ESS.Models.createRand) for deterministic runs; null = Math.random
+    this.callouts = {};            // tag -> {txt, until}: inline operator callouts (write rejections), shown ~5 s
+    this.phaseSet = null;          // applied U2 state-based alarm limit set (phaseSetKey())
+    this.tadShed = false;          // TI216 Urgent interlock latched
     // ISA-18.2 engine (RESOURCES 2.5, 2.9); 60 min shelve cap and 15 min default are this sim's alarm-philosophy choice
     this.alarmEngine=ESS.AlarmEngine.createEngine({maxShelveMs:60*60000, defaultShelveMs:15*60000, foldWindowMs:10*60000, dasRules:this.dasRules()});
     this.events=[]; this.msgs=[]; this.hist={}; this.eid=1;
     this.alarmLog=[]; this.t0=now;   // raise / rtn / ack history for the KPI display (ESS.Kpi, RESOURCES 2.7, 2.8)
-    ['FI100','LIC101','FIC102','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','FIC310','TIC311','TI312','FIC313'].forEach(t=>this.hist[t]=[]);
+    this.histTags().forEach(t=>this.hist[t]=[]);
     this.addEvent('SYSTEM','STN01','OPERATOR STATION STARTED — SIMULATION MODE','','');
+    this.applyPhaseSet(this.phaseSetKey(),true);
   }
 
   // ---------- helpers ----------
@@ -1279,12 +1302,12 @@ class Component extends DCLogic {
       {id:'PLANT',label:'PLANT',depth:0},
       {id:'U1',label:'UNIT 01 CONTINUOUS',depth:1,unit:'U1'},
       {id:'TK-101',label:'TK-101 FEED TANK',depth:2,unit:'U1',tags:['FI100','LIC101','P101','TK-101']},
-      {id:'R-201',label:'R-201 REACTOR',depth:2,unit:'U1',tags:['FIC102','TIC201','TIC202','R-201']},
+      {id:'R-201',label:'R-201 REACTOR',depth:2,unit:'U1',tags:['FIC102','TIC201','AI205','TIC202','R-201']},
       {id:'V-401',label:'V-401 FLASH DRUM',depth:2,unit:'U1',tags:['TIC301','LIC401','PIC401','V-401']},
       {id:'U2',label:'UNIT 02 BATCH',depth:1,unit:'U2'},
-      {id:'R-202',label:'R-202 BATCH RX',depth:2,unit:'U2',tags:['FIC211','TIC212','TIC213','PI214','LI215','M202','R-202','SCM202']},
+      {id:'R-202',label:'R-202 BATCH RX',depth:2,unit:'U2',tags:['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202']},
       {id:'U3',label:'UNIT 03 FIRED RX',depth:1,unit:'U3'},
-      {id:'H-310',label:'H-310 PREHEATER',depth:2,unit:'U3',tags:['FIC310','TIC311','H-310']},
+      {id:'H-310',label:'H-310 PREHEATER',depth:2,unit:'U3',tags:['FIC310','TIC311','TI314','TI315','AI316','H-310']},
       {id:'R-310',label:'R-310 FIXED BED',depth:2,unit:'U3',tags:['TI312','FIC313','R-310']}
     ];
   }
@@ -1309,6 +1332,7 @@ class Component extends DCLogic {
   liveValueOf(a){
     const l=this.L[a.tag], P=this.P;
     if(l){ if(l.kind==='motor') return l.run?1:0; return a.cond==='DEVHI'?(l.pv-l.sp):l.pv; }
+    if(a.tag==='H-310' && a.cond==='TUBE SKIN TRIP') return Math.max(P.h.ts1,P.h.ts2);
     return ({'TK-101':P.tankL,'R-201':P.rT,'V-401':P.drumP,'R-202':P.b.T,'R-310':P.h.bed,'H-310':P.h.pre})[a.tag];
   }
   liveDec(a){ const l=this.L[a.tag]; return l?l.dec:(({'V-401':0,'R-310':0,'H-310':0})[a.tag]??1); }
@@ -1431,146 +1455,118 @@ class Component extends DCLogic {
   // audible only while UNACK; RTNUN flashes but stays silent (RESOURCES 2.6)
   hornTop(){ const E=this.alarmEngine; return E.unacked().filter(a=>E.indication(a.state,a.prio).audible).sort(E.compare)[0]||null; }
 
+  // Tags with history (trends, sparkline, assistant slope); one list so initSim and step cannot drift apart.
+  histTags(){ return ['FI100','LIC101','FIC102','AI205','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','TI216','FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316']; }
+  // Callback bundle for ESS.Models: the module never touches the Component, it reports through these.
+  modelCtx(){
+    if(this._ctx) return this._ctx;
+    this._ctx={
+      raise:(src,cond,prio,val,eu,desc)=>this.raiseA(src,cond,prio,val,eu,desc),
+      clear:(src,cond)=>this.clearA(src,cond),
+      tripMotor:(tag,why)=>this.tripMotor(tag,why),
+      addEvent:(type,src,desc,oldV,newV)=>this.addEvent(type,src,desc,oldV,newV),
+      rand:()=>this.rand?this.rand():Math.random(),
+      shed:(l)=>this.applyShed(l),
+      message:(t)=>this.msgZone(t),
+      onTrip:()=>this.dTrip()
+    };
+    return this._ctx;
+  }
+  noise(k){ return (this.modelCtx().rand()-0.5)*k; }
+
   step(dt){
-    const P=this.P, L=this.L, V=this.V, F=P.faults;
-    P.t += dt*1000; P.up += dt;
-    const n=(k)=>(Math.random()-0.5)*k;
-    // feed disturbance
-    let qin = 60 + 2*Math.sin(P.up/120) + n(0.6) + (F.surge?50:0);
-    if(F.surge && P.t-P.faultT.surge>480000){ F.surge=false; }
-    if(P.trips.ovf) qin=0;
-    P.qin=qin;
-    // valves
-    const tgt = { FV102:(P.trips.rx?0:L.FIC102.op/100), TV202:L.TIC202.op/100, TV301:L.TIC301.op/100, PV401:L.PIC401.op/100, LV401:L.LIC401.op/100, MV211:(P.trips.batch?0:L.FIC211.op/100), JV213:(P.trips.batch?0:L.TIC213.op/100), FV310:L.FIC310.op/100, FV311:(P.trips.bed?0:L.TIC311.op/100), QV313:L.FIC313.op/100 };
-    for(const k in V){ const v=V[k]; let g=F.air?v.fail:tgt[k]; if(v.stuck) g=v.pos; v.pos += (g-v.pos)*dt/3; v.pos=Math.max(0,Math.min(1,v.pos)); }
-    // pump + flow
-    const pumpF = L.P101.run?1:0;
-    const flowSS = 120*V.FV102.pos*pumpF*Math.sqrt(Math.max(P.tankL,0)/50);
-    P.flow += (flowSS-P.flow)*dt/4; if(P.flow<0.05&&flowSS===0)P.flow=0;
-    // tank
-    P.tankL += (qin-P.flow)*0.0023148*dt; P.tankL=Math.max(0,Math.min(100,P.tankL));
-    if(P.tankL>=98 && !P.trips.ovf){ P.trips.ovf=true; this.raiseA('TK-101','HIHI TRIP','Urgent',P.tankL,'%','FEED TANK OVERFLOW PROTECTION — FEED ISOLATED'); this.dTrip(); }
-    if(P.trips.ovf && P.tankL<90){ P.trips.ovf=false; this.clearA('TK-101','HIHI TRIP'); }
-    if(P.tankL<2 && L.P101.run){ this.tripMotor('P101','CAVITATION — LOW SUCTION LEVEL'); }
-    // reactor
-    P.conc += (Math.min(P.flow/60,1.6)-P.conc)*dt/45; P.conc=Math.max(0,P.conc);
-    let eEff = F.cool ? ((P.t-P.faultT.cool>300000)?0.75:0) : 1;
-    const e = 0.9*Math.sqrt(Math.max(V.TV202.pos,0))*eEff;
-    const TjSS = P.Tcw*e + P.rT*(1-e);
-    P.Tj += (TjSS-P.Tj)*dt/15;
-    const Qr = 213700*Math.exp(-1600/(P.rT+273))*P.conc*(F.rxn?1.15:1);
-    P.rT += (Qr - 30*(P.rT-P.Tj) - 0.2*P.flow*(P.rT-40) - 2*(P.rT-25))*dt/20000;
-    if(P.rT>=185 && !P.trips.rx){ P.trips.rx=true; this.raiseA('R-201','HI TEMP TRIP','Urgent',P.rT,'DEG C','REACTOR HIGH TEMPERATURE TRIP — FEED VALVE CLOSED'); this.dTrip(); }
-    if(P.trips.rx && P.rT<160){ P.trips.rx=false; this.clearA('R-201','HI TEMP TRIP'); }
-    // fouling
-    P.foulF = F.foul ? Math.max(0.6, P.foulF-dt/600*0.4) : Math.min(1, P.foulF+dt/300);
-    // HX
-    const hxSS = P.rT + 60*V.TV301.pos*P.foulF;
-    P.hxT += (hxSS-P.hxT)*dt/90;
-    // drum
-    const vapf = Math.max(0, Math.min(0.3, 0.02+(P.hxT-165)*0.004));
-    const Ql = P.flow*(1-vapf);
-    const Qo = 80*V.LV401.pos*Math.sqrt(Math.max(P.drumL,1)/50);
-    P.drumL += (Ql-Qo)*0.001852*dt; P.drumL=Math.max(0,Math.min(100,P.drumL));
-    let vap = P.flow*vapf*(F.vap?1.9:1);
-    if(F.vap && P.t-P.faultT.vap>300000) F.vap=false;
-    const vent = 0.02*V.PV401.pos*P.drumP;
-    P.drumP += (vap-vent)*dt/8;
-    if(P.drumP>950){ if(!P.trips.psv){ P.trips.psv=true; this.raiseA('V-401','PSV LIFT','Urgent',P.drumP,'KPA','RELIEF VALVE LIFTED TO FLARE'); this.dTrip(); } P.drumP -= (P.drumP-950)*0.5*dt; }
-    if(P.trips.psv && P.drumP<900){ P.trips.psv=false; this.clearA('V-401','PSV LIFT'); }
-    P.drumP=Math.max(0,Math.min(1100,P.drumP));
-    // measurements
-    L.FI100.pv = qin + n(0.2);
-    L.LIC101.pv = P.tankL + n(0.12);
-    if(F.xmtr){
-      const ft=P.t-P.faultT.xmtr;
-      if(ft>5000 && !L.FIC102.badPv){ L.FIC102.badPv=true; this.raiseA('FIC102','BADPV','High',L.FIC102.pv,'M3/H',L.FIC102.desc); this.applyShed(L.FIC102); }
-      if(ft>5000){ L.FIC102.pv += (0-L.FIC102.pv)*dt/10; }
-    } else {
-      if(L.FIC102.badPv){ L.FIC102.badPv=false; this.clearA('FIC102','BADPV'); this.msgZone('FIC102 PV RESTORED'); }
-      L.FIC102.pv = P.flow + n(0.25);
-    }
-    L.TIC201.pv = P.rT + n(0.15);
-    L.TIC202.pv = P.Tj + n(0.12);
-    L.TIC301.pv = P.hxT + n(0.2);
-    L.LIC401.pv = P.drumL + n(0.15);
-    L.PIC401.pv = P.drumP + n(1.2);
-    L.P101.pv = L.P101.run?1:0;
-    L.M202.pv = L.M202.run?1:0;
-    for(const mt of ['P101','M202']){ if(L[mt].lock>0) L[mt].lock=Math.max(0,L[mt].lock-dt); }
-    if(F.pump && L.P101.run){ this.tripMotor('P101','UNCOMMANDED STOP'); }
+    const P=this.P, L=this.L;
+    ESS.Models.advanceClock(P,dt);
+    ESS.Models.stepU1(P,L,this.V,dt,this.modelCtx());
+    L.AI205.pv=P.x*100+this.noise(0.2);          // reactor conversion from the CSTR balance (indication)
     this.stepU2(dt);
     this.stepU3(dt);
     this.pids(dt);
     this.scan(dt);
+    this.interlocks();
     this.alarmTick();
     this.drillWatch(dt);
-    // history
-    for(const k of ['FI100','LIC101','FIC102','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','FIC310','TIC311','TI312','FIC313']){
-      const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift();
+    for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift(); }
+  }
+  // U2: Lucia/Engell semi-batch model + SCM202 (ESS.Models), then the station-side additions: the adiabatic end
+  // temperature indication and the state-based alarm limit set that follows the sequence phase (ISA-TR18.2.6, RESOURCES 2.19).
+  stepU2(dt){
+    const P=this.P, L=this.L;
+    ESS.Models.stepU2(P,L,this.V,dt,this.modelCtx());
+    L.TI216.pv=P.b.Tad+this.noise(0.15);
+    this.syncPhaseSet();
+  }
+  // U3: Badgwell two-pass fired heater + fixed bed (ESS.Models), then the tube-skin and excess-O2 indications.
+  stepU3(dt){
+    const P=this.P, L=this.L;
+    ESS.Models.stepU3(P,L,this.V,dt,this.modelCtx());
+    L.TI314.pv=P.h.ts1+this.noise(0.6);
+    L.TI315.pv=P.h.ts2+this.noise(0.6);
+    L.AI316.pv=P.h.o2+this.noise(0.05);
+    if(P.trips.skin && P.h.ts1<400 && P.h.ts2<400){ P.trips.skin=false; this.clearA('H-310','TUBE SKIN TRIP'); }
+  }
+  // Station-side interlocks evaluated after the alarm scan (they act on alarm conditions, not raw values, so
+  // deadband and on-delay apply): TI216 Urgent sheds the monomer feed and holds the sequence; TI314/TI315
+  // Urgent shuts off the fuel gas exactly like the bed trip.
+  interlocks(){
+    const P=this.P, L=this.L, b=P.b;
+    if(L.TI216._as.PVHH){
+      if(!this.tadShed){
+        this.tadShed=true;
+        const f=L.FIC211; const oldMode=f.mode; f.mode='MAN'; f.op=0; f.I=0; f.sp=0;
+        if(b.phase==='FEED' && !b.held){ b.held=true; }
+        this.addEvent('SYSTEM','TI216','ADIABATIC END TEMP URGENT — FIC211 SHED (MODE '+oldMode+' → MAN, MV-211 CLOSED) · SCM202 HOLD','',''); 
+        this.msgZone('TI216 URGENT — MONOMER FEED SHED, SEQUENCE HELD');
+        this.syncPhaseSet();
+      }
+    } else this.tadShed=false;
+    if(!P.trips.skin && (L.TI314._as.PVHH || L.TI315._as.PVHH)){
+      P.trips.skin=true;
+      this.raiseA('H-310','TUBE SKIN TRIP','Urgent',Math.max(P.h.ts1,P.h.ts2),'DEG C','TUBE SKIN OVERTEMP — FUEL GAS SHUT OFF');
+      this.dTrip();
     }
   }
-
-  stepU2(dt){
-    const P=this.P,L=this.L,V=this.V,b=P.b,M=L.M202;
-    const n=(k)=>(Math.random()-0.5)*k;
-    b.pt+=dt;
-    const setPh=(ph)=>{ b.phase=ph; b.pt=0; this.addEvent('SYSTEM','SCM202','PHASE → '+ph,'',''); };
-    if(b.phase==='CHARGE'){ b.lvl+=0.5*dt; if(b.lvl>=40){ L.TIC212.mode='AUTO'; L.TIC212.sp=80; setPh('HEATUP'); } }
-    else if(b.phase==='HEATUP'){ if(b.T>=76) setPh('FEED'); }
-    else if(b.phase==='FEED'){ if(b.lvl>=75) setPh('REACT'); }
-    else if(b.phase==='REACT'){ if(b.Cm<=2){ L.TIC212.sp=40; setPh('COOL'); } }
-    else if(b.phase==='COOL'){ if(b.T<=45) setPh('DRAIN'); }
-    else if(b.phase==='DRAIN'){ b.lvl=Math.max(10,b.lvl-0.8*dt); if(b.lvl<=10){ L.TIC212.mode='MAN'; L.TIC212.op=8; setPh('IDLE'); } }
-    const seqOn=b.phase!=='IDLE';
-    if(b.phase==='FEED') L.FIC211.sp=(b.held||P.trips.batch)?0:20; else if(seqOn) L.FIC211.sp=0;
-    L.FIC211.modeAttr=(b.phase==='FEED'&&!b.held)?'PROGRAM':'OPERATOR';
-    L.TIC212.modeAttr=seqOn?'PROGRAM':'OPERATOR';
-    const mfSS=40*V.MV211.pos*(P.trips.batch?0:1);
-    b.mf=b.mf+(mfSS-b.mf)*dt/3;
-    if(b.phase==='FEED'&&b.mf>0.1) b.lvl=Math.min(100,b.lvl+b.mf*0.012*dt);
-    const med=15+105*V.JV213.pos;
-    b.Tj=b.Tj+(med-b.Tj)*dt/10;
-    const UA=M.run?1:0.3;
-    const kk=0.9*Math.exp((b.T-80)/22)*(M.run?1:0.18);
-    const rrate=kk*b.Cm*0.06;
-    b.Cm=Math.max(0,Math.min(99,b.Cm+(b.mf*0.05-rrate)*dt));
-    const heat=1.2*rrate, cool=0.055*(b.T-b.Tj)*UA, loss=0.004*(b.T-25);
-    b.T=Math.max(12,b.T+(heat-cool-loss)*dt*0.5);
-    if(b.T>=110 && !P.trips.batch){ P.trips.batch=true; this.raiseA('R-202','HI TEMP TRIP','Urgent',b.T,'DEG C','BATCH REACTOR OVERTEMP — FEED CUT, JACKET FULL COLD'); this.dTrip(); if(b.phase==='FEED'||b.phase==='REACT'||b.phase==='HEATUP'){ b.phase='COOL'; b.pt=0; L.TIC212.sp=40; } }
-    if(P.trips.batch && b.T<70){ P.trips.batch=false; this.clearA('R-202','HI TEMP TRIP'); }
-    L.FIC211.pv=b.mf+n(0.15);
-    L.TIC212.pv=b.T+n(0.12);
-    L.TIC213.pv=b.Tj+n(0.1);
-    L.PI214.pv=100+Math.max(0,b.T-25)*3.4+n(1.5);
-    L.LI215.pv=b.lvl+n(0.1);
+  // ---------- state-based alarm limits (ISA-TR18.2.6 pattern, InTech state-based limit table; RESOURCES 2.19, ISA-88 phases) ----------
+  // One limit set per SCM202 phase; HELD is its own state (feed stopped on purpose). A condition mapped to null is
+  // disabled for that phase (removed from the point, any active alarm returned to normal).
+  phaseSets(){
+    const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
+    return {
+      IDLE:  {TIC212:T(95,105), TIC213:{PVHI:[115,'High']}, LI215:{PVLO:null,PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)},
+      CHARGE:{TIC212:T(95,105), TIC213:{PVHI:[115,'High']}, LI215:{PVLO:null,PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)},
+      HEATUP:{TIC212:T(95,105), TIC213:{PVHI:[115,'High']}, LI215:{PVLO:[30,'Low'],PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)},
+      FEED:  {TIC212:T(90,102), TIC213:{PVHI:[100,'High']}, LI215:{PVLO:[30,'Low'],PVHI:[85,'High']}, FIC211:{PVLO:[8,'Low'],PVHI:[28,'High']}, TI216:T(100,106)},
+      HELD:  {TIC212:T(90,102), TIC213:{PVHI:[100,'High']}, LI215:{PVLO:[30,'Low'],PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)},
+      REACT: {TIC212:T(88,100), TIC213:{PVHI:[100,'High']}, LI215:{PVLO:[60,'Low'],PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(98,105)},
+      COOL:  {TIC212:T(95,105), TIC213:{PVHI:[115,'High']}, LI215:{PVLO:[60,'Low'],PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)},
+      DRAIN: {TIC212:T(95,105), TIC213:{PVHI:[115,'High']}, LI215:{PVLO:null,PVHI:[85,'High']}, FIC211:{PVLO:null,PVHI:[8,'High']}, TI216:T(100,106)}
+    };
   }
-  stepU3(dt){
-    const P=this.P,L=this.L,V=this.V,h=P.h;
-    const n=(k)=>(Math.random()-0.5)*k;
-    const feed=80*V.FV310.pos; h.f+=(feed-h.f)*dt/3;
-    const preSS=150+420*V.FV311.pos-0.9*(h.f-40);
-    h.pre+=(preSS-h.pre)*dt/22;
-    const q=40*V.QV313.pos; h.q+=(q-h.q)*dt/3;
-    const act=P.faults.bedact?1.35:1;
-    const bedSS=h.pre+92*act*Math.exp((h.bed-380)/150)*(h.f/40)-3.2*h.q;
-    h.bed+=(bedSS-h.bed)*dt/35;
-    if(h.bed>=480 && !P.trips.bed){ P.trips.bed=true; this.raiseA('R-310','HI TEMP TRIP','Urgent',h.bed,'DEG C','BED OVERTEMP — FUEL GAS SHUT OFF'); this.dTrip(); }
-    if(P.trips.bed && h.bed<400){ P.trips.bed=false; this.clearA('R-310','HI TEMP TRIP'); }
-    L.FIC310.pv=h.f+n(0.2);
-    L.TIC311.pv=h.pre+n(0.4);
-    L.TI312.pv=h.bed+n(0.5);
-    L.FIC313.pv=h.q+n(0.1);
+  phaseSetKey(){ const b=this.P.b; return (b.phase==='FEED'&&b.held)?'HELD':b.phase; }
+  phaseSetTags(){ return Object.keys(this.phaseSets().IDLE); }
+  syncPhaseSet(){ const k=this.phaseSetKey(); if(k!==this.phaseSet) this.applyPhaseSet(k,false); }
+  applyPhaseSet(key,silent){
+    const set=this.phaseSets()[key]; if(!set) return;
+    const prev=this.phaseSet; const parts=[];
+    for(const tag in set){ const l=this.L[tag]; if(!l) continue;
+      for(const cond in set[tag]){ const v=set[tag][cond];
+        if(v){ const old=l.alm[cond]||l.almOff[cond]; const sub=(old&&old[2]!=null)?old[2]:this.subprioDefault(cond); l.alm[cond]=[v[0],v[1],sub]; delete l.almOff[cond]; parts.push(tag+' '+cond+' '+this.fmt(v[0],l.dec)+' '+v[1][0]); }
+        else { if(l.alm[cond]){ l.almOff[cond]=l.alm[cond]; delete l.alm[cond]; } if(l._as[cond]){ this.clearA(tag,cond,l.pv); l._as[cond]=false; } if(l._am) delete l._am[cond]; parts.push(tag+' '+cond+' OFF'); }
+      }
+    }
+    this.phaseSet=key;
+    if(!silent) this.addEvent('SYSTEM','SCM202','ALARM LIMIT SET '+key+' — '+parts.join(' · '),prev||'',key);
   }
   seqCmd(cmd,silent){
     const b=this.P.b;
     if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
     if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
     if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
+    this.syncPhaseSet();
   }
   unitOf(tag){
-    if(['FIC211','TIC212','TIC213','PI214','LI215','M202','R-202','SCM202'].includes(tag)) return 'U2';
-    if(['FIC310','TIC311','TI312','FIC313','R-310','H-310'].includes(tag)) return 'U3';
+    if(['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202'].includes(tag)) return 'U2';
+    if(['FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','R-310','H-310'].includes(tag)) return 'U3';
     if(this.L[tag]||['TK-101','R-201','V-401'].includes(tag)) return 'U1';
     return null;
   }
@@ -1586,10 +1582,16 @@ class Component extends DCLogic {
     if(P.trips.batch) out.push({id:'trip.b',sev:'URGENT',title:'R-202 batch overtemp trip',why:'Batch temperature reached 110 °C. Monomer feed is cut and the jacket driven full cold until T < 70 °C.',steps:[{t:'Acknowledge alarms; confirm monomer feed is zero.',go:gFp('FIC211')},{t:'Keep the agitator running for heat removal.',go:gFp('M202')},{t:'The sequence resumes in COOL when the trip clears.'}]});
     if(P.trips.bed) out.push({id:'trip.bed',sev:'URGENT',title:'R-310 bed overtemp trip — fuel shut off',why:'The hotspot reached 480 °C; fuel gas is isolated until the bed cools below 400 °C.',steps:[{t:'Acknowledge; verify quench flow is available.',go:gFp('FIC313')},{t:'Lower the TIC311 SP before relight to avoid a repeat.',go:gFp('TIC311')}]});
     if(P.trips.ovf) out.push({id:'trip.ovf',sev:'URGENT',title:'TK-101 overflow protection active',why:'Tank level reached 98% and unit feed was isolated.',steps:[{t:'Increase outlet flow to draw the level down.',go:gFp('FIC102')},{t:'Acknowledge alarms; feed restores below 90%.',go:()=>gAlm()}]});
+    if(P.trips.skin) out.push({id:'trip.skin',sev:'URGENT',title:'H-310 tube-skin trip — fuel shut off',why:'A tube skin (TI314 / TI315) reached its Urgent limit; fuel gas is isolated until both skins are below 420 °C. Keep feed flowing through the tubes so the metal cools.',steps:[{t:'Acknowledge; confirm FV-311 closed and FIC310 flow present.',go:gFp('FIC310')},{t:'Lower the TIC311 SP before relight; watch the skins on TG05.',go:gTg('TG05')}]});
+    if(this.tadShed) out.push({id:'shed.tad',sev:'URGENT',title:'Monomer feed shed by TI216 — sequence HELD',why:'The adiabatic end temperature reached its Urgent limit ('+this.fmt(L.TI216.alm.PVHH?L.TI216.alm.PVHH[0]:106,0)+' °C): the unreacted monomer alone could carry the batch to the 110 °C trip. FIC211 is in MAN with MV-211 closed.',steps:[{t:'Confirm M-202 running and the jacket on full cooling.',go:gFp('TIC213')},{t:'Wait for the monomer inventory and TI216 to fall.',go:gTg('TG04')},{t:'RESUME the sequence and return FIC211 to AUTO only when TI216 is below its High limit.',go:gFp('FIC211')}]});
     if(P.trips.psv) out.push({id:'trip.psv',sev:'URGENT',title:'V-401 relief valve lifted',why:'Drum pressure exceeded 950 kPa and is venting to flare.',steps:[{t:'Verify PIC401 is in AUTO and the vent is opening.',go:gFp('PIC401')},{t:'Reduce heat input at TIC301.',go:gFp('TIC301')}]});
     for(const mt of ['P101','M202']){ const m=L[mt]; if(m.trip) out.push({id:'mtrip.'+mt,sev:'URGENT',title:(mt==='P101'?'P-101 pump tripped':'M-202 agitator tripped')+(m.lock>0?' — lockout '+Math.ceil(m.lock)+' s':''),why:(m.tripWhy||'Uncommanded stop')+'. '+(mt==='M202'?'Without agitation heat transfer collapses and unreacted monomer accumulates — it reacts all at once on restart.':'Downstream flow is lost and affected controllers wind up.'),steps: mt==='M202'?[{t:'Cut monomer feed first — HOLD the sequence or FIC211 to MAN, OP 0.',go:gFp('FIC211')},{t:'Watch TIC212 and the monomer inventory bar.',go:gFp('TIC212')},{t:'Restart the agitator only after the feed is stopped.',go:gFp('M202')}]:[{t:'Put FIC102 in MAN, OP 0 to prevent windup.',go:gFp('FIC102')},{t:'Wait out the lockout, then START.',go:gFp('P101')},{t:'Restore AUTO / CAS and bring flow back gently.'}]}); }
     if(!P.trips.rx && P.rT>162 && slope('TIC201',20)>0.04) out.push({id:'risk.rx',sev:'URGENT',title:'R-201 temperature rising — runaway risk',why:'Reaction heat rises exponentially with temperature while jacket cooling is only linear. Act before the 185 °C trip.',steps:[{t:'Check TV-202 position against TIC202 output.',go:gFp('TIC202')},{t:'Cut feed — FIC102 to MAN, reduce OP.',go:gFp('FIC102')},{t:'Track the exotherm on trend TG01.',go:gTg('TG01')}]});
     if(!P.trips.bed && P.h.bed>435) out.push({id:'risk.bed',sev:'WARN',title:'R-310 bed hotspot climbing ('+Math.round(P.h.bed)+' °C)',why:'The bed exotherm grows with temperature; the fuel trip operates at 480 °C.',steps:[{t:'Raise quench flow FIC313.',go:gFp('FIC313')},{t:'Lower the preheater SP at TIC311.',go:gFp('TIC311')}]});
+    if(!this.tadShed && !P.trips.batch && (P.b.phase==='FEED'||P.b.phase==='REACT') && L.TI216.alm.PVHI && P.b.Tad>L.TI216.alm.PVHI[0]-4) out.push({id:'risk.tad',sev:'WARN',title:'R-202 adiabatic end temperature '+Math.round(P.b.Tad)+' °C',why:'If cooling were lost now, the unreacted monomer would take the batch to about '+Math.round(P.b.Tad)+' °C. Reduce the inventory before it reaches the Urgent limit, where the station sheds the feed automatically.',steps:[{t:'Reduce the monomer feed or HOLD the sequence.',go:gFp('FIC211')},{t:'Confirm the agitator is running.',go:gFp('M202')},{t:'Watch TI216 against TIC212 on TG04.',go:gTg('TG04')}]});
+    const skinHi=Math.max(P.h.ts1,P.h.ts2);
+    if(!P.trips.skin && L.TI315.alm.PVHI && skinHi>L.TI315.alm.PVHI[0]) out.push({id:'risk.skin',sev:'WARN',title:'H-310 tube skin high ('+Math.round(skinHi)+' °C)',why:'Tube metal is running hotter than its continuous rating — usually firing raised faster than the feed can absorb, or low flow through the passes. The fuel trips at the Urgent limit.',steps:[{t:'Reduce the TIC311 setpoint or, in MAN, lower the output.',go:gFp('TIC311')},{t:'Confirm FIC310 feed flow through the tubes.',go:gFp('FIC310')},{t:'Watch TI314 / TI315 against the outlet on TG05.',go:gTg('TG05')}]});
+    if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
     if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence / stop the FIC211 feed.',go:gFp('FIC211')},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
     for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here when the fault clears.'}]}); }
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'};
@@ -1620,30 +1622,22 @@ class Component extends DCLogic {
     {k:['raise','lower','arrow','keys','select'],t:'RAISE / LOWER keys',a:'The raise/lower buttons act on the auto-selected target: SP in AUTO, OP in MAN (dashed highlight on the faceplate). In an entry field, arrow keys nudge the typed value; Enter stores, Esc cancels.'},
     {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. A fault injects unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
     {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
+    {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. TIC212 is PROGRAM for the whole batch, FIC211 during FEED. HOLD the sequence to take the monomer feed back (the attribute returns to OPERATOR), or wait for the sequence to end.'},
+    {k:['pv tracking','pvtrack','track','bumpless','bump'],t:'PV tracking and bumpless transfer',a:'With PV tracking ON (Loop Tune, ENGR) the SP follows the PV while the loop is in MAN, so a return to AUTO starts at zero error and the output does not step. The integrator is re-initialised on every mode change so MAN → AUTO and AUTO → CAS are bumpless either way. Default ON for the cascade secondaries FIC102, TIC202 and TIC213.'},
+    {k:['state','phase set','limit set','state-based','disabled','batch alarm'],t:'State-based alarm limits',a:'Unit 02 alarm limits follow the SCM202 phase: the level low alarm is off during CHARGE, DRAIN and IDLE, the monomer flow low alarm is active only in FEED, and the temperature limits tighten in REACT. Every phase change journals the limit set applied; Point Detail → Alarms shows the phase set in force and any conditions it disabled.'},
     {k:['assistant','guide','coach','panel'],t:'About this assistant',a:'It watches live process state and lists detected issues with step-by-step guidance (GO jumps to the right display). It is a training aid — on a real console, follow site procedures and your shift supervisor.'}
   ]; }
-  pids(dt){
-    const L=this.L;
-    const casMap = { FIC102:(op)=>op*1.2, TIC202:(op)=>10+0.6*op, TIC213:(op)=>op*1.3 };
-    const invMap = { FIC102:(sp)=>sp/1.2, TIC202:(sp)=>(sp-10)/0.6, TIC213:(sp)=>sp/1.3 };
-    for(const k of ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313']){
-      const l=L[k]; if(l.kind!=='pid') continue;
-      if(l.slave){ const s=L[l.slave]; l.init = s.mode!=='CAS';
-        if(l.init){ l.op = Math.max(l.oplolm,Math.min(l.ophilm, invMap[l.slave](s.sp))); l.I=l.op; l.lastPv=l.pv; continue; } }
-      if(l.mode==='CAS' && l.master){ const m=L[l.master]; l.sp = Math.max(l.splolm,Math.min(l.sphilm, casMap[k](m.op))); }
-      if(l.mode==='MAN' || l.badPv){ if(l.pvtrack&&l.mode==='MAN'&&!l.badPv) l.sp=Math.max(l.splolm,Math.min(l.sphilm,l.pv)); l.I=l.op; l.lastPv=l.pv; continue; }
-      const span=l.hi-l.lo;
-      const e=((l.act==='DIR'?(l.pv-l.sp):(l.sp-l.pv))/span)*100;
-      const Pt=l.K*e;
-      if(l.T1>0) l.I += l.K*e*dt/(l.T1*60);
-      const dpv=((l.pv-l.lastPv)/span)*100;
-      const D=(l.T2>0)? -l.K*l.T2*60*dpv/dt : 0;
-      let op=Pt+l.I+D;
-      if(op>l.ophilm){ op=l.ophilm; l.I=op-Pt-D; }
-      if(op<l.oplolm){ op=l.oplolm; l.I=op-Pt-D; }
-      l.op=op; l.lastPv=l.pv;
-    }
+  // Cascade maps (master OP -> slave SP and the inverse for INITMAN back-calculation) shared by the PID step and mode transfers.
+  pidCtx(){
+    if(!this._pidCtx) this._pidCtx={ loops:this.L,
+      casMap:{ FIC102:(op)=>op*1.2, TIC202:(op)=>10+0.6*op, TIC213:(op)=>op*1.3 },
+      invMap:{ FIC102:(sp)=>sp/1.2, TIC202:(sp)=>(sp-10)/0.6, TIC213:(sp)=>sp/1.3 } };
+    if(this._pidCtx.loops!==this.L) this._pidCtx.loops=this.L;
+    return this._pidCtx;
   }
+  pidOrder(){ return ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313']; }
+  // ESS.Pid: anti-windup with integral back-calculation, INITMAN, PV tracking (Kantor CBE30338 PID notes, RESOURCES 4).
+  pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
 
   applyShed(l){
     if(l.shed==='NOSHED') return;
@@ -1698,6 +1692,7 @@ class Component extends DCLogic {
       {id:'D6',name:'Stuck coolant valve (stiction)',fault:'stick',rel:['TIC202','TIC201'],act:'MAN202',stable:'alarms',peak:'rT',
        q:'TIC202 OP moves but jacket temperature does not. Root cause?',opts:['Control valve TV-202 stuck (stiction)','Transmitter failure on the jacket RTD','Wrong control action configured','Cascade initialization error'],a:0},
       {id:'D9',name:'Flash drum pressure high',fault:'vap',rel:['PIC401','V-401'],act:'AUTO401',stable:'alarms',peak:'drumP',
+       setup:(c)=>{ const l=c.L.PIC401; if(l.mode!=='MAN'){ ESS.Pid.transferMode(l,'MAN',c.pidCtx()); c.addEvent('SYSTEM','PIC401','MODE LEFT IN MAN BY PREVIOUS SHIFT (DRILL SETUP)','AUTO','MAN'); } },
        q:'PIC401 did not respond to rising pressure. Why?',opts:['It had been left in MAN — the vent never moved','The vent valve was stuck','The setpoint was too high','Transmitter drift'],a:0},
       {id:'D11',name:'Agitator trip during semi-batch feed (Unit 02)',fault:'agit',needBatch:true,when:(P)=>P.b.phase==='FEED'&&P.b.Cm>8,rel:['M202','TIC212','R-202','FIC211','SCM202'],act:'CUTMONO',stable:'alarms',peak:'T212',
        q:'The agitator tripped during monomer feed. Why is restarting it later dangerous?',opts:['Accumulated monomer reacts at once when mixing resumes — stop feed and max cooling before restart','It will trip the breaker again','The jacket cannot heat without agitation','It pulls a vacuum in the reactor'],a:0},
@@ -1708,6 +1703,7 @@ class Component extends DCLogic {
   startDrill(d){
     if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
     if(d.needBatch && this.P.b.phase==='IDLE') this.seqCmd('START',true);
+    if(d.setup) d.setup(this);   // pre-existing condition the drill relies on (e.g. a loop left in MAN)
     const delay=8000+Math.random()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0},dlg:null});
     this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
@@ -1853,20 +1849,35 @@ class Component extends DCLogic {
     if(!this.can('OPER')) return;
     this.logAlarmEvents(this.alarmEngine.unshelve(a,this.P.t,false));
   }
+  // Operator write gate for the PROGRAM mode attribute (EXP-01 control conventions, RESOURCES 2.12): while the
+  // sequence owns the loop, SP / OP / MODE stores are refused with an inline callout on the faceplate and detail
+  // display (about 5 s), a message-zone notice and an OPERATOR journal entry. Engineering parameters stay writable.
+  operatorMayWrite(tag,param){
+    const l=this.L[tag]; if(!l||l.kind!=='pid') return true;
+    if(ESS.Pid.canOperatorWrite(l,param)) return true;
+    this.rejectWrite(tag,ESS.Pid.writeDenial(l,param));
+    return false;
+  }
+  rejectWrite(tag,txt){
+    this.callouts[tag]={txt,until:this.P.t+5000};
+    this.addEvent('OPERATOR',tag,'WRITE REJECTED — '+txt,'','');
+    this.msgZone(tag+': '+txt);
+  }
+  calloutOf(tag){ const c=this.callouts[tag]; if(!c) return ''; if(this.P.t>c.until){ delete this.callouts[tag]; return ''; } return c.txt; }
   setMode(tag,m){
     const l=this.L[tag];
     if(!this.can('OPER')) return;
-    if(l.badPv && m!=='MAN'){ this.msgZone('PV BAD — SHED ACTIVE, MODE CHANGE DENIED'); return; }
-    if(m==='CAS' && !l.master){ this.msgZone('NO CASCADE CONNECTION CONFIGURED'); return; }
+    if(!this.operatorMayWrite(tag,'MODE')) return;
     if(l.mode===m) return;
-    const old=l.mode; l.mode=m;
-    if(m!=='MAN'){ l.I=l.op; }
-    this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=old; this.events[0].newV=m;
+    const r=ESS.Pid.transferMode(l,m,this.pidCtx());   // bumpless: integrator re-initialised so the first output equals the current OP
+    if(!r.ok){ this.msgZone(r.reason); return; }
+    this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=r.from; this.events[0].newV=m;
     this.dAct('MODE',tag,m,0);
   }
   openEntry(tag,param){
     const l=this.L[tag];
     if(!this.can('OPER')) return;
+    if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return;
     if(param==='SP'){ if(l.mode==='CAS'){this.msgZone('SP IS CASCADE-DRIVEN — CHANGE PRIMARY');return;} if(l.mode!=='AUTO'){this.msgZone('INVALID MODE — SP ENTRY REQUIRES AUTO');return;} }
     if(param==='OP' && l.mode!=='MAN'){ this.msgZone('INVALID MODE — OP ENTRY REQUIRES MAN'); return; }
     const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP','TGTHI','TGTLO'].includes(param)||param.startsWith('TP:');
@@ -1879,6 +1890,7 @@ class Component extends DCLogic {
     const en=this.state.entry; if(!en) return;
     const l=this.L[en.tag]; const v=parseFloat(this.state.entryText);
     if(isNaN(v)){ this.msgZone('INVALID ENTRY'); this.setState({entry:null}); return; }
+    if((en.param==='SP'||en.param==='OP') && !this.operatorMayWrite(en.tag,en.param)){ this.setState({entry:null}); return; }
     const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',en.tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.setState({entry:null}); };
     if(en.param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',en.tag,v,v-o); return; }
     if(en.param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',en.tag,v,v-o);
@@ -1892,6 +1904,7 @@ class Component extends DCLogic {
     const l=this.L[tag]; if(!this.can('OPER')) return;
     const p = l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
     if(!p){ this.msgZone('CAS MODE — RAISE/LOWER NOT PERMITTED ON SP'); return; }
+    if(!this.operatorMayWrite(tag,p)) return;
     if(p==='SP'){ const step=(l.hi-l.lo)/100; const o=l.sp; const nv=Math.max(l.splolm,Math.min(l.sphilm,o+dir*step)); l.sp=nv; this.addEvent('OPERATOR',tag,'SP CHANGE','',''); this.events[0].oldV=this.fmt(o,l.dec); this.events[0].newV=this.fmt(nv,l.dec); this.dAct('SP',tag,nv,nv-o); }
     else { const o=l.op; const nv=Math.max(l.oplolm,Math.min(l.ophilm,o+dir)); l.op=nv; l.I=nv; this.addEvent('OPERATOR',tag,'OP CHANGE','',''); this.events[0].oldV=this.fmt(o,1); this.events[0].newV=this.fmt(nv,1); this.dAct('OP',tag,nv,nv-o); }
   }
@@ -1981,7 +1994,7 @@ class Component extends DCLogic {
     const mCh={MAN:'M',AUTO:'A',CAS:'C'};
     const gpts=[
       {tag:'FI100',x:18,y:96},{tag:'LIC101',x:246,y:208},{tag:'FIC102',x:296,y:368},{tag:'P101',x:150,y:528},
-      {tag:'TIC201',x:684,y:326},{tag:'TIC202',x:222,y:588},{tag:'TIC301',x:900,y:296},{tag:'LIC401',x:1206,y:470},{tag:'PIC401',x:1096,y:78}
+      {tag:'TIC201',x:684,y:326},{tag:'AI205',x:684,y:270},{tag:'TIC202',x:222,y:588},{tag:'TIC301',x:900,y:296},{tag:'LIC401',x:1206,y:470},{tag:'PIC401',x:1096,y:78}
     ];
     const mkGv=(ptsArr)=>ptsArr.map(g=>{
       const l=L[g.tag];
@@ -1998,8 +2011,8 @@ class Component extends DCLogic {
         click:()=>{this.openFp(g.tag);}, dbl:()=>this.nav('detail',g.tag)};
     });
     const gvList=mkGv(gpts);
-    const gv2=mkGv([{tag:'FIC211',x:180,y:60},{tag:'M202',x:790,y:96},{tag:'PI214',x:790,y:236},{tag:'TIC212',x:790,y:326},{tag:'LI215',x:790,y:416},{tag:'TIC213',x:150,y:560}]);
-    const gv3=mkGv([{tag:'FIC310',x:40,y:300},{tag:'FIC313',x:470,y:60},{tag:'TIC311',x:500,y:232},{tag:'TI312',x:840,y:400}]);
+    const gv2=mkGv([{tag:'FIC211',x:180,y:60},{tag:'M202',x:790,y:96},{tag:'PI214',x:790,y:236},{tag:'TIC212',x:790,y:326},{tag:'LI215',x:790,y:416},{tag:'TI216',x:790,y:506},{tag:'TIC213',x:150,y:560}]);
+    const gv3=mkGv([{tag:'FIC310',x:40,y:300},{tag:'FIC313',x:470,y:60},{tag:'TIC311',x:500,y:232},{tag:'TI312',x:840,y:400},{tag:'TI314',x:40,y:470},{tag:'TI315',x:40,y:530},{tag:'AI316',x:300,y:170}]);
     const mkVl=(defs)=>defs.map(v=>({...v,fill:V[v.id].pos>0.05?'#4a4a4a':'#FFFFFF',pos:Math.round(V[v.id].pos*100)+'%',tx:v.rot===90?v.x+22:v.x-24,ty:v.rot===90?v.y+4:v.y+28}));
     const vlist=mkVl([{id:'FV102',x:330,y:470,rot:0,label:'FV-102'},{id:'TV202',x:420,y:640,rot:0,label:'TV-202'},{id:'TV301',x:815,y:494,rot:90,label:'TV-301'},{id:'PV401',x:1250,y:150,rot:0,label:'PV-401'},{id:'LV401',x:1250,y:620,rot:0,label:'LV-401'}]);
     const vl2=mkVl([{id:'MV211',x:330,y:120,rot:0,label:'MV-211'},{id:'JV213',x:420,y:600,rot:0,label:'JV-213'}]);
@@ -2051,8 +2064,8 @@ class Component extends DCLogic {
     const TGS={TG01:{title:'TG01 · REACTOR',pens:[['TIC201','pv','#C00000'],['TIC201','sp','#C00000','6,5'],['TIC202','pv','#0050C0'],['TIC202','op','#008000']]},
                TG02:{title:'TG02 · FEED / TANK',pens:[['LIC101','pv','#C00000'],['FIC102','pv','#0050C0'],['FIC102','op','#008000'],['FI100','pv','#806000']]},
                TG03:{title:'TG03 · SEPARATION',pens:[['PIC401','pv','#C00000'],['LIC401','pv','#0050C0'],['TIC301','pv','#008000'],['PIC401','op','#B000B0']]},
-               TG04:{title:'TG04 · BATCH R-202',pens:[['TIC212','pv','#C00000'],['TIC212','sp','#C00000','6,5'],['TIC213','pv','#0050C0'],['FIC211','pv','#008000']]},
-               TG05:{title:'TG05 · FIRED REACTOR',pens:[['TI312','pv','#C00000'],['TIC311','pv','#0050C0'],['TIC311','sp','#0050C0','6,5'],['FIC313','pv','#008000']]}};
+               TG04:{title:'TG04 · BATCH R-202',pens:[['TIC212','pv','#C00000'],['TIC212','sp','#C00000','6,5'],['TIC213','pv','#0050C0'],['FIC211','pv','#008000'],['TI216','pv','#B000B0']]},
+               TG05:{title:'TG05 · FIRED REACTOR',pens:[['TI312','pv','#C00000'],['TIC311','pv','#0050C0'],['TIC311','sp','#0050C0','6,5'],['FIC313','pv','#008000'],['TI314','pv','#806000'],['TI315','pv','#B000B0']]}};
     const mkPens=(defs,span)=>{
       const t0=P.t-span*60000;
       return defs.map(d=>{
@@ -2081,7 +2094,10 @@ class Component extends DCLogic {
     const tab=tabsDef.includes(S.detailTab)?S.detailTab:'main';
     const eq=(p)=>S.entry&&S.entry.tag===dl.tag&&S.entry.param===p;
     const stateFg={UNACK:'#A00000',ACKED:'#A00000',RTNUN:'#7a4a00',SHLVD:'#55524c',DSUPR:'#55524c',OOSRV:'#55524c'};
+    const mkOffRow=(pt,c,note)=>{ const [tp,prio,sub]=pt.almOff[c]; return {cond:c,tp:this.fmt(tp,pt.dec)+' '+pt.eu,prio:prio.toUpperCase()+' '+sub,prioFg:'#8a867e',state:'DISABLED',stFg:'#8a867e',note:(note?note+' · ':'')+'disabled by phase set '+this.phaseSet,
+      editing:false,notEditing:true,cb:()=>this.msgZone('CONDITION DISABLED BY PHASE SET '+this.phaseSet),prioCb:()=>{},oosT:'—',oosBg:'#D4D0C8',oosCb:()=>{}}; };
     const mkAlmRow=(pt,c,note)=>{
+      if(!pt.alm[c]) return mkOffRow(pt,c,note);
       const [tp,prio,sub]=pt.alm[c]; const rec=E.get(pt.tag+'.'+c); const st=rec&&rec.state!=='NORM'?rec.state:(pt._as[c]?'ACTIVE':'NORMAL');
       const oos=!!rec&&rec.state==='OOSRV';
       return {cond:c,tp:this.fmt(tp,pt.dec)+' '+pt.eu,prio:prio.toUpperCase()+' '+sub,prioFg:pd(prio),state:st,stFg:stateFg[st]||'#0a3a12',note,
@@ -2089,15 +2105,18 @@ class Component extends DCLogic {
         prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=pt.alm[c][1];pt.alm[c][1]=order[(order.indexOf(o)+1)%4];this.addEvent('OPERATOR',pt.tag,c+' PRIORITY CHANGE',o,pt.alm[c][1]);},
         oosT:oos?'RTS':'OOS',oosBg:oos?'#B8C4D4':'#D4D0C8',oosCb:()=>this.setOos(pt.tag,c,!oos)};
     };
-    const almNoteTxt='Deadband '+this.fmt(this.almDeadband(dl),dl.dec)+' '+dl.eu+', on-delay '+this.almDelay(dl)+' s.';
+    const phased=this.phaseSetTags().includes(dl.tag);
+    const almNoteTxt='Deadband '+this.fmt(this.almDeadband(dl),dl.dec)+' '+dl.eu+', on-delay '+this.almDelay(dl)+' s.'+(phased?' Phase set: '+this.phaseSet+' — limits on this point are state-based and re-applied by SCM202 at every phase change (ISA-TR18.2.6); rows marked DISABLED are off in this phase.':'');
+    const calloutT=this.calloutOf(dl.tag), calloutBg=calloutT?'#F6DADA':'transparent';
+    const almConds=(pt)=>Object.keys(pt.alm).concat(Object.keys(pt.almOff||{}));
     const mRow=(label,param,value,canEdit,note,cb)=>({label,param,value,note:note||'',editing:canEdit&&eq(param),notEditing:!(canEdit&&eq(param)),cur:canEdit?'pointer':'default',und:canEdit?'underline dotted':'none',cb:canEdit?(cb||(()=>this.openEntry(dl.tag,param))):()=>{},rowBg:'transparent'});
     let mainRows,tuneRows=[],almRows=[];
     if(isPid){
       mainRows=[
         mRow('Process variable','PV',this.fmt(dl.pv,dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':''),
-        mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),
-        mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),
-        mRow('Mode attribute','MODEATTR',dl.modeAttr,false,'operator may store SP/OP/MODE'),
+        Object.assign(mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),{rowBg:calloutBg}),
+        Object.assign(mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),{rowBg:calloutBg}),
+        mRow('Mode attribute','MODEATTR',dl.modeAttr,false,dl.modeAttr==='PROGRAM'?'sequence owns SP/OP/MODE — operator stores are rejected':'operator may store SP/OP/MODE'),
         mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
         mRow('Bad-PV shed option','SHED',dl.shed,false,'sheds to MAN, holds last good OP'),
         mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave):'NONE'),false,dl.init?'INITMAN — tracking secondary':'')
@@ -2118,7 +2137,7 @@ class Component extends DCLogic {
         mRow('Safe output','SAFEOP',this.fmt(dl.safeop,1),true,'% — used by SHEDSAFE')
       ];
       const condNote={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low',DEVHI:'PV−SP deviation high'};
-      almRows=Object.keys(dl.alm).map(c=>mkAlmRow(dl,c,condNote[c]||''));
+      almRows=almConds(dl).map(c=>mkAlmRow(dl,c,condNote[c]||''));
     } else if(dl.kind==='motor'){
       const m=dl; const permOk=dl.tag!=='P101'||P.tankL>=5;
       mainRows=[
@@ -2135,7 +2154,7 @@ class Component extends DCLogic {
         mRow('Point type','KIND','DATAACQ INDICATION',false,'no control output')
       ];
       const condNote2={PVHH:'PV high-high',PVHI:'PV high',PVLO:'PV low',PVLL:'PV low-low'};
-      almRows=Object.keys(dl.alm).map(c=>mkAlmRow(dl,c,condNote2[c]||''));
+      almRows=almConds(dl).map(c=>mkAlmRow(dl,c,condNote2[c]||''));
     }
     // limit ladder block (Point Detail > Main); target rows editable at ENGR, alarm rungs edited on the Alarms tab
     const hasBand=dl.kind!=='motor';
@@ -2187,7 +2206,7 @@ class Component extends DCLogic {
       mainRows,tuneRows,almRows,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
       hasBand,limitRows,band,bandMarker,bandMarkerFill,bandNote,spark,
       modes:isPid?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:dl.mode===mm?'#B8C4D4':'#D4D0C8',bc:dl.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(dl.tag,mm)})):[],
-      shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
+      shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', calloutOn:!!calloutT, calloutT, tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
       cmNote:'Execution order within the CM (ORDERINCM) runs DATAACQ before PID so the PID acts on the freshest PV. '+(dl.master?('This is the cascade secondary: its SP is the initializable input driven by '+dl.master+'.OP; back-calculation keeps the primary tracking for bumpless return.'):(dl.slave?('This is the cascade primary of '+dl.slave+': when the secondary leaves CAS, INITMAN raises and the primary output tracks the secondary SP.'):'Single-loop regulatory control.'))};
     // faceplates
     const fps=S.fps.map((f,i)=>{
@@ -2202,7 +2221,8 @@ class Component extends DCLogic {
       const ticks=(!isM&&l.alm)?Object.keys(l.alm).filter(c=>tickConds.includes(c)).map(c=>({y:Math.max(0,Math.min(bh-1,bh-((l.alm[c][0]-l.lo)/span)*bh)),c:pc(l.alm[c][1])})):[];
       const bands=isM?[]:this.bandSegments(l,bh).segs;
       const selP=l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
-      return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',indH:Math.max(0,Math.min(126,((l.pv-l.lo)/span)*126)),
+      const co=this.calloutOf(f.tag);
+      return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',calloutOn:!!co,calloutT:co,frameBc:co?'#CC0000':'#FFFFFF #5E5E5E #5E5E5E #FFFFFF',indH:Math.max(0,Math.min(126,((l.pv-l.lo)/span)*126)),
         pin:f.pin,pinBg:f.pin?'#B8C4D4':'#41608A',pinFg:f.pin?'#000':'#FFF',
         pinCb:()=>{const fps2=S.fps.map(x=>x===f?{...x,pin:!x.pin}:x);this.setState({fps:fps2});},
         close:()=>this.setState({fps:S.fps.filter(x=>x!==f)}),
@@ -2305,7 +2325,7 @@ class Component extends DCLogic {
         {title:'STATION STN01',led:'#00A000',rows:[{k:'Type',v:'CONSOLE (SIM)'},{k:'Security level',v:S.sec},{k:'Asset profile',v:'UNIT 01'}]},
         {title:'CONTROLLER C300-SIM',led:'#00A000',rows:[{k:'CEE base cycle',v:'50 mS (EMULATED)'},{k:'CM period',v:'500 mS'},{k:'Redundancy',v:'PRIMARY / SYNCED'}]},
         {title:'NETWORK FTE',led:'#00A000',rows:[{k:'FTE A',v:'OK'},{k:'FTE B',v:'OK'},{k:'Time source',v:'STATION CLOCK'}]},
-        {title:'SIMULATION ENGINE',led:'#31548F',rows:[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'PAUSED':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'20 CMS / 10 VALVES / 3 UNITS'}]},
+        {title:'SIMULATION ENGINE',led:'#31548F',rows:[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'PAUSED':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'24 CMS / 10 VALVES / 3 UNITS'}]},
         {title:'RELEASE',led:'#00A000',rows:[{k:'Conventions',v:'R530-ERA (REPRESENTATIVE)'},{k:'Build',v:'TRAINING SIM v2.0.0-b1'},{k:'License',v:'EDUCATIONAL'}]}
       ],
       ledSrv:'#00A000', ledCee:'#00A000',
