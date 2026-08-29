@@ -11,6 +11,7 @@
 <script src="./src/alarm-help.js"></script>
 <script src="./src/philosophy.js"></script>
 <script src="./src/instructor.js"></script>
+<script src="./src/training.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -370,7 +371,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <div style="width:196px;flex:none;display:flex;flex-direction:column;background:#CFCFCB;border-right:1px solid #9a968e;overflow-y:auto;user-select:none">
       <div style="padding:4px 8px;font-weight:700;font-size:11px;background:#C8C5BE;border-bottom:1px solid #9a968e;display:flex"><div style="flex:1">LOCATION</div><div style="width:52px;text-align:right" title="active / unacknowledged">ACT/UN</div></div>
       <sc-for list="{{ av.tree }}" as="n" hint-placeholder-count="6">
-        <div style="display:flex;align-items:center;padding:3px 6px 3px {{ n.pad }}px;font-size:11.5px;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};border-bottom:1px solid rgba(0,0,0,0.05)" onClick="{{ n.cb }}">
+        <div style="display:flex;align-items:center;padding:3px 6px 3px {{ n.pad }}px;font-size:11.5px;cursor:pointer;background:{{ n.bg }};color:{{ n.fg }};border-bottom:1px solid rgba(0,0,0,0.05)" onClick="{{ n.cb }}" onContextMenu="{{ n.ctx }}" title="right-click: disable / enable alarms for this asset (MNGR, signed)">
           <div style="width:10px;color:#55524c">{{ n.glyph }}</div><div style="flex:1;font-weight:{{ n.fw }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.label }}</div>
           <div style="width:26px;text-align:right;font-weight:700;color:{{ n.actFg }}">{{ n.active }}</div><div style="width:26px;text-align:right;font-weight:700;color:{{ n.unFg }}">{{ n.unack }}</div>
         </div>
@@ -379,7 +380,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <sc-for list="{{ av.views }}" as="v" hint-placeholder-count="3">
         <div style="display:flex;align-items:center;padding:3px 8px;font-size:11px;cursor:pointer;background:{{ v.bg }};border-bottom:1px solid rgba(0,0,0,0.05)" onClick="{{ v.cb }}"><div style="flex:1">{{ v.label }}</div><div style="color:#55524c">{{ v.note }}</div></div>
       </sc-for>
-      <div style="padding:4px 8px;font-size:10.5px;color:#55524c;line-height:1.4">Click a location to filter the list; counts are active / unacknowledged and update live. SAVE VIEW keeps the current location and filter.</div>
+      <div style="padding:4px 8px;font-size:10.5px;color:#55524c;line-height:1.4">Click a location to filter the list; counts are active / unacknowledged and update live. SAVE VIEW keeps the current location and filter. DISABLE ASSET (or right-click a location) takes every alarm of that asset out of service — MNGR with an electronic signature; ENABLE ASSET restores them.</div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:auto">
       <div style="display:flex;padding:3px 8px;gap:0;min-width:820px;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none;white-space:nowrap">
@@ -426,19 +427,19 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 <sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Event Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
-    <div style="font-weight:700;font-size:13px;margin-right:8px">EVENT SUMMARY</div>
+    <div style="font-weight:700;font-size:13px;margin-right:8px">{{ evTitle }}</div>
     <sc-for list="{{ evFilters }}" as="f" hint-placeholder-count="4">
       <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ f.bc }};background:{{ f.bg }}" onClick="{{ f.cb }}">{{ f.label }}</div>
     </sc-for>
-    <div style="flex:1"></div><div style="font-size:11px;color:#55524c">Journal of alarms, operator changes, and system events (newest first)</div>
+    <div style="flex:1"></div><div style="font-size:11px;color:#55524c">Logins, alarms, operator actions, configuration changes (CONFIG = who changed what and when) and system events, newest first</div>
   </div>
   <div style="display:flex;padding:3px 8px;background:#C8C5BE;border-bottom:1px solid #9a968e;font-weight:700;font-size:11px;user-select:none">
-    <div style="width:132px">Date / Time</div><div style="width:86px">Type</div><div style="width:84px">Source</div><div style="flex:1">Description</div><div style="width:90px;text-align:right">Old</div><div style="width:90px;text-align:right">New</div><div style="width:60px;padding-left:12px">Level</div><div style="width:56px">Station</div>
+    <div style="width:132px">Date / Time</div><div style="width:86px">Type</div><div style="width:84px">Source</div><div style="flex:1">Description</div><div style="width:90px;text-align:right">Old</div><div style="width:90px;text-align:right">New</div><div style="width:60px;padding-left:12px">Level</div><div style="width:96px;padding-left:8px">Operator</div><div style="width:48px">Station</div>
   </div>
   <div style="flex:1;overflow-y:auto;background:#C6C6C6">
     <sc-for list="{{ evR }}" as="e" hint-placeholder-count="8">
       <div style="display:flex;padding:2px 8px;font-size:11.5px;border-bottom:1px solid rgba(0,0,0,0.05);color:{{ e.fg }}">
-        <div style="width:132px">{{ e.t }}</div><div style="width:86px;font-weight:700">{{ e.type }}</div><div style="width:84px;font-weight:700">{{ e.src }}</div><div style="flex:1;overflow:hidden;white-space:nowrap">{{ e.desc }}</div><div style="width:90px;text-align:right">{{ e.oldV }}</div><div style="width:90px;text-align:right">{{ e.newV }}</div><div style="width:60px;padding-left:12px">{{ e.lvl }}</div><div style="width:56px">STN01</div>
+        <div style="width:132px">{{ e.t }}</div><div style="width:86px;font-weight:700">{{ e.type }}</div><div style="width:84px;font-weight:700">{{ e.src }}</div><div style="flex:1;overflow:hidden;white-space:nowrap">{{ e.desc }}</div><div style="width:90px;text-align:right">{{ e.oldV }}</div><div style="width:90px;text-align:right">{{ e.newV }}</div><div style="width:60px;padding-left:12px">{{ e.lvl }}</div><div style="width:96px;padding-left:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ e.who }}</div><div style="width:48px">STN01</div>
       </div>
     </sc-for>
   </div>
@@ -447,14 +448,16 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 
 <sc-if value="{{ isMsgs }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Message Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
-  <div style="padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;font-weight:700;font-size:13px">MESSAGE SUMMARY</div>
+  <div style="display:flex;align-items:center;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;font-weight:700;font-size:13px"><div>MESSAGE SUMMARY</div><div style="flex:1"></div><div style="font-size:11px;font-weight:400;color:#55524c">Unconfirmed: {{ cMsg }} · a message flagged CONFIRM stays counted in the status bar until an operator confirms it</div></div>
   <div style="flex:1;overflow-y:auto;background:#C6C6C6;padding:2px 0">
     <sc-for list="{{ msgsR }}" as="m" hint-placeholder-count="4">
-      <div style="display:flex;padding:3px 10px;font-size:12px;border-bottom:1px solid rgba(0,0,0,0.05)">
+      <div style="display:flex;align-items:center;padding:3px 10px;font-size:12px;border-bottom:1px solid rgba(0,0,0,0.05);background:{{ m.bg }};font-weight:{{ m.fw }}">
         <div style="width:140px">{{ m.t }}</div><div style="flex:1">{{ m.txt }}</div>
+        <sc-if value="{{ m.needs }}" hint-placeholder-val="{{ false }}"><div style="padding:2px 12px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ m.confCb }}">CONFIRM</div></sc-if>
+        <sc-if value="{{ m.confirmed }}" hint-placeholder-val="{{ false }}"><div style="font-size:10.5px;font-weight:400;color:#0a3a12">{{ m.confT }}</div></sc-if>
       </div>
     </sc-for>
-    <sc-if value="{{ msgsEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:14px;color:#55524c;font-size:12px">No messages. Shelving records and system notices appear here.</div></sc-if>
+    <sc-if value="{{ msgsEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:14px;color:#55524c;font-size:12px">No messages. Shelving records, sequence prompts, interlock notices and instructor messages appear here; those that require it carry a CONFIRM button.</div></sc-if>
   </div>
 </div>
 </sc-if>
@@ -603,7 +606,19 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
           </div>
         </sc-for>
-        <div style="margin-top:10px;font-size:11px;color:#55524c">Trip points editable at ENGR+. Click a priority to cycle Journal → Low → High → Urgent (ENGR+); the number after the priority is the sub-priority (0–15, secondary sort key). OOS takes a condition out of service (ENGR+): it never annunciates until RTS. {{ dpt.almNote }} Journal alarms are logged only — no annunciation.</div>
+        <sc-for list="{{ dpt.almCfg }}" as="r" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;padding:4px 8px;font-size:12px;background:#CFCFCB;border:1px solid #B6B6B2;border-top:none">
+            <div style="width:100px;color:#3c3c3c">{{ r.label }}</div>
+            <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+              <div style="width:130px"><input value="{{ entryText }}" onChange="{{ entryChange }}" onKeyDown="{{ entryKey }}" ref="{{ entryRef }}" style="width:100px;padding:2px 5px;font-weight:700;background:#FFFFFF;border:2px solid #31548F;outline:none" /></div>
+            </sc-if>
+            <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="width:130px;font-weight:700;cursor:{{ r.cur }};text-decoration:{{ r.und }}" onClick="{{ r.cb }}">{{ r.value }}</div>
+            </sc-if>
+            <div style="flex:1;font-size:11px;color:#55524c">{{ r.note }}</div>
+          </div>
+        </sc-for>
+        <div style="margin-top:10px;font-size:11px;color:#55524c">Trip points and priorities are ENGR+ changes that need an electronic signature (password + reason) and are journaled as CONFIG entries; the number after the priority is the sub-priority (0–15, secondary sort key). OOS takes a condition out of service (ENGR+, signed): it never annunciates until RTS. Deadband and on-delay are ENGR-editable and journaled the same way. {{ dpt.almNote }} Journal alarms are logged only — no annunciation.</div>
         <div style="margin-top:12px;background:#CFCFCB;border:1px solid #B6B6B2;padding:8px 10px">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <div style="font-weight:700;font-size:12px;flex:1">ALARM HELP</div>
@@ -1056,13 +1071,20 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <sc-if value="{{ dg.isLogon }}" hint-placeholder-val="{{ false }}">
         <div style="font-size:12px;margin-bottom:8px">Current security level: <b>{{ secT }}</b></div>
         <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:8px;line-height:1.5">{{ dg.logonNote }}</div>
+        <sc-if value="{{ dg.logonIsOper }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+            <div style="font-size:12px;width:66px">Operator:</div>
+            <input value="{{ dg.name }}" onChange="{{ dg.nameChange }}" onKeyDown="{{ dg.pwKey }}" placeholder="{{ dg.operCur }}" style="width:150px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+            <div style="font-size:11px;color:#55524c">current: {{ dg.operCur }}</div>
+          </div>
+        </sc-if>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
-          <div style="font-size:12px">Password:</div>
+          <div style="font-size:12px;width:66px">Password:</div>
           <input type="password" value="{{ dg.pw }}" onChange="{{ dg.pwChange }}" onKeyDown="{{ dg.pwKey }}" style="width:150px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
           <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.pwGo }}">ENTER</div>
           <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.signOff }}">SIGN OFF</div>
         </div>
-        <div style="font-size:11px;color:#55524c;line-height:1.5">Station-based security. Training defaults: <b>oper</b>, <b>supv</b>, <b>engr</b>, <b>mngr</b>. Sign Off drops to View Only. Tuning and trip-point changes require ENGR or above; alarm disable requires MNGR.</div>
+        <div style="font-size:11px;color:#55524c;line-height:1.5">Operator-based security: a name plus a level password. Training defaults: <b>oper</b>, <b>supv</b>, <b>engr</b>, <b>mngr</b>. Sign Off drops to View Only. Tuning and trip-point changes require ENGR or above (signed); disabling alarms for an asset requires MNGR (signed).</div>
       </sc-if>
 
       <sc-if value="{{ dg.isShelve }}" hint-placeholder-val="{{ false }}">
@@ -1131,8 +1153,58 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           </div>
         </sc-if>
         <sc-if value="{{ dg.dbScored }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-top:12px;display:flex;align-items:baseline;gap:12px"><div style="font-size:26px;font-weight:700">{{ dg.dbScore }}/100</div><div style="font-size:14px;font-weight:700;color:#31548F">{{ dg.dbGrade }}</div></div>
+          <div style="margin-top:12px;display:flex;align-items:baseline;gap:12px"><div style="font-size:26px;font-weight:700">{{ dg.dbScore }}/100</div><div style="font-size:14px;font-weight:700;color:{{ dg.dbGradeFg }}">{{ dg.dbGrade }}</div><div style="font-size:11px;color:#55524c">{{ dg.dbOper }}</div></div>
+          <div style="font-size:11px;color:#55524c;margin-bottom:6px">{{ dg.dbPassT }}</div>
+          <div style="display:flex;padding:3px 6px;font-size:11px;font-weight:700;background:#C8C5BE;border:1px solid #B6B6B2"><div style="width:220px">Scoring element</div><div style="width:70px">Points</div><div style="flex:1">Basis</div></div>
+          <sc-for list="{{ dg.dbBreak }}" as="b" hint-placeholder-count="6">
+            <div style="display:flex;padding:3px 6px;font-size:12px;border-bottom:1px solid #B6B6B2"><div style="width:220px;color:#3c3c3c">{{ b.label }}</div><div style="width:70px;font-weight:700;color:{{ b.fg }}">{{ b.pts }}</div><div style="flex:1;color:#55524c">{{ b.note }}</div></div>
+          </sc-for>
+          <div style="font-size:10.5px;color:#55524c;margin-top:6px;line-height:1.4">Weights 20 / 25 / 20 / 15 / 10 / 10: acknowledge within 30 s scores full marks; the correct action within 3 min scores full marks; alarm load during the drill is measured by the KPI module (≤ 1 per 10 min full marks, ≥ 10 none). The result is stored in the Training record under the trainee's logon name.</div>
         </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ dg.isEsig }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;margin-bottom:6px">Action: <b>{{ dg.esigDesc }}</b></div>
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:8px">Signer: {{ dg.esigWho }} · required level: <b>{{ dg.esigNeed }}</b></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;width:70px">Password:</div>
+          <input type="password" value="{{ dg.pw }}" onChange="{{ dg.pwChange }}" onKeyDown="{{ dg.esigKey }}" style="width:150px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;width:70px">Reason:</div>
+          <input value="{{ dg.reason }}" onChange="{{ dg.reasonChange }}" onKeyDown="{{ dg.esigKey }}" placeholder="required — why this change is made" style="flex:1;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.esigGo }}">SIGN</div>
+          <div style="padding:5px 18px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.close }}">CANCEL</div>
+        </div>
+        <div style="font-size:11px;color:#55524c;margin-top:8px;line-height:1.5">An electronic signature re-enters the password for a level at or above the one required and records a reason. The action executes only after a valid signature; the signature, the operator name, the level and the reason are written to the Event Summary, and the change itself appears in the change log (CONFIG). Refused signatures are journaled too.</div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isRecord }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ dg.recOpers }}" as="o" hint-placeholder-count="2">
+          <div style="display:flex;font-size:11.5px;padding:2px 0"><div style="width:140px;font-weight:700">{{ o.oper }}</div><div style="flex:1;color:#3c3c3c">{{ o.txt }}</div></div>
+        </sc-for>
+        <div style="display:flex;padding:3px 6px;margin-top:8px;font-size:11px;font-weight:700;background:#C8C5BE;border:1px solid #B6B6B2"><div style="width:130px">Date / Time</div><div style="width:110px">Trainee</div><div style="flex:1">Drill</div><div style="width:60px">Score</div><div style="width:90px">Result</div></div>
+        <sc-for list="{{ dg.recRows }}" as="r" hint-placeholder-count="6">
+          <div style="padding:3px 6px;font-size:12px;border-bottom:1px solid #B6B6B2">
+            <div style="display:flex"><div style="width:130px">{{ r.t }}</div><div style="width:110px;font-weight:700">{{ r.oper }}</div><div style="flex:1">{{ r.drill }}</div><div style="width:60px;font-weight:700">{{ r.score }}</div><div style="width:90px;font-weight:700;color:{{ r.fg }}">{{ r.res }}</div></div>
+            <div style="font-size:10.5px;color:#55524c">{{ r.detail }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ dg.recEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 0;font-size:12px;color:#55524c">No drill has been scored yet this session. Run a drill (Drills menu) and submit the debrief question.</div></sc-if>
+        <div style="font-size:11px;color:#55524c;margin-top:8px;line-height:1.5">{{ dg.recNote }}</div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isCoverage }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:8px;line-height:1.5">{{ dg.covSummary }}</div>
+        <sc-for list="{{ dg.covGroups }}" as="g" hint-placeholder-count="8">
+          <div style="display:flex;padding:3px 6px;margin-top:6px;font-size:11px;font-weight:700;background:#C8C5BE;border:1px solid #B6B6B2"><div style="flex:1">{{ g.name }}</div><div>{{ g.count }}</div></div>
+          <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;padding:2px 6px;font-size:11.5px;border-bottom:1px solid #B6B6B2"><div style="width:22px;font-weight:700;color:{{ r.fg }}">{{ r.tick }}</div><div style="width:290px;font-weight:{{ r.fw }};color:{{ r.fg }}">{{ r.label }}</div><div style="width:150px;color:#3c3c3c">{{ r.drills }}</div><div style="flex:1;color:#55524c;font-size:10.5px">{{ r.features }}</div></div>
+          </sc-for>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:8px;line-height:1.4">Our own task inventory for this simulator, grouped the way an operator course is; not a vendor curriculum. Columns: tick when performed this session · drills that exercise the task · features that carry it.</div>
       </sc-if>
 
       <sc-if value="{{ dg.isHelp }}" hint-placeholder-val="{{ false }}">
@@ -1145,7 +1217,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
           <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
           <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder.<br /><br />
-          <b>Instructor station</b><br />Command <b>INSTR</b>, Drills → Instructor Station…, or the SIM link in the status bar. Needs the instructor or manager password: run control (freeze / step / fast time), snapshots, initial conditions, backtrack, upsets (optionally hidden), plant variables, action journal with replay, live drill assessment.
+          <b>Instructor station</b><br />Command <b>INSTR</b>, Drills → Instructor Station…, or the SIM link in the status bar. Needs the instructor or manager password: run control (freeze / step / fast time), snapshots, initial conditions, backtrack, upsets (optionally hidden), plant variables, action journal with replay, live drill assessment.<br /><br />
+          <b>Training and audit</b><br />Logon takes an operator name; it goes on every journal entry. Messages flagged CONFIRM count in the status bar (blinking MSG) until confirmed in the Message Summary. Critical changes (trip point, priority, out of service, PID tuning, disabling an asset's alarms, snapshot restore during a drill) need an electronic signature — password and reason. Every configuration change is a CONFIG event: command <b>MOC</b> opens the change log. Drills are scored against the 80 % mark ({{ dg.dbPassT }}); commands <b>RECORD</b> and <b>COVERAGE</b> open the training record and the operator task coverage matrix.
         </div>
       </sc-if>
 
@@ -1269,6 +1342,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="color:#55524c">|</div><div style="font-weight:700">STN01</div>
   <div style="color:#55524c">ASSET: UNIT 01</div>
   <div style="color:#55524c">|</div><div style="font-weight:700;color:{{ cUnFg }}">UNACK {{ cUn }}</div><div style="color:#55524c">OOS {{ cOos }}</div>
+  <sc-if value="{{ msgOn }}" hint-placeholder-val="{{ false }}"><div style="cursor:pointer;padding:1px 8px;font-weight:700;background:{{ msgBg }};color:{{ msgFg }};border:1px solid #7a1a00" onClick="{{ msgGo }}">MSG {{ cMsg }}</div></sc-if>
+  <sc-if value="{{ disOn }}" hint-placeholder-val="{{ false }}"><div style="padding:1px 8px;font-weight:700;background:#C08000;color:#000000;border:1px solid #6E4000" title="{{ disT }}">ALARMS DISABLED: {{ cDis }}</div></sc-if>
   <div style="flex:1"></div>
   <div style="cursor:pointer;color:#31548F;font-weight:700" onClick="{{ instrOpen }}">SIM {{ spdT }}</div>
   <div style="cursor:pointer;font-weight:700" onClick="{{ audCb }}">HORN: {{ audT }}</div>
@@ -1280,7 +1355,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'' };
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'' };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -1340,6 +1415,13 @@ class Component extends DCLogic {
     this.alarmEngine=ESS.AlarmEngine.createEngine({maxShelveMs:60*60000, defaultShelveMs:15*60000, foldWindowMs:10*60000, dasRules:this.dasRules()});
     this.events=[]; this.msgs=[]; this.hist={}; this.eid=1;
     this.alarmLog=[]; this.t0=now;   // raise / rtn / ack history for the KPI display (ESS.Kpi, RESOURCES 2.7, 2.8)
+    // Training and audit state that outlives a process reset: the session's task-done set (coverage matrix), the
+    // last 20 drill results (training record), the configuration change count (MOC) and the disabled-asset set.
+    if(!this.tasksDone) this.tasksDone=new Set();
+    if(!this.trainingRecords) this.trainingRecords=[];
+    if(this.mocCount==null) this.mocCount=0;
+    this.disabledAssets=new Set();
+    this._lastPhase='IDLE';
     this.histTags().forEach(t=>this.hist[t]=[]);
     this.addEvent('SYSTEM','STN01','OPERATOR STATION STARTED — SIMULATION MODE','','');
     this.applyPhaseSet(this.phaseSetKey(),true);
@@ -1352,7 +1434,90 @@ class Component extends DCLogic {
   fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
   fT(ms){ const d=new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
   fD(ms){ const d=new Date(ms); const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return ('0'+d.getDate()).slice(-2)+'-'+M[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2); }
-  addEvent(type,src,desc,oldV,newV){ this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:this.state.sec}); if(this.events.length>600) this.events.length=600; }
+  // Every journal entry carries the operator name captured at logon (logins, operator actions and configuration
+  // changes share one event file, RESOURCES 2.1; "who changed what and when", RESOURCES 2.13).
+  addEvent(type,src,desc,oldV,newV){ this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:this.state.sec, who:this.operName()}); if(this.events.length>600) this.events.length=600; }
+  operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
+  // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------
+  // opts.confirm marks a message the operator must confirm; the status bar counts unconfirmed messages and blinks MSG.
+  postMsg(txt,opts){ this.msgs.unshift(ESS.Training.message(this.P?this.P.t:Date.now(),txt,opts||{})); if(this.msgs.length>400) this.msgs.length=400; return this.msgs[0]; }
+  pendingMsgs(){ return ESS.Training.pending(this.msgs); }
+  confirmMsg(id){
+    const m=this.msgs.find(x=>x.id===id); if(!m||!m.confirm){ this.msgZone('MESSAGE DOES NOT REQUIRE CONFIRMATION'); return false; }
+    if(m.confirmed){ this.msgZone('MESSAGE ALREADY CONFIRMED'); return false; }
+    if(!this.can('OPER')) return false;
+    m.confirmed=true; m.confirmedBy=this.operName(); m.confirmT=this.P.t;
+    this.addEvent('OPERATOR',m.src,'MESSAGE CONFIRMED — '+m.txt,'',m.confirmedBy);
+    this.taskDone('msg.confirm');
+    if(m.src==='SCM202') this.taskDone('bat.confirm');
+    return true;
+  }
+  // ---------- operator task coverage (our own task inventory, ESS.Training; RESOURCES 2.12) ----------
+  taskDone(id){ if(this.tasksDone) this.tasksDone.add(id); }
+  // ---------- electronic signature (RESOURCES 2.12): password + reason before a critical action, journaled with name, level, reason ----------
+  // One reusable flow: withSignature(desc, needLevel, fn) opens the dialog; signAction() verifies and runs fn(reason).
+  // A replayed journal entry already carried its signature, so the replay applies fn directly.
+  withSignature(desc,need,fn){
+    if(this._replayApplying){ fn('REPLAY'); return; }
+    if(!this.can(need)) return;
+    this.setState({dlg:{type:'esig',desc,need,fn},dlgPw:'',dlgReason:'',menu:null});
+  }
+  signAction(){
+    const d=this.state.dlg; if(!d||d.type!=='esig') return false;
+    const pw=(this.state.dlgPw||'').trim().toLowerCase(), reason=(this.state.dlgReason||'').trim();
+    const lvl={oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'}[pw];
+    if(!lvl||this.rank(lvl)<this.rank(d.need)){ this.addEvent('OPERATOR','STN01','SIGNATURE REFUSED — '+d.desc,'',lvl?'LEVEL '+lvl+' BELOW '+d.need:'INVALID PASSWORD'); this.msgZone('SIGNATURE REFUSED — '+(lvl?'PASSWORD BELOW '+d.need:'INVALID PASSWORD')); this.setState({dlgPw:''}); return false; }
+    if(!reason){ this.msgZone('SIGNATURE REASON REQUIRED'); return false; }
+    this.addEvent('OPERATOR','STN01','E-SIGNATURE — '+d.desc+' — '+reason,'',this.operName()+' ('+lvl+')');
+    this.taskDone('sec.esig');
+    this.setState({dlg:null,dlgPw:'',dlgReason:''});
+    d.fn(reason);
+    return true;
+  }
+  // ---------- management of change (RESOURCES 2.13): every configuration change is a CONFIG event with old / new, name, level, reason ----------
+  configChange(src,what,oldV,newV,reason){
+    this.mocCount=(this.mocCount||0)+1;
+    this.addEvent('CONFIG',src,what+(reason?' — '+reason:''),oldV,newV);
+  }
+  // ---------- disable alarms for an asset (MNGR, signed; RESOURCES 2.12) ----------
+  // Every condition of every point under the asset goes out of service with disabledBy='ASSET:<id>'; alarms raised on
+  // the asset's equipment sources while disabled are parked the same way. Re-enable returns the flagged records to service.
+  assetDisabled(tag){ for(const id of this.disabledAssets) if(this.assetMatch(id,tag)) return id; return null; }
+  assetTags(id){ const tags=new Set(); this.assetTree().forEach(n=>{ if(n.tags&&this.assetMatch(id,n.tags[0])) n.tags.forEach(t=>tags.add(t)); }); return [...tags]; }
+  disableAssetAlarms(id,on,reason){
+    if(id==='PLANT'||!this.assetTree().some(n=>n.id===id)){ this.msgZone('SELECT A UNIT OR EQUIPMENT ASSET'); return false; }
+    const E=this.alarmEngine, by='ASSET:'+id;
+    if(on){
+      if(this.disabledAssets.has(id)) return false;
+      this.disabledAssets.add(id);
+      for(const tag of this.assetTags(id)){ const l=this.L[tag]; if(!l) continue; for(const c in l.alm) this.parkDisabled(tag,c,by); }
+      for(const r of E.list()) if(this.assetMatch(id,r.tag)&&r.state!=='OOSRV') this.parkDisabled(r.tag,r.cond,by);
+      this.configChange(id,'ALARMS DISABLED FOR ASSET',(this.disabledAssets.size-1)+' DISABLED',this.disabledAssets.size+' DISABLED',reason);
+      this.postMsg('ALARMS DISABLED FOR '+id+' BY '+this.operName()+(reason?' — '+reason:''));
+    } else {
+      if(!this.disabledAssets.has(id)) return false;
+      this.disabledAssets.delete(id);
+      for(const r of E.list()) if(r.disabledBy===by){ r.disabledBy=''; this.logAlarmEvents(E.rts(r,this.P.t)); }
+      this.configChange(id,'ALARMS RE-ENABLED FOR ASSET',(this.disabledAssets.size+1)+' DISABLED',this.disabledAssets.size+' DISABLED',reason);
+      this.postMsg('ALARMS RE-ENABLED FOR '+id+' BY '+this.operName());
+    }
+    this.taskDone('abn.disable');
+    return true;
+  }
+  parkDisabled(tag,cond,by){
+    const E=this.alarmEngine, l=this.L[tag];
+    const spec=l&&l.alm[cond]?{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv}:undefined;
+    const evs=E.oos(tag+'.'+cond,this.P.t,spec);
+    const r=E.get(tag+'.'+cond); if(r) r.disabledBy=by;
+    evs.forEach(e=>{ if(e.type==='OOS') this.addEvent('SYSTEM',e.tag,e.cond+' DISABLED — '+by,e.from,'DISABLED'); });
+  }
+  isDisabledRec(r){ return !!(r&&r.state==='OOSRV'&&r.disabledBy); }
+  // Signed MNGR entry point used by the Alarm Summary asset pane (button and right-click).
+  toggleAssetAlarms(id){
+    if(!id||id==='PLANT'){ this.msgZone('SELECT A UNIT OR EQUIPMENT ASSET IN THE LOCATION PANE'); return; }
+    const on=!this.disabledAssets.has(id);
+    this.withSignature((on?'DISABLE':'RE-ENABLE')+' ALARMS FOR ASSET '+id,'MNGR',(reason)=>this.disableAssetAlarms(id,on,reason));
+  }
   // ---------- colour philosophy ----------
   // One getter for every priority colour the display draws (ESS.Palette). Presets: the representative defaults and the
   // ISA-101 values from the Rockwell process HMI style guide (RESOURCES 2.4). Chrome and equipment stay grey (ASM, 2.11).
@@ -1374,7 +1539,7 @@ class Component extends DCLogic {
     if(!ESS.Palette.list().includes(name)) return;
     const o=this.paletteName(); if(o===name){ this.setState({menu:null}); return; }
     this.setState({palette:name,menu:null});
-    this.addEvent('SYSTEM','STN01','ALARM COLOUR PHILOSOPHY CHANGE',this.paletteLabel(o),this.paletteLabel(name));
+    this.configChange('STN01','ALARM COLOUR PHILOSOPHY CHANGE',this.paletteLabel(o),this.paletteLabel(name),'');
     this.msgZone('COLOUR PHILOSOPHY: '+this.paletteLabel(name));
   }
   // ---------- limit ladder (ASM Range / Critical / Standard / Target, RESOURCES 2.11) ----------
@@ -1419,7 +1584,8 @@ class Component extends DCLogic {
     if(!this.can('ENGR')) return;
     if(!!l.pvtrack===!!on) return;
     l.pvtrack=!!on;
-    this.addEvent('OPERATOR',tag,'PV TRACKING CHANGE',on?'OFF':'ON',on?'ON':'OFF');
+    this.configChange(tag,'PV TRACKING CHANGE',on?'OFF':'ON',on?'ON':'OFF','');
+    this.taskDone('ctl.pvtrack');
   }
 
   // ---------- alarm engine wrappers (ISA-18.2 per alerta isa_18_2.py, RESOURCES 2.5) ----------
@@ -1501,7 +1667,8 @@ class Component extends DCLogic {
     const old=a.comment||'';
     this.alarmEngine.comment(a,text);
     this.addEvent('OPERATOR',a.tag,a.cond+' COMMENT: '+text,old,text);
-    this.msgs.unshift({t:this.P.t,txt:'ALARM COMMENT '+a.tag+' '+a.cond+': '+text});
+    this.postMsg('ALARM COMMENT '+a.tag+' '+a.cond+': '+text);
+    this.taskDone('alm.comment');
     this.setState({dlg:null,dlgReason:''});
   }
   // ---------- alarm KPI over the raise/rtn/ack log (ESS.Kpi; exida and alarm-performance-analyser thresholds, RESOURCES 2.7, 2.8) ----------
@@ -1538,6 +1705,7 @@ class Component extends DCLogic {
   }
   raiseA(src,cond,prio,val,eu,desc){
     this.logAlarmEvents(this.alarmEngine.raise({tag:src,cond,prio,subprio:this.subprioOf(src,cond),val,eu,desc,tripValue:this.tripPointOf(src,cond),t:this.P.t}));
+    const dis=this.assetDisabled(src); if(dis){ const r=this.alarmEngine.get(src+'.'+cond); if(r&&r.state!=='OOSRV') this.parkDisabled(src,cond,'ASSET:'+dis); }
   }
   clearA(src,cond,val){ this.logAlarmEvents(this.alarmEngine.rtn(src,cond,this.P.t,val)); }
   alarmTick(){ this.logAlarmEvents(this.alarmEngine.tick(this.P.t)); }
@@ -1566,12 +1734,17 @@ class Component extends DCLogic {
     if(horn) this.hornNew();
   }
   isOos(tag,cond){ const r=this.alarmEngine.get(tag+'.'+cond); return !!r && r.state==='OOSRV'; }
+  // Out of service needs an electronic signature (RESOURCES 2.12); return to service is an ENGR action. Both are CONFIG changes.
   setOos(tag,cond,on){
     if(!this.can('ENGR')) return;
     const l=this.L[tag]; if(!l||!l.alm[cond]) return;
     const key=tag+'.'+cond;
-    if(on) this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv}));
-    else this.logAlarmEvents(this.alarmEngine.rts(key,this.P.t));
+    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE',  'IN SERVICE','OUT OF SERVICE',reason); this.taskDone('alm.oos'); }); return; }
+    const r=this.alarmEngine.get(key); if(r&&r.disabledBy){ this.msgZone('CONDITION DISABLED BY '+r.disabledBy+' — RE-ENABLE THE ASSET'); return; }
+    const evs=this.alarmEngine.rts(key,this.P.t); if(!evs.length) return;
+    this.logAlarmEvents(evs);
+    this.configChange(tag,cond+' SERVICE STATE','OUT OF SERVICE','IN SERVICE','');
+    this.taskDone('alm.oos');
   }
   hornNew(){ this.setState({silenced:false}); }
   beep(freq,dur){ try{ if(!this.actx) this.actx=new (window.AudioContext||window.webkitAudioContext)(); const c=this.actx; if(c.state==='suspended') c.resume(); const o=c.createOscillator(), g=c.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.05; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+dur); }catch(e){} }
@@ -1646,6 +1819,14 @@ class Component extends DCLogic {
     L.TI216.pv=P.b.Tad+this.noise(0.15);
     this.scmRestoreModes();
     this.syncPhaseSet();
+    this.scmPrompts();
+  }
+  // Sequence prompts that need an operator confirm (Message Summary confirm, RESOURCES 2.12): charge complete, batch complete.
+  scmPrompts(){
+    const ph=this.P.b.phase; if(ph===this._lastPhase) return;
+    if(this._lastPhase==='CHARGE'&&ph==='HEATUP') this.postMsg('SCM202: CONFIRM CHARGE COMPLETE — LEVEL '+this.fmt(this.P.b.lvl,0)+' %, HEATUP STARTED',{confirm:true,src:'SCM202'});
+    if(this._lastPhase==='DRAIN'&&ph==='IDLE') this.postMsg('SCM202: CONFIRM BATCH COMPLETE — REACTOR DRAINED',{confirm:true,src:'SCM202'});
+    this._lastPhase=ph;
   }
   // U3: Badgwell two-pass fired heater + fixed bed (ESS.Models), then the tube-skin and excess-O2 indications.
   stepU3(dt){
@@ -1681,6 +1862,7 @@ class Component extends DCLogic {
     if(heldNow) b.held=true;
     this.addEvent('SYSTEM','TI216','ADIABATIC END TEMP URGENT — FIC211 SHED (MODE '+oldMode+' → MAN, MV-211 CLOSED)'+(heldNow?' · SCM202 HOLD':''),'','');
     this.msgZone('TI216 URGENT — MONOMER FEED SHED'+(heldNow?', SEQUENCE HELD':''));
+    this.postMsg('INTERLOCK: TI216 URGENT — MONOMER FEED SHED (FIC211 MAN, MV-211 CLOSED)'+(heldNow?', SCM202 HELD':'')+' — confirm',{confirm:true,src:'TI216'});
     this.enforceTadShed();
     this.syncPhaseSet();
   }
@@ -1744,13 +1926,14 @@ class Component extends DCLogic {
       }
     }
     this.phaseSet=key;
-    if(!silent) this.addEvent('SYSTEM','SCM202','ALARM LIMIT SET '+key+' — '+parts.join(' · '),prev||'',key);
+    if(!silent) this.configChange('SCM202','ALARM LIMIT SET '+key+' — '+parts.join(' · '),prev||'',key,'STATE-BASED LIMITS');
   }
   seqCmd(cmd,silent){
     const b=this.P.b;
     if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
     if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.confirmInterlockHold(); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
     if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
+    if(!silent) this.taskDone({START:'bat.start',HOLD:'bat.hold',ABORT:'bat.abort'}[cmd]);
     this.syncPhaseSet();
     if(!silent) this.journal('SEQ','SCM202',cmd);
   }
@@ -1900,7 +2083,7 @@ class Component extends DCLogic {
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0},dlg:null});
     this.journal('DRILL',d.id,'',{instr:true});
     this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — INJECTION AT '+this.fT(this.P.t+delay));
-    if(!this.instr.hidden) this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }
   // A snapshot carries the armed / running drill as plain data; the definition is looked up again on restore.
   drillData(){ const d=this.state.drill; return d?{id:d.def.id,t0:d.t0,ti:d.ti,injected:d.injected,m:d.m,stableFor:d.stableFor}:null; }
@@ -1955,20 +2138,27 @@ class Component extends DCLogic {
     const F=this.P.faults;
     ['xmtr','surge','cool','vap','rxn','bedact'].forEach(k=>F[k]=false);
     this.V.TV202.stuck=false;
-    d.reason=reason;
+    d.reason=reason; d.tEnd=this.P.t;
     if(reason==='ENDED BY INSTRUCTOR') this.journal('DRILLEND',d.def.id,reason,{instr:true});   // automatic ends are reproduced by the replay itself
     this.setState({drill:null, dlg:{type:'debrief',drill:d}, debAns:-1});
-    this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.def.id+' ended — '+reason});
+    this.postMsg('INSTRUCTOR: drill '+d.def.id+' ended — '+reason,{confirm:!this.instr.hidden,src:'INSTR'});
   }
+  // Standards-based scorer (ESS.Kpi.scoreDrill): acknowledge latency, correct action and latency, trip avoided,
+  // stabilisation, alarm load during the drill (KPI module over the alarm journal) and the debrief question.
+  // Returns {score, pass, passMark, passLabel, breakdown}; the pass mark is the sim's own 80 % (RESOURCES 2.7, 2.8, 2.12).
   scoreDrill(d,ans){
-    const m=d.m; let s=0;
-    const dt1=m.tAck&&m.tAlarm?(m.tAck-m.tAlarm)/1000:null;
-    s += dt1==null?0:(dt1<=30?25:dt1<=60?18:dt1<=120?10:4);
-    s += m.tAct ? ((m.tAct-m.tAlarm)<=180000?30:12) : 0;
-    s += m.trip?0:20;
-    s += m.tStable?15:0;
-    s += ans===d.def.a?10:0;
-    return s;
+    const m=d.m, t0=d.t0, t1=d.tEnd||this.P.t;
+    const load=ESS.Kpi.computeMetrics(this.alarmLog,{t0,t1:Math.max(t1,t0+1)}).per10min.avg;
+    return ESS.Kpi.scoreDrill({tAlarm:m.tAlarm,tAck:m.tAck,tAct:m.tAct,tStable:m.tStable,trip:!!m.trip,actionCorrect:!!m.tAct,quizCorrect:ans===d.def.a,alarmsPer10min:load},{passMark:ESS.Training.PASS_MARK});
+  }
+  // Debrief submit: score, journal, training record (last 20 per session, keyed by the trainee's logon name).
+  submitDebrief(d,ans){
+    const sc=this.scoreDrill(d,ans);
+    this.setState({dlg:{...this.state.dlg,scored:true,score:sc.score,result:sc}});
+    this.addEvent('SYSTEM','STN01','DRILL '+d.def.id+' SCORE '+sc.score+'/100 — '+(sc.pass?'PASS':'NOT PASSED')+' ('+sc.passMark+' % MARK)','',this.operName());
+    ESS.Training.addRecord(this.trainingRecords,ESS.Training.recordFor(this.operName(),d.def.id,d.def.name,sc,d.tEnd||this.P.t,d.reason),20);
+    this.taskDone('abn.drill'); if(sc.pass) this.taskDone('abn.pass');
+    return sc;
   }
 
   // ---------- instructor station (Forge PTS instructor features, RESOURCES 2.14; seeded replay / snapshot / backtrack per the cstr-ots notes, RESOURCES 4) ----------
@@ -2023,7 +2213,7 @@ class Component extends DCLogic {
     this.alarmEngine.restore(snap.alarms);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
     this.seed=snap.seed||this.seed; this.rand=ESS.Models.createRand(this.seed); if(snap.randState!=null) this.rand.setState(snap.randState);
-    this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={};
+    this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={}; this._lastPhase=this.P.b.phase;
     const t=this.P.t;
     for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
     this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
@@ -2038,7 +2228,15 @@ class Component extends DCLogic {
     this.instrLog('SNAPSHOT SAVED: '+nm);
     this.setState({instrSnapName:''});
   }
-  restoreSlot(i){ const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; } this.instr.replay=null; this.restoreSnapshot(s,'SNAPSHOT RESTORED: '+s.name); }
+  // A restore during a drill discards the trainee's run so far, so it is signed (instructor password does not
+  // substitute: the signature needs the manager password, the level the instructor station also accepts).
+  restoreSlot(i){
+    const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; }
+    const go=()=>{ this.instr.replay=null; this.restoreSnapshot(s,'SNAPSHOT RESTORED: '+s.name); };
+    // the restore truncates the journal to the snapshot time, so the signed CONFIG entry (name, level, reason) is written after it
+    if(this.state.drill){ const id=this.state.drill.def.id; this.withSignature('SNAPSHOT RESTORE DURING DRILL '+id+' — '+s.name,'MNGR',(reason)=>{ go(); this.configChange('INSTR','SNAPSHOT RESTORED DURING DRILL '+id+' — SIGNED BY '+this.operName(),id,s.name,reason); }); }
+    else go();
+  }
   clearSlot(i){ this.instr.snapshots[i]=null; }
   // --- backtrack: an automatic snapshot every 30 sim-seconds covering the last 10 sim-minutes (taken after the step so it carries that step's history row)
   backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS){ const snap=this.snapshotData(''); if(snap) I.pushRing(this.instr,snap,this.P.t); } }
@@ -2186,27 +2384,36 @@ class Component extends DCLogic {
     const st={display:d, hist:h, hi:h.length-1, menu:null};
     if(d==='detail'&&arg) st.detailTag=arg;
     this.setState(st);
+    const task={alarms:'alm.summary',events:'trn.events',msgs:'msg.open',trend:'trn.open',detail:'nav.detail',sys:'nav.sys',kpi:'alm.kpi'}[d];
+    if(task) this.taskDone(task);
   }
-  goBack(){ const {hist,hi}=this.state; if(hi<=0){this.msgZone('NO EARLIER DISPLAY');return;} const p=hist[hi-1]; const st={hi:hi-1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); }
-  goFwd(){ const {hist,hi}=this.state; if(hi>=hist.length-1){this.msgZone('NO LATER DISPLAY');return;} const p=hist[hi+1]; const st={hi:hi+1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); }
+  goBack(){ const {hist,hi}=this.state; if(hi<=0){this.msgZone('NO EARLIER DISPLAY');return;} const p=hist[hi-1]; const st={hi:hi-1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
+  goFwd(){ const {hist,hi}=this.state; if(hi>=hist.length-1){this.msgZone('NO LATER DISPLAY');return;} const p=hist[hi+1]; const st={hi:hi+1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
+  setUnit(u){ this.setState({unit:u}); this.taskDone('nav.unit'); }
+  // Change log view: the Event Summary filtered to CONFIG entries (MOC, RESOURCES 2.13).
+  openChangeLog(){ this.setState({evtFilter:'CONFIG'}); this.nav('events'); this.taskDone('sec.moc'); }
   parseCmd(){
     const c=this.state.cmd.trim().toUpperCase(); if(!c) return;
     this.setState({cmd:''});
-    if(c==='U1'||c==='UNIT01'){ this.setState({unit:'U1'}); this.nav('graphic'); return; }
-    if(c==='U2'||c==='UNIT02'){ this.setState({unit:'U2'}); this.nav('graphic'); return; }
-    if(c==='U3'||c==='UNIT03'){ this.setState({unit:'U3'}); this.nav('graphic'); return; }
+    this.taskDone('nav.command');
+    if(c==='U1'||c==='UNIT01'){ this.setUnit('U1'); this.nav('graphic'); return; }
+    if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return; }
+    if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return; }
     if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return; }
     const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi'};
-    if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); return; }
+    if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); this.taskDone('alm.help'); return; }
     if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return; }
     if(map[c]){ this.nav(map[c]); return; }
+    if(c==='MOC'||c==='CHANGES'||c==='CHANGE LOG'){ this.openChangeLog(); return; }
+    if(c==='COVERAGE'||c==='TASKS'){ this.setState({dlg:{type:'coverage'},menu:null}); return; }
+    if(c==='RECORD'||c==='TRAINING'||c==='TRAINING RECORD'){ this.setState({dlg:{type:'record'},menu:null}); return; }
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
     if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return; }
     if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return; }
     if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return; }
     this.msgZone('DISPLAY NOT FOUND: '+c);
   }
-  silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); this.journal('SIL'); }
+  silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); this.journal('SIL'); this.taskDone('alm.silence'); }
   ackAlarm(a){
     if(!this.can('OPER')) return;
     const r=this.alarmEngine.get(a); if(!r) return;
@@ -2215,6 +2422,7 @@ class Component extends DCLogic {
     this.logAlarmEvents(evs);
     this.dHook('ACK',r.tag);
     this.journal('ACK',r.tag,r.key);
+    this.taskDone('alm.ack');
   }
   ackTop(){ const a=this.state.selAlm!=null? this.alarmEngine.get(this.state.selAlm) : this.topUnack(); if(!a){this.msgZone('NO UNACKNOWLEDGED ALARM');return;} this.ackAlarm(a); }
   ackPage(){
@@ -2227,6 +2435,7 @@ class Component extends DCLogic {
     for(const key of keys){ const a=this.alarmEngine.get(key); if(!a||a.ack) continue; const evs=this.alarmEngine.ack(a,this.P.t); if(evs.length){ n++; done.push(key); this.logAlarmEvents(evs); this.dHook('ACK',a.tag); } }
     this.addEvent('OPERATOR','STN01','PAGE ACKNOWLEDGE ('+n+' ALARMS)','','');
     this.journal('ACKPAGE','','',{keys:done});
+    if(n) this.taskDone('alm.ackpage');
   }
   // Alarm Summary views: MAIN = annunciated set (UNACK/ACKED/RTNUN), UNACK, SHELVED, SUPPRESSED (DAS), OOS. Sorted by the engine comparator.
   visAlarms(){
@@ -2260,8 +2469,9 @@ class Component extends DCLogic {
     const evs=this.alarmEngine.shelve(a,{reason,durationMs:mins*60000,t:this.P.t});
     if(!evs.length){ this.msgZone('ALARM CANNOT BE SHELVED IN STATE '+a.state); return false; }
     this.logAlarmEvents(evs);
-    this.msgs.unshift({t:this.P.t,txt:'ALARM SHELVED '+mins+' MIN: '+a.tag+' '+a.cond+' — '+reason});
+    this.postMsg('ALARM SHELVED '+mins+' MIN: '+a.tag+' '+a.cond+' — '+reason);
     this.journal('SHELVE',a.tag,a.key,{mins,reason});
+    this.taskDone('alm.shelve');
     return true;
   }
   unshelve(){
@@ -2269,7 +2479,7 @@ class Component extends DCLogic {
     if(!this.can('OPER')) return;
     this.unshelveAlarm(a.key);
   }
-  unshelveAlarm(key){ const a=this.alarmEngine.get(key); if(!a||!a.shelved) return; this.logAlarmEvents(this.alarmEngine.unshelve(a,this.P.t,false)); this.journal('UNSHELVE',a.tag,a.key); }
+  unshelveAlarm(key){ const a=this.alarmEngine.get(key); if(!a||!a.shelved) return; this.logAlarmEvents(this.alarmEngine.unshelve(a,this.P.t,false)); this.journal('UNSHELVE',a.tag,a.key); this.taskDone('alm.unshelve'); }
   // Operator write gate for the PROGRAM mode attribute (EXP-01 control conventions, RESOURCES 2.12): while the
   // sequence owns the loop, SP / OP / MODE stores are refused with an inline callout on the faceplate and detail
   // display (about 5 s), a message-zone notice and an OPERATOR journal entry. Engineering parameters stay writable.
@@ -2298,6 +2508,7 @@ class Component extends DCLogic {
     this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=r.from; this.events[0].newV=m;
     this.dAct('MODE',tag,m,0);
     this.journal('MODE',tag,m);
+    this.taskDone('ctl.mode');
   }
   openEntry(tag,param){
     const l=this.L[tag];
@@ -2305,10 +2516,10 @@ class Component extends DCLogic {
     if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return;
     if(param==='SP'){ if(l.mode==='CAS'){this.msgZone('SP IS CASCADE-DRIVEN — CHANGE PRIMARY');return;} if(l.mode!=='AUTO'){this.msgZone('INVALID MODE — SP ENTRY REQUIRES AUTO');return;} }
     if(param==='OP' && l.mode!=='MAN'){ this.msgZone('INVALID MODE — OP ENTRY REQUIRES MAN'); return; }
-    const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP','TGTHI','TGTLO'].includes(param)||param.startsWith('TP:');
+    const engr=['K','T1','T2','SPHILM','SPLOLM','OPHILM','OPLOLM','SAFEOP','TGTHI','TGTLO','ALMDB','ALMDELAY'].includes(param)||param.startsWith('TP:');
     if(engr && !this.can('ENGR')) return;
     const isTgt=param==='TGTHI'||param==='TGTLO';
-    const cur = param==='SP'?l.sp : param==='OP'?l.op : param.startsWith('TP:')? l.alm[param.slice(3)][0] : isTgt? this.limitBand(l)[param==='TGTHI'?'tgtHi':'tgtLo'] : l[param.toLowerCase()]??l[param];
+    const cur = param==='SP'?l.sp : param==='OP'?l.op : param.startsWith('TP:')? l.alm[param.slice(3)][0] : isTgt? this.limitBand(l)[param==='TGTHI'?'tgtHi':'tgtLo'] : param==='ALMDB'? this.almDeadband(l) : param==='ALMDELAY'? this.almDelay(l) : l[param.toLowerCase()]??l[param];
     this.setState({entry:{tag,param}, entryText:this.fmt(cur, param==='SP'||param.startsWith('TP:')||isTgt?l.dec:2)});
   }
   commitEntry(){
@@ -2323,13 +2534,20 @@ class Component extends DCLogic {
     const l=this.L[tag]; if(!l) return true;
     if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return true;
     const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.journal('STORE',tag,this.fmt(v,3),{param}); };
-    if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); return true; }
-    if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o);
+    // configuration stores are MOC entries (CONFIG event with old / new, name, level, reason); tuning and trip points are signed
+    const cfg=(oldV,apply,what,reason)=>{ apply(); this.configChange(tag,what+' CHANGE',this.fmt(oldV,2),this.fmt(v,2),reason||''); this.journal('STORE',tag,this.fmt(v,3),{param}); };
+    if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); this.taskDone('ctl.sp'); return true; }
+    if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o); this.taskDone('ctl.op');
       if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
-    if(param.startsWith('TP:')){ const c=param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return true; }
-    if(param==='TGTHI'||param==='TGTLO'){ const b=this.limitBand(l); const lo=param==='TGTLO'?v:b.tgtLo, hi=param==='TGTHI'?v:b.tgtHi; const o=param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return false; done(o,()=>{},param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return true; }
+    if(param.startsWith('TP:')){ const c=param.slice(3); if(!l.alm[c]) return true; const o=l.alm[c][0]; if(o===v) return true; this.withSignature('TRIP POINT '+tag+' '+c+' '+this.fmt(o,l.dec)+' → '+this.fmt(v,l.dec),'ENGR',(reason)=>{ cfg(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT',reason); this.taskDone('ctl.trip'); }); return true; }
+    if(param==='TGTHI'||param==='TGTLO'){ const b=this.limitBand(l); const lo=param==='TGTLO'?v:b.tgtLo, hi=param==='TGTHI'?v:b.tgtHi; const o=param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return false; cfg(o,()=>{},param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return true; }
+    if(param==='ALMDB'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — DEADBAND MUST BE 0 OR MORE'); return false; } const o=this.almDeadband(l); cfg(o,()=>{ l.almDb=v; l._am={}; },'ALARM DEADBAND'); return true; }
+    if(param==='ALMDELAY'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — ON-DELAY MUST BE 0 OR MORE'); return false; } const o=this.almDelay(l); cfg(o,()=>{ l.almDelay=v; l._am={}; },'ALARM ON-DELAY'); return true; }
     const key=param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
-    const o=l[key]??l[param]; done(o,()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; }, map[key]||param);
+    const o=l[key]??l[param]; if(o===v) return true;
+    const apply=()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; };
+    if(key==='k'||key==='t1'||key==='t2'){ this.withSignature('PID TUNING '+tag+' '+map[key]+' '+this.fmt(o,2)+' → '+this.fmt(v,2),'ENGR',(reason)=>{ cfg(o,apply,map[key],reason); this.taskDone('ctl.tune'); }); return true; }
+    cfg(o,apply,map[key]||param);
     return true;
   }
   raiseLower(tag,dir){
@@ -2340,6 +2558,7 @@ class Component extends DCLogic {
     if(p==='SP'){ const step=(l.hi-l.lo)/100; const o=l.sp; const nv=Math.max(l.splolm,Math.min(l.sphilm,o+dir*step)); l.sp=nv; this.addEvent('OPERATOR',tag,'SP CHANGE','',''); this.events[0].oldV=this.fmt(o,l.dec); this.events[0].newV=this.fmt(nv,l.dec); this.dAct('SP',tag,nv,nv-o); }
     else { const o=l.op; const nv=Math.max(l.oplolm,Math.min(l.ophilm,o+dir)); l.op=nv; l.I=nv; this.addEvent('OPERATOR',tag,'OP CHANGE','',''); this.events[0].oldV=this.fmt(o,1); this.events[0].newV=this.fmt(nv,1); this.dAct('OP',tag,nv,nv-o); }
     this.journal(dir>0?'RAISE':'LOWER',tag);
+    this.taskDone('ctl.raiselower');
   }
   motorCmd(tag,start){
     const m=this.L[tag]; if(!m||!this.can('OPER')) return;
@@ -2352,26 +2571,39 @@ class Component extends DCLogic {
       if(!m.run) return;
       m.run=false; m.cmd='STOP'; m.lock=15; this.addEvent('OPERATOR',tag,'STOP COMMAND','RUN','STOP'); this.journal('STOP',tag);
     }
+    this.taskDone('ctl.motor');
   }
   openFp(tag){
     const u=this.unitOf(tag)||this.state.unit;
     const fps=this.state.fps.filter(f=>f.pin||f.tag===tag);
     const ex=fps.find(f=>f.tag===tag);
+    this.taskDone('nav.faceplate');
     if(ex){ this.setState({fps:[...fps.filter(f=>f!==ex),ex], sel:tag, unit:u}); return; }
     const n=fps.length;
     this.setState({fps:[...fps,{tag,x:30+(n%5)*44,y:44+(n%5)*30,pin:false}], sel:tag, unit:u});
   }
+  // Logon captures a free-text operator name beside the level password (operator-based security, RESOURCES 2.3);
+  // the name goes on every journal entry, message confirm, signature and training record from then on.
   logon(){
     const pw=this.state.dlgPw.trim().toLowerCase();
     const map={oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'};
     const forInstr=!!(this.state.dlg&&this.state.dlg.instr);
+    const name=(this.state.dlgName||'').trim().toUpperCase();
     if(pw==='instr'||(forInstr&&pw==='mngr')){
       if(pw==='mngr'&&this.state.sec!=='MNGR'){ const o=this.state.sec; this.setState({sec:'MNGR'}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,'MNGR'); }
       this.instr.auth=true; this.setState({dlg:null,dlgPw:''}); this.instrLog('INSTRUCTOR STATION OPENED'); this.nav('instr'); return;
     }
-    if(!forInstr&&map[pw]){ const o=this.state.sec; this.setState({sec:map[pw],dlg:null,dlgPw:''}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,map[pw]); this.msgZone('SECURITY LEVEL: '+map[pw]); }
+    if(!forInstr&&map[pw]){
+      const o=this.state.sec, oldName=this.operName();
+      if(name&&name!==oldName) this.setState({oper:name});
+      this.setState({sec:map[pw],dlg:null,dlgPw:'',dlgName:''});
+      this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE'+(name&&name!==oldName?' — OPERATOR '+oldName+' → '+name:''),o,map[pw]);
+      this.msgZone('SECURITY LEVEL: '+map[pw]+' — '+this.operName());
+      this.taskDone('sec.logon');
+    }
     else { this.msgZone('INVALID PASSWORD'); this.setState({dlgPw:''}); }   // the instructor prompt never changes the station's security level
   }
+  signOff(){ const o=this.state.sec; this.setState({sec:'VIEW',dlg:null}); this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW'); this.taskDone('sec.signoff'); }
   onKey(e){
     if(e.key==='F1'){ e.preventDefault(); this.silence(); return; }
     if(e.key==='F2'){ e.preventDefault(); this.ackTop(); return; }
@@ -2401,11 +2633,11 @@ class Component extends DCLogic {
     // menus
     const mkItems=(arr)=>arr.map(it=>it.sep?{sep:true}:{label:it.l,cb:()=>{this.setState({menu:null});it.f();}});
     const menusDef=[
-      {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'}})},{l:'Sign Off (View Only)',f:()=>{const o=S.sec;this.setState({sec:'VIEW'});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');}},{sep:true},
+      {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'},dlgName:''})},{l:'Sign Off (View Only)',f:()=>this.signOff()},{sep:true},
         ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
-      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
-      {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()}]},
-      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
+      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
+      {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()},{sep:true},{l:'Disable / Enable Alarms for Asset… (MNGR)',f:()=>this.toggleAssetAlarms(S.almAsset)}]},
+      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
     const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
@@ -2462,14 +2694,15 @@ class Component extends DCLogic {
     const almNote=(a)=>{
       if(a.state==='SHLVD') return '  [SHELVED '+Math.max(0,Math.ceil((a.until-P.t)/60000))+' MIN LEFT — '+a.shelveReason+']';
       if(a.state==='DSUPR') return '  [SUPPRESSED BY '+a.suppressedBy+']';
-      if(a.state==='OOSRV') return '  [OUT OF SERVICE]';
+      if(a.state==='OOSRV') return a.disabledBy?'  [DISABLED — '+a.disabledBy+']':'  [OUT OF SERVICE]';
       return a.count>1?'  (×'+a.count+')':'';
     };
+    const stateT=(a)=>this.isDisabledRec(a)?'DISABLED':a.state;
     const rows=this.visAlarms().map(a=>{
       const st=almSty(a);
       const dec=this.liveDec(a), live=this.liveValueOf(a);
       const trip=a.tripValue!=null?a.tripValue:this.tripPointOf(a.tag,a.cond);
-      return {t:this.fT(a.lastT),tag:a.tag,cond:a.cond,prio:a.prio.toUpperCase()+' '+a.subprio,state:a.state,desc:a.desc+almNote(a),
+      return {t:this.fT(a.lastT),tag:a.tag,cond:a.cond,prio:a.prio.toUpperCase()+' '+a.subprio,state:stateT(a),desc:a.desc+almNote(a),
         trip:trip!=null?this.fmt(trip,dec):'',live:live!=null?this.fmt(live,dec):this.fmt(a.val,1),eu:a.eu,cnt:a.count>1?String(a.count):'',cmt:a.comment?'C':'',
         ackT:a.ack&&a.state!=='OOSRV'&&a.state!=='SHLVD'&&a.state!=='DSUPR'?'ACK':'',icon:a.prio[0],
         bg:st.bg==='transparent'?'transparent':st.bg,fg:st.fg,sel:S.selAlm===a.id?'inset 0 0 0 2px #31548F':'none',
@@ -2478,9 +2711,10 @@ class Component extends DCLogic {
     const selA=E.get(S.selAlm);
     const asset=S.almAsset||'PLANT';
     const acnt=this.assetCounts();
-    const tree=this.assetTree().map(n=>{const c=acnt[n.id]; const on=asset===n.id; return {label:n.label,pad:6+n.depth*12,glyph:n.depth===0?'▣':n.depth===1?'▸':'·',fw:n.depth<2?700:400,
+    const tree=this.assetTree().map(n=>{const c=acnt[n.id]; const on=asset===n.id; const dis=this.disabledAssets.has(n.id); return {label:n.label+(dis?' — ALARMS DISABLED':''),pad:6+n.depth*12,glyph:n.depth===0?'▣':n.depth===1?'▸':'·',fw:n.depth<2?700:400,
       active:c.active,unack:c.unack,actFg:c.active?'#A00000':'#8a867e',unFg:c.unack?'#A00000':'#8a867e',
-      bg:on?'#B8C4D4':'transparent',fg:'#000000',cb:setS({almAsset:n.id})};});
+      bg:on?'#B8C4D4':'transparent',fg:dis?'#7a1a00':'#000000',cb:setS({almAsset:n.id}),ctx:(e)=>{if(e&&e.preventDefault)e.preventDefault();this.setState({almAsset:n.id});this.toggleAssetAlarms(n.id);}};});
+    const assetDis=asset!=='PLANT'&&this.disabledAssets.has(asset);
     const views=this.builtinViews().concat(S.savedViews).map(v=>({label:v.name,note:v.builtin?'':'saved',bg:(asset===v.asset&&S.shelfView===v.view)?'#B8C4D4':'transparent',cb:()=>this.applyView(v)}));
     const TRK=30, lanes=this.trackerLanes(TRK);
     const tracker=['U1','U2','U3'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?UC:n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
@@ -2488,16 +2722,21 @@ class Component extends DCLogic {
     const helpSel=selA?this.alarmHelpFor(selA.tag,selA.cond):null;
     const av={rows,tree,views,tracker,trackerSpan:TRK,trackerNow:this.fT(P.t),
       filters:['MAIN','UNACK','SHELVED','SUPPRESSED','OOS'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
-      helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:setS({almHelp:!S.almHelp}),
+      helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:()=>{this.setState({almHelp:!S.almHelp});if(!S.almHelp)this.taskDone('alm.help');},
       help:{title:helpSel?(selA.tag+' '+selA.cond+' — '+selA.desc):'No alarm selected — click a row.',fields:helpSel?this.helpFields(helpSel):[],comment:selA&&selA.comment?selA.comment:'none'},
-      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()}],
+      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()},{label:assetDis?'ENABLE ASSET':'DISABLE ASSET',cb:()=>this.toggleAssetAlarms(asset)}],
       selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — first '+this.fT(selA.t)+(selA.count>1?', last '+this.fT(selA.lastT)+', ×'+selA.count:'')+(selA.comment?' · comment: '+selA.comment:'')+' · double-click for Point Detail'):('Location '+asset+' · '+S.shelfView+' · click a row to select; double-click for Point Detail.'),
-      countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length+' · SHOWN '+rows.length};
-    // events
-    const evF=['ALL','ALARM','OPERATOR','SYSTEM'];
-    const evR=this.events.filter(e=>S.evtFilter==='ALL'||e.type===S.evtFilter).slice(0,220).map(e=>({t:this.fD(e.t)+' '+this.fT(e.t),type:e.type,src:e.src,desc:e.desc,oldV:e.oldV,newV:e.newV,lvl:e.lvl,fg:e.type==='ALARM'?'#5a1a00':(e.type==='OPERATOR'?'#0a3a12':'#1c1c50')}));
-    const evFilters=evF.map(f=>({label:f,bg:S.evtFilter===f?'#B8C4D4':'#D4D0C8',bc:S.evtFilter===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({evtFilter:f})}));
-    const msgsR=this.msgs.slice(0,120).map(m=>({t:this.fD(m.t)+' '+this.fT(m.t),txt:m.txt}));
+      countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length+(this.disabledAssets.size?' · ASSETS DISABLED '+[...this.disabledAssets].join(', '):'')+' · SHOWN '+rows.length};
+    // events (CONFIG = management-of-change entries, RESOURCES 2.13)
+    const evF=['ALL','ALARM','OPERATOR','CONFIG','SYSTEM'];
+    const evFg={ALARM:'#5a1a00',OPERATOR:'#0a3a12',CONFIG:'#4a1a6a',SYSTEM:'#1c1c50'};
+    const evR=this.events.filter(e=>S.evtFilter==='ALL'||e.type===S.evtFilter).slice(0,220).map(e=>({t:this.fD(e.t)+' '+this.fT(e.t),type:e.type,src:e.src,desc:e.desc,oldV:e.oldV,newV:e.newV,lvl:e.lvl,who:e.who||'',fg:evFg[e.type]||'#1c1c50'}));
+    const evFilters=evF.map(f=>({label:f==='CONFIG'?'CONFIG (MOC)':f,bg:S.evtFilter===f?'#B8C4D4':'#D4D0C8',bc:S.evtFilter===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>{this.setState({evtFilter:f});this.taskDone('trn.evfilter');if(f==='CONFIG')this.taskDone('sec.moc');}}));
+    const evTitle=S.evtFilter==='CONFIG'?'CHANGE LOG (MOC) — '+this.mocCount+' configuration changes since startup':'EVENT SUMMARY';
+    // messages: rows that need a confirm carry a CONFIRM button; confirmed rows show who and when
+    const msgsR=this.msgs.slice(0,120).map(m=>({t:this.fD(m.t)+' '+this.fT(m.t),txt:m.txt,needs:!!(m.confirm&&!m.confirmed),confirmed:!!m.confirmed,
+      confT:m.confirmed?'CONFIRMED '+this.fT(m.confirmT)+' BY '+m.confirmedBy:'',bg:m.confirm&&!m.confirmed?(blink?'#F2E2B0':'#E8DCC0'):'transparent',fw:m.confirm&&!m.confirmed?'700':'400',confCb:()=>this.confirmMsg(m.id)}));
+    const pend=this.pendingMsgs().length;
     // trend
     const TGS={TG01:{title:'TG01 · REACTOR',pens:[['TIC201','pv','#C00000'],['TIC201','sp','#C00000','6,5'],['TIC202','pv','#0050C0'],['TIC202','op','#008000']]},
                TG02:{title:'TG02 · FEED / TANK',pens:[['LIC101','pv','#C00000'],['FIC102','pv','#0050C0'],['FIC102','op','#008000'],['FI100','pv','#806000']]},
@@ -2521,8 +2760,8 @@ class Component extends DCLogic {
     const gridY=[0,25,50,75,100].map(v=>({y:404-v*3.94,ty:404-v*3.94+3,label:v+'%'}));
     const gridX=[0,1,2,3,4].map(i=>{const x=44+i*251.5;return {x,tx:x-14,label:this.fT(P.t-S.span*60000+i*S.span*15000)};});
     const tv={title:tg.title,pens:mkPens(tg.pens,S.span),gridY,gridX,
-      groups:Object.keys(TGS).map(k=>({label:k,bg:S.tg===k?'#B8C4D4':'#D4D0C8',bc:S.tg===k?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({tg:k})})),
-      spans:[5,15,60].map(sp=>({label:sp+' MIN',bg:S.span===sp?'#B8C4D4':'#D4D0C8',bc:S.span===sp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({span:sp})}))};
+      groups:Object.keys(TGS).map(k=>({label:k,bg:S.tg===k?'#B8C4D4':'#D4D0C8',bc:S.tg===k?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>{this.setState({tg:k});this.taskDone('trn.group');}})),
+      spans:[5,15,60].map(sp=>({label:sp+' MIN',bg:S.span===sp?'#B8C4D4':'#D4D0C8',bc:S.span===sp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>{this.setState({span:sp});this.taskDone('trn.group');}}))};
     // detail
     const dl=L[S.detailTag]||L.FIC102;
     const isPid=dl.kind==='pid';
@@ -2536,15 +2775,15 @@ class Component extends DCLogic {
       editing:false,notEditing:true,cb:()=>this.msgZone('CONDITION DISABLED BY PHASE SET '+this.phaseSet),prioCb:()=>{},oosT:'—',oosBg:'#D4D0C8',oosCb:()=>{}}; };
     const mkAlmRow=(pt,c,note)=>{
       if(!pt.alm[c]) return mkOffRow(pt,c,note);
-      const [tp,prio,sub]=pt.alm[c]; const rec=E.get(pt.tag+'.'+c); const st=rec&&rec.state!=='NORM'?rec.state:(pt._as[c]?'ACTIVE':'NORMAL');
+      const [tp,prio,sub]=pt.alm[c]; const rec=E.get(pt.tag+'.'+c); const dis=this.isDisabledRec(rec); const st=dis?'DISABLED':(rec&&rec.state!=='NORM'?rec.state:(pt._as[c]?'ACTIVE':'NORMAL'));
       const oos=!!rec&&rec.state==='OOSRV';
-      return {cond:c,tp:this.fmt(tp,pt.dec)+' '+pt.eu,prio:prio.toUpperCase()+' '+sub,prioFg:pd(prio),state:st,stFg:stateFg[st]||'#0a3a12',note,
+      return {cond:c,tp:this.fmt(tp,pt.dec)+' '+pt.eu,prio:prio.toUpperCase()+' '+sub,prioFg:pd(prio),state:st,stFg:stateFg[st]||(dis?'#7a1a00':'#0a3a12'),note:dis?(note?note+' · ':'')+'disabled by '+rec.disabledBy+' (MNGR re-enable)':note,
         editing:eq('TP:'+c),notEditing:!eq('TP:'+c),cb:()=>this.openEntry(pt.tag,'TP:'+c),
-        prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=pt.alm[c][1];pt.alm[c][1]=order[(order.indexOf(o)+1)%4];this.addEvent('OPERATOR',pt.tag,c+' PRIORITY CHANGE',o,pt.alm[c][1]);},
+        prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=pt.alm[c][1];const nv=order[(order.indexOf(o)+1)%4];this.withSignature('ALARM PRIORITY '+pt.tag+' '+c+' '+o.toUpperCase()+' → '+nv.toUpperCase(),'ENGR',(reason)=>{if(!pt.alm[c])return;pt.alm[c][1]=nv;this.configChange(pt.tag,c+' PRIORITY CHANGE',o,nv,reason);});},
         oosT:oos?'RTS':'OOS',oosBg:oos?'#B8C4D4':'#D4D0C8',oosCb:()=>this.setOos(pt.tag,c,!oos)};
     };
     const phased=this.phaseSetTags().includes(dl.tag);
-    const almNoteTxt='Deadband '+this.fmt(this.almDeadband(dl),dl.dec)+' '+dl.eu+', on-delay '+this.almDelay(dl)+' s.'+(phased?' Phase set: '+this.phaseSet+' — limits on this point are state-based and re-applied by SCM202 at every phase change (ISA-TR18.2.6); rows marked DISABLED are off in this phase.':'');
+    const almNoteTxt=(phased?' Phase set: '+this.phaseSet+' — limits on this point are state-based and re-applied by SCM202 at every phase change (ISA-TR18.2.6); rows marked DISABLED are off in this phase.':'');
     const calloutT=this.calloutOf(dl.tag), calloutBg=calloutT?'#F6DADA':'transparent';
     const almConds=(pt)=>Object.keys(pt.alm).concat(Object.keys(pt.almOff||{}));
     const mRow=(label,param,value,canEdit,note,cb)=>({label,param,value,note:note||'',editing:canEdit&&eq(param),notEditing:!(canEdit&&eq(param)),cur:canEdit?'pointer':'default',und:canEdit?'underline dotted':'none',cb:canEdit?(cb||(()=>this.openEntry(dl.tag,param))):()=>{},rowBg:'transparent'});
@@ -2564,7 +2803,7 @@ class Component extends DCLogic {
         mRow('Overall gain','K',this.fmt(dl.K,2),true,'dimensionless · % OP per % error · '+(dl.act==='DIR'?'DIRECT':'REVERSE')+' acting'),
         mRow('Integral time','T1',this.fmt(dl.T1,2)+' MIN',true,'minutes per repeat (0 = no integral)'),
         mRow('Derivative time','T2',this.fmt(dl.T2,2)+' MIN',true,'minutes, derivative on PV (0 = none)'),
-        {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>{if(!this.can('ENGR'))return;const o=dl.act;dl.act=o==='DIR'?'REV':'DIR';this.addEvent('OPERATOR',dl.tag,'CONTROL ACTION CHANGE',o,dl.act);},rowBg:'transparent'},
+        {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>{if(!this.can('ENGR'))return;const o=dl.act;dl.act=o==='DIR'?'REV':'DIR';this.configChange(dl.tag,'CONTROL ACTION CHANGE',o,dl.act,'');},rowBg:'transparent'},
         mRow('ISA form Kc / Ti / Td','ISA',this.fmt(isa.Kc,2)+' / '+inf(isa.Ti,2,' MIN')+' / '+this.fmt(isa.Td,2)+' MIN',false,'same tuning in ISA standard form (ESS.Pid.isaForm)'),
         mRow('Parallel gains Kp / Ki / Kd','PARALLEL',this.fmt(isa.Kp,2)+' / '+this.fmt(isa.Ki,4)+' /S / '+this.fmt(isa.Kd,1)+' S',false,'independent-gain equivalent'),
         {label:'PV tracking',param:'PVTRACK',value:dl.pvtrack?'ON':'OFF',note:'in MAN the SP follows the PV so AUTO starts at zero error · click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>this.setPvTrack(dl.tag,!dl.pvtrack),rowBg:'transparent'},
@@ -2638,10 +2877,15 @@ class Component extends DCLogic {
     ]:(dl.kind==='motor'?[{d:'M210,135 H340',tx:250,ty:128,label:'FB'},{d:'M490,135 H620',tx:530,ty:128,label:'CMD'}]:[{d:'M270,135 H420',tx:320,ty:128,label:'P1 → PV'}]);
     const chartPens=isPid?mkPens([[dl.tag,'pv','#C00000'],[dl.tag,'sp','#0050C0','6,5'],[dl.tag,'op','#008000']],15):(hasH?mkPens([[dl.tag,'pv','#C00000']],15):[]);
     const spark=isPid?this.stepSparkline(dl,5):{span:'',pv:'',sp:'',op:'',note:''};
+    // alarm configuration rows (deadband / on-delay): ENGR-editable, journaled as CONFIG changes
+    const almCfg=dl.kind==='motor'?[]:[
+      mRow('Alarm deadband','ALMDB',this.fmt(this.almDeadband(dl),dl.dec)+' '+dl.eu,true,dl.almDb!=null?'engineer-set':'default 1 % of range'),
+      mRow('Alarm on-delay','ALMDELAY',this.fmt(this.almDelay(dl),0)+' S',true,dl.almDelay!=null?'engineer-set':'default by point type')
+    ];
     const dpt={tag:dl.tag,desc:dl.desc,cm:dl.cm,kindT:isPid?'REGULATORY PID POINT':(dl.kind==='motor'?'DEVICE CONTROL POINT':'DATA ACQUISITION POINT'),
       tabs:tabsDef.map(t=>({label:tabL[t],bg:tab===t?'#C6C6C6':'#BEBAB2',bb:tab===t?'1px solid #C6C6C6':'1px solid #9a968e',cb:setS({detailTab:t})})),
       isMain:tab==='main',isAlm:tab==='alarms',isTune:tab==='tuning',isChart:tab==='chart',isCm:tab==='cm',
-      mainRows,tuneRows,almRows,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
+      mainRows,tuneRows,almRows,almCfg,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
       hasBand,limitRows,band,bandMarker,bandMarkerFill,bandNote,spark,
       modes:isPid?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:dl.mode===mm?'#B8C4D4':'#D4D0C8',bc:dl.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(dl.tag,mm)})):[],
       shedNote:dl.badPv?'BAD PV — SHED ACTIVE':'', calloutOn:!!calloutT, calloutT, tuneGate:this.rank(S.sec)>=3?'ENGR ACCESS — tuning changes are logged to the Event Summary.':'READ ONLY — raise security level to ENGR to change tuning (Station menu → Security Level).',
@@ -2684,7 +2928,7 @@ class Component extends DCLogic {
     });
     function eq2(tag,p){ return S.entry&&S.entry.tag===tag&&S.entry.param===p; }
     // units / batch / assistant
-    const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({unit:u[0]})}));
+    const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setUnit(u[0])}));
     const bb=P.b, phasesL=['CHARGE','HEATUP','FEED','REACT','COOL','DRAIN'];
     const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?UT:'#000000', pt:this.mmss(bb.pt*1000),
       phBg:P.trips.batch?UC:(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
@@ -2696,7 +2940,7 @@ class Component extends DCLogic {
     const issues=this.diagnose().map(it=>({sev:it.sev,title:it.title,why:it.why,arrow:S.assistSel===it.id?'▾':'▸',open:S.assistSel===it.id,
       click:()=>this.setState({assistSel:S.assistSel===it.id?'':it.id}),
       sevBg:it.sev==='URGENT'?UC:(it.sev==='WARN'?HC:'#B8C4D4'), sevFg:it.sev==='URGENT'?UT:(it.sev==='WARN'?pt('High'):'#000000'),
-      steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go||(()=>{})}))}));
+      steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go?()=>{this.taskDone('abn.assist');st3.go();}:(()=>{})}))}));
     const qq=S.assistQ.trim().toLowerCase();
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
     const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ, qChange:(e)=>this.setState({assistQ:e.target.value}),
@@ -2704,13 +2948,25 @@ class Component extends DCLogic {
       hits, hitsNone:qq.length>2&&hits.length===0};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU'};
-    const widths={logon:460,shelve:460,comment:520,drills:560,debrief:600,help:520,philosophy:680,about:520,reset:380,sysmenu:420};
+    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
+    const widths={logon:460,shelve:460,comment:520,drills:560,debrief:620,help:520,philosophy:680,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
+    const cov=ESS.Training.coverage(this.tasksDone), covSum=ESS.Training.coverageSummary(this.tasksDone);
+    const recs=this.trainingRecords.map(r=>({t:this.fD(r.t)+' '+this.fT(r.t),oper:r.oper,drill:r.drill+' — '+r.name,score:r.score+'/100',res:r.pass?'PASS':'NOT PASSED',fg:r.pass?'#0a3a12':'#A00000',
+      detail:r.breakdown.map(b=>b.label+' '+b.earned+'/'+b.max).join(' · ')}));
+    const byOper={}; this.trainingRecords.forEach(r=>{ const o=byOper[r.oper]||(byOper[r.oper]={n:0,pass:0,sum:0}); o.n++; o.sum+=r.score; if(r.pass)o.pass++; });
+    const recOpers=Object.keys(byOper).map(k=>({oper:k,txt:byOper[k].n+' drill'+(byOper[k].n===1?'':'s')+', '+byOper[k].pass+' passed, average '+Math.round(byOper[k].sum/byOper[k].n)}));
     let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:setS({dlg:null}),
       isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
-      logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'',
+      isEsig:dgT==='esig',isRecord:dgT==='record',isCoverage:dgT==='coverage',
+      logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'Enter your name and the level password. The name goes on every journal entry, message confirmation, signature and training record.',
+      logonIsOper:!(S.dlg&&S.dlg.instr),operCur:this.operName(),name:S.dlgName,nameChange:(e)=>this.setState({dlgName:e.target.value}),
       pw:S.dlgPw,pwChange:(e)=>this.setState({dlgPw:e.target.value}),pwKey:(e)=>{if(e.key==='Enter')this.logon();},pwGo:()=>this.logon(),
-      signOff:()=>{const o=S.sec;this.setState({sec:'VIEW',dlg:null});this.addEvent('SYSTEM','STN01','SIGN OFF',o,'VIEW');},
+      signOff:()=>this.signOff(),
+      esigDesc:S.dlg&&S.dlg.desc?S.dlg.desc:'',esigNeed:S.dlg&&S.dlg.need?S.dlg.need:'',esigWho:this.operName()+' · current level '+S.sec,
+      esigKey:(e)=>{if(e.key==='Enter')this.signAction();},esigGo:()=>this.signAction(),
+      recRows:recs,recEmpty:recs.length===0,recOpers,recNote:'Last '+recs.length+' of up to 20 results kept in memory for this session. '+ESS.Training.PASS_LABEL+'.',
+      covGroups:cov.map(g=>({name:g.name,count:g.done+' / '+g.total,rows:g.rows.map(r=>({label:r.label,tick:r.done?'✓':'',fg:r.done?'#0a3a12':'#55524c',fw:r.done?'700':'400',drills:r.drills||'—',features:r.features}))})),
+      covSummary:covSum.done+' of '+covSum.total+' tasks performed this session ('+covSum.pct+' %). A tick marks a task this session has carried out; the drills column lists the scored drills that exercise it.',
       shelfTag:selA?(selA.tag+' '+selA.cond):'—',reason:S.dlgReason,reasonChange:(e)=>this.setState({dlgReason:e.target.value}),
       durs:this.shelveDurations().map(d=>({label:d+' MIN',bg:(S.dlg&&S.dlg.dur===d)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.dur===d)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,dur:d}})})),
       reasons:this.shelveReasons().map(r=>({label:r,bg:(S.dlg&&S.dlg.reasonSel===r)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.reasonSel===r)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,reasonSel:r}})})),
@@ -2719,18 +2975,18 @@ class Component extends DCLogic {
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
       randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
-      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
-      dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:''};
+      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
+      dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:''};
     if(dgT==='debrief' && S.dlg.drill){
       const d=S.dlg.drill;
-      dg.dbName=d.def.id+' — '+d.def.name; dg.dbReason='Ended: '+d.reason+'. Times relative to first alarm.';
+      dg.dbName=d.def.id+' — '+d.def.name; dg.dbReason='Ended: '+d.reason+'. Times relative to first alarm. Trainee: '+this.operName()+'.';
       dg.dbRows=this.drillRows(d);
-      if(S.debAns==null||S.dlg.scored){ }
       dg.dbAsk=!S.dlg.scored; dg.dbScored=!!S.dlg.scored;
       dg.dbQ=d.def.q;
       dg.dbOpts=d.def.opts.map((o,i)=>({label:o,bg:S.debAns===i?'#B8C4D4':'#CFCFCB',bc:S.debAns===i?'#31548F':'#B6B6B2',cb:()=>this.setState({debAns:i})}));
-      dg.dbSubmit=()=>{ if(S.debAns<0){this.msgZone('SELECT AN ANSWER');return;} const sc=this.scoreDrill(d,S.debAns); this.setState({dlg:{...S.dlg,scored:true,score:sc}}); this.addEvent('SYSTEM','STN01','DRILL '+d.def.id+' SCORE '+sc+'/100','',''); };
-      if(S.dlg.scored){ dg.dbScore=S.dlg.score; dg.dbGrade=S.dlg.score>=85?'PROFICIENT':S.dlg.score>=65?'COMPETENT':'NEEDS PRACTICE'; }
+      dg.dbSubmit=()=>{ if(S.debAns<0){this.msgZone('SELECT AN ANSWER');return;} this.submitDebrief(d,S.debAns); };
+      if(S.dlg.scored){ const r=S.dlg.result; dg.dbScore=r.score; dg.dbGrade=r.pass?'PASS':'NOT PASSED'; dg.dbGradeFg=r.pass?'#0a3a12':'#A00000';
+        dg.dbBreak=r.breakdown.map(b=>({label:b.label,pts:b.earned+' / '+b.max,note:b.note,fg:b.earned>=b.max?'#0a3a12':b.earned>0?'#7a4a00':'#A00000'})); dg.dbOper=this.operName(); }
     }
     const kpi=this.kpiView(setS);
     const drill=S.drill;
@@ -2744,6 +3000,8 @@ class Component extends DCLogic {
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
       cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
+      cMsg:pend, msgOn:pend>0, msgBg:pend>0&&blink?'#7a1a00':'transparent', msgFg:pend>0&&blink?'#FFFFFF':'#7a1a00', msgGo:()=>this.nav('msgs'),
+      disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
       isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isInstr:disp==='instr'&&instr.on, instr,
       gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
       utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
@@ -2755,7 +3013,8 @@ class Component extends DCLogic {
       rootUp:()=>{ if(S.drag) this.setState({drag:null}); },
       sysPanels:[
         {title:'SERVER A',led:'#00A000',rows:[{k:'Status',v:'OK — BACKUP SYNCED'},{k:'Database',v:'LOADED'},{k:'History',v:'COLLECTING (0.5 S FAST)'}]},
-        {title:'STATION STN01',led:'#00A000',rows:[{k:'Type',v:'CONSOLE (SIM)'},{k:'Security level',v:S.sec},{k:'Asset profile',v:'UNIT 01'}]},
+        {title:'STATION STN01',led:'#00A000',rows:[{k:'Type',v:'CONSOLE (SIM)'},{k:'Operator',v:this.operName()},{k:'Security level',v:S.sec},{k:'Asset profile',v:'UNIT 01'},{k:'Messages to confirm',v:String(pend)}]},
+        {title:'ALARM SYSTEM',led:this.disabledAssets.size?'#C08000':'#00A000',rows:[{k:'Alarms disabled',v:this.disabledAssets.size?[...this.disabledAssets].join(', ')+' ('+E.list().filter(r=>this.isDisabledRec(r)).length+' conditions)':'NONE'},{k:'Out of service',v:String(E.oos().length)},{k:'Config changes',v:this.mocCount+' SINCE STARTUP (MOC)'},{k:'Drill results kept',v:String(this.trainingRecords.length)}]},
         {title:'CONTROLLER C300-SIM',led:'#00A000',rows:[{k:'CEE base cycle',v:'50 mS (EMULATED)'},{k:'CM period',v:'500 mS'},{k:'Redundancy',v:'PRIMARY / SYNCED'}]},
         {title:'NETWORK FTE',led:'#00A000',rows:[{k:'FTE A',v:'OK'},{k:'FTE B',v:'OK'},{k:'Time source',v:'STATION CLOCK'}]},
         {title:'SIMULATION ENGINE',led:'#31548F',rows:simRows},

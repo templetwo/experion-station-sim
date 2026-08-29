@@ -135,6 +135,10 @@ test('out of service: ENGR gate, never annunciates, return to service re-annunci
   assert.equal(c.isOos('TIC201', 'PVHI'), false, 'OPER cannot take a condition out of service');
   c.setState({ sec: 'ENGR' });
   c.setOos('TIC201', 'PVHI', true);
+  assert.equal(c.isOos('TIC201', 'PVHI'), false, 'OOS waits for the electronic signature (B6)');
+  assert.equal(c.state.dlg.type, 'esig');
+  c.setState({ dlgPw: 'engr', dlgReason: 'transmitter calibration' });
+  assert.equal(c.signAction(), true);
   assert.equal(c.isOos('TIC201', 'PVHI'), true);
   c.L.TIC201.sp = 165;                                      // keep DEVHI out of this test
   hold(c, () => { c.L.TIC201.pv = 172; }, 2);

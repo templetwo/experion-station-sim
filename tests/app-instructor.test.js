@@ -549,5 +549,6 @@ test('with HIDDEN UPSETS on, arming a drill leaves no trace in the trainee Messa
   const d = boot('MNGR');
   run(d, 5);
   d.startDrill(d.drillDefs()[3]);
-  assert.equal(d.msgs[0].txt, 'INSTRUCTOR: drill D4 armed', 'not hidden: the trainee is told');
+  assert.match(d.msgs[0].txt, /^INSTRUCTOR: drill D4 armed/, 'not hidden: the trainee is told');
+  assert.equal(d.msgs[0].confirm, true, 'the instructor message asks for a confirm (B6)');
 });
