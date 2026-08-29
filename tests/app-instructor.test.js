@@ -552,3 +552,136 @@ test('with HIDDEN UPSETS on, arming a drill leaves no trace in the trainee Messa
   assert.match(d.msgs[0].txt, /^INSTRUCTOR: drill D4 armed/, 'not hidden: the trainee is told');
   assert.equal(d.msgs[0].confirm, true, 'the instructor message asks for a confirm (B6)');
 });
+
+// ---- residual verifier findings (B5 round 3) ----
+test('action journal is complete: one of every operator, engineer, manager and instructor action replays to identical trajectories, alarm and event counts', () => {
+  const c = boot('MNGR');
+  c.instr.auth = true;
+  run(c, 30);
+  c.saveSlot(3, 'complete');
+  const t0 = c.P.t;
+  const sign = (pw, why) => { assert.equal(c.state.dlg && c.state.dlg.type, 'esig', 'signature requested'); c.setState({ dlgPw: pw, dlgReason: why }); assert.ok(c.signAction()); };
+  run(c, 5);  c.setUpset('cool', true); c.setVariable('feedConc', 1.1); c.setMagnitude('coolLoss', 0.8);        // instructor
+  run(c, 5);  c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 55); c.raiseLower('TIC202', 1);          // operator control
+  run(c, 5);  c.setCtlAction('TIC202', c.L.TIC202.act === 'DIR' ? 'REV' : 'DIR');                                                                 // control action
+  run(c, 5);  c.setPvTrack('LIC401', true);                                                                      // PV tracking
+  run(c, 5);  c.setOos('TIC201', 'PVHI', true); sign('engr', 'oos');                                            // OOS (signed)
+  run(c, 5);  c.setOos('TIC201', 'PVHI', false);                                                                // RTS
+  run(c, 5);  c.setPriority('TIC201', 'DEVHI', 'Urgent'); sign('engr', 'prio');                                 // priority (signed)
+  run(c, 5);  c.storeEntry('TIC201', 'K', 3); sign('engr', 'tune');                                             // tuning (signed)
+  run(c, 5);  c.storeEntry('TIC201', 'ALMDB', 2); c.storeEntry('TIC201', 'ALMDELAY', 5);                       // deadband / on-delay
+  run(c, 5);  c.storeEntry('TIC201', 'SPHILM', 175); c.storeEntry('TIC201', 'TP:PVHI', 168); sign('engr', 'tp'); // limits, trip point (signed)
+  run(c, 5);  c.toggleAssetAlarms('TK-101'); sign('mngr', 'dis');                                               // asset disable (signed)
+  run(c, 5);  c.toggleAssetAlarms('TK-101'); sign('mngr', 'ena');                                               // asset enable (signed)
+  run(c, 60);
+  const alm = c.alarms.find((a) => a.active); assert.ok(alm, 'the cooling loss raised an alarm');
+  c.silence(); c.ackAlarm(alm); c.setState({ selAlm: alm.key });
+  c.commentAlarmKey(alm.key, 'seen by the trainee');                                                            // comment
+  c.shelveAlarm(alm.key, 5, 'KNOWN PROCESS UPSET');                                                             // shelve
+  run(c, 20); c.unshelveAlarm(alm.key);                                                                          // unshelve
+  run(c, 5);  c.startDrill(c.drillDefs().find((d) => d.id === 'D1'));                                           // drill start
+  const pm = c.pendingMsgs()[0]; assert.ok(pm, 'the drill armed message awaits a confirm');
+  run(c, 5);  c.confirmMsg(pm.id);                                                                              // message confirm
+  run(c, 30); c.endDrill('ENDED BY INSTRUCTOR'); c.setState({ dlg: null });                                     // drill end
+  run(c, 60);
+  const t1 = c.P.t;
+  const ops = new Set(c.instr.journal.filter((e) => e.t > t0).map((e) => e.op));
+  const missing = ['UPSET', 'VAR', 'MAG', 'MODE', 'STORE', 'RAISE', 'CTLACTN', 'PVTRACK', 'OOS', 'PRIO', 'ASSET', 'SIL', 'ACK', 'COMMENT', 'SHELVE', 'UNSHELVE', 'DRILL', 'CONFIRM', 'DRILLEND'].filter((op) => !ops.has(op));
+  assert.deepEqual(missing, [], 'every action journaled');
+  for (const op of ['UPSET', 'VAR', 'MAG', 'MODE', 'STORE', 'RAISE', 'CTLACTN', 'PVTRACK', 'OOS', 'PRIO', 'ASSET', 'SIL', 'ACK', 'COMMENT', 'SHELVE', 'UNSHELVE', 'DRILL', 'CONFIRM', 'DRILLEND'])
+    assert.ok(ops.has(op), 'journaled: ' + op);
+  for (const e of c.instr.journal) assert.match(Instr.journalText(e, (t) => String(t)), /\S/, 'journal text readable');
+  const traj = (tag) => c.hist[tag].filter((r) => r[0] > t0).map((r) => r.slice());
+  const tags = ['TIC201', 'TIC202', 'LIC101', 'LIC401', 'FIC102'];
+  const orig = {}; for (const t of tags) orig[t] = traj(t);
+  // event counts by type after the snapshot; E-SIGNATURE lines are excluded because a replay applies a signed action
+  // directly (the signature was given when it was recorded) and the signed CONFIG entry carries the name and reason;
+  // the REPLAY COMPLETE bookkeeping line the replay itself writes is excluded too
+  const evCounts = () => { const m = {}; for (const e of c.events) if (e.t > t0 && !/^E-SIGNATURE|^REPLAY /.test(e.desc)) m[e.type] = (m[e.type] || 0) + 1; return m; };
+  const almCount = () => c.alarmLog.filter((a) => a.t > t0).length;
+  const cfg = () => ({ act: c.L.TIC202.act, pvt: c.L.LIC401.pvtrack, oos: c.isOos('TIC201', 'PVHI'), prio: c.L.TIC201.alm.DEVHI[1], K: c.L.TIC201.K, db: c.L.TIC201.almDb, dl: c.L.TIC201.almDelay, sphilm: c.L.TIC201.sphilm, tp: c.L.TIC201.alm.PVHI[0], dis: [...c.disabledAssets], cmt: c.alarmEngine.get(alm.key).comment, conf: c.msgs.filter((m) => m.confirmed).length });
+  const origEv = evCounts(), origAlm = almCount(), origCfg = cfg(), origAlarms = c.alarms.map((x) => x.key + ':' + x.state).sort();
+  assert.ok(origAlm > 0 && origCfg.conf === 1 && origCfg.cmt === 'seen by the trainee');
+  c.startReplay(3);
+  assert.equal(c.P.t, t0);
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null); assert.equal(c.P.t, t1);
+  for (const t of tags) assert.deepEqual(traj(t), orig[t], t + ' trajectory identical after replay');
+  assert.deepEqual(evCounts(), origEv, 'event counts by type identical');
+  assert.equal(almCount(), origAlm, 'alarm log count identical');
+  assert.deepEqual(cfg(), origCfg, 'every configuration and alarm-state change reproduced');
+  assert.deepEqual(c.alarms.map((x) => x.key + ':' + x.state).sort(), origAlarms);
+});
+
+test('with HIDDEN UPSETS on, ending a drill leaves no instructor text in the Message Summary, events or System Status', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 10);
+  c.setHidden(true);
+  c.startDrill(c.drillDefs().find((d) => d.id === 'D9'));   // D9 has a setup event too
+  run(c, 60);
+  c.instr.auth = false;
+  c.endDrill('ENDED BY INSTRUCTOR');
+  c.setState({ display: 'msgs' });
+  const leak = /INSTRUCTOR:|drill D9|D9 (armed|ended)|DRILL D9|DRILL SETUP/i;   // the menus and coverage matrix name the feature by design; the debrief names the scenario by design
+  const vis = strings(c.renderVals(), ['instr', 'dg', 'menus']).join(' | ');
+  assert.ok(!leak.test(vis), vis.match(/.{0,40}(INSTRUCTOR:|drill D9|D9 (armed|ended)|DRILL D9|DRILL SETUP).{0,40}/i));
+  assert.ok(!c.msgs.some((m) => /drill|instructor/i.test(m.txt)), 'no message');
+  assert.ok(!c.events.some((e) => /drill|instr/i.test(e.desc + e.src)), 'no event names the drill');
+  for (const display of ['events', 'sys']) { c.setState({ display, assist: true }); const s = strings(c.renderVals(), ['instr', 'dg', 'menus']).join(' | '); assert.ok(!leak.test(s), display + ': ' + s.match(/.{0,40}(INSTRUCTOR:|drill D9|DRILL D9|DRILL SETUP).{0,40}/i)); }
+  assert.ok(c.instr.log.some((l) => /DRILL D9 ENDED/.test(l.txt)), 'the instructor log keeps it');
+  const d = boot('OPER'); run(d, 10); d.startDrill(d.drillDefs()[0]); run(d, 5); d.endDrill('ENDED BY INSTRUCTOR');
+  assert.match(d.msgs[0].txt, /^INSTRUCTOR: drill D1 ended/); assert.equal(d.msgs[0].confirm, true);
+});
+
+test('the fouling-rate variable acts on its own as a slow baseline that the fouling upset accelerates', () => {
+  const c = boot();
+  c.setVariable('foulRate', 3);
+  run(c, 1800);
+  assert.ok(c.P.foulF < 0.98 && c.P.foulF > 0.9, 'baseline fouling at x3 after 30 min: ' + c.P.foulF);
+  assert.ok(Math.abs(c.P.foulF - c.P.foulBase) < 1e-9, 'without the upset the factor sits on the baseline');
+  const base = c.P.foulF;
+  c.setUpset('foul', true); run(c, 300);
+  assert.ok(c.P.foulF < base - 0.3, 'the upset runs on top: ' + c.P.foulF);
+  c.setUpset('foul', false); run(c, 600);
+  assert.ok(Math.abs(c.P.foulF - c.P.foulBase) < 1e-6 && c.P.foulBase < base, 'recovers to the (still declining) baseline, never above it');
+  const d = boot(); run(d, 1800);
+  assert.ok(d.P.foulF > 0.985, 'design rate: about 1 % in 30 min: ' + d.P.foulF);
+  assert.match(Instr.variableDefs().find((v) => v.k === 'foulRate').label, /baseline/i, 'the panel says what it does');
+});
+
+test('D11 armed from an IDLE Unit 02 reaches its first alarm and a debrief (the 12-minute limit counts from the injection)', () => {
+  const c = boot('OPER');
+  c.startDrill(c.drillDefs().find((d) => d.id === 'D11'));
+  let g = 0, tInj = 0;
+  while (c.state.drill && g++ < 8000) { c.step(0.5); if (c.state.drill && c.state.drill.injected && !tInj) tInj = c.state.drill.tInj; }
+  const dd = c.state.dlg && c.state.dlg.type === 'debrief' && c.state.dlg.drill;
+  assert.ok(dd, 'a debrief opened');
+  assert.ok(tInj > dd.t0 + 600000, 'injected well after arming: ' + ((tInj - dd.t0) / 60000).toFixed(1) + ' min');
+  assert.ok(dd.m.tAlarm && dd.m.tAlarm >= tInj, 'first alarm after the injection');
+  assert.ok(dd.tEnd - tInj >= 720000 - 1000, 'the limit ran from the injection');
+  assert.deepEqual(Object.keys(c.drillFromData(c.drillData() || { id: 'D11', t0: 1, ti: 1 })).sort(), ['def', 'injected', 'm', 'stableFor', 't0', 'tInj', 'ti']);
+  // ungated drills keep counting from arming
+  const d = boot('OPER'); d.startDrill(d.drillDefs()[0]); g = 0; while (d.state.drill && g++ < 3000) d.step(0.5);
+  const e = d.state.dlg && d.state.dlg.drill; assert.ok(e && e.tEnd - e.t0 <= 720000 + 1000);
+});
+
+test('R-310 stays finite for 60 sim-minutes at every slider extreme on the high-load condition', () => {
+  const vDef = Instr.variableDefs().find((d) => d.k === 'catAct');
+  const uDef = Instr.upsetDefs().find((d) => d.k === 'bedact').mag;
+  for (const k of [{ cat: vDef.max, mag: uDef.max }, { cat: vDef.min, mag: uDef.max }, { cat: vDef.max, mag: uDef.min }]) {
+    const c = boot('MNGR');
+    c.applyPreset('U3_HILOAD');
+    c.storeEntry('FIC310', 'SP', c.L.FIC310.sphilm); c.storeEntry('TIC311', 'SP', c.L.TIC311.sphilm);
+    c.setVariable('catAct', k.cat); c.setMagnitude('bedact', k.mag); c.setUpset('bedact', true);
+    let peak = 0;
+    for (let i = 0; i < 7200; i++) {
+      c.step(0.5);
+      for (const f of ['bed', 'ts1', 'ts2', 'o2', 'Tin']) if (c.P.h[f] !== undefined) assert.ok(Number.isFinite(c.P.h[f]), f + ' non-finite at ' + i / 2 + ' s ' + JSON.stringify(k));
+      peak = Math.max(peak, c.P.h.bed);
+    }
+    assert.ok(peak < 800, 'peak ' + peak + ' ' + JSON.stringify(k));
+    for (const t of Object.keys(c.L)) assert.ok(Number.isFinite(c.L[t].pv), t + ' finite');
+    assert.ok(c.snapshotData('ok'));
+  }
+});

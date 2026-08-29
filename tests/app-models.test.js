@@ -426,3 +426,52 @@ test('PROGRAM write-rejection callouts clear after ten UI ticks while the simula
   assert.equal(c.renderVals().fps[0].calloutOn, false, 'cleared after 5 s of wall clock');
   assert.equal(c.renderVals().fps[0].frameBc !== '#CC0000', true);
 });
+
+// ---- residual verifier findings (B4 round 3) ----
+test('endDrill clears every drill fault including the stick heat load; R-201 returns to its baseline after a D6 debrief', () => {
+  const c = boot(3, 'OPER');
+  run(c, 60);
+  c.startDrill(c.drillDefs().find((d) => d.id === 'D6'));
+  run(c, 1500, () => c.state.drill && !!c.state.drill.m.tAlarm);
+  const a = c.alarms.find((x) => !x.ack); if (a) c.ackAlarm(a);
+  c.setMode('TIC202', 'MAN');
+  run(c, 1500, () => !c.state.drill);
+  assert.ok(!c.state.drill && c.state.dlg && c.state.dlg.type === 'debrief', 'D6 reached its debrief');
+  assert.equal(c.P.faults.stick, false, 'stick cleared by endDrill');
+  assert.equal(c.V.TV202.stuck, false);
+  assert.equal(c.P.faultT.stick, undefined, 'faultT dropped with the fault');
+  c.setMode('TIC202', 'CAS');
+  run(c, 1200);
+  assert.ok(c.P.rT < 158, 'R-201 back near 150 C without the 1.15x load: ' + c.P.rT.toFixed(1));
+  assert.ok(c.L.TIC202.op < 95, 'TIC202 not saturated: ' + c.L.TIC202.op.toFixed(1));
+  assert.ok(!c.alarms.some((x) => x.active && x.tag === 'TIC201'), 'no standing TIC201 alarm');
+  // audit: every fault a drill definition can inject is on the clear list
+  for (const d of c.drillDefs()) {
+    const k = boot(1, 'OPER'); run(k, 10);
+    k.injectFault(d.fault, true);
+    k.setState({ drill: { def: d, t0: k.P.t, ti: k.P.t, injected: true, m: {}, stableFor: 0 } });
+    k.endDrill('ENDED BY INSTRUCTOR');
+    assert.equal(!!k.P.faults[d.fault], false, d.id + ' leaves ' + d.fault + ' set');
+    assert.equal(k.V.TV202.stuck, false);
+  }
+  assert.ok(c.drillFaults().includes('stick'));
+});
+
+test('the U3 graphic shows the burners out and a tube-skin banner during a skin trip, like the bed trip; the AI316 leader reaches the stack', () => {
+  const c = boot(1, 'OPER');
+  run(c, 60);
+  c.setMode('TIC311', 'MAN'); c.storeEntry('TIC311', 'OP', 100);
+  assert.ok(run(c, 2000, () => c.P.trips.skin), 'skin trip reached');
+  run(c, 12);
+  assert.ok(c.V.FV311.pos < 0.05, 'fuel valve closed');
+  c.setState({ unit: 'U3', display: 'graphic', tk: 1 });
+  const g = c.renderVals().gfx3;
+  assert.ok(g.flameOp <= 0.1, 'flames off: ' + g.flameOp);
+  assert.ok(g.tripOp > 0, 'banner visible');
+  assert.match(g.tripT, /TUBE SKIN OVERTEMP/);
+  const fs = require('fs'); const path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8');
+  assert.match(html, /\{\{ gfx3\.tripT \}\}/, 'banner text is bound');
+  assert.ok(!/M428,193 H436"/.test(html), 'the 8 px stub is gone');
+  assert.match(html, /M428,193 H457 V222/, 'leader routed to the stack riser');
+});

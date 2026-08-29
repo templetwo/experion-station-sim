@@ -155,6 +155,13 @@
       case 'SEED': body = 'INSTR SEED ' + e.arg; break;
       case 'DRILL': body = 'INSTR DRILL ' + e.tag + ' ARMED'; break;
       case 'DRILLEND': body = 'INSTR DRILL ' + e.tag + ' ENDED'; break;
+      case 'CTLACTN': body = e.tag + ' CONTROL ACTION ' + e.arg; break;
+      case 'PVTRACK': body = e.tag + ' PV TRACKING ' + e.arg; break;
+      case 'OOS': body = e.tag + ' ' + e.cond + (e.arg === 'ON' ? ' OUT OF SERVICE' : ' RETURN TO SERVICE'); break;
+      case 'PRIO': body = e.tag + ' ' + e.cond + ' PRIORITY ' + String(e.arg).toUpperCase(); break;
+      case 'COMMENT': body = 'COMMENT ' + e.arg + ': ' + e.text; break;
+      case 'CONFIRM': body = 'CONFIRM MESSAGE ' + e.tag + ': ' + e.arg; break;
+      case 'ASSET': body = 'ALARMS ' + (e.arg === 'ON' ? 'DISABLED' : 'RE-ENABLED') + ' FOR ASSET ' + e.tag; break;
       default: body = e.op + (e.tag ? ' ' + e.tag : '') + (e.arg != null ? ' ' + e.arg : '');
     }
     return tt + '  ' + body;
@@ -200,7 +207,7 @@
       { k: 'feedConc', label: 'Feed concentration', path: 'env.feedConc', min: 0.7, max: 1.3, step: 0.01, def: 1, eu: '× design', dec: 2 },
       { k: 'cwT', label: 'Cooling water supply', path: 'Tcw', min: 4, max: 20, step: 0.5, def: 8, eu: 'DEG C', dec: 1 },
       { k: 'Tamb', label: 'Ambient temperature', path: 'env.Tamb', min: -10, max: 45, step: 1, def: 25, eu: 'DEG C', dec: 0 },
-      { k: 'foulRate', label: 'E-301 fouling rate', path: 'env.foulRate', min: 0.5, max: 3, step: 0.1, def: 1, eu: '× base', dec: 1 },
+      { k: 'foulRate', label: 'E-301 fouling rate (baseline 2 %/h × this; the fouling upset runs on top)', path: 'env.foulRate', min: 0.5, max: 3, step: 0.1, def: 1, eu: '× base', dec: 1 },
       { k: 'catAct', label: 'R-310 catalyst activity', path: 'env.catAct', min: 0.7, max: 1.3, step: 0.01, def: 1, eu: '× design', dec: 2 },
       { k: 'monoPurity', label: 'Monomer purity', path: 'env.monoPurity', min: 0.8, max: 1, step: 0.01, def: 1, eu: 'fraction', dec: 2 }
     ];

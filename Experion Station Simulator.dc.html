@@ -301,7 +301,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <rect x="440" y="236" width="34" height="64" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
   <path d="M457,236 V222" style="stroke:#4a4a4a;stroke-width:2;fill:none"></path>
   <text x="440" y="214" style="font:700 10px Tahoma;fill:#4a4a4a">FLUE GAS</text>
-  <path d="M428,193 H436" style="stroke:#55524c;stroke-width:1.5;fill:none"></path>
+  <path d="M428,193 H457 V222" style="stroke:#55524c;stroke-width:1;fill:none;stroke-dasharray:3,3"></path>
   <path d="M168,493 H236 V340 H280" style="stroke:#55524c;stroke-width:1;fill:none;stroke-dasharray:3,3"></path>
   <path d="M168,553 H248 V410 H280" style="stroke:#55524c;stroke-width:1;fill:none;stroke-dasharray:3,3"></path>
   <path d="M370,640 V586" style="stroke:#8a6a3a;stroke-width:2.5;fill:none"></path>
@@ -322,7 +322,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <path d="M720,610 V656 H920" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
   <polygon points="914,651 924,656 914,661" fill="#4a4a4a"></polygon>
   <text x="866" y="648" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT</text>
-  <text x="600" y="282" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx3.tripOp }}">▲ FUEL TRIP — BED OVERTEMP</text>
+  <text x="600" y="282" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx3.tripOp }}">{{ gfx3.tripT }}</text>
   <sc-for list="{{ vl3 }}" as="v" hint-placeholder-count="3">
     <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
       <polygon points="-16,-11 -16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
@@ -1441,7 +1441,12 @@ class Component extends DCLogic {
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
   // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------
   // opts.confirm marks a message the operator must confirm; the status bar counts unconfirmed messages and blinks MSG.
-  postMsg(txt,opts){ this.msgs.unshift(ESS.Training.message(this.P?this.P.t:Date.now(),txt,opts||{})); if(this.msgs.length>400) this.msgs.length=400; return this.msgs[0]; }
+  postMsg(txt,opts){
+    this.msgs.unshift(ESS.Training.message(this.P?this.P.t:Date.now(),txt,opts||{}));
+    // cap 400, but a message awaiting its confirm is never dropped: the oldest non-pending ones go first
+    for(let i=this.msgs.length-1;i>=0&&this.msgs.length>400;i--){ const m=this.msgs[i]; if(!(m.confirm&&!m.confirmed)) this.msgs.splice(i,1); }
+    return this.msgs[0];
+  }
   pendingMsgs(){ return ESS.Training.pending(this.msgs); }
   confirmMsg(id){
     const m=this.msgs.find(x=>x.id===id); if(!m||!m.confirm){ this.msgZone('MESSAGE DOES NOT REQUIRE CONFIRMATION'); return false; }
@@ -1449,6 +1454,7 @@ class Component extends DCLogic {
     if(!this.can('OPER')) return false;
     m.confirmed=true; m.confirmedBy=this.operName(); m.confirmT=this.P.t;
     this.addEvent('OPERATOR',m.src,'MESSAGE CONFIRMED — '+m.txt,'',m.confirmedBy);
+    this.journal('CONFIRM',m.src,m.txt);   // by text: message ids are fresh after a restore, the text is not
     this.taskDone('msg.confirm');
     if(m.src==='SCM202') this.taskDone('bat.confirm');
     return true;
@@ -1458,20 +1464,25 @@ class Component extends DCLogic {
   // ---------- electronic signature (RESOURCES 2.12): password + reason before a critical action, journaled with name, level, reason ----------
   // One reusable flow: withSignature(desc, needLevel, fn) opens the dialog; signAction() verifies and runs fn(reason).
   // A replayed journal entry already carried its signature, so the replay applies fn directly.
-  withSignature(desc,need,fn){
+  // opts.instr: the request comes from the instructor station (instructorAllowed()), so the station's security level is
+  // not pre-checked and the instructor password signs at manager rank. One signature at a time: a second request while
+  // one is pending is refused with a message (nothing is silently replaced).
+  withSignature(desc,need,fn,opts){
     if(this._replayApplying){ fn('REPLAY'); return; }
-    if(!this.can(need)) return;
-    const cur=this.state.dlg, prev=(cur&&cur.type!=='esig')?cur:null;   // restored by cancelSignature()
-    this.setState({dlg:{type:'esig',desc,need,fn,prev},dlgPw:'',dlgReason:'',menu:null});
+    const o=opts||{};
+    if(this.state.dlg&&this.state.dlg.type==='esig'){ this.msgZone('SIGNATURE PENDING — SIGN OR CANCEL '+this.state.dlg.desc+' FIRST'); return; }
+    if(!(o.instr&&this.instructorAllowed())&&!this.can(need)) return;
+    const cur=this.state.dlg, prev=cur||null;   // restored by cancelSignature()
+    this.setState({dlg:{type:'esig',desc,need,fn,prev,instr:!!o.instr},dlgPw:'',dlgReason:'',menu:null});
   }
   cancelSignature(){ const d=this.state.dlg; this.setState({dlg:(d&&d.type==='esig'&&d.prev)?d.prev:null,dlgPw:'',dlgReason:''}); }
   signAction(){
     const d=this.state.dlg; if(!d||d.type!=='esig') return false;
     const pw=(this.state.dlgPw||'').trim().toLowerCase(), reason=(this.state.dlgReason||'').trim();
-    const lvl={oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'}[pw];
+    const lvl=(d.instr&&pw==='instr')?'MNGR':{oper:'OPER',supv:'SUPV',engr:'ENGR',mngr:'MNGR'}[pw];
     if(!lvl||this.rank(lvl)<this.rank(d.need)){ this.addEvent('OPERATOR','STN01','SIGNATURE REFUSED — '+d.desc,'',lvl?'LEVEL '+lvl+' BELOW '+d.need:'INVALID PASSWORD'); this.msgZone('SIGNATURE REFUSED — '+(lvl?'PASSWORD BELOW '+d.need:'INVALID PASSWORD')); this.setState({dlgPw:''}); return false; }
     if(!reason){ this.msgZone('SIGNATURE REASON REQUIRED'); return false; }
-    this.addEvent('OPERATOR','STN01','E-SIGNATURE — '+d.desc+' — '+reason,'',this.operName()+' ('+lvl+')');
+    this.addEvent('OPERATOR','STN01','E-SIGNATURE — '+d.desc+' — '+reason,'',this.operName()+' ('+((d.instr&&pw==='instr')?'INSTRUCTOR':lvl)+')');
     this.taskDone('sec.esig');
     this.setState({dlg:null,dlgPw:'',dlgReason:''});
     d.fn(reason);
@@ -1508,6 +1519,7 @@ class Component extends DCLogic {
       this.configChange(id,'ALARMS RE-ENABLED FOR ASSET',(this.disabledAssets.size+1)+' DISABLED',this.disabledAssets.size+' DISABLED',reason);
       this.postMsg('ALARMS RE-ENABLED FOR '+id+' BY '+this.operName());
     }
+    this.journal('ASSET',id,on?'ON':'OFF',{reason});
     this.taskDone('abn.disable');
     return true;
   }
@@ -1592,7 +1604,24 @@ class Component extends DCLogic {
     if(!!l.pvtrack===!!on) return;
     l.pvtrack=!!on;
     this.configChange(tag,'PV TRACKING CHANGE',on?'OFF':'ON',on?'ON':'OFF','');
+    this.journal('PVTRACK',tag,on?'ON':'OFF');
     this.taskDone('ctl.pvtrack');
+  }
+  // Loop Tune > Control action (ENGR): DIR / REV, a CONFIG entry and a journal line so a replay reproduces it.
+  setCtlAction(tag,act){
+    const l=this.L[tag]; if(!l||l.kind!=='pid') return;
+    if(!this.can('ENGR')) return;
+    act=act==='DIR'?'DIR':'REV'; if(l.act===act) return;
+    const o=l.act; l.act=act;
+    this.configChange(tag,'CONTROL ACTION CHANGE',o,act,'');
+    this.journal('CTLACTN',tag,act);
+  }
+  // Point Detail > Alarms priority cycle (ENGR, signed): Journal -> Low -> High -> Urgent -> Journal.
+  setPriority(tag,cond,nv){
+    const l=this.L[tag]; if(!l||!l.alm[cond]) return;
+    if(!this.can('ENGR')) return;
+    const o=l.alm[cond][1]; if(o===nv) return;
+    this.withSignature('ALARM PRIORITY '+tag+' '+cond+' '+o.toUpperCase()+' → '+nv.toUpperCase(),'ENGR',(reason)=>{ if(!l.alm[cond]) return; l.alm[cond][1]=nv; this.configChange(tag,cond+' PRIORITY CHANGE',o,nv,reason); this.journal('PRIO',tag,nv,{cond}); });
   }
 
   // ---------- alarm engine wrappers (ISA-18.2 per alerta isa_18_2.py, RESOURCES 2.5) ----------
@@ -1666,8 +1695,9 @@ class Component extends DCLogic {
     if(!this.can('OPER')) return;
     this.setState({dlg:{type:'comment'},dlgReason:a.comment||''});
   }
-  commentAlarm(text){
-    const a=this.alarmEngine.get(this.state.selAlm); if(!a){ this.msgZone('NO ALARM SELECTED'); return; }
+  commentAlarm(text){ return this.commentAlarmKey(this.state.selAlm,text); }
+  commentAlarmKey(key,text){
+    const a=this.alarmEngine.get(key); if(!a){ this.msgZone('NO ALARM SELECTED'); return; }
     if(!this.can('OPER')) return;
     text=(text==null?'':String(text)).trim();
     if(!text){ this.msgZone('COMMENT TEXT REQUIRED'); return; }
@@ -1675,6 +1705,7 @@ class Component extends DCLogic {
     this.alarmEngine.comment(a,text);
     this.addEvent('OPERATOR',a.tag,a.cond+' COMMENT: '+text,old,text);
     this.postMsg('ALARM COMMENT '+a.tag+' '+a.cond+': '+text);
+    this.journal('COMMENT',a.tag,a.key,{text});
     this.taskDone('alm.comment');
     this.setState({dlg:null,dlgReason:''});
   }
@@ -1750,11 +1781,12 @@ class Component extends DCLogic {
     if(!this.can('ENGR')) return;
     const l=this.L[tag]; if(!l||!l.alm[cond]) return;
     const key=tag+'.'+cond;
-    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE',  'IN SERVICE','OUT OF SERVICE',reason); this.taskDone('alm.oos'); }); return; }
+    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE','IN SERVICE','OUT OF SERVICE',reason); this.journal('OOS',tag,'ON',{cond}); this.taskDone('alm.oos'); }); return; }
     const r=this.alarmEngine.get(key); if(r&&r.disabledBy){ this.msgZone('CONDITION DISABLED BY '+r.disabledBy+' — RE-ENABLE THE ASSET'); return; }
     const evs=this.alarmEngine.rts(key,this.P.t); if(!evs.length) return;
     this.logAlarmEvents(evs);
     this.configChange(tag,cond+' SERVICE STATE','OUT OF SERVICE','IN SERVICE','');
+    this.journal('OOS',tag,'OFF',{cond});
     this.taskDone('alm.oos');
   }
   hornNew(){ this.setState({silenced:false}); }
@@ -2078,7 +2110,7 @@ class Component extends DCLogic {
       {id:'D6',name:'Stuck coolant valve (stiction)',fault:'stick',rel:['TIC202','TIC201'],act:'MAN202',stable:'alarms',peak:'rT',
        q:'TIC202 OP moves but jacket temperature does not. Root cause?',opts:['Control valve TV-202 stuck (stiction)','Transmitter failure on the jacket RTD','Wrong control action configured','Cascade initialization error'],a:0},
       {id:'D9',name:'Flash drum pressure high',fault:'vap',rel:['PIC401','V-401'],act:'AUTO401',stable:'alarms',peak:'drumP',
-       setup:(c)=>{ const l=c.L.PIC401; if(l.mode!=='MAN'){ ESS.Pid.transferMode(l,'MAN',c.pidCtx()); c.addEvent('SYSTEM','PIC401','MODE LEFT IN MAN BY PREVIOUS SHIFT (DRILL SETUP)','AUTO','MAN'); } },
+       setup:(c)=>{ const l=c.L.PIC401; if(l.mode!=='MAN'){ ESS.Pid.transferMode(l,'MAN',c.pidCtx()); c.addEvent('SYSTEM','PIC401','MODE LEFT IN MAN BY PREVIOUS SHIFT'+(c.instr.hidden?'':' (DRILL SETUP)'),'AUTO','MAN'); } },
        q:'PIC401 did not respond to rising pressure. Why?',opts:['It had been left in MAN — the vent never moved','The vent valve was stuck','The setpoint was too high','Transmitter drift'],a:0},
       {id:'D11',name:'Agitator trip during semi-batch feed (Unit 02)',fault:'agit',needBatch:true,when:(P)=>P.b.phase==='FEED'&&P.b.Cm>8,rel:['M202','TIC212','R-202','FIC211','SCM202'],act:'CUTMONO',stable:'alarms',peak:'T212',
        q:'The agitator tripped during monomer feed. Why is restarting it later dangerous?',opts:['Accumulated monomer reacts at once when mixing resumes — stop feed and max cooling before restart','It will trip the breaker again','The jacket cannot heat without agitation','It pulls a vacuum in the reactor'],a:0},
@@ -2097,11 +2129,11 @@ class Component extends DCLogic {
     if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }
   // A snapshot carries the armed / running drill as plain data; the definition is looked up again on restore.
-  drillData(){ const d=this.state.drill; return d?{id:d.def.id,t0:d.t0,ti:d.ti,injected:d.injected,m:d.m,stableFor:d.stableFor}:null; }
-  drillFromData(x){ const def=x&&this.drillDefs().find(d=>d.id===x.id); return def?{def,t0:x.t0,ti:x.ti,injected:x.injected,m:x.m||{},stableFor:x.stableFor||0}:null; }
+  drillData(){ const d=this.state.drill; return d?{id:d.def.id,t0:d.t0,ti:d.ti,tInj:d.tInj||0,injected:d.injected,m:d.m,stableFor:d.stableFor}:null; }
+  drillFromData(x){ const def=x&&this.drillDefs().find(d=>d.id===x.id); return def?{def,t0:x.t0,ti:x.ti,tInj:x.tInj||0,injected:x.injected,m:x.m||{},stableFor:x.stableFor||0}:null; }
   injectFault(k,on){
     const P=this.P,V=this.V,L=this.L;
-    P.faults[k]=on; P.faultT[k]=P.t;
+    P.faults[k]=on; if(on) P.faultT[k]=P.t; else delete P.faultT[k];
     if(k==='pump'){ if(on){ this.tripMotor('P101','UNCOMMANDED STOP'); P.faults.pump=false; } }
     if(k==='agit'){ if(on){ this.tripMotor('M202','UNCOMMANDED STOP'); P.faults.agit=false; } }
     if(k==='stick') V.TV202.stuck=on;   // the reaction load of the stuck valve lives in the model (PARAMS.U1.stickHeat)
@@ -2110,8 +2142,10 @@ class Component extends DCLogic {
   drillWatch(dt){
     const d=this.state.drill; if(!d) return;
     const P=this.P,L=this.L,m=d.m,def=d.def;
-    if(!d.injected && P.t>=d.ti && (!def.when || def.when(P))){ d.injected=true; this.injectFault(def.fault,true); }
-    if(!d.injected) return;
+    if(!d.injected && P.t>=d.ti && (!def.when || def.when(P))){ d.injected=true; d.tInj=P.t; this.injectFault(def.fault,true); }
+    // gated drills (a 'when' condition, e.g. D11 waiting for the FEED phase) count their 12-minute limit from the
+    // injection, so arming from IDLE still gives the trainee the full window; ungated drills count from arming as before
+    if(!d.injected){ if(def.when && P.t-d.t0>3600000) this.endDrill('INJECTION CONDITION NOT REACHED'); return; }
     if(def.peak){ const v=this.peakOf(def.peak); m.peak=Math.max(m.peak||0,v); }
     if(!m.tAlarm){ const a=this.alarmEngine.active().find(x=>def.rel.includes(x.tag)); if(a) m.tAlarm=a.lastT; }
     if(m.tAlarm && !m.tStable){
@@ -2121,7 +2155,7 @@ class Component extends DCLogic {
       d.stableFor = ok ? d.stableFor+dt : 0;
       if(d.stableFor>=60){ m.tStable=P.t; this.endDrill('STABILIZED'); return; }
     }
-    if(P.t-d.t0>720000) this.endDrill('TIME LIMIT REACHED');
+    if(P.t-(def.when?(d.tInj||d.t0):d.t0)>720000) this.endDrill('TIME LIMIT REACHED');
   }
   dHook(kind,tag){
     const d=this.state.drill; if(!d||!d.injected) return;
@@ -2146,14 +2180,16 @@ class Component extends DCLogic {
   dTrip(){ const d=this.state.drill; if(d&&d.injected) d.m.trip=true; }
   endDrill(reason){
     const d=this.state.drill; if(!d) return;
-    const F=this.P.faults;
-    ['xmtr','surge','cool','vap','rxn','bedact'].forEach(k=>F[k]=false);
-    this.V.TV202.stuck=false;
+    // every fault a drill can inject is cleared (drillFaults() is derived from the definitions, so a new drill fault
+    // cannot be left behind); 'stick' carries a reaction load in the model (PARAMS.U1.stickHeat), so it must go too
+    for(const k of this.drillFaults()) this.injectFault(k,false);
     d.reason=reason; d.tEnd=this.P.t;
     if(reason==='ENDED BY INSTRUCTOR') this.journal('DRILLEND',d.def.id,reason,{instr:true});   // automatic ends are reproduced by the replay itself
     this.setState({drill:null, dlg:{type:'debrief',drill:d}, debAns:-1});
-    this.postMsg('INSTRUCTOR: drill '+d.def.id+' ended — '+reason,{confirm:!this.instr.hidden,src:'INSTR'});
+    this.instrNote('DRILL '+d.def.id+' ENDED — '+reason);
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.def.id+' ended — '+reason,{confirm:true,src:'INSTR'});   // hidden: the trainee sees only the debrief
   }
+  drillFaults(){ const set=new Set(['rxn']); for(const d of this.drillDefs()) set.add(d.fault); return [...set]; }
   // Standards-based scorer (ESS.Kpi.scoreDrill): acknowledge latency, correct action and latency, trip avoided,
   // stabilisation, alarm load during the drill (KPI module over the alarm journal) and the debrief question.
   // Returns {score, pass, passMark, passLabel, breakdown}; the pass mark is the sim's own 80 % (RESOURCES 2.7, 2.8, 2.12).
@@ -2249,13 +2285,13 @@ class Component extends DCLogic {
     this.instrLog('SNAPSHOT SAVED: '+nm);
     this.setState({instrSnapName:''});
   }
-  // A restore during a drill discards the trainee's run so far, so it is signed (instructor password does not
-  // substitute: the signature needs the manager password, the level the instructor station also accepts).
+  // A restore during a drill discards the trainee's run so far, so it is signed. The request carries the instructor's
+  // own authority (instructorAllowed()): the station level is not pre-checked and 'instr' signs at manager rank.
   restoreSlot(i){
     const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; }
     const go=()=>{ this.instr.replay=null; this.restoreSnapshot(s,'SNAPSHOT RESTORED: '+s.name); };
     // the restore truncates the journal to the snapshot time, so the signed CONFIG entry (name, level, reason) is written after it
-    if(this.state.drill){ const id=this.state.drill.def.id; this.withSignature('SNAPSHOT RESTORE DURING DRILL '+id+' — '+s.name,'MNGR',(reason)=>{ go(); this.configChange('INSTR','SNAPSHOT RESTORED DURING DRILL '+id+' — SIGNED BY '+this.operName(),id,s.name,reason); }); }
+    if(this.state.drill){ const id=this.state.drill.def.id; this.withSignature('SNAPSHOT RESTORE DURING DRILL '+id+' — '+s.name,'MNGR',(reason)=>{ go(); this.configChange('INSTR','SNAPSHOT RESTORED DURING DRILL '+id+' — SIGNED BY '+this.operName(),id,s.name,reason); },{instr:true}); }
     else go();
   }
   clearSlot(i){ this.instr.snapshots[i]=null; }
@@ -2347,6 +2383,13 @@ class Component extends DCLogic {
       case 'SEED': this.setSeed(e.arg); break;
       case 'DRILL': { const d=this.drillDefs().find(x=>x.id===e.tag); if(d) this.startDrill(d); break; }
       case 'DRILLEND': this.endDrill(e.arg||'ENDED BY INSTRUCTOR'); break;
+      case 'CTLACTN': this.setCtlAction(e.tag,e.arg); break;
+      case 'PVTRACK': this.setPvTrack(e.tag,e.arg==='ON'); break;
+      case 'OOS': this.setOos(e.tag,e.cond,e.arg==='ON'); break;
+      case 'PRIO': this.setPriority(e.tag,e.cond,e.arg); break;
+      case 'COMMENT': this.commentAlarmKey(e.arg,e.text); break;
+      case 'CONFIRM': { const m=this.msgs.find(x=>x.confirm&&!x.confirmed&&x.txt===e.arg); if(m) this.confirmMsg(m.id); break; }
+      case 'ASSET': this.disableAssetAlarms(e.tag,e.arg==='ON',e.reason||''); break;
     }
   }
   // Drill timeline rows, shared by the debrief dialog and the instructor's live assessment.
@@ -2386,7 +2429,7 @@ class Component extends DCLogic {
     const r=I.replay;
     const journal={count:String(I.journal.length),empty:!I.journal.length,rows:I.journal.slice(-16).reverse().map(e=>({txt:X.journalText(e,(t)=>this.fT(t))})),
       replayOn:!!r,replayT:r?('REPLAYING '+r.i+' / '+r.entries.length+' · RUNS TO '+this.fT(r.toT)):'',stop:()=>{this.stopReplay();bump();},toEnd:()=>{this.replayToEnd();bump();},
-      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action and every instructor intervention (INSTR rows: upsets, magnitudes, variables, seed, drills armed or ended) is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies everything journaled after it at the same sim times; with the same seed the trajectory repeats exactly, drills included.'};
+      clear:()=>{I.journal=[];bump();},note:'Every accepted operator, engineer and manager action (modes, stores, control action, PV tracking, OOS / RTS, priorities, tuning, deadband / delay, asset disable, ACK, shelve, comment, message confirm) and every instructor intervention (INSTR rows: upsets, magnitudes, variables, seed, drills armed or ended) is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies everything journaled after it at the same sim times; with the same seed the trajectory repeats exactly, drills included.'};
     const d=S.drill;
     const assess={on:!!d,name:d?d.def.id+' — '+d.def.name:'No drill running — start one from the Drills menu; live metrics appear here.',tm:d?this.mmss(P.t-d.t0):'',
       phase:d?(d.injected?'UPSET ACTIVE':'ARMED — waiting for the injection'):'',rows:d?this.drillRows(d):[],end:()=>this.endDrill('ENDED BY INSTRUCTOR'),
@@ -2416,23 +2459,25 @@ class Component extends DCLogic {
   parseCmd(){
     const c=this.state.cmd.trim().toUpperCase(); if(!c) return;
     this.setState({cmd:''});
-    this.taskDone('nav.command');
-    if(c==='U1'||c==='UNIT01'){ this.setUnit('U1'); this.nav('graphic'); return; }
-    if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return; }
-    if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return; }
-    if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return; }
+    if(this.runCmd(c)) this.taskDone('nav.command'); else this.msgZone('DISPLAY NOT FOUND: '+c);   // a rejected command is not a navigation
+  }
+  runCmd(c){
+    if(c==='U1'||c==='UNIT01'){ this.setUnit('U1'); this.nav('graphic'); return true; }
+    if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return true; }
+    if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return true; }
+    if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return true; }
     const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi'};
-    if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); this.taskDone('alm.help'); return; }
-    if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return; }
-    if(map[c]){ this.nav(map[c]); return; }
-    if(c==='MOC'||c==='CHANGES'||c==='CHANGE LOG'){ this.openChangeLog(); return; }
-    if(c==='COVERAGE'||c==='TASKS'){ this.setState({dlg:{type:'coverage'},menu:null}); return; }
-    if(c==='RECORD'||c==='TRAINING'||c==='TRAINING RECORD'){ this.setState({dlg:{type:'record'},menu:null}); return; }
-    if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return; }
-    if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return; }
-    if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return; }
-    if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return; }
-    this.msgZone('DISPLAY NOT FOUND: '+c);
+    if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); this.taskDone('alm.help'); return true; }
+    if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return true; }
+    if(map[c]){ this.nav(map[c]); return true; }
+    if(c==='MOC'||c==='CHANGES'||c==='CHANGE LOG'){ this.openChangeLog(); return true; }
+    if(c==='COVERAGE'||c==='TASKS'){ this.setState({dlg:{type:'coverage'},menu:null}); return true; }
+    if(c==='RECORD'||c==='TRAINING'||c==='TRAINING RECORD'){ this.setState({dlg:{type:'record'},menu:null}); return true; }
+    if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return true; }
+    if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return true; }
+    if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return true; }
+    if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return true; }
+    return false;
   }
   silence(){ this.setState({silenced:true}); this.addEvent('OPERATOR','STN01','ALARMS SILENCED','',''); this.dHook('SIL',null); this.journal('SIL'); this.taskDone('alm.silence'); }
   ackAlarm(a){
@@ -2551,6 +2596,9 @@ class Component extends DCLogic {
   }
   // Stores a typed value on a point: SP / OP, engineering parameters, trip points, target band. Returns true when the
   // entry field should close (store accepted, or refused by the mode attribute); false keeps it open after a limit rejection.
+  // A deadband / on-delay store applies to future evaluations only: the limit memos keep their raw / active flags (an
+  // alarm that is standing stays standing, no RTN / re-raise pair) and only the running delay timers restart.
+  resetLimitTimers(l){ for(const c in (l._am||{})){ const m=l._am[c]; m.onT=0; m.offT=0; } }
   storeEntry(tag,param,v){
     const l=this.L[tag]; if(!l) return true;
     if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return true;
@@ -2562,8 +2610,8 @@ class Component extends DCLogic {
       if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
     if(param.startsWith('TP:')){ const c=param.slice(3); if(!l.alm[c]) return true; const o=l.alm[c][0]; if(o===v) return true; this.withSignature('TRIP POINT '+tag+' '+c+' '+this.fmt(o,l.dec)+' → '+this.fmt(v,l.dec),'ENGR',(reason)=>{ cfg(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT',reason); this.taskDone('ctl.trip'); }); return true; }
     if(param==='TGTHI'||param==='TGTLO'){ const b=this.limitBand(l); const lo=param==='TGTLO'?v:b.tgtLo, hi=param==='TGTHI'?v:b.tgtHi; const o=param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return false; cfg(o,()=>{},param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return true; }
-    if(param==='ALMDB'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — DEADBAND MUST BE 0 OR MORE'); return false; } const o=this.almDeadband(l); cfg(o,()=>{ l.almDb=v; l._am={}; },'ALARM DEADBAND'); return true; }
-    if(param==='ALMDELAY'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — ON-DELAY MUST BE 0 OR MORE'); return false; } const o=this.almDelay(l); cfg(o,()=>{ l.almDelay=v; l._am={}; },'ALARM ON-DELAY'); return true; }
+    if(param==='ALMDB'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — DEADBAND MUST BE 0 OR MORE'); return false; } const o=this.almDeadband(l); cfg(o,()=>{ l.almDb=v; this.resetLimitTimers(l); },'ALARM DEADBAND'); return true; }
+    if(param==='ALMDELAY'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — ON-DELAY MUST BE 0 OR MORE'); return false; } const o=this.almDelay(l); cfg(o,()=>{ l.almDelay=v; this.resetLimitTimers(l); },'ALARM ON-DELAY'); return true; }
     const key=param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
     const o=l[key]??l[param]; if(o===v) return true;
     const apply=()=>{ if(key==='k')l.K=v; else if(key==='t1')l.T1=v; else if(key==='t2')l.T2=v; else l[key]=v; };
@@ -2801,7 +2849,7 @@ class Component extends DCLogic {
       const oos=!!rec&&rec.state==='OOSRV';
       return {cond:c,tp:this.fmt(tp,pt.dec)+' '+pt.eu,prio:prio.toUpperCase()+' '+sub,prioFg:pd(prio),state:st,stFg:stateFg[st]||(dis?'#7a1a00':'#0a3a12'),note:dis?(note?note+' · ':'')+'disabled by '+rec.disabledBy+' (MNGR re-enable)':note,
         editing:eq('TP:'+c),notEditing:!eq('TP:'+c),cb:()=>this.openEntry(pt.tag,'TP:'+c),
-        prioCb:()=>{if(!this.can('ENGR'))return;const order=['Journal','Low','High','Urgent'];const o=pt.alm[c][1];const nv=order[(order.indexOf(o)+1)%4];this.withSignature('ALARM PRIORITY '+pt.tag+' '+c+' '+o.toUpperCase()+' → '+nv.toUpperCase(),'ENGR',(reason)=>{if(!pt.alm[c])return;pt.alm[c][1]=nv;this.configChange(pt.tag,c+' PRIORITY CHANGE',o,nv,reason);});},
+        prioCb:()=>{const order=['Journal','Low','High','Urgent'];const o=pt.alm[c][1];this.setPriority(pt.tag,c,order[(order.indexOf(o)+1)%4]);},
         oosT:oos?'RTS':'OOS',oosBg:oos?'#B8C4D4':'#D4D0C8',oosCb:()=>this.setOos(pt.tag,c,!oos)};
     };
     const phased=this.phaseSetTags().includes(dl.tag);
@@ -2825,7 +2873,7 @@ class Component extends DCLogic {
         mRow('Overall gain','K',this.fmt(dl.K,2),true,'dimensionless · % OP per % error · '+(dl.act==='DIR'?'DIRECT':'REVERSE')+' acting'),
         mRow('Integral time','T1',this.fmt(dl.T1,2)+' MIN',true,'minutes per repeat (0 = no integral)'),
         mRow('Derivative time','T2',this.fmt(dl.T2,2)+' MIN',true,'minutes, derivative on PV (0 = none)'),
-        {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>{if(!this.can('ENGR'))return;const o=dl.act;dl.act=o==='DIR'?'REV':'DIR';this.configChange(dl.tag,'CONTROL ACTION CHANGE',o,dl.act,'');},rowBg:'transparent'},
+        {label:'Control action',param:'CTLACTN',value:dl.act==='DIR'?'DIRECT':'REVERSE',note:'click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>this.setCtlAction(dl.tag,dl.act==='DIR'?'REV':'DIR'),rowBg:'transparent'},
         mRow('ISA form Kc / Ti / Td','ISA',this.fmt(isa.Kc,2)+' / '+inf(isa.Ti,2,' MIN')+' / '+this.fmt(isa.Td,2)+' MIN',false,'same tuning in ISA standard form (ESS.Pid.isaForm)'),
         mRow('Parallel gains Kp / Ki / Kd','PARALLEL',this.fmt(isa.Kp,2)+' / '+this.fmt(isa.Ki,4)+' /S / '+this.fmt(isa.Kd,1)+' S',false,'independent-gain equivalent'),
         {label:'PV tracking',param:'PVTRACK',value:dl.pvtrack?'ON':'OFF',note:'in MAN the SP follows the PV so AUTO starts at zero error · click to toggle (ENGR+)',editing:false,notEditing:true,cur:'pointer',und:'underline dotted',cb:()=>this.setPvTrack(dl.tag,!dl.pvtrack),rowBg:'transparent'},
@@ -2958,7 +3006,9 @@ class Component extends DCLogic {
       phaseRows:phasesL.map((p2,i)=>({y:290+i*25,label:(bb.phase===p2?'▶ ':'· ')+p2,fill:bb.phase===p2?'#31548F':'#55524c',fw:bb.phase===p2?'700':'400'}))};
     const gfx2={lvlY:546-330*bb.lvl/100, lvlH:330*bb.lvl/100, agFill:L.M202.run?'#4a4a4a':'#FFFFFF', agFg:L.M202.run?'#FFFFFF':'#4a4a4a',
       tripOp:P.trips.batch?(blink?1:0.25):0, cmW:Math.max(0,Math.min(272,bb.Cm/60*272)), cmFill:bb.Cm>30?'#CC0000':'#6E86A0', cmT:this.fmt(bb.Cm,1)+' KMOL', cmWarn:bb.Cm>30?(blink?1:0.4):0};
-    const gfx3={tripOp:P.trips.bed?(blink?1:0.25):0, flameOp:P.trips.bed?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250))};
+    const fuelOff=!!(P.trips.bed||P.trips.skin);   // both trips close FV-311 (models.js moveValves); the graphic shows the burners out and names the cause
+    const gfx3={tripOp:fuelOff?(blink?1:0.25):0, flameOp:fuelOff?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250)),
+      tripT:P.trips.bed?'▲ FUEL TRIP — BED OVERTEMP':(P.trips.skin?'▲ FUEL TRIP — TUBE SKIN OVERTEMP':'')};
     const issues=this.diagnose().map(it=>({sev:it.sev,title:it.title,why:it.why,arrow:S.assistSel===it.id?'▾':'▸',open:S.assistSel===it.id,
       click:()=>this.setState({assistSel:S.assistSel===it.id?'':it.id}),
       sevBg:it.sev==='URGENT'?UC:(it.sev==='WARN'?HC:'#B8C4D4'), sevFg:it.sev==='URGENT'?UT:(it.sev==='WARN'?pt('High'):'#000000'),

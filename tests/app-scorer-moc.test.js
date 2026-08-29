@@ -523,3 +523,92 @@ test('the ALARM HELP button ticks its coverage task and the signature dialog res
   assert.equal(c.state.dlg, null);
   assert.equal(c.L.FIC102.K, 9);
 });
+
+// ---- residual verifier findings (B6 round 2) ----
+test('a deadband or on-delay store on a point with active alarms keeps them standing: no RTN / re-raise pair, no new horn', () => {
+  const c = boot('ENGR');
+  run(c, 2);
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  const st = () => c.alarms.filter((a) => a.tag === 'TIC301').map((a) => a.cond + ':' + a.state).sort().join();
+  assert.equal(st(), 'PVHH:UNACK,PVHI:UNACK');
+  c.ackPage();
+  const rtn = () => c.events.filter((e) => e.src === 'TIC301' && e.type === 'ALARM').length;
+  const n0 = rtn(), log0 = c.alarmLog.length;
+  c.setState({ silenced: true });
+  c.storeEntry('TIC301', 'ALMDELAY', 30);
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  assert.equal(st(), 'PVHH:ACKED,PVHI:ACKED', 'still standing and acknowledged');
+  assert.equal(rtn(), n0, 'no RTN / ALARM journal lines'); assert.equal(c.alarmLog.length, log0); assert.equal(c.state.silenced, true, 'no new horn');
+  assert.equal(c.L.TIC301.almDelay, 30);
+  c.storeEntry('TIC301', 'ALMDB', 25);
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  assert.equal(st(), 'PVHH:ACKED,PVHI:ACKED'); assert.equal(rtn(), n0);
+  assert.equal(cfgEvents(c).filter((e) => /ALARM (DEADBAND|ON-DELAY) CHANGE/.test(e.desc)).length, 2, 'both CONFIG rows');
+  // the new values apply to future evaluations: after the PV returns, the next alarm waits the new 30 s
+  c.L.TIC301.pv = 170; for (let i = 0; i < 4; i++) c.scan(0.5);   // PVHI trips at 200: 170 is under trip minus the new 25 deadband
+  assert.equal(st(), '', 'acknowledged alarms return straight to NORM');
+  for (let i = 0; i < 20; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  assert.ok(!c.alarms.some((a) => a.tag === 'TIC301' && a.active), 'not yet: 10 s of a 30 s delay');
+  for (let i = 0; i < 44; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  assert.ok(c.alarms.some((a) => a.tag === 'TIC301' && a.active), 'after 30 s');
+});
+
+test('CONFIRM-required messages survive the Message Summary cap', () => {
+  const c = boot('OPER');
+  const m = c.postMsg('needs it', { confirm: true, src: 'INSTR' });
+  for (let i = 0; i < 450; i++) c.postMsg('noise ' + i);
+  assert.ok(c.msgs.length <= 401 && c.msgs.length >= 400);
+  assert.equal(c.pendingMsgs().length, 1);
+  assert.equal(c.renderVals().cMsg, 1);
+  assert.ok(c.confirmMsg(m.id));
+  for (let i = 0; i < 10; i++) c.postMsg('more ' + i);
+  assert.equal(c.msgs.length, 400, 'once confirmed it is trimmed like any other');
+});
+
+test('a snapshot restore during a drill is signed on the instructor authority: the instructor password opens and signs it at any station level', () => {
+  const c = boot('OPER');
+  c.instr.auth = true;
+  run(c, 5); c.saveSlot(0, 'before');
+  run(c, 5); c.startDrill(c.drillDefs()[0]);
+  c.restoreSlot(0);
+  assert.equal(c.state.dlg && c.state.dlg.type, 'esig', 'dialog opens without a MNGR logon');
+  assert.equal(c.state.sec, 'OPER');
+  assert.equal(sign(c, 'oper', 'x'), false, 'operator password refused');
+  assert.ok(sign(c, 'instr', 'restart the exercise'));
+  assert.equal(c.state.drill, null, 'restored: drill gone');
+  const cfg = cfgEvents(c).find((e) => /SNAPSHOT RESTORED DURING DRILL/.test(e.desc));   // the E-SIGNATURE line itself is truncated by the restore (CODE-MAP B6 hazard)
+  assert.ok(cfg && /restart the exercise/.test(cfg.desc), 'CONFIG entry carries the reason');
+  c.withSignature('INSTRUCTOR CHECK', 'MNGR', () => {}, { instr: true }); assert.ok(sign(c, 'instr', 'r'));
+  const ev = c.events.find((e) => /^E-SIGNATURE — INSTRUCTOR CHECK/.test(e.desc));
+  assert.ok(ev && /\(INSTRUCTOR\)/.test(ev.newV), 'signed as the instructor: ' + (ev && ev.newV));
+  // without the instructor session the station level still gates it
+  const d = boot('OPER'); run(d, 5); d.saveSlot(0, 's'); run(d, 5); d.startDrill(d.drillDefs()[0]); d.restoreSlot(0);
+  assert.equal(d.state.dlg, null); assert.match(d.state.msg, /HIGHER SECURITY LEVEL REQUIRED \(MNGR\)/);
+  // an ordinary signature does not accept the instructor password
+  const e = boot('ENGR'); e.instr.auth = true; e.withSignature('X', 'ENGR', () => {}); assert.equal(sign(e, 'instr', 'r'), false);
+});
+
+test('a second signature request while one is pending is refused with a message and nothing is replaced', () => {
+  const c = boot('ENGR');
+  let a = 0, b = 0;
+  c.withSignature('ACTION A', 'ENGR', () => a++);
+  c.withSignature('ACTION B', 'ENGR', () => b++);
+  assert.match(c.state.msg, /SIGNATURE PENDING — SIGN OR CANCEL ACTION A FIRST/);
+  assert.equal(c.state.dlg.desc, 'ACTION A');
+  sign(c, 'engr', 'r');
+  assert.equal(a, 1); assert.equal(b, 0);
+  c.withSignature('ACTION B', 'ENGR', () => b++); sign(c, 'engr', 'r');
+  assert.equal(b, 1, 'after signing, the next request is accepted');
+});
+
+test('a rejected command zone entry does not tick the nav.command coverage task; automatic phase sets are attributed to SCM202', () => {
+  const c = boot('OPER');
+  c.setState({ cmd: 'NOPE' }); c.parseCmd();
+  assert.ok(!c.tasksDone.has('nav.command')); assert.match(c.state.msg, /DISPLAY NOT FOUND: NOPE/);
+  c.setState({ cmd: 'ALM' }); c.parseCmd();
+  assert.ok(c.tasksDone.has('nav.command')); assert.equal(c.state.display, 'alarms');
+  c.setState({ oper: 'JANE' }); c.seqCmd('START'); run(c, 600);
+  const sets = cfgEvents(c).filter((e) => /ALARM LIMIT SET/.test(e.desc));
+  assert.ok(sets.length >= 2);
+  assert.ok(sets.every((e) => e.who === 'SCM202' && e.lvl === 'PROGRAM'), sets.map((e) => e.who + '/' + e.lvl).join());
+});

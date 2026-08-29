@@ -125,6 +125,7 @@
       // lesson, so the load must stay inside the jacket margin with TIC202 in MAN
       stickHeat: 1.15,
       surge: 50,            // m3/h feed inflow step of the 'surge' fault (8 min)
+      foulBaseRate: 0.02,   // E-301 baseline fouling: fraction of duty lost per hour at env.foulRate 1 (never cleans itself)
       tripT: 185, resetT: 160,
     },
     U2: {
@@ -200,7 +201,7 @@
     return {
       t: now === undefined ? Date.now() : now, up: 0,
       qin: 60, tankL: 50, flow: 60, conc: 1, rT: 150, Tj: 40, Tcw: 8, hxT: 180,
-      drumL: 45, drumP: 600, foulF: 1,
+      drumL: 45, drumP: 600, foulF: 1, foulBase: 1,
       Ca: 0.15, x: 0.85, Tjo: 72.5, Qr: 100,
       trips: {}, faults: {}, faultT: {}, driftOff: 0,
       env: envDefaults(), mag: magDefaults(),
@@ -286,7 +287,11 @@
 
   function exchangerAndDrum(P, V, dt, ctx) {
     const F = P.faults;
-    P.foulF = F.foul ? Math.max(0.6, P.foulF - dt / 600 * 0.4 * envOf(P).foulRate) : Math.min(1, P.foulF + dt / 300);
+    // fouling: a slow baseline scaled by the instructor's env.foulRate (foulBase, a plant condition that never cleans
+    // itself) and the 'foul' upset, a fast progression on top of it that recovers to the baseline when cleared
+    const fr = envOf(P).foulRate;
+    P.foulBase = Math.max(0.6, (P.foulBase == null ? 1 : P.foulBase) - dt / 3600 * PARAMS.U1.foulBaseRate * fr);
+    P.foulF = F.foul ? Math.max(0.6, P.foulF - dt / 600 * 0.4 * fr) : Math.max(0.6, Math.min(P.foulBase, P.foulF + dt / 300));
     P.hxT = lag(P.hxT, P.rT + 60 * V.TV301.pos * P.foulF, 90, dt);
     // flash drum: vapour fraction rises with feed temperature (LearnChemE flash, RESOURCES 4)
     const vapf = clamp(0.02 + (P.hxT - 165) * 0.004, 0, 0.3);
