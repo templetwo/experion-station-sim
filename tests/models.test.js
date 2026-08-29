@@ -199,6 +199,7 @@ test('bedact fault drives the bed hotspot to the 480 C trip and fuel is cut', ()
   run(60);
   c.injectFault('bedact', true);
   assert.ok(run(900, () => c.P.trips.bed), 'no bed trip');
+  run(2);   // the trip fires on the model state; the Urgent alarm follows on the next noisy TI312 samples
   assert.ok(c.alarms.some((a) => a.key === 'TI312.PVHH'));
   run(30);
   assert.ok(c.V.FV311.pos < 0.05, 'fuel valve driven closed');

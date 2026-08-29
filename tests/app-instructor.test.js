@@ -422,3 +422,132 @@ test('the security gate stays in force for live input while a replay runs; repla
   assert.equal(c.L.TIC202.mode, 'MAN', 'the replayed MODE entry was applied although the live level is VIEW');
   assert.equal(c._replayApplying, false);
 });
+
+// ---------------------------------------------------------------- verification round 2
+
+test('the R-310 bed stays finite and recovers after the trip across the offered catalyst activity and upset ranges', () => {
+  const vDef = Instr.variableDefs().find((d) => d.k === 'catAct');
+  const uDef = Instr.upsetDefs().find((d) => d.k === 'bedact').mag;
+  const cases = [];
+  for (const cat of [vDef.min, 1, vDef.max]) for (const mag of [uDef.min, 1.35, uDef.max]) cases.push({ cat, mag, preset: false });
+  cases.push({ cat: 1, mag: 1.35, preset: true });
+  cases.push({ cat: vDef.max, mag: uDef.max, preset: true });
+  for (const k of cases) {
+    const c = boot('MNGR');
+    if (k.preset) c.applyPreset('U3_HILOAD'); else run(c, 30);
+    c.setVariable('catAct', k.cat); c.setMagnitude('bedact', k.mag); c.setUpset('bedact', true);
+    let peak = 0, tripped = false, reset = false;
+    for (let i = 0; i < 2400; i++) {
+      c.step(0.5);
+      assert.ok(Number.isFinite(c.P.h.bed), `bed non-finite at ${i / 2} s for ${JSON.stringify(k)}`);
+      peak = Math.max(peak, c.P.h.bed);
+      if (c.P.trips.bed) tripped = true; else if (tripped) reset = true;
+    }
+    assert.ok(peak < 800, `bed peak ${peak} for ${JSON.stringify(k)}`);
+    if (k.cat * k.mag >= 1.3) assert.ok(tripped && reset, `trip and reset expected for ${JSON.stringify(k)}: ${tripped} ${reset}`);
+    assert.ok(Number.isFinite(c.L.TI312.pv));
+    assert.ok(c.snapshotData('ok'), 'a snapshot of a finite state is accepted');
+  }
+});
+
+test('a snapshot of a non-finite process state is refused instead of being cloned to null', () => {
+  const c = boot('MNGR');
+  run(c, 5);
+  c.P.h.bed = NaN;
+  assert.equal(Instr.nonFinitePath({ P: c.P }, ''), 'P.h.bed');
+  assert.throws(() => Instr.makeSnapshot({ t: c.P.t, P: c.P, L: c.L, V: c.V, alarms: [] }, 'x'), /non-finite value at P\.h\.bed/);
+  c.saveSlot(0, 'bad');
+  assert.equal(c.instr.snapshots[0], null);
+  assert.match(c.state.msg, /SNAPSHOT REFUSED/);
+  assert.match(c.instr.log[0].txt, /SNAPSHOT REFUSED — NON-FINITE VALUE AT P\.H\.BED/);
+  const ringBefore = c.instr.ring.length;
+  run(c, 31);
+  assert.equal(c.instr.ring.length, ringBefore, 'the backtrack ring skips a non-finite state');
+});
+
+test('a drill armed after the snapshot is journaled and replayed; a snapshot taken during a drill keeps it', () => {
+  const c = boot('MNGR');
+  run(c, 60);
+  c.saveSlot(0, 'pre-drill');
+  run(c, 10);
+  c.startDrill(c.drillDefs().find((d) => d.id === 'D4'));
+  const armed = c.instr.journal.find((e) => e.op === 'DRILL');
+  assert.ok(armed && armed.tag === 'D4' && armed.instr === true);
+  run(c, 60);
+  assert.ok(c.state.drill && c.state.drill.injected && c.P.faults.cool);
+  c.saveSlot(1, 'mid-drill');
+  assert.equal(c.instr.snapshots[1].drill.id, 'D4');
+  c.setMode('TIC202', 'MAN');
+  run(c, 120);
+  const live = { rT: c.P.rT, faults: clone(c.P.faults), m: clone(c.state.drill.m), hist: clone(c.hist.TIC201) };
+  c.startReplay(0);
+  assert.equal(c.state.drill, null, 'the pre-drill snapshot carries no drill');
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null);
+  assert.ok(c.state.drill && c.state.drill.injected, 'the replay armed and injected the drill');
+  assert.deepEqual(c.P.faults, live.faults);
+  assert.equal(c.P.rT, live.rT);
+  assert.deepEqual(c.state.drill.m, live.m);
+  assert.deepEqual(c.hist.TIC201, live.hist);
+  assert.ok(c.instr.journal.some((e) => e.op === 'DRILL' && e.tag === 'D4'), 'the drill is journaled again by the replay');
+  c.restoreSlot(1);
+  assert.ok(c.state.drill && c.state.drill.def.id === 'D4' && c.state.drill.injected, 'restoring a mid-drill snapshot keeps the running drill');
+  assert.ok(c.P.faults.cool);
+  c.endDrill('ENDED BY INSTRUCTOR');
+  assert.ok(c.instr.journal.some((e) => e.op === 'DRILLEND' && e.tag === 'D4'));
+  assert.equal(c.state.drill, null);
+  assert.match(Instr.journalText(armed, (t) => String(t)), /INSTR DRILL D4 ARMED/);
+});
+
+test('the instructor logon accepts only the instructor passwords and never changes the security level', () => {
+  const c = boot('OPER');
+  for (const pw of ['supv', 'engr', 'mngrx', 'oper']) {
+    c.setState({ cmd: 'INSTR' }); c.parseCmd();
+    assert.ok(c.state.dlg && c.state.dlg.instr, 'instructor logon prompt');
+    c.setState({ dlgPw: pw }); c.logon();
+    assert.equal(c.state.sec, 'OPER', pw + ' must not change the level');
+    assert.equal(c.instr.auth, false);
+    assert.match(c.state.msg, /INVALID PASSWORD/);
+    assert.ok(c.state.dlg, 'the prompt stays open');
+    c.setState({ dlg: null });
+  }
+  c.setState({ cmd: 'INSTR' }); c.parseCmd();
+  c.setState({ dlgPw: 'instr' }); c.logon();
+  assert.equal(c.instr.auth, true);
+  assert.equal(c.state.sec, 'OPER');
+  assert.equal(c.state.display, 'instr');
+  const d = boot('OPER');
+  d.setState({ dlg: { type: 'logon' }, dlgPw: 'supv' }); d.logon();
+  assert.equal(d.state.sec, 'SUPV', 'the ordinary logon still changes the level');
+});
+
+test('RANDOM DRILL draws from the seeded generator', () => {
+  const orig = Math.random;
+  Math.random = () => { throw new Error('unseeded draw'); };
+  try {
+    const pick = (seed) => { const c = boot('MNGR'); c.setSeed(seed); run(c, 5); c.setState({ dlg: { type: 'drills' } }); c.renderVals().dg.randomDrill(); return c.state.drill.def.id; };
+    const ids = new Set();
+    for (let s = 1; s <= 12; s++) { const a = pick(s); assert.equal(a, pick(s), 'same seed, same drill'); ids.add(a); }
+    assert.ok(ids.size > 1, 'different seeds pick different drills');
+  } finally { Math.random = orig; }
+});
+
+test('with HIDDEN UPSETS on, arming a drill leaves no trace in the trainee Message Summary', () => {
+  const c = boot('MNGR');
+  c.instr.auth = true;
+  run(c, 5);
+  c.setHidden(true);
+  c.startDrill(c.drillDefs()[3]);
+  c.lockInstructor();
+  c.setState({ display: 'msgs' });
+  const v = c.renderVals();
+  assert.equal(v.msgsR.length, 0, 'nothing in the Message Summary');
+  const txt = strings(v, ['instr', 'dg.drills']).join(' | ');   // the drill picker lists every definition by design
+  assert.ok(!/drill D4|D4 armed|DRILL D4/i.test(txt), txt.match(/.{0,40}(drill D4|D4 armed|DRILL D4).{0,40}/i));   // the DRILL IN PROGRESS banner may show; the drill's identity may not
+  assert.ok(!c.msgs.some((m) => /drill/i.test(m.txt)));
+  assert.ok(c.instr.log.some((l) => /DRILL D4 ARMED/.test(l.txt)), "the instructor log still names it");
+  const d = boot('MNGR');
+  run(d, 5);
+  d.startDrill(d.drillDefs()[3]);
+  assert.equal(d.msgs[0].txt, 'INSTRUCTOR: drill D4 armed', 'not hidden: the trainee is told');
+});

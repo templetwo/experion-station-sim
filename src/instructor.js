@@ -13,7 +13,10 @@
 //   create(opts)                 -> instructor state {auth, hidden, seed, seq, snapshots[8], ring, journal, replay, log}
 //   resetRun(I)                  clear ring / journal / replay for a fresh process (snapshots, auth, hidden, seed stay)
 //   clone(o)                     JSON deep clone (process state is plain data)
-//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, journalSeq, tadShed, phaseSet, seed, randState}
+//   makeSnapshot(src, name)      -> snapshot record from {t, P, L, V, alarms, eventsCount, journalSeq, tadShed, phaseSet, seed,
+//                                randState, drill}; throws when P, L or V hold a non-finite number (JSON would turn it
+//                                into null and a restore would corrupt the process state)
+//   nonFinitePath(o, prefix)     first path holding NaN / Infinity, or null
 //   pushRing(I, snap, t)         30 s ring buffer covering the last 10 sim-minutes; returns true when stored
 //   ringPick(I, t, backMs)       newest ring entry at or before t - backMs (oldest if none is that old)
 //   trimAfter(I, t, seq)         drop ring entries later than t and journal entries after sequence seq (time when seq is null)
@@ -59,13 +62,26 @@
     I.ring = []; I.journal = []; I.replay = null; I.lastRingT = -Infinity;
   }
 
+  function nonFinitePath(o, prefix) {
+    if (typeof o === 'number') return isFinite(o) ? null : (prefix || 'value');
+    if (!o || typeof o !== 'object') return null;
+    for (var k in o) {
+      var hit = nonFinitePath(o[k], prefix ? prefix + '.' + k : k);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
   function makeSnapshot(src, name) {
+    var bad = nonFinitePath({ P: src.P, L: src.L, V: src.V }, '');
+    if (bad) throw new Error('non-finite value at ' + bad);
     return {
       name: name || '', t: src.t, wall: src.wall || 0,
       seed: src.seed, randState: src.randState == null ? null : src.randState,
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
-      tadShed: !!src.tadShed, phaseSet: src.phaseSet || null
+      tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
+      drill: src.drill ? clone(src.drill) : null
     };
   }
 
@@ -136,6 +152,8 @@
       case 'MAG': body = 'INSTR MAGNITUDE ' + e.tag + ' = ' + e.arg; break;
       case 'VAR': body = 'INSTR VARIABLE ' + e.tag + ' = ' + e.arg; break;
       case 'SEED': body = 'INSTR SEED ' + e.arg; break;
+      case 'DRILL': body = 'INSTR DRILL ' + e.tag + ' ARMED'; break;
+      case 'DRILLEND': body = 'INSTR DRILL ' + e.tag + ' ENDED'; break;
       default: body = e.op + (e.tag ? ' ' + e.tag : '') + (e.arg != null ? ' ' + e.arg : '');
     }
     return tt + '  ' + body;
@@ -199,7 +217,7 @@
   return {
     create: create, resetRun: resetRun, clone: clone, makeSnapshot: makeSnapshot,
     pushRing: pushRing, ringPick: ringPick, trimAfter: trimAfter,
-    journalAdd: journalAdd, logAdd: logAdd, replayPlan: replayPlan, replayDue: replayDue, journalText: journalText,
+    journalAdd: journalAdd, logAdd: logAdd, nonFinitePath: nonFinitePath, replayPlan: replayPlan, replayDue: replayDue, journalText: journalText,
     presets: presets, upsetDefs: upsetDefs, variableDefs: variableDefs, getPath: getPath, setPath: setPath, speeds: speeds,
     RING_MS: RING_MS, RING_SPAN_MS: RING_SPAN_MS, SLOTS: SLOTS, JOURNAL_CAP: JOURNAL_CAP, DEFAULT_SEED: DEFAULT_SEED
   };

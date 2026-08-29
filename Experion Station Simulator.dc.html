@@ -1898,8 +1898,13 @@ class Component extends DCLogic {
     if(d.setup) d.setup(this);   // pre-existing condition the drill relies on (e.g. a loop left in MAN)
     const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0},dlg:null});
-    this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
+    this.journal('DRILL',d.id,'',{instr:true});
+    this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — INJECTION AT '+this.fT(this.P.t+delay));
+    if(!this.instr.hidden) this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.id+' armed'});
   }
+  // A snapshot carries the armed / running drill as plain data; the definition is looked up again on restore.
+  drillData(){ const d=this.state.drill; return d?{id:d.def.id,t0:d.t0,ti:d.ti,injected:d.injected,m:d.m,stableFor:d.stableFor}:null; }
+  drillFromData(x){ const def=x&&this.drillDefs().find(d=>d.id===x.id); return def?{def,t0:x.t0,ti:x.ti,injected:x.injected,m:x.m||{},stableFor:x.stableFor||0}:null; }
   injectFault(k,on){
     const P=this.P,V=this.V,L=this.L;
     P.faults[k]=on; P.faultT[k]=P.t;
@@ -1951,6 +1956,7 @@ class Component extends DCLogic {
     ['xmtr','surge','cool','vap','rxn','bedact'].forEach(k=>F[k]=false);
     this.V.TV202.stuck=false;
     d.reason=reason;
+    if(reason==='ENDED BY INSTRUCTOR') this.journal('DRILLEND',d.def.id,reason,{instr:true});   // automatic ends are reproduced by the replay itself
     this.setState({drill:null, dlg:{type:'debrief',drill:d}, debAns:-1});
     this.msgs.unshift({t:this.P.t,txt:'INSTRUCTOR: drill '+d.def.id+' ended — '+reason});
   }
@@ -2001,11 +2007,15 @@ class Component extends DCLogic {
     this.setState({instrSeedTxt:''});
   }
   // --- snapshots: the full process state (P, L, V, alarm records, interlock flags, seed and generator cursor)
+  // Returns null (and tells the instructor) when the process state holds a non-finite number; such a snapshot could
+  // not be restored faithfully.
   snapshotData(name){
     const r=this.rand;
-    return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
-      eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,
-      seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null},name);
+    try{
+      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
+        eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,
+        seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,drill:this.drillData()},name);
+    }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
   }
   restoreSnapshot(snap,why){
     const I=ESS.Instructor;
@@ -2018,19 +2028,20 @@ class Component extends DCLogic {
     for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
     this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
     I.trimAfter(this.instr,t,snap.journalSeq);
-    this.setState({drill:null,entry:null,selAlm:null,msg:''});
+    this.setState({drill:this.drillFromData(snap.drill),entry:null,selAlm:null,msg:''});
     this.instrLog((why||'SNAPSHOT RESTORED')+' — SIM TIME '+this.fT(t));
   }
   saveSlot(i,name){
     const nm=(name||'').trim()||('SNAP '+(i+1)+' '+this.fT(this.P.t));
-    this.instr.snapshots[i]=this.snapshotData(nm);
+    const snap=this.snapshotData(nm); if(!snap) return;
+    this.instr.snapshots[i]=snap;
     this.instrLog('SNAPSHOT SAVED: '+nm);
     this.setState({instrSnapName:''});
   }
   restoreSlot(i){ const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; } this.instr.replay=null; this.restoreSnapshot(s,'SNAPSHOT RESTORED: '+s.name); }
   clearSlot(i){ this.instr.snapshots[i]=null; }
   // --- backtrack: an automatic snapshot every 30 sim-seconds covering the last 10 sim-minutes (taken after the step so it carries that step's history row)
-  backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS) I.pushRing(this.instr,this.snapshotData(''),this.P.t); }
+  backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS){ const snap=this.snapshotData(''); if(snap) I.pushRing(this.instr,snap,this.P.t); } }
   backtrack(ms){
     const s=ESS.Instructor.ringPick(this.instr,this.P.t,ms);
     if(!s){ this.msgZone('NO BACKTRACK POINT YET'); return; }
@@ -2047,7 +2058,7 @@ class Component extends DCLogic {
     if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
     if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
     for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
-    const snap=this.snapshotData('IC '+p.label);
+    const snap=this.snapshotData('IC '+p.label); if(!snap) return;
     this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
     this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase(),'','');
     this.setState({fps:[],unit:p.id.slice(0,2)});
@@ -2115,6 +2126,8 @@ class Component extends DCLogic {
       case 'MAG': this.setMagnitude(e.tag,e.arg); break;
       case 'VAR': this.setVariable(e.tag,e.arg); break;
       case 'SEED': this.setSeed(e.arg); break;
+      case 'DRILL': { const d=this.drillDefs().find(x=>x.id===e.tag); if(d) this.startDrill(d); break; }
+      case 'DRILLEND': this.endDrill(e.arg||'ENDED BY INSTRUCTOR'); break;
     }
   }
   // Drill timeline rows, shared by the debrief dialog and the instructor's live assessment.
@@ -2154,7 +2167,7 @@ class Component extends DCLogic {
     const r=I.replay;
     const journal={count:String(I.journal.length),empty:!I.journal.length,rows:I.journal.slice(-16).reverse().map(e=>({txt:X.journalText(e,(t)=>this.fT(t))})),
       replayOn:!!r,replayT:r?('REPLAYING '+r.i+' / '+r.entries.length+' · RUNS TO '+this.fT(r.toT)):'',stop:()=>{this.stopReplay();bump();},toEnd:()=>{this.replayToEnd();bump();},
-      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action and every instructor intervention (INSTR rows) is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies everything journaled after it at the same sim times; with the same seed the trajectory repeats exactly.'};
+      clear:()=>{I.journal=[];bump();},note:'Every accepted operator action and every instructor intervention (INSTR rows: upsets, magnitudes, variables, seed, drills armed or ended) is journaled with its sim time. REPLAY on a snapshot slot restores that snapshot and re-applies everything journaled after it at the same sim times; with the same seed the trajectory repeats exactly, drills included.'};
     const d=S.drill;
     const assess={on:!!d,name:d?d.def.id+' — '+d.def.name:'No drill running — start one from the Drills menu; live metrics appear here.',tm:d?this.mmss(P.t-d.t0):'',
       phase:d?(d.injected?'UPSET ACTIVE':'ARMED — waiting for the injection'):'',rows:d?this.drillRows(d):[],end:()=>this.endDrill('ENDED BY INSTRUCTOR'),
@@ -2356,8 +2369,8 @@ class Component extends DCLogic {
       if(pw==='mngr'&&this.state.sec!=='MNGR'){ const o=this.state.sec; this.setState({sec:'MNGR'}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,'MNGR'); }
       this.instr.auth=true; this.setState({dlg:null,dlgPw:''}); this.instrLog('INSTRUCTOR STATION OPENED'); this.nav('instr'); return;
     }
-    if(map[pw]){ const o=this.state.sec; this.setState({sec:map[pw],dlg:null,dlgPw:''}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,map[pw]); this.msgZone('SECURITY LEVEL: '+map[pw]); }
-    else { this.msgZone('INVALID PASSWORD'); this.setState({dlgPw:''}); }
+    if(!forInstr&&map[pw]){ const o=this.state.sec; this.setState({sec:map[pw],dlg:null,dlgPw:''}); this.addEvent('SYSTEM','STN01','SECURITY LEVEL CHANGE',o,map[pw]); this.msgZone('SECURITY LEVEL: '+map[pw]); }
+    else { this.msgZone('INVALID PASSWORD'); this.setState({dlgPw:''}); }   // the instructor prompt never changes the station's security level
   }
   onKey(e){
     if(e.key==='F1'){ e.preventDefault(); this.silence(); return; }
@@ -2704,7 +2717,7 @@ class Component extends DCLogic {
       shelfGo:()=>this.shelve(S.dlg&&S.dlg.dur),
       commentCur:selA&&selA.comment?selA.comment:'(none)',commentGo:()=>this.commentAlarm(S.dlgReason),commentKey:(e)=>{if(e.key==='Enter')this.commentAlarm(S.dlgReason);},
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
-      randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(Math.random()*ds.length)]);},
+      randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:''};

@@ -162,6 +162,8 @@
       tauFb: 10, tauPass: 22, tauSkin: 15, tauAir: 12, tauFlow: 3,
       bedGain: 92, bedRef: 380, bedScale: 150, quench: 3.2, tauBed: 35,
       bedactGain: 1.35,
+      bedRelKnee: 300, bedRelMax: 600,   // C of hot-spot rise: linear below the knee, saturating at the adiabatic rise
+      bedLightOff: 200, bedLightW: 25,   // C: inlet temperature below which the bed extinguishes, and its width
       tripT: 480, resetT: 400,
     },
   };
@@ -455,11 +457,24 @@
 
   // fixed bed: exponential hot-spot growth with bed temperature (LearnChemE PFR
   // parametric sensitivity, RESOURCES 4) plus a quench loop.
+  // Two physical bounds keep the exponential from running away: the heat release cannot exceed full conversion of the
+  // feed (a smooth cap at bedRelMax, linear up to bedRelKnee so the nominal and trip trajectories are untouched), and a
+  // feed entering far below the light-off temperature does not react, so a fuel trip that drops the preheat quenches
+  // the hot spot instead of leaving it self-sustaining.
+  function hotSpotRise(c, h, act) {
+    const raw = c.bedGain * act * Math.exp((h.bed - c.bedRef) / c.bedScale) * (h.f / 40);
+    const lit = 1 / (1 + Math.exp(-(h.pre - c.bedLightOff) / c.bedLightW));
+    const r = raw * lit;
+    if (r <= c.bedRelKnee) return r;
+    const span = c.bedRelMax - c.bedRelKnee;
+    return c.bedRelKnee + span * Math.tanh((r - c.bedRelKnee) / span);
+  }
+
   function fixedBed(P, V, dt, ctx) {
     const c = PARAMS.U3, h = P.h;
     h.q = lag(h.q, 40 * V.QV313.pos, c.tauFlow, dt);
     const act = envOf(P).catAct * (P.faults.bedact ? magOf(P).bedact : 1);
-    const bedSS = h.pre + c.bedGain * act * Math.exp((h.bed - c.bedRef) / c.bedScale) * (h.f / 40) - c.quench * h.q;
+    const bedSS = h.pre + hotSpotRise(c, h, act) - c.quench * h.q;
     h.bed = lag(h.bed, bedSS, c.tauBed, dt);
     h.dT = h.bed - h.pre;
     if (h.bed >= c.tripT && !P.trips.bed) { P.trips.bed = true; raiseTrip(ctx, 'R-310', 'HI TEMP TRIP', h.bed, 'DEG C', 'BED OVERTEMP — FUEL GAS SHUT OFF'); }
