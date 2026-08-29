@@ -87,22 +87,30 @@ test('cool fault (jacket loss) drives R-201 to trip', () => {
   assert.ok(c.alarms.some((a) => a.key === 'TIC201.PVHH'), 'PVHH alarm precedes trip');
 });
 
-test('stick fault (TV-202 stuck) shows a TIC202 deviation and runs the reactor up', () => {
+test('stick fault (TV-202 stuck) shows a TIC202 deviation and runs the reactor into its High alarm without tripping it', () => {
   const { c, run } = rig(5);
   run(120);
   c.injectFault('stick', true);
-  assert.ok(run(900, () => c.P.trips.rx), 'no R-201 trip');
-  assert.ok(c.alarms.some((a) => a.key === 'TIC202.DEVHI'));
+  assert.equal(c.P.faults.rxn, undefined, 'stiction no longer injects the full rxn fault');
+  let peak = 0;
+  run(900, () => { peak = Math.max(peak, c.P.rT); return c.alarms.some((a) => a.key === 'TIC201.PVHI'); });
+  assert.ok(c.alarms.some((a) => a.key === 'TIC202.DEVHI'), 'TIC202 deviation');
+  assert.ok(c.alarms.some((a) => a.key === 'TIC201.PVHI'), 'reactor High alarm');
+  run(600, () => c.P.trips.rx);
+  assert.ok(!c.P.trips.rx, 'the stiction load alone stays inside the trip: ' + Math.max(peak, c.P.rT));
 });
 
-test('surge fault drives TK-101 to the 98 % HIHI trip', () => {
+test('surge fault: the tank absorbs the surge into its High alarm, the reactor feed is capped at the FIC102 SP limit, nothing trips', () => {
   const { c, run } = rig(2);
   run(60);
   c.injectFault('surge', true);
-  assert.ok(run(1200, () => c.P.trips.ovf), 'no overflow trip');
-  assert.ok(c.alarms.some((a) => a.key === 'TK-101.HIHI TRIP'));
-  run(1);
-  assert.equal(c.P.qin, 0, 'feed isolated while tripped');
+  let peakL = 0, peakF = 0, peakT = 0;
+  run(1200, () => { peakL = Math.max(peakL, c.P.tankL); peakF = Math.max(peakF, c.L.FIC102.sp); peakT = Math.max(peakT, c.P.rT); return !c.P.faults.surge && c.P.tankL < 75; });
+  assert.ok(c.alarms.some((a) => a.key === 'LIC101.PVHI'), 'level High alarm');
+  assert.ok(peakL > 80 && peakL < 98, 'level peak ' + peakL);
+  assert.ok(peakF <= 80.001, 'cascade SP capped at the reactor feed limit: ' + peakF);
+  assert.ok(peakT < 185 && !c.P.trips.rx && !c.P.trips.ovf, 'no trip, reactor peak ' + peakT);
+  assert.equal(c.P.faults.surge, false, 'surge ends after 8 min');
 });
 
 test('xmtr fault: BADPV raised after 5 s and FIC102 shed to MAN through ctx.shed', () => {

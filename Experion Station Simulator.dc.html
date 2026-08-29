@@ -1165,7 +1165,9 @@ class Component extends DCLogic {
     this.L = {
       FI100: {kind:'ind',tag:'FI100',desc:'UNIT FEED SUPPLY FLOW',eu:'M3/H',lo:0,hi:150,dec:1,pv:60,cm:'CM0_FI100',alm:{},tgtLo:50,tgtHi:70,_as:{}},
       LIC101:P({tag:'LIC101',desc:'FEED TANK TK-101 LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.5,T1:3,act:'DIR',sphilm:95,splolm:5,slave:'FIC102',cm:'CM1_LIC101',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[80,'High'],PVHH:[90,'Urgent']}}),
-      FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',pvtrack:true,sphilm:110,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
+      // SPHILM 80 is the R-201 feed limit: the CSTR's jacket margin is about +33 % of design feed (src/models.js cstr), so the
+      // LIC101 cascade may not run the reactor into its trip to empty the tank; TK-101 absorbs a surge as a surge tank should.
+      FIC102:P({tag:'FIC102',desc:'TK-101 OUTLET / REACTOR FEED FLOW',eu:'M3/H',lo:0,hi:120,pv:60,sp:60,op:50,K:0.4,T1:0.15,act:'REV',mode:'CAS',master:'LIC101',pvtrack:true,sphilm:80,splolm:0,cm:'CM2_FIC102',alm:{PVLL:[5,'Urgent'],PVLO:[15,'Low'],PVHI:[95,'High'],PVHH:[110,'Urgent']}}),
       P101:  {kind:'motor',tag:'P101',desc:'FEED PUMP P-101',eu:'',lo:0,hi:1,dec:0,pv:1,cm:'CM2A_P101',run:true,cmd:'START',lock:0,trip:false,alm:{},_as:{}},
       TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent'],DEVHI:[15,'High']}}),
       AI205: {kind:'ind',tag:'AI205',desc:'R-201 REACTOR CONVERSION',eu:'%',lo:0,hi:100,dec:1,pv:85,cm:'CM3A_AI205',alm:{},tgtLo:75,tgtHi:95,_as:{}},
@@ -1545,6 +1547,14 @@ class Component extends DCLogic {
     this.addEvent('SYSTEM','TI216','ADIABATIC END TEMP URGENT CLEARED — FIC211 SHED RELEASED'+(this.P.b.held?', RESUME PERMITTED':''),'','');
     this.msgZone('TI216 URGENT CLEARED — FIC211 SHED RELEASED');
   }
+  // The button reads HOLD (not RESUME) while the TI216 interlock holds the sequence: pressing it is the operator's
+  // hold order, so it is journaled and credited to a drill even though the interlock got there first; RESUME is not
+  // offered until the interlock releases (releaseTadShed), so it can never be refused.
+  confirmInterlockHold(){
+    this.msgZone('SEQUENCE ALREADY HELD — TI216 INTERLOCK, RESUME AFTER IT CLEARS');
+    this.addEvent('OPERATOR','SCM202','HOLD CONFIRMED — SEQUENCE ALREADY HELD BY TI216 INTERLOCK','','');
+    this.dAct('HOLD','SCM202','',0);
+  }
   // Interlock ownership of FIC211 (operator stores refused with a callout while the TI216 shed stands).
   interlockOwns(tag,param){
     return tag==='FIC211' && this.tadShed && (param==='MODE'||param==='OP'||param==='SP');
@@ -1591,7 +1601,7 @@ class Component extends DCLogic {
   seqCmd(cmd,silent){
     const b=this.P.b;
     if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
-    if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.msgZone('RESUME REFUSED — TI216 URGENT INTERLOCK ACTIVE, FIC211 SHED'); this.addEvent('OPERATOR','SCM202','RESUME REFUSED — TI216 URGENT INTERLOCK ACTIVE','',''); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
+    if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.confirmInterlockHold(); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
     if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
     this.syncPhaseSet();
   }
@@ -1745,7 +1755,7 @@ class Component extends DCLogic {
     P.faults[k]=on; P.faultT[k]=P.t;
     if(k==='pump'){ if(on){ this.tripMotor('P101','UNCOMMANDED STOP'); P.faults.pump=false; } }
     if(k==='agit'){ if(on){ this.tripMotor('M202','UNCOMMANDED STOP'); P.faults.agit=false; } }
-    if(k==='stick'){ V.TV202.stuck=on; if(on){ P.faults.rxn=true; } else { P.faults.rxn=false; } }
+    if(k==='stick') V.TV202.stuck=on;   // the reaction load of the stuck valve lives in the model (PARAMS.U1.stickHeat)
     if(k==='xmtr' && !on){ /* heal handled in step */ }
   }
   drillWatch(dt){
@@ -1891,12 +1901,14 @@ class Component extends DCLogic {
     this.rejectWrite(tag,ESS.Pid.writeDenial(l,param));
     return false;
   }
+  // A callout lasts about 5 s: sim time when running, ten 500 ms UI ticks when the sim is paused (speed 0) — otherwise
+  // the red frame would stand until the operator resumed the simulation.
   rejectWrite(tag,txt){
-    this.callouts[tag]={txt,until:this.P.t+5000};
+    this.callouts[tag]={txt,until:this.P.t+5000,untilTk:this.state.tk+10};
     this.addEvent('OPERATOR',tag,'WRITE REJECTED — '+txt,'','');
     this.msgZone(tag+': '+txt);
   }
-  calloutOf(tag){ const c=this.callouts[tag]; if(!c) return ''; if(this.P.t>c.until){ delete this.callouts[tag]; return ''; } return c.txt; }
+  calloutOf(tag){ const c=this.callouts[tag]; if(!c) return ''; if(this.P.t>c.until || this.state.tk>=c.untilTk){ delete this.callouts[tag]; return ''; } return c.txt; }
   setMode(tag,m){
     const l=this.L[tag];
     if(!this.can('OPER')) return;
@@ -1927,7 +1939,7 @@ class Component extends DCLogic {
     const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',en.tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.setState({entry:null}); };
     if(en.param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',en.tag,v,v-o); return; }
     if(en.param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',en.tag,v,v-o);
-      if(en.tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.P.faults.rxn=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return; }
+      if(en.tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return; }
     if(en.param.startsWith('TP:')){ const c=en.param.slice(3); const o=l.alm[c][0]; done(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT'); return; }
     if(en.param==='TGTHI'||en.param==='TGTLO'){ const b=this.limitBand(l); const lo=en.param==='TGTLO'?v:b.tgtLo, hi=en.param==='TGTHI'?v:b.tgtHi; const o=en.param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return; done(o,()=>{},en.param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return; }
     const key=en.param.toLowerCase(); const map={k:'K',t1:'T1',t2:'T2',sphilm:'SPHILM',splolm:'SPLOLM',ophilm:'OPHILM',oplolm:'OPLOLM',safeop:'SAFEOP'};
@@ -2283,7 +2295,7 @@ class Component extends DCLogic {
     const bb=P.b, phasesL=['CHARGE','HEATUP','FEED','REACT','COOL','DRAIN'];
     const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?UT:'#000000', pt:this.mmss(bb.pt*1000),
       phBg:P.trips.batch?UC:(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
-      startCb:()=>this.seqCmd('START'), holdCb:()=>this.seqCmd('HOLD'), abortCb:()=>this.seqCmd('ABORT'), holdT:bb.held?'RESUME':'HOLD',
+      startCb:()=>this.seqCmd('START'), holdCb:()=>this.seqCmd('HOLD'), abortCb:()=>this.seqCmd('ABORT'), holdT:(bb.held&&!this.tadShed)?'RESUME':'HOLD',
       phaseRows:phasesL.map((p2,i)=>({y:290+i*25,label:(bb.phase===p2?'▶ ':'· ')+p2,fill:bb.phase===p2?'#31548F':'#55524c',fw:bb.phase===p2?'700':'400'}))};
     const gfx2={lvlY:546-330*bb.lvl/100, lvlH:330*bb.lvl/100, agFill:L.M202.run?'#4a4a4a':'#FFFFFF', agFg:L.M202.run?'#FFFFFF':'#4a4a4a',
       tripOp:P.trips.batch?(blink?1:0.25):0, cmW:Math.max(0,Math.min(272,bb.Cm/60*272)), cmFill:bb.Cm>30?'#CC0000':'#6E86A0', cmT:this.fmt(bb.Cm,1)+' KMOL', cmWarn:bb.Cm>30?(blink?1:0.4):0};

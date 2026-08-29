@@ -241,7 +241,7 @@ function shedBatch(seed) {
   return c;
 }
 
-test('TI216 interlock is level-held: AUTO and RESUME are refused while the Urgent alarm stands and the feed cannot restart', () => {
+test('TI216 interlock is level-held: AUTO is refused and HOLD only confirms the hold while the Urgent alarm stands; the feed cannot restart', () => {
   const c = shedBatch(6);
   c.step(0.5);
   assert.equal(c.P.b.held, true);
@@ -250,10 +250,11 @@ test('TI216 interlock is level-held: AUTO and RESUME are refused while the Urgen
   assert.equal(c.L.FIC211.mode, 'MAN', 'interlock keeps FIC211 in MAN');
   assert.match(c.calloutOf('FIC211'), /TI216 URGENT INTERLOCK/);
   assert.ok(c.events.slice(0, c.events.length - nEv).some((e) => e.type === 'OPERATOR' && e.src === 'FIC211' && /WRITE REJECTED/.test(e.desc)));
-  c.seqCmd('HOLD');                                   // RESUME attempt
-  assert.equal(c.P.b.held, true, 'RESUME refused while the interlock stands');
-  assert.match(c.state.msg, /RESUME REFUSED/);
-  assert.ok(c.events.some((e) => e.src === 'SCM202' && /RESUME REFUSED/.test(e.desc)));
+  assert.equal(c.renderVals().batch.holdT, 'HOLD', 'RESUME is not offered while the interlock holds the sequence');
+  c.seqCmd('HOLD');                                   // the button reads HOLD: this confirms the hold, it never resumes
+  assert.equal(c.P.b.held, true, 'sequence stays held while the interlock stands');
+  assert.match(c.state.msg, /ALREADY HELD — TI216 INTERLOCK/);
+  assert.ok(c.events.some((e) => e.type === 'OPERATOR' && e.src === 'SCM202' && /HOLD CONFIRMED/.test(e.desc)));
   c.openEntry('FIC211', 'OP'); c.setState({ entryText: '50' }); c.commitEntry();
   assert.equal(c.L.FIC211.op, 0);
   assert.ok(c.diagnose().some((i) => i.id === 'shed.tad' && /HELD/.test(i.title)));
@@ -341,4 +342,87 @@ test('M202-trip advice tells the operator to HOLD (FIC211 is program-owned durin
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'attribute follows on the next scan');
   c.step(0.5);
   assert.equal(c.L.FIC211.modeAttr, 'OPERATOR');
+});
+
+// ---- verification round 2 regressions ----
+
+// Run a drill from a settled plant: arm it, wait for its first alarm, ack the related alarms, act, run to the debrief.
+function runDrill(id, seed, action) {
+  const c = boot(seed, 'OPER');
+  const def = c.drillDefs().find((d) => d.id === id);
+  run(c, 60);
+  c.startDrill(def);
+  assert.ok(run(c, 720, () => !!(c.state.drill && c.state.drill.m.tAlarm)), id + ': first alarm');
+  run(c, 5);
+  for (const a of c.alarmEngine.active()) if (def.rel.includes(a.tag)) c.ackAlarm(a);
+  action(c);
+  const peak = { rT: 0, tankL: 0 };
+  run(c, 800, () => {
+    peak.rT = Math.max(peak.rT, c.P.rT); peak.tankL = Math.max(peak.tankL, c.P.tankL);
+    for (const a of c.alarmEngine.unacked()) c.ackAlarm(a);
+    return !c.state.drill;
+  });
+  const d = c.state.dlg && c.state.dlg.drill;
+  assert.ok(d && d.reason, id + ': reached the debrief');
+  return { c, d, peak };
+}
+
+test('D2: lowering the LIC101 setpoint is credited and ends with neither an R-201 nor a TK-101 trip (the surge stays in the tank)', () => {
+  for (const seed of [3, 11]) {
+    const { c, d, peak } = runDrill('D2', seed, (x) => { x.openEntry('LIC101', 'SP'); x.setState({ entryText: '40' }); x.commitEntry(); });
+    assert.ok(d.m.tAct, 'D2 seed ' + seed + ': action credited');
+    assert.equal(!!d.m.trip, false, 'D2 seed ' + seed + ': no trip');
+    assert.deepEqual(Object.keys(c.P.trips).filter((k) => c.P.trips[k]), [], 'D2 seed ' + seed + ': no equipment trip standing');
+    assert.ok(peak.rT < 180, 'D2 seed ' + seed + ': reactor peak ' + peak.rT.toFixed(1));
+    assert.ok(peak.tankL < 90, 'D2 seed ' + seed + ': tank peak ' + peak.tankL.toFixed(1));
+    assert.ok(c.L.FIC102.sp <= c.L.FIC102.sphilm && c.L.FIC102.sphilm === 80, 'cascade SP held at the reactor feed limit');
+  }
+});
+
+test('D6: TIC202 to MAN alone (the designated action) keeps R-201 under its trip and the drill stabilises', () => {
+  for (const seed of [3, 11]) {
+    const { d, peak } = runDrill('D6', seed, (x) => x.setMode('TIC202', 'MAN'));
+    assert.ok(d.m.tAct, 'D6 seed ' + seed + ': action credited');
+    assert.equal(!!d.m.trip, false, 'D6 seed ' + seed + ': no trip');
+    assert.ok(peak.rT < 175, 'D6 seed ' + seed + ': reactor peak ' + peak.rT.toFixed(1));
+    assert.equal(d.reason, 'STABILIZED', 'D6 seed ' + seed + ': ' + d.reason);
+  }
+});
+
+test('D11: HOLD pressed after the TI216 interlock has already held the sequence is credited as the correct action', () => {
+  for (const seed of [3, 6]) {
+    const c = boot(seed, 'OPER');
+    const def = c.drillDefs().find((d) => d.id === 'D11');
+    run(c, 60);
+    c.seqCmd('START', true);
+    assert.ok(run(c, 2400, () => def.when(c.P)), 'batch reached the injection condition');
+    c.startDrill(def);
+    assert.ok(run(c, 720, () => c.tadShed), 'seed ' + seed + ': interlock latched during the drill');
+    assert.ok(c.state.drill && c.state.drill.injected, 'drill still running');
+    assert.equal(c.state.drill.m.tAct, undefined, 'the interlock alone credits nothing');
+    assert.equal(c.renderVals().batch.holdT, 'HOLD');
+    c.seqCmd('HOLD');
+    assert.ok(c.state.drill.m.tAct, 'seed ' + seed + ': HOLD credited after the latch');
+    assert.match(c.state.msg, /ALREADY HELD — TI216 INTERLOCK/);
+    assert.equal(c.P.b.held, true);
+    assert.ok(c.events.some((e) => e.type === 'OPERATOR' && e.src === 'SCM202' && /HOLD CONFIRMED/.test(e.desc)));
+    assert.ok(!c.events.some((e) => /RESUME REFUSED/.test(e.desc)), 'no RESUME refusal is ever journaled');
+  }
+});
+
+test('PROGRAM write-rejection callouts clear after ten UI ticks while the simulation is paused', () => {
+  const c = boot(3, 'OPER');
+  c.seqCmd('START', true);
+  c.step(0.5);
+  c.openFp('TIC212');
+  c.setMode('TIC212', 'MAN');
+  c.setState({ speed: 0, silenced: true });
+  assert.equal(c.renderVals().fps[0].calloutOn, true);
+  const t = c.P.t;
+  for (let i = 0; i < 9; i++) c.tick();
+  assert.equal(c.P.t, t, 'sim time did not advance');
+  assert.equal(c.renderVals().fps[0].calloutOn, true, 'still shown after 4.5 s of wall clock');
+  c.tick();
+  assert.equal(c.renderVals().fps[0].calloutOn, false, 'cleared after 5 s of wall clock');
+  assert.equal(c.renderVals().fps[0].frameBc !== '#CC0000', true);
 });

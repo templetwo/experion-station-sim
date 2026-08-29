@@ -30,6 +30,16 @@
 //        onTrip()                                optional  called once per equipment trip
 //                                                          (Component.dTrip for drill scoring)
 //
+// Calibration notes (B4 verification round 2):
+//   - Feed concentration is fixed (Henson/Seborg Caf); it no longer scales with
+//     flow. Throughput acts through the residence time, so the reactor takes
+//     about +33 % feed before the jacket runs out of margin (the app limits the
+//     FIC102 setpoint to 80 m3/h for that reason). P.conc is an indication only.
+//   - The 'stick' fault carries its own heat-of-reaction step (PARAMS.U1.stickHeat)
+//     instead of the full 'rxn' fault, so putting TIC202 in MAN keeps R-201 under
+//     its trip while the stuck valve is dealt with (drill D6).
+//   - PARAMS.U1.surge is the 'surge' fault magnitude (m3/h).
+//
 // Behaviour preserved from the inline models (the app's tunings, alarm limits,
 // drills and graphics depend on it): PV ranges written into L, trip thresholds
 // (TK-101 98 %, P-101 cavitation < 2 %, R-201 185 C, V-401 PSV 950 kPa,
@@ -103,6 +113,10 @@
       NTUj: 0.35,           // jacket outlet approach
       // 'rxn' fault = off-spec feed: richer, more exothermic, faster kinetics
       rxnConc: 1.2, rxnHeat: 1.15, rxnRate: 1.3,
+      // 'stick' fault (drill D6) carries only a heat-of-reaction step: the stuck valve is the
+      // lesson, so the load must stay inside the jacket margin with TIC202 in MAN
+      stickHeat: 1.15,
+      surge: 50,            // m3/h feed inflow step of the 'surge' fault (8 min)
       tripT: 185, resetT: 160,
     },
     U2: {
@@ -190,7 +204,7 @@
   // ---------------------------------------------------------------- unit 1
   function feedDisturbance(P, n) {
     const F = P.faults;
-    let qin = 60 + 2 * Math.sin(P.up / 120) + n(0.6) + (F.surge ? 50 : 0);
+    let qin = 60 + 2 * Math.sin(P.up / 120) + n(0.6) + (F.surge ? PARAMS.U1.surge : 0);
     if (F.surge && P.t - P.faultT.surge > 480000) F.surge = false;
     if (P.trips.ovf) qin = 0;
     P.qin = qin;
@@ -225,11 +239,13 @@
   // dT/dt = feed + reaction - jacket - loss, k(T) = kRef exp(-E/R (1/T - 1/Tref)).
   function cstr(P, L, V, dt, ctx) {
     const c = PARAMS.U1, F = P.faults;
-    P.conc = Math.max(0, lag(P.conc, Math.min(P.flow / 60, 1.6), 45, dt));   // feed loading
+    P.conc = Math.max(0, lag(P.conc, Math.min(P.flow / c.designFlow, 1.6), 45, dt));   // feed loading, relative to design (indication only)
     const TK = P.rT + 273.15;
     const k = c.kRef * Math.exp(-c.E_R * (1 / TK - 1 / c.Tref)) * (F.rxn ? c.rxnRate : 1);
     const tau = c.tauRes * c.designFlow / Math.max(P.flow, 1);
-    const Caf = P.conc * (F.rxn ? c.rxnConc : 1);
+    // Feed concentration is a property of the feed, not of the flow (Henson/Seborg: Caf fixed). Throughput acts through
+    // the residence time only: more feed = less conversion = more unreacted reactant = more heat, and more sensible cooling.
+    const Caf = F.rxn ? c.rxnConc : 1;
     P.Ca = Math.max(0, P.Ca + ((Caf - P.Ca) / tau - k * P.Ca) * dt);
     P.x = Caf > 1e-6 ? clamp(1 - P.Ca / Caf, 0, 1) : 0;
     // jacket: tempered coolant supply, effectiveness from valve position (previous calibration)
@@ -237,7 +253,7 @@
     const e = 0.9 * Math.sqrt(Math.max(V.TV202.pos, 0)) * eEff;
     P.Tj = lag(P.Tj, P.Tcw * e + P.rT * (1 - e), c.tauJ, dt);
     P.Tjo = lag(P.Tjo, P.Tj + (P.rT - P.Tj) * (1 - Math.exp(-c.NTUj)), c.tauJo, dt);
-    const Qr = c.J * k * P.Ca * (F.rxn ? c.rxnHeat : 1);
+    const Qr = c.J * k * P.Ca * (F.rxn ? c.rxnHeat : F.stick ? c.stickHeat : 1);
     P.Qr = Qr / c.Qdesign * 100;
     const dTdt = (Qr - c.UA * (P.rT - P.Tj) - c.Ufeed * P.flow * (P.rT - c.Tfeed) - c.Uloss * (P.rT - c.Tamb)) / c.Cth;
     P.rT += dTdt * dt;
