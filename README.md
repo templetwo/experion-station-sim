@@ -36,3 +36,6 @@ Semantic versioning; see `CHANGELOG.md`. Current: **v1.1.1**.
 - `Launcher.dc.html` — app launcher / start screen
 - `support.js` — page runtime (required next to the app files)
 - `dist/` — self-contained offline build
+
+## Resources
+See `docs/RESOURCES.md`: verified public references (Honeywell public spec sheets and PINs, ISA/EEMUA/ASM guidance, open-source alarm-state and process-model code) and the next five planned changes. Honeywell has no public code for Experion; everything here is reference-only where marked.
