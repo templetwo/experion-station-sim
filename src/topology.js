@@ -58,6 +58,23 @@
 
   function id() { return Array.prototype.join.call(arguments, '-'); }
 
+  // Provenance ids, resolved against docs/RESOURCES.md sections. Rule 1 and release
+  // gate 5: every vendor-specific CONCEPT this graph teaches must trace to a registered
+  // public source, while every word of prose here is our own. These are concept
+  // citations, not quotations -- nothing is reproduced from any of them.
+  var BASIS = {
+    FIELD_MEAS:  ['RESOURCES-4'],          // open process models the measurements come from
+    IO:          ['RESOURCES-2.19'],       // standards, cited by clause only
+    CONTROL:     ['RESOURCES-2.16'],       // controller / control-execution concepts
+    NETWORK:     ['RESOURCES-2.16'],       // redundant path concepts
+    SERVICE:     ['RESOURCES-2.13'],       // server / SCADA architecture concepts
+    STATION:     ['RESOURCES-2.1', 'RESOURCES-2.3'],  // station / HMI concepts
+    ALARM:       ['RESOURCES-2.5', 'RESOURCES-2.2'],  // ISA-18.2 state model
+    HISTORY:     ['RESOURCES-2.13'],
+    APP:         ['RESOURCES-2.15'],       // operations-assistant concept
+    TRAINING:    ['RESOURCES-2.14']        // training-simulator concepts
+  };
+
   function mkNode(n) {
     return {
       id: n.id, layer: n.layer, kind: n.kind, label: n.label,
@@ -111,7 +128,20 @@
     };
 
     var nodes = {}, edges = [], pointPaths = {};
-    var add = function (n) { var m = mkNode(n); nodes[m.id] = m; return m.id; };
+    var add = function (n) {
+      var m = mkNode(n);
+      var prev = nodes[m.id];
+      if (prev) {
+        // Two points can legitimately share one control module. Replacing would drop the
+        // earlier point's reference and silently shrink that node's blast radius, so
+        // merge the point references instead. (Found by the SA adversarial pass.)
+        m.pointRefs = prev.pointRefs.concat(m.pointRefs.filter(function (t) {
+          return prev.pointRefs.indexOf(t) < 0;
+        }));
+      }
+      nodes[m.id] = m;
+      return m.id;
+    };
     var link = function (e) { edges.push(mkEdge(e)); };
 
     // ---------------------------------------------------------------- declared spine
@@ -120,10 +150,10 @@
     // the two station profiles, history and the assistant application.
     UNITS.forEach(function (u) {
       add({ id: id('CTRL', u), layer: 'CONTROL', kind: 'CONTROLLER', unit: u,
-            label: u + ' CONTROLLER',
+            label: u + ' CONTROLLER', sourceBasis: BASIS.CONTROL,
             trainingDescription: 'Executes the control modules for ' + u + '. If it is lost, every point it executes goes stale together -- a common-cause pattern, not many independent failures.' });
       add({ id: id('CEE', u), layer: 'CONTROL', kind: 'CEE', unit: u,
-            label: u + ' CONTROL EXECUTION',
+            label: u + ' CONTROL EXECUTION', sourceBasis: BASIS.CONTROL,
             trainingDescription: 'The execution environment the control modules run inside. Distinguishes "the controller is gone" from "one module is misbehaving".' });
       // HOSTING, in the dependency direction: the controller hosts the execution
       // environment, which executes the control modules. Every edge in this graph points
@@ -133,23 +163,23 @@
       link({ from: id('CTRL', u), to: id('CEE', u), semantic: 'CONFIG' });
       ['A', 'B'].forEach(function (p) {
         add({ id: id('NET', u, p), layer: 'NETWORK', kind: 'NET_PATH', unit: u,
-              label: u + ' NETWORK PATH ' + p, redundancyGroup: id('NET', u),
+              label: u + ' NETWORK PATH ' + p, redundancyGroup: id('NET', u), sourceBasis: BASIS.NETWORK,
               trainingDescription: 'One of two redundant paths carrying ' + u + ' data. Losing one degrades redundancy; data keeps flowing. Losing both is a communications partition, which looks like a common stale-data pattern rather than a process upset.' });
       });
       var scm = SCM_OF[u];
       if (scm) {
         add({ id: id('CM', scm), layer: 'CONTROL', kind: 'SCM', unit: u, assetRef: assetOf(scm),
-              label: scm + ' SEQUENCE', pointRefs: [],
+              label: scm + ' SEQUENCE', pointRefs: [], sourceBasis: BASIS.CONTROL,
               trainingDescription: 'Sequence control module driving the ' + u + ' batch phases. Its phase drives state-based alarm limits, so an alarm limit that "changed by itself" usually traces here.' });
         link({ from: id('CM', scm), to: id('CEE', u), semantic: 'CONFIG' });
       }
     });
 
-    add({ id: 'SVC-ALARM', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'ALARM AND EVENT SERVICE',
+    add({ id: 'SVC-ALARM', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'ALARM AND EVENT SERVICE', sourceBasis: BASIS.ALARM,
           trainingDescription: 'Processes alarm state changes and keeps the event journal. If it degrades, annunciation and the journal suffer while control itself is unaffected.' });
-    add({ id: 'SVC-SERVER', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'DATA SERVER',
+    add({ id: 'SVC-SERVER', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'DATA SERVER', sourceBasis: BASIS.SERVICE,
           trainingDescription: 'Caches process data for stations running the flex profile. A server fault blinds the flex profile while a console-profile station, which talks to the controller directly, stays correct. This is the classic "is it the server or the controller?" split.' });
-    add({ id: 'SVC-HISTORY', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'HISTORY COLLECTION',
+    add({ id: 'SVC-HISTORY', layer: 'SERVICE', kind: 'SERVER_SVC', label: 'HISTORY COLLECTION', sourceBasis: BASIS.HISTORY,
           trainingDescription: 'Collects samples into the historian. If it stops, live values stay perfect and only trends and history show a gap for the interval.' });
     UNITS.forEach(function (u) {
       ['A', 'B'].forEach(function (p) {
@@ -160,14 +190,14 @@
     });
 
     add({ id: 'STN-CONSOLE', layer: 'HMI', kind: 'STATION', profile: 'console',
-          label: 'STATION (CONSOLE PROFILE)',
+          label: 'STATION (CONSOLE PROFILE)', sourceBasis: BASIS.STATION,
           trainingDescription: 'Console profile: reads process data on the direct controller path. Survives a data-server fault. This simulator has ONE physical station; console and flex are modelled as view profiles on it, not as two machines.' });
     add({ id: 'STN-FLEX', layer: 'HMI', kind: 'STATION', profile: 'flex',
-          label: 'STATION (FLEX PROFILE)',
+          label: 'STATION (FLEX PROFILE)', sourceBasis: BASIS.STATION,
           trainingDescription: 'Flex profile: reads process data cached by the data server. Goes stale when the server degrades even though control is healthy. Simulated as a view profile, not a second machine.' });
-    add({ id: 'HIST-STORE', layer: 'INFORMATION', kind: 'HISTORY', label: 'PROCESS HISTORY',
+    add({ id: 'HIST-STORE', layer: 'INFORMATION', kind: 'HISTORY', label: 'PROCESS HISTORY', sourceBasis: BASIS.HISTORY,
           trainingDescription: 'Stored samples behind trends. A gap here means the data was never collected; the process itself was never in doubt.' });
-    add({ id: 'APP-ASSIST', layer: 'INFORMATION', kind: 'APP', label: 'OPS ASSISTANT',
+    add({ id: 'APP-ASSIST', layer: 'INFORMATION', kind: 'APP', label: 'OPS ASSISTANT', sourceBasis: BASIS.APP,
           trainingDescription: 'Rule-based decision support reading process symptoms. Advisory only: if it is unavailable the operator loses help, never control.' });
 
     UNITS.forEach(function (u) {
@@ -177,7 +207,11 @@
     link({ from: 'SVC-ALARM', to: 'STN-CONSOLE', semantic: 'ALARM' });
     link({ from: 'SVC-ALARM', to: 'STN-FLEX', semantic: 'ALARM' });
     link({ from: 'SVC-HISTORY', to: 'HIST-STORE', semantic: 'HISTORY' });
+    // Trend read-back reaches BOTH station profiles: a historian gap shows up on a trend
+    // whichever profile you are viewing, which is exactly why drill A10 must be diagnosed
+    // from the gap itself and not from which station you happen to be sitting at.
     link({ from: 'HIST-STORE', to: 'STN-CONSOLE', semantic: 'HISTORY' });
+    link({ from: 'HIST-STORE', to: 'STN-FLEX', semantic: 'HISTORY' });
     link({ from: 'SVC-SERVER', to: 'APP-ASSIST', semantic: 'PV' });
 
     // ---------------------------------------------------------------- derived per point
@@ -192,7 +226,7 @@
       var fieldId = isMotor ? id('DRV', tag) : id('XMTR', tag);
       add({ id: fieldId, layer: 'FIELD', kind: isMotor ? 'MOTOR' : 'TRANSMITTER', unit: u,
             assetRef: asset, pointRefs: [tag],
-            label: (isMotor ? 'DRIVE ' : 'TRANSMITTER ') + tag,
+            label: (isMotor ? 'DRIVE ' : 'TRANSMITTER ') + tag, sourceBasis: BASIS.FIELD_MEAS,
             trainingDescription: isMotor
               ? 'Motor and its starter for ' + tag + '. Run feedback originates here, so a feedback fault and a genuine stop look identical at the station until you check the field.'
               : 'Measuring element for ' + tag + ' (' + (l.desc || '') + '). Every measurement carries noise from here. A fault here can produce a perfectly plausible value with GOOD quality -- which is why quality is not proof of correctness.',
@@ -202,13 +236,13 @@
       // IO: the input channel carrying it.
       var aiId = id('AI', tag);
       add({ id: aiId, layer: 'IO', kind: 'AI_CH', unit: u, assetRef: asset, pointRefs: [tag],
-            label: 'INPUT CHANNEL ' + tag,
+            label: 'INPUT CHANNEL ' + tag, sourceBasis: BASIS.IO,
             trainingDescription: 'Input channel for ' + tag + '. A channel failure reports bad quality and the loop sheds per its SHEDHOLD setting -- distinguishable from a field fault, which usually does not flag quality at all.',
             diagnostics: ['channel status', 'quality'] });
 
       // CONTROL: the control module.
       add({ id: cmId, layer: 'CONTROL', kind: 'CM', unit: u, assetRef: asset, pointRefs: [tag],
-            label: (l.cm || tag) + ' (' + tag + ')',
+            label: (l.cm || tag) + ' (' + tag + ')', sourceBasis: BASIS.CONTROL,
             trainingDescription: 'Control module holding ' + tag + '. Executes inside the ' + u + ' controller, so it goes stale with every other module there if that controller is lost.',
             diagnostics: ['mode', 'execution state'] });
 
@@ -242,12 +276,12 @@
       if (valve && V[valve]) {
         var aoId = id('AO', tag);
         add({ id: aoId, layer: 'IO', kind: 'AO_CH', unit: u, assetRef: asset, pointRefs: [tag],
-              label: 'OUTPUT CHANNEL ' + tag,
+              label: 'OUTPUT CHANNEL ' + tag, sourceBasis: BASIS.IO,
               trainingDescription: 'Output channel carrying the ' + tag + ' demand to ' + valve + '.',
               diagnostics: ['channel status', 'output readback'] });
         var vId = id('VLV', valve);
         add({ id: vId, layer: 'FIELD', kind: 'VALVE', unit: u, assetRef: asset, pointRefs: [tag],
-              label: 'VALVE ' + valve,
+              label: 'VALVE ' + valve, sourceBasis: BASIS.FIELD_MEAS,
               trainingDescription: 'Final element for ' + tag + '. On loss of instrument air it goes to its fail-safe position (' + (V[valve].fail ? 'open' : 'closed') + '). If the output moves and neither the position nor the PV follows, the problem is here, not in the controller.',
               diagnostics: ['position vs demand', 'stroke response', 'fail-safe state'] });
         link({ from: cmId, to: aoId, semantic: 'COMMAND', pointRef: tag });
@@ -256,7 +290,7 @@
       } else if (isMotor) {
         var moId = id('AO', tag);
         add({ id: moId, layer: 'IO', kind: 'AO_CH', unit: u, assetRef: asset, pointRefs: [tag],
-              label: 'OUTPUT CHANNEL ' + tag,
+              label: 'OUTPUT CHANNEL ' + tag, sourceBasis: BASIS.IO,
               trainingDescription: 'Start/stop command channel for ' + tag + '.',
               diagnostics: ['channel status'] });
         link({ from: cmId, to: moId, semantic: 'COMMAND', pointRef: tag });
@@ -295,6 +329,7 @@
       if (KINDS.indexOf(n.kind) < 0) problems.push(n.id + ': unknown kind ' + n.kind);
       if (!n.label) problems.push(n.id + ': missing label');
       if (!n.trainingDescription) problems.push(n.id + ': missing trainingDescription (every node must teach something)');
+      if (!n.sourceBasis || !n.sourceBasis.length) problems.push(n.id + ': missing sourceBasis (rule 1 / release gate 5: every concept traces to a registered public source)');
     });
 
     graph.edges.forEach(function (e) {
