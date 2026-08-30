@@ -1,3 +1,4 @@
+// @artifact dev
 // App-level tests for step B3: colour philosophy (ESS.Palette presets read
 // through one getter), the Range / Critical / Standard / Target limit ladder,
 // the alarm-and-display philosophy page and the Loop Tune additions.

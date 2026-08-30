@@ -1,3 +1,4 @@
+<!-- @artifact production -->
 # Experion Station Sim: Resource Guide
 
 > Repo copy. Section 3 has its links withheld on purpose: those locations host proprietary Honeywell material and, per the rule in that section, are not linked from this repository. The maintainer keeps the unredacted copy outside the repo. Colours, names and behaviours cited from Honeywell public spec sheets are reference only; no Honeywell text, tables, screenshots or artwork are reproduced here or in the simulator.

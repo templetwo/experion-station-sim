@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.Philosophy — the "why the screens look like this" help page.
  *

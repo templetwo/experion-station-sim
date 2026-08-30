@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.AlarmHelp — alarm rationalisation table (Alarm Help) for every alarm
  * condition in the simulator.

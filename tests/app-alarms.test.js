@@ -1,3 +1,4 @@
+// @artifact dev
 // App-level tests for step B1: the ISA-18.2 engine wired into the Component.
 // Behaviour under test follows alerta isa_18_2.py (RESOURCES 2.5), loxalarm
 // delay semantics (2.9), the Siemens indication / delay examples (2.6) and the

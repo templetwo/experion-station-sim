@@ -1,3 +1,4 @@
+// @artifact dev
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Kpi = require('../src/kpi.js');

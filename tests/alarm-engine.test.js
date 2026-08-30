@@ -1,3 +1,4 @@
+// @artifact dev
 // Transition table tests transliterated from alerta isa_18_2.py (RESOURCES 2.5),
 // loxalarm delay / shelve semantics (2.9), Siemens indication table (2.6),
 // Experion sub-priority ordering (2.1) and PIN folding / DAS semantics (2.2).

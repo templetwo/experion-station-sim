@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.Pid — the sim's Experion-style PID as a pure, testable module.
  *

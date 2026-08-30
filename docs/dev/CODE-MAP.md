@@ -1,3 +1,4 @@
+<!-- @artifact dev -->
 # Code map: `Experion Station Simulator.dc.html`
 
 Structural map produced 2026-08-29 (v1.1.1, 1798 lines). Line numbers drift as the file changes; use them as anchors, then grep. Single `.dc.html` page: HTML template inside `<x-dc>` (lines 9–903) + one `<script type="text/x-dc" data-dc-script>` (904–1796) holding `class Component extends DCLogic` (905–1795). Runtime is `support.js` (generated bundle, do not edit; the only local patch is the SVG `tspan` fix documented in CHANGELOG 1.1.1).

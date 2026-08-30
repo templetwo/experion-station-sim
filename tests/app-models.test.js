@@ -1,3 +1,4 @@
+// @artifact dev
 // App-level tests for step B4: ESS.Models and ESS.Pid wired into the Component,
 // state-based alarm limits per SCM202 phase (ISA-TR18.2.6 pattern, RESOURCES 2.19),
 // the new indications (TI216, TI314/TI315, AI316, AI205), PV tracking and the

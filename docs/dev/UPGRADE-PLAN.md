@@ -1,3 +1,4 @@
+<!-- @artifact dev -->
 # v2 upgrade plan and engineering conventions
 
 Goal: implement the five changes in `docs/RESOURCES.md` section 5 (ISA-18.2 alarm engine; Alarm Summary parity; documented colour and limit philosophy; better process dynamics; instructor mode and standards-based scoring) without breaking the two shipping artefacts: the folder build (`Experion Station Simulator.dc.html` + `support.js` + `src/`) and the single-file offline build (`dist/experion-station-sim-standalone.html`).

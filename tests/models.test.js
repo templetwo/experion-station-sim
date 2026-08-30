@@ -1,3 +1,4 @@
+// @artifact dev
 // Tests for src/models.js driven through the app's Component (tools/logic-harness).
 const test = require('node:test');
 const assert = require('node:assert/strict');

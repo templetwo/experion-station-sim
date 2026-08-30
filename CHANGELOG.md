@@ -1,3 +1,4 @@
+<!-- @artifact production -->
 # Changelog
 All notable changes to the simulator. Semantic versioning.
 

@@ -1,3 +1,4 @@
+// @artifact dev
 // App-level tests for step B6: standards-based drill scorer (ESS.Kpi, RESOURCES 2.7, 2.8),
 // operator task coverage matrix and the 80 % independent pass mark (RESOURCES 2.12),
 // Message Summary confirm, electronic signatures, disable-alarms-for-asset (2.12),

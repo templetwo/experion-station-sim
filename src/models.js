@@ -1,3 +1,4 @@
+// @artifact production
 // ESS.Models — process dynamics for the three simulated units.
 //
 // Drop-in replacement for the inline models in the Component (CODE-MAP 2.6).

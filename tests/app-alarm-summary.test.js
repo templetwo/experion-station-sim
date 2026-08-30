@@ -1,3 +1,4 @@
+// @artifact dev
 // App-level tests for step B2: Alarm Summary parity (asset pane, trip/live
 // columns, repeat folding, comments, saved views), Alarm Help and the KPI
 // display. Feature list per the Experion Alarming PIN (RESOURCES 2.2),

@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.Palette — colour philosophy presets for the station display.
  *

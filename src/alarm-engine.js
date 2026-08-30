@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * alarm-engine.js: ISA-18.2 alarm state engine for the station simulator.
  *

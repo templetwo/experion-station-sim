@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.Training — operator task inventory, coverage matrix, training record
  * and the message / signature / change-log record shapes used by the station.

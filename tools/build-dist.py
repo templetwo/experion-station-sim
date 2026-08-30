@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @artifact dev
 """Rebuild dist/experion-station-sim-standalone.html from the source files.
 
 The standalone is the app template plus a manifest of gzip+base64 blobs
@@ -6,7 +7,7 @@ The standalone is the app template plus a manifest of gzip+base64 blobs
 builds carried over from the previous dist). The bootstrap script and the
 React blobs are reused verbatim from the existing dist.
 """
-import base64, gzip, json, re, sys, uuid, pathlib
+import base64, gzip, json, re, subprocess, sys, uuid, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 APP = ROOT / 'Experion Station Simulator.dc.html'
@@ -17,6 +18,9 @@ def blob(text):
     return base64.b64encode(gzip.compress(text.encode('utf-8'), mtime=0)).decode('ascii')
 
 def main():
+    # Behaviour hash first: the standalone must carry the same ESS.MODEL_ID as the
+    # folder build, so stamping is part of building, not a step anyone can forget.
+    subprocess.run([sys.executable, str(ROOT / 'tools' / 'stamp-model-id.py')], check=True)
     old = DIST.read_text(encoding='utf-8')
     m_man = re.search(r'<script type="__bundler/manifest">(.*?)</script>', old, re.S)
     m_tpl = re.search(r'<script type="__bundler/template">(.*?)</script>', old, re.S)

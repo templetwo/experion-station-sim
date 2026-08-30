@@ -1,3 +1,4 @@
+// @artifact dev
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Pid = require('../src/pid.js');

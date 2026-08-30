@@ -1,3 +1,4 @@
+// @artifact production
 /*
  * ESS.Kpi — alarm performance metrics and drill scoring.
  *

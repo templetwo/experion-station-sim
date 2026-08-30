@@ -1,3 +1,4 @@
+// @artifact production
 // ESS.Instructor — instructor-station data and helpers for the simulator.
 //
 // What a process training simulator's instructor station carries, in our own

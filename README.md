@@ -1,3 +1,4 @@
+<!-- @artifact production -->
 # Experion-Style Operator Station Training Simulator
 
 A browser-based, single-page training simulator that reproduces the conventions of a Honeywell Experion PKS Console/Flex Station: HMIWeb-style gray graphics, four alarm priorities (Journal/Low/High/Urgent) with an ISA-18.2 alarm lifecycle, PID faceplates (MAN/AUTO/CAS, PROGRAM mode attribute, PV tracking), Point Detail tabs with Experion parameter names (K, T1/T2 in minutes, SPHILM/OPHILM, SHEDHOLD, ALMDB/ALMDELAY), alarm shelving with reasons, dynamic suppression, out-of-service, an event journal with management-of-change audit, trends, station security levels with electronic signatures, scored training drills, an instructor station with snapshots and replay, and a rule-based Ops Assistant.

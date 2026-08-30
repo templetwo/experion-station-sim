@@ -1,3 +1,4 @@
+// @artifact dev
 // Evaluate the app's <script data-dc-script> Component class outside the browser
 // so pure logic (alarm engine, PID, process models, drills) can be unit-tested
 // with node. Mirrors the dc-runtime: DCLogic base with props/state/setState.

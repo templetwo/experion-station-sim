@@ -1,4 +1,5 @@
 #!/bin/bash
+# @artifact dev
 # Headless-Chrome smoke test: loads the folder build (online) and the dist build
 # (DNS blocked, i.e. offline) and fails on real console errors.
 # Usage: tools/smoke.sh [outdir]   -> writes shot-folder.png / shot-dist.png / logs
