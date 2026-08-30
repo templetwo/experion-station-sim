@@ -50,7 +50,9 @@ function modelId() {
 function newSim({ seed = 20260829, now = 1_700_000_000_000 } = {}) {
   const { Component } = load();
   const c = new Component({});
-  if (c.instr) c.instr.seed = seed;
+  // NB: do NOT try to seed before initSim -- c.instr does not exist until initSim
+  // creates it. The operative seeding is the setSeed call below, which also resets
+  // the PRNG cursor. (Advisory review, 2026-08-30.)
   const realNow = Date.now;
   try {
     Date.now = () => now;          // pin the origin so a fixture is reproducible
@@ -69,12 +71,23 @@ function run(c, seconds, dt = 0.5) {
   return c;
 }
 
+/** Byte-order comparison. NOT localeCompare: that is host-locale dependent by the
+ *  ECMAScript spec, which would make a digest unreproducible across machines. */
+function byteCmp(x, y) { return x < y ? -1 : x > y ? 1 : 0; }
+
 /**
  * The observable trajectory endpoint: what a regression would move.
  * Deliberately excludes wall-clock fields (P.t origin, event timestamps) so a golden
  * survives being captured on a different day -- it is a behaviour digest, not a clock digest.
+ *
+ * Scope note: this deliberately covers the LATCHED and SEQUENCED state as well as the
+ * continuous state, because the dangerous S0 failure is a golden that keeps passing while
+ * behaviour drifts. Trips, fault flags, batch phase/accumulation, fouling, the tube-skin
+ * interlock latch and the applied state-based alarm limit set are all things a v3 stage
+ * could break with no continuous variable moving at all. (Advisory review, 2026-08-30.)
  */
 function endState(c) {
+  const P = c.P;
   const points = {};
   for (const tag of Object.keys(c.L).sort()) {
     const l = c.L[tag];
@@ -86,14 +99,34 @@ function endState(c) {
   }
   const valves = {};
   for (const v of Object.keys(c.V).sort()) {
-    valves[v] = { pos: round(c.V[v].pos), stuck: !!c.V[v].stuck };
+    const V = c.V[v];
+    valves[v] = { pos: round(V.pos), stuck: !!V.stuck, fail: V.fail };
   }
   const alarms = (c.alarms || [])
-    .map(a => ({ tag: a.tag || a.src, cond: a.cond, prio: a.prio, state: a.state, active: !!a.active }))
-    .sort((x, y) => canon(x).localeCompare(canon(y)));
+    .map(a => ({
+      tag: a.tag || a.src, cond: a.cond, prio: a.prio, state: a.state,
+      active: !!a.active, subprio: a.subprio === undefined ? null : a.subprio,
+      shelved: !!a.shelved, oos: !!a.oos,
+    }))
+    .sort((x, y) => byteCmp(canon(x), canon(y)));
+  const b = P.b || {};
+  const h = P.h || {};
   return {
     points, valves, alarms,
-    up: round(c.P.up),
+    up: round(P.up),
+    // Latched / discrete state -- invisible to the continuous variables above.
+    trips: { ...P.trips },
+    faults: { ...P.faults },
+    tadShed: !!c.tadShed,
+    phaseSet: c.phaseSet === undefined ? null : c.phaseSet,
+    batch: {
+      phase: b.phase, held: !!b.held, pt: round(b.pt), Cm: round(b.Cm),
+      lvl: round(b.lvl), T: round(b.T), accM: round(b.accM), conv: round(b.conv),
+      Tad: round(b.Tad), mP: round(b.mP),
+    },
+    heater: { o2: round(h.o2), ts1: round(h.ts1), ts2: round(h.ts2), bed: round(h.bed) },
+    drift: { driftOff: round(P.driftOff), foulF: round(P.foulF), foulBase: round(P.foulBase) },
+    mag: { ...P.mag },
     counts: { alarms: (c.alarms || []).length, events: (c.events || []).length },
   };
 }

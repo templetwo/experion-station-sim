@@ -1,0 +1,18 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-foul",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 700,
+  "endStateDigest": "7e4be209a8853fdb041af80e0b2f93de3ff5b4affb58784a030724bd943fd8bd",
+  "alarmSequenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "alarmSeq": [],
+  "trips": {},
+  "faults": {
+    "foul": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 0,
+  "countsEvents": 2
+}

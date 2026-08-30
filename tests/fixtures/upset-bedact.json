@@ -1,0 +1,27 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-bedact",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 600,
+  "endStateDigest": "644e4ff6610d5e8a0e18caa3de7acd6e6bca4f503367793c650021f81fa6ee31",
+  "alarmSequenceDigest": "56050f3883f6880ca918dfd25fd2e7c00c793b365305838e58e70de51667e91c",
+  "alarmSeq": [
+    "TI312:PVHI:High",
+    "R-310:HI TEMP TRIP:Urgent",
+    "TI312:PVHH:Urgent",
+    "TIC311:PVLO:Low",
+    "AI316:PVLO:Low",
+    "TIC311:PVHI:High"
+  ],
+  "trips": {
+    "bed": false
+  },
+  "faults": {
+    "bedact": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 6,
+  "countsEvents": 37
+}

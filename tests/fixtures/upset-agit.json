@@ -1,0 +1,20 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-agit",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 300,
+  "endStateDigest": "6c49873863bba8575bfef85da576fc637af28f48d076485e384c94a664288c6f",
+  "alarmSequenceDigest": "d32339c675f7ff3eda8e3995131cb8cb5e59aea0d5f0deefc55d120f62095e15",
+  "alarmSeq": [
+    "M202:TRIP:Urgent"
+  ],
+  "trips": {},
+  "faults": {
+    "agit": false
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 1,
+  "countsEvents": 4
+}
