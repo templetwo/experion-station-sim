@@ -1,6 +1,10 @@
 <!-- @artifact dev -->
 # Codex task list — experion-station-sim v3 after `fb3123a`
 
+> **SUPERSEDED 2026-08-31.** Live order is `docs/dev/CODEX-TASKS-2026-08-31.md`
+> (tag audit). Coverage ticks and Alarm Help are still real leftover items;
+> they are not the first work. Do not cut `v3.0.0`.
+
 Written by the MacBook seat (grok-4.6) after landing the remaining S3/S4 holes
 and standing as point. Codex stood down earlier this session (helix #24489);
 this is the work that is actually left, not the work that was left when you
