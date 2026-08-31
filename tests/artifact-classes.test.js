@@ -22,6 +22,29 @@ const UNMARKABLE = {
   '.thumbnail': ['dev', 'binary WebP export artifact, not referenced by either build'],
 };
 
+// This suite defines "the files in the repo" as `git ls-files`, deliberately: that is what
+// makes the classification impossible to drift from the tree. The cost is a hard dependency
+// on git metadata, and in a tree WITHOUT it -- a `git archive` export, a downloaded tarball --
+// every assertion here fails for a reason that has nothing to do with the code under test.
+// A verifier seat hit exactly that and read 5 spurious failures on a green commit.
+//
+// So: SKIP, with a stated reason, rather than FAIL. Without git this suite genuinely cannot
+// do its job, and saying so is honest where failing is a lie about the code. A false negative
+// is the worst kind of failure, because it teaches people to ignore the suite.
+function gitAvailable() {
+  try {
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const GIT = gitAvailable();
+const NO_GIT = GIT ? false : 'no git metadata in this tree (exported or downloaded copy) -- ' +
+  'artifact classification is defined by `git ls-files` and cannot be checked here. Verify ' +
+  'against a clone or the working repository instead.';
+
 function tracked() {
   return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n').map(s => s.trim()).filter(Boolean);
@@ -36,11 +59,11 @@ function declaredClass(rel) {
   return hits[0].split(/\s+/)[1];
 }
 
-test('every tracked file declares an artifact class', () => {
+test('every tracked file declares an artifact class', { skip: NO_GIT }, () => {
   for (const rel of tracked()) declaredClass(rel);
 });
 
-test('directories that are wholly dev are classified dev', () => {
+test('directories that are wholly dev are classified dev', { skip: NO_GIT }, () => {
   const devDirs = ['tests/', 'tools/', 'docs/dev/'];
   for (const rel of tracked()) {
     if (devDirs.some(d => rel.startsWith(d))) {
@@ -49,7 +72,7 @@ test('directories that are wholly dev are classified dev', () => {
   }
 });
 
-test('the shipping artifacts are classified production', () => {
+test('the shipping artifacts are classified production', { skip: NO_GIT }, () => {
   const shipped = [
     'Experion Station Simulator.dc.html',
     'Launcher.dc.html',
@@ -69,13 +92,13 @@ test('the shipping artifacts are classified production', () => {
   }
 });
 
-test('CHANGELOG.md is canonical and ships', () => {
+test('CHANGELOG.md is canonical and ships', { skip: NO_GIT }, () => {
   // Anthony, 2026-08-30: "changlog stays canonical". It is the project's record of
   // record, not a build document, and is never stripped from a distribution.
   assert.equal(declaredClass('CHANGELOG.md'), 'production');
 });
 
-test('the unmarkable allowlist is exact -- no file on it carries a marker anyway', () => {
+test('the unmarkable allowlist is exact -- no file on it carries a marker anyway', { skip: NO_GIT }, () => {
   const all = tracked();
   for (const rel of Object.keys(UNMARKABLE)) {
     assert.equal(all.includes(rel), true, `${rel} is on the unmarkable allowlist but is not tracked`);
@@ -90,7 +113,7 @@ test('the unmarkable allowlist is exact -- no file on it carries a marker anyway
   }
 });
 
-test('stripping every dev file leaves both builds intact', () => {
+test('stripping every dev file leaves both builds intact', { skip: NO_GIT }, () => {
   // The standalone must not depend on anything dev-class, and the folder build must
   // only need the app page, support.js and src/. This is the property that makes
   // "remove the dev files" a safe release step rather than a hopeful one.
