@@ -28,7 +28,14 @@ PORT = int(os.environ.get("COACH_PORT", "8766"))
 MODEL = os.environ.get("COACH_MODEL", "granite4.2:8b")
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 HOST = "127.0.0.1"
-THINK = os.environ.get("COACH_THINK", "true").strip().lower() not in ("0", "false", "off", "no")
+_THINK_RAW = os.environ.get("COACH_THINK", "low").strip().lower()
+if _THINK_RAW in ("0", "false", "off", "no"):
+    THINK = False
+elif _THINK_RAW in ("1", "true", "on", "yes"):
+    THINK = "low"
+else:
+    THINK = _THINK_RAW
+SPOKEN_MAX_WORDS = 36
 
 BANNED = [
     "FROZEN_MEASUREMENT", "BIASED_MEASUREMENT", "NOISY_MEASUREMENT",
@@ -59,12 +66,12 @@ def scrub(text: str) -> str:
 def user_task(kind: str, ask: str, projection: dict) -> str:
     blob = json.dumps(projection, ensure_ascii=False, separators=(",", ":"))
     if kind == "explain":
-        task = "Explain the selected alarm. If none is selected, explain the highest-priority active alarm."
+        task = "Explain the selected alarm in 1-2 short sentences. If none is selected, the highest-priority active alarm."
     elif kind == "ask":
-        task = "Answer the operator. Question: " + (ask or "(empty)")
+        task = "Answer in 1-2 short sentences. Question: " + (ask or "(empty)")
     else:
-        task = "A new unacknowledged alarm just appeared. One first look: what it means and the first check. Do not recap every alarm."
-    return "BOARD JSON:\n" + blob + "\n\nTASK:\n" + task
+        task = "New UNACK. One first look, 1-2 short sentences. Do not recap every alarm."
+    return "BOARD JSON:\n" + blob + "\n\nTASK:\n" + task + "\n\nLENGTH: 1-2 sentences. No preamble."
 
 
 def history_messages(raw) -> list:
@@ -94,7 +101,7 @@ def chat_body(kind: str, ask: str, projection: dict, history, stream: bool) -> b
         "stream": stream,
         "think": THINK,
         "messages": chat_messages(kind, ask, projection, history),
-        "options": {"temperature": 0.35, "num_predict": 900, "num_ctx": 8192},
+        "options": {"temperature": 0.2, "num_predict": 420, "num_ctx": 8192},
     }).encode("utf-8")
 
 
@@ -117,12 +124,46 @@ def split_delta(prev: str, incoming: str) -> tuple[str, str]:
     return prev + incoming, incoming
 
 
+def word_count(s: str) -> int:
+    return len([w for w in (s or "").split() if w])
+
+
+def take_words(delta: str, n: int) -> str:
+    if n <= 0 or not delta:
+        return ""
+    words = [w for w in delta.split() if w]
+    if len(words) <= n:
+        return delta
+    lead = " " if delta[:1].isspace() else ""
+    return lead + " ".join(words[:n])
+
+
+def clip_spoken(text: str) -> str:
+    t = (text or "").strip()
+    if not t:
+        return t
+    parts = []
+    buf = ""
+    for ch in t:
+        buf += ch
+        if ch in ".!?" and len(buf.strip()) > 8:
+            parts.append(buf.strip())
+            buf = ""
+            if len(parts) >= 2:
+                break
+    out = " ".join(parts) if parts else t
+    words = out.split()
+    if len(words) > SPOKEN_MAX_WORDS:
+        out = " ".join(words[:SPOKEN_MAX_WORDS]).rstrip(",;:") + "."
+    return out
+
+
 def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
     try:
         with ollama_open(kind, ask, projection, history, False, 90) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         msg = data.get("message") or {}
-        text = scrub(msg.get("content") or data.get("response") or "").strip()
+        text = clip_spoken(scrub(msg.get("content") or data.get("response") or "").strip())
         thinking = scrub(msg.get("thinking") or "").strip()
         return True, text, thinking
     except Exception as err:
@@ -221,6 +262,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         think_acc = ""
         text_acc = ""
+        spoken_out = ""
         try:
             with ollama_open(kind, ask, proj, hist, True, 120) as resp:
                 while True:
@@ -240,7 +282,11 @@ class Handler(BaseHTTPRequestHandler):
                     if tdelta:
                         self._emit({"t": "think", "d": scrub(tdelta)})
                     if xdelta:
-                        self._emit({"t": "text", "d": scrub(xdelta)})
+                        room = SPOKEN_MAX_WORDS - word_count(spoken_out)
+                        piece = take_words(xdelta, room)
+                        if piece:
+                            spoken_out += (" " if spoken_out and not piece[:1].isspace() else "") + piece
+                            self._emit({"t": "text", "d": scrub(piece)})
                     if chunk.get("done"):
                         break
             self._emit({"t": "done", "ok": True, "model": MODEL})

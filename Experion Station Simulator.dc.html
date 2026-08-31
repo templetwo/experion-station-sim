@@ -49,7 +49,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 .ess-pip-cloud{position:absolute;bottom:118px;right:0;width:196px;background:#F4F0D8;border:2px solid #3c3c3c;padding:7px 8px 9px;font:10px Tahoma,Verdana,sans-serif;color:#2c2c2c;line-height:1.35;box-shadow:3px 3px 0 #6E6E6E}
 .ess-pip-cloud:after{content:"";position:absolute;bottom:-12px;right:34px;width:0;height:0;border:12px solid transparent;border-top-color:#3c3c3c}
 .ess-pip-cloud-k{font-weight:700;font-size:9px;letter-spacing:.08em;color:#6E4000;margin-bottom:3px}
-.ess-pip-cloud-t{max-height:88px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical}
+.ess-pip-cloud-t{max-height:48px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .ess-pip-dots{display:flex;gap:5px;padding:6px 2px 2px}
 .ess-pip-dots span{width:7px;height:7px;border-radius:50%;background:#3c3c3c;animation:ess-pip-dot 1s infinite}
 .ess-pip-dots span:nth-child(2){animation-delay:.15s}
@@ -1989,7 +1989,7 @@ class Component extends DCLogic {
     const now=Date.now();
     if(!force&&this._coachPaintAt&&now-this._coachPaintAt<60) return;
     this._coachPaintAt=now;
-    const think=this.coachScrub(this._coachThink||'').slice(-360);
+    const think=this.coachScrub(this._coachThink||'').slice(-140);
     const spoken=this.coachScrub(this._coachDraft||'');
     const feed=(this.state.coachFeed||[]).map(m=>Object.assign({},m));
     if(this._coachLiveId){

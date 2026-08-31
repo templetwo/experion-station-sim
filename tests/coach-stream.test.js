@@ -25,6 +25,7 @@ test('sidecar streams NDJSON and enables think', () => {
   assert.match(serve, /["']think["']\s*:\s*THINK/);
   assert.match(serve, /"t": "think"/);
   assert.match(serve, /"t": "text"/);
+  assert.match(serve, /SPOKEN_MAX_WORDS/);
 });
 
 test('page fetches only the stream and health/advise coach paths', () => {

@@ -12,7 +12,8 @@ from granite think, streaming feed in Ops Assistant.
 
 ## Run
 
-Ollama must already be up. Default model is `granite4.2:8b` with think on.
+Ollama must already be up. Default model is `granite4.2:8b` with think `low`.
+Spoken replies are clipped to about two short sentences.
 Override with `COACH_MODEL`. `COACH_THINK=false` turns thinking off.
 
 ```bash
