@@ -40,6 +40,19 @@ classify() {
   echo "${c:-UNCLASSIFIED}"
 }
 
+# Artifact classification is DEFINED by `git ls-files`, which is what makes it
+# impossible to drift from the tree. Without git metadata this script cannot know
+# what the repo contains, and an empty file list would look like "nothing to strip"
+# rather than "I cannot tell" -- silently producing an empty or wrong release tree.
+# Refuse loudly instead. (Same failure class fixed in tests/artifact-classes.test.js;
+# found here by a verification seat running against a git-archive export.)
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "REFUSING: no git metadata in this tree (exported or downloaded copy)." >&2
+  echo "Artifact classification is defined by \`git ls-files\` and cannot be" >&2
+  echo "determined here. Run against a clone or the working repository instead." >&2
+  exit 1
+fi
+
 prod=(); dev=(); bad=()
 while IFS= read -r f; do
   [ -n "$f" ] || continue
@@ -52,7 +65,7 @@ done < <(git ls-files)
 
 if [ ${#bad[@]} -gt 0 ]; then
   echo "REFUSING: ${#bad[@]} file(s) carry no artifact class:" >&2
-  printf '  %s\n' "${bad[@]}" >&2
+  printf '  %s\n' ${bad[@]+"${bad[@]}"} >&2
   echo "Add an '@artifact production' or '@artifact dev' marker, then re-run." >&2
   exit 1
 fi
@@ -61,20 +74,20 @@ echo "production: ${#prod[@]} file(s)   dev: ${#dev[@]} file(s)"
 
 case "$MODE" in
   list)
-    echo; echo "would REMOVE (dev):"; printf '  %s\n' "${dev[@]}"
-    echo; echo "would KEEP (production):"; printf '  %s\n' "${prod[@]}"
+    echo; echo "would REMOVE (dev):"; printf '  %s\n' ${dev[@]+"${dev[@]}"}
+    echo; echo "would KEEP (production):"; printf '  %s\n' ${prod[@]+"${prod[@]}"}
     echo; echo "dry run only. Re-run with --out DIR or --apply."
     ;;
   copy)
     mkdir -p "$OUT"
-    for f in "${prod[@]}"; do mkdir -p "$OUT/$(dirname "$f")"; cp "$f" "$OUT/$f"; done
+    for f in ${prod[@]+"${prod[@]}"}; do mkdir -p "$OUT/$(dirname "$f")"; cp "$f" "$OUT/$f"; done
     echo "wrote ${#prod[@]} production file(s) to $OUT"
     ;;
   apply)
     if [ -n "$(git status --porcelain)" ]; then
       echo "REFUSING --apply on a dirty tree; commit or stash first." >&2; exit 1
     fi
-    for f in "${dev[@]}"; do rm -f "$f"; done
+    for f in ${dev[@]+"${dev[@]}"}; do rm -f "$f"; done
     find . -type d -empty -not -path './.git/*' -delete 2>/dev/null || true
     echo "removed ${#dev[@]} dev file(s) from the working tree. 'git checkout .' restores them."
     ;;
