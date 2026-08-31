@@ -1,5 +1,5 @@
 // @artifact dev
-// Streaming PIP coach: TRAINEE_SAFE still, Gate 4 still, think+stream named in sidecar.
+// Streaming PIP coach: TRAINEE_SAFE, single-pass, small-model default, Gate 4 intact.
 'use strict';
 
 const test = require('node:test');
@@ -12,23 +12,37 @@ const FaultEngine = require('../src/fault-engine.js');
 const ROOT = path.join(__dirname, '..');
 const APP = path.join(ROOT, 'Experion Station Simulator.dc.html');
 const SERVE = path.join(ROOT, 'tools', 'coach', 'serve.py');
+const PROMPT = path.join(ROOT, 'tools', 'coach', 'prompt.txt');
 const PLAN = path.join(ROOT, 'docs', 'dev', 'V3-PLAN.md');
 
 const { Component } = load();
 const page = fs.readFileSync(APP, 'utf8');
 const serve = fs.readFileSync(SERVE, 'utf8');
+const prompt = fs.readFileSync(PROMPT, 'utf8');
 const plan = fs.readFileSync(PLAN, 'utf8');
 
-test('sidecar streams NDJSON and enables think', () => {
+test('sidecar streams NDJSON in one compact small-model pass', () => {
   assert.match(serve, /\/api\/coach\/stream/);
   assert.match(serve, /application\/x-ndjson/);
   assert.match(serve, /["']think["']\s*:\s*THINK/);
   assert.match(serve, /"t": "think"/);
   assert.match(serve, /"t": "text"/);
   assert.match(serve, /SPOKEN_MAX_WORDS|ASK_WORDS/);
-  assert.match(serve, /looking_at/);
-  assert.match(serve, /station_help/);
-  assert.match(serve, /get_point/);
+  assert.match(serve, /granite4:1b/);
+  assert.match(serve, /COACH_THINK["'], ["']false/);
+  assert.match(serve, /def context_pack/);
+  assert.doesNotMatch(serve, /def tool_loop/);
+  assert.match(serve, /messages = seed_messages\(kind, ask, proj, hist\)/);
+  assert.match(serve, /"tools": False/);
+});
+
+test('PIP prompt is tag-first, evidence-led, and has restrained spunk', () => {
+  assert.match(prompt, /quick-eyed watchstander/i);
+  assert.match(prompt, /highest priority/i);
+  assert.match(prompt, /independent evidence/i);
+  assert.match(prompt, /little spunk/i);
+  assert.match(prompt, /Related alarms on one tag are one episode/i);
+  assert.match(prompt, /PVHH means process value high-high/i);
 });
 
 test('page fetches only the stream and health/advise coach paths', () => {
@@ -38,6 +52,9 @@ test('page fetches only the stream and health/advise coach paths', () => {
   assert.match(page, /ess-pip/);
   assert.match(page, /ess-pip-cloud/);
   assert.match(page, /coachMood/);
+  assert.match(page, /now-pending\.at<3000/);
+  assert.match(page, /now-this\._coachLastManualAt<30000/);
+  assert.match(page, /this\._coachAc\.abort\(\)/);
 });
 
 test('spec names the coach so gate 4 is not a silent weaker gate', () => {

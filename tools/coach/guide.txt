@@ -1,5 +1,5 @@
 # @artifact dev
-# Station guide for PIP tools. Trainee-visible facts only. No fault ids.
+# Station guide for PIP's compact context. Trainee-visible facts only. No fault ids.
 
 OVERVIEW
 This is an independent Experion-style operator training simulator, not a Honeywell product.

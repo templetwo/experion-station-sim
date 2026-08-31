@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PORT = int(os.environ.get("COACH_PORT", "8766"))
-MODEL = os.environ.get("COACH_MODEL", "granite4.2:8b")
+MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
 HOST = "127.0.0.1"
 BASE = "http://%s:%s" % (HOST, PORT)
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")

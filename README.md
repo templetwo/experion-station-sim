@@ -13,7 +13,7 @@ A browser-based, single-page training simulator that reproduces the conventions 
 | U3 | Two-pass fired heater (Badgwell form) with tube-skin temperatures and excess O2, fixed-bed reactor with quench | Nonlinear exotherm, trip avoidance |
 
 ## Run it
-- **Station + AI coach (one launch):** double-click `Launch Station.command`, or `python3 tools/coach/launch.py`. One browser window: the console, PIP the hover coach (thought bubbles + streaming granite), and Ops Assistant. Leave the Terminal open. The raw `.html` file cannot talk to a model (browsers block that); this launch is the together path.
+- **Station + AI coach (one launch):** double-click `Launch Station.command`, or `python3 tools/coach/launch.py`. One browser window: the console, PIP the hover coach, and a live token stream in Ops Assistant. The default local model is the lightweight `granite4:1b`; set `COACH_MODEL` to use another installed Ollama model. Leave the Terminal open. The raw `.html` file cannot talk to a model (browsers block that); this launch is the together path.
 - **From this folder, no AI:** open `Launcher.dc.html` (or the simulator file directly) in a modern browser. Needs `support.js` and the `src/` folder beside the app; React is fetched from a CDN on first load.
 - **Offline / single file, no AI:** `dist/experion-station-sim-standalone.html`, fully self-contained, no network needed.
 

@@ -2,19 +2,21 @@
 # @artifact dev
 """Optional AI coach sidecar. Not part of the deterministic core.
 
-Serves the standalone build and talks to local Ollama (granite, think on,
-tools on, NDJSON stream). The page owns the UI. Gate 4: only relative /api/coach/.
+Serves the standalone build and talks to local Ollama (small Granite by
+default, single-pass NDJSON stream). The page owns the UI. Gate 4: only
+relative /api/coach/.
 
   python3 tools/coach/serve.py
 
 Then open http://127.0.0.1:8766/
 
-Env: COACH_MODEL (default granite4.2:8b), COACH_PORT (default 8766).
+Env: COACH_MODEL (default granite4:1b), COACH_PORT (default 8766).
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -25,19 +27,18 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 COACH = Path(__file__).resolve().parent
 DIST = ROOT / "dist" / "experion-station-sim-standalone.html"
 PORT = int(os.environ.get("COACH_PORT", "8766"))
-MODEL = os.environ.get("COACH_MODEL", "granite4.2:8b")
+MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 HOST = "127.0.0.1"
-_THINK_RAW = os.environ.get("COACH_THINK", "low").strip().lower()
+_THINK_RAW = os.environ.get("COACH_THINK", "false").strip().lower()
 if _THINK_RAW in ("0", "false", "off", "no"):
     THINK = False
 elif _THINK_RAW in ("1", "true", "on", "yes"):
     THINK = "low"
 else:
     THINK = _THINK_RAW
-TIP_WORDS = 36
-ASK_WORDS = 110
-MAX_TOOL_ROUNDS = 2
+TIP_WORDS = 42
+ASK_WORDS = 76
 
 BANNED = [
     "FROZEN_MEASUREMENT", "BIASED_MEASUREMENT", "NOISY_MEASUREMENT",
@@ -64,63 +65,6 @@ if GUIDE_FILE.exists():
         line for line in GUIDE_FILE.read_text(encoding="utf-8").splitlines()
         if "@artifact" not in line
     ).strip()
-
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "looking_at",
-            "description": "What the operator is looking at right now: display, unit, selected tag, open faceplates, ARCH, drill, alarm load.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_point",
-            "description": "Look up a tag on this board: description, PV/SP/OP/mode, quality. Use when they name a tag or ask what a point is.",
-            "parameters": {
-                "type": "object",
-                "properties": {"tag": {"type": "string", "description": "Point tag such as FIC102"}},
-                "required": ["tag"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_alarms",
-            "description": "Active alarms on the board right now.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "station_help",
-            "description": "How this training station works: screens, keys, modes, units, ARCH, alarms. Use when they ask what the program is, what a screen is, or how to drive it.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "description": "overview, screens, keys, faceplates, units, alarms, arch, trips, or a short phrase",
-                    }
-                },
-                "required": ["topic"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_points",
-            "description": "List tags on this station with descriptions.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-]
-
 
 def scrub(text: str) -> str:
     t = text or ""
@@ -158,25 +102,94 @@ def screen_line(proj: dict) -> str:
     return "; ".join(bits) if bits else "board snapshot only"
 
 
+def _question_topic(ask: str, projection: dict) -> str:
+    q = (ask or "").lower()
+    if any(x in q for x in ("faceplate", " mode", "manual", " auto", " cas", "program", "setpoint", " sp", "output", " op")):
+        return "faceplates"
+    if any(x in q for x in ("alarm", "unack", "ack", "shelv", "silence", "horn", "priority", "color")):
+        return "alarms"
+    if any(x in q for x in ("arch", "signal path", "layer", "topology")):
+        return "arch"
+    if any(x in q for x in ("key", "command", "shortcut")):
+        return "keys"
+    if any(x in q for x in ("trip", "interlock", "lockout")):
+        return "trips"
+    if any(x in q for x in ("unit", "u1", "u2", "u3", "reactor", "heater")):
+        return "units"
+    if any(x in q for x in ("screen", "display", "looking at", "program", "station", "drive this")):
+        return "screens"
+    sc = projection.get("screen") if isinstance(projection.get("screen"), dict) else {}
+    return "arch" if sc.get("archOn") else "overview"
+
+
+def _named_tags(ask: str) -> list[str]:
+    # Simulator tags are compact (FIC102, TIC201, M202). Common prose such as
+    # "AUTO" must not be mistaken for a tag, so require at least one digit.
+    return list(dict.fromkeys(re.findall(r"\b[A-Z]{1,5}-?\d{2,4}[A-Z]?\b", (ask or "").upper())))[:4]
+
+
+def context_pack(ask: str, projection: dict) -> dict:
+    """Compact trainee-safe facts for one model pass; never hand it the whole board."""
+    projection = projection if isinstance(projection, dict) else {}
+    alarms = projection.get("alarms") if isinstance(projection.get("alarms"), list) else []
+    points = projection.get("points") if isinstance(projection.get("points"), list) else []
+    chosen = []
+    seen = set()
+
+    def add_point(row):
+        if not isinstance(row, dict):
+            return
+        tag = str(row.get("tag") or "")
+        if not tag or tag in seen:
+            return
+        seen.add(tag)
+        chosen.append(row)
+
+    for tag in _named_tags(ask):
+        add_point(_find_point(projection, tag))
+    selected = (projection.get("screen") or {}).get("selected") if isinstance(projection.get("screen"), dict) else None
+    if selected:
+        add_point(_find_point(projection, str(selected)))
+    for alarm in alarms[:6]:
+        if isinstance(alarm, dict):
+            add_point(_find_point(projection, str(alarm.get("tag") or "")))
+    for row in points[:8]:
+        add_point(row)
+
+    topic = _question_topic(ask, projection)
+    guide = _guide_section(topic)
+    return {
+        "lookingAt": screen_line(projection),
+        "screen": projection.get("screen"),
+        "alarms": alarms[:6],
+        "points": chosen[:8],
+        "selectedAlarm": projection.get("selected"),
+        "selectedAlarmHelp": projection.get("help"),
+        "drill": projection.get("drill"),
+        "arch": projection.get("arch"),
+        "guide": guide[:1000],
+    }
+
+
 def user_task(kind: str, ask: str, projection: dict) -> str:
-    blob = json.dumps(projection, ensure_ascii=False, separators=(",", ":"))
+    facts = json.dumps(context_pack(ask, projection), ensure_ascii=False, separators=(",", ":"))
     if kind == "explain":
-        task = "Explain the selected alarm, or the worst active one. If they are asking about the screen or the program, explain that instead."
+        task = "Explain the selected alarm, or the highest-priority active alarm."
         cap = ASK_WORDS
-        sents = "3-5 short sentences if explaining a screen or how-to; 1-2 if it is only an alarm tip."
+        shape = "Priority, evidence to check, then one safe next move."
     elif kind == "ask":
-        task = "Answer the operator. Question: " + (ask or "(empty)")
+        task = "Answer the operator's question: " + (ask or "(empty)")
         cap = ASK_WORDS
-        sents = "If they ask what they are looking at, what a screen is, or how this station works: 3-5 short sentences using tools. Alarm/check questions stay 1-2 sentences."
+        shape = "Answer first. Then the next useful check or click."
     else:
-        task = "New UNACK. One first look. Do not recap every alarm."
+        task = "A new UNACK alarm episode settled. Call out only the highest priority and the first independent check."
         cap = TIP_WORDS
-        sents = "1-2 short sentences."
+        shape = "One or two sentences. No alarm-list recap."
     return (
-        "LOOKING AT: " + screen_line(projection) + "\n\n"
-        "BOARD JSON:\n" + blob + "\n\n"
-        "TASK:\n" + task + "\n\n"
-        "LENGTH: " + sents + " About %s words max. No preamble. Use tools if you need a tag, the screen, or station how-to." % cap
+        "LIVE BOARD FACTS (authoritative; do not reinterpret units or alarm abbreviations):\n"
+        + facts + "\n\nTASK: " + task + "\n"
+        + "SHAPE: " + shape + "\n"
+        + "LIMIT: %s words. Speak as PIP immediately; no headings, labels, preamble, or JSON recap." % cap
     )
 
 
@@ -269,49 +282,7 @@ def _guide_section(topic: str) -> str:
     return chunks[0][0] + "\n" + chunks[0][1] if chunks else GUIDE[:800]
 
 
-def run_tool(name: str, args: dict, proj: dict) -> str:
-    args = args if isinstance(args, dict) else {}
-    proj = proj if isinstance(proj, dict) else {}
-    if name == "looking_at":
-        extra = {
-            "screen": proj.get("screen"),
-            "drill": proj.get("drill"),
-            "selectedAlarm": proj.get("selected"),
-            "arch": proj.get("arch"),
-        }
-        return json.dumps({"looking_at": screen_line(proj), "detail": extra}, ensure_ascii=False)[:1200]
-    if name == "get_point":
-        tag = str(args.get("tag") or "")
-        row = _find_point(proj, tag)
-        if not row:
-            return json.dumps({"error": "tag not on this snapshot", "tag": tag})
-        return json.dumps(row, ensure_ascii=False)
-    if name == "get_alarms":
-        alarms = proj.get("alarms") if isinstance(proj.get("alarms"), list) else []
-        help_ = proj.get("help")
-        return json.dumps({"alarms": alarms[:12], "selectedHelp": help_}, ensure_ascii=False)[:1500]
-    if name == "station_help":
-        return _guide_section(str(args.get("topic") or "overview"))[:1200]
-    if name == "list_points":
-        cat = proj.get("catalog") if isinstance(proj.get("catalog"), list) else []
-        slim = [{"tag": r.get("tag"), "desc": r.get("desc"), "kind": r.get("kind")} for r in cat if isinstance(r, dict)]
-        return json.dumps(slim[:30], ensure_ascii=False)
-    return json.dumps({"error": "unknown tool"})
-
-
-def parse_args(raw) -> dict:
-    if isinstance(raw, dict):
-        return raw
-    if isinstance(raw, str) and raw.strip():
-        try:
-            data = json.loads(raw)
-            return data if isinstance(data, dict) else {}
-        except json.JSONDecodeError:
-            return {}
-    return {}
-
-
-def ollama_post(messages: list, stream: bool, tools, think, timeout: float, num_predict: int):
+def ollama_post(messages: list, stream: bool, think, timeout: float, num_predict: int):
     body = {
         "model": MODEL,
         "stream": stream,
@@ -319,8 +290,6 @@ def ollama_post(messages: list, stream: bool, tools, think, timeout: float, num_
         "messages": messages,
         "options": {"temperature": 0.2, "num_predict": num_predict, "num_ctx": 8192},
     }
-    if tools:
-        body["tools"] = tools
     req = urllib.request.Request(
         OLLAMA.rstrip("/") + "/api/chat",
         data=json.dumps(body).encode("utf-8"),
@@ -370,45 +339,12 @@ def seed_messages(kind: str, ask: str, projection: dict, history) -> list:
     )
 
 
-def tool_loop(kind: str, ask: str, projection: dict, history, emit) -> tuple[list, str]:
-    messages = seed_messages(kind, ask, projection, history)
-    leftover = ""
-    for _ in range(MAX_TOOL_ROUNDS):
-        with ollama_post(messages, False, TOOLS, False, 60, 220) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        msg = data.get("message") or {}
-        calls = msg.get("tool_calls") or []
-        content = (msg.get("content") or "").strip()
-        if not calls:
-            leftover = content
-            break
-        messages.append({
-            "role": "assistant",
-            "content": content,
-            "tool_calls": calls,
-        })
-        for call in calls[:4]:
-            fn = call.get("function") if isinstance(call, dict) else {}
-            if not isinstance(fn, dict):
-                fn = call if isinstance(call, dict) else {}
-            name = str(fn.get("name") or "")
-            args = parse_args(fn.get("arguments"))
-            label = name
-            if args.get("tag"):
-                label = "%s %s" % (name, args.get("tag"))
-            elif args.get("topic"):
-                label = "%s %s" % (name, args.get("topic"))
-            emit({"t": "tool", "d": label})
-            result = scrub(run_tool(name, args, projection))[:1200]
-            messages.append({"role": "tool", "content": result, "tool_name": name})
-    return messages, leftover
-
-
 def stream_reply(messages: list, cap: int, emit) -> None:
     think_acc = ""
     text_acc = ""
     spoken_out = ""
-    with ollama_post(messages, True, None, THINK, 90, max(280, cap * 4)) as resp:
+    done_reason = ""
+    with ollama_post(messages, True, THINK, 60, max(180, cap * 3)) as resp:
         while True:
             line = resp.readline()
             if not line:
@@ -432,17 +368,16 @@ def stream_reply(messages: list, cap: int, emit) -> None:
                     spoken_out += (" " if spoken_out and not piece[:1].isspace() else "") + piece
                     emit({"t": "text", "d": scrub(piece)})
             if chunk.get("done"):
+                done_reason = str(chunk.get("done_reason") or "")
                 break
-    emit({"t": "done", "ok": True, "model": MODEL})
+    emit({"t": "done", "ok": True, "model": MODEL, "reason": done_reason})
 
 
 def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
     cap = spoken_cap(kind)
     try:
-        messages, leftover = tool_loop(kind, ask, projection, history, lambda _ev: None)
-        if leftover:
-            return True, clip_spoken(scrub(leftover), cap), ""
-        with ollama_post(messages, False, None, THINK, 90, max(280, cap * 4)) as resp:
+        messages = seed_messages(kind, ask, projection, history)
+        with ollama_post(messages, False, THINK, 90, max(280, cap * 4)) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         msg = data.get("message") or {}
         text = clip_spoken(scrub(msg.get("content") or data.get("response") or "").strip(), cap)
@@ -511,7 +446,7 @@ class Handler(BaseHTTPRequestHandler):
                 "bind": "%s:%s" % (HOST, PORT),
                 "think": THINK,
                 "stream": True,
-                "tools": True,
+                "tools": False,
                 "pal": "PIP",
             }).encode()
             self._send(200, payload, "application/json")
@@ -545,24 +480,30 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         cap = spoken_cap(kind)
         try:
-            messages, leftover = tool_loop(kind, ask, proj, hist, self._emit)
-            if leftover:
-                self._emit({"t": "text", "d": scrub(clip_spoken(leftover, cap))})
-                self._emit({"t": "done", "ok": True, "model": MODEL})
-                return
+            messages = seed_messages(kind, ask, proj, hist)
             stream_reply(messages, cap, self._emit)
+        except (BrokenPipeError, ConnectionResetError):
+            return
         except Exception as err:
-            self._emit({
-                "t": "err",
-                "d": "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__,
-            })
+            try:
+                self._emit({
+                    "t": "err",
+                    "d": "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__,
+                })
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
 
 def main() -> None:
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("AI coach sidecar on http://%s:%s/  model=%s think=%s tools=on" % (HOST, PORT, MODEL, THINK))
-    print("Open that URL (not the file:// dist). PIP can look up tags, the screen, and station how-to.")
-    httpd.serve_forever()
+    print("AI coach sidecar on http://%s:%s/  model=%s think=%s stream=on" % (HOST, PORT, MODEL, THINK))
+    print("Open that URL (not the file:// dist). PIP gets one compact, trainee-safe board context per turn.")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nPIP stopped.")
+    finally:
+        httpd.server_close()
 
 
 if __name__ == "__main__":

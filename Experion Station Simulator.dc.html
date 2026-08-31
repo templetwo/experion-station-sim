@@ -1842,14 +1842,21 @@ class Component extends DCLogic {
   coachProjection(){
     const S=this.state||{}, L=this.L||{}, E=this.alarmEngine;
     const recs=(E&&typeof E.list==='function')?E.list():[];
-    const alarmRow=(a)=>a?{tag:a.tag||'',cond:a.cond||'',prio:a.prio||'',state:a.state||'',val:this.coachRnd(a.val),eu:a.eu||'',desc:a.desc||''}:null;
+    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
+    const alarmRow=(a)=>{
+      if(!a) return null;
+      const l=L[a.tag], h=ESS.AlarmHelp&&ESS.AlarmHelp.resolve(a.tag,a.cond,{prio:a.prio,eu:a.eu});
+      return {tag:a.tag||'',cond:a.cond||'',priority:a.prio||'',state:a.state||'',
+        alarmValue:this.coachRnd(a.val),valueMeaning:'point PV at alarm evaluation',eu:a.eu||(l&&l.eu)||'',desc:a.desc||'',
+        setting:h&&h.setting?h.setting:'',pv:l?this.coachRnd(l.pv):null,sp:l?this.coachRnd(l.sp):null,
+        op:l?this.coachRnd(l.op):null,mode:l&&l.mode||'',badPv:!!(l&&l.badPv)};
+    };
     const alarms=recs.slice(0,12).map(alarmRow).filter(Boolean);
     const fps=(S.fps||[]).map(f=>f&&f.tag).filter(Boolean).slice(0,6);
     const want={}; recs.forEach(a=>{ if(a&&a.tag) want[a.tag]=true; });
     [S.sel, S.detailTag, S.archTag].concat(fps).forEach(tag=>{ if(tag) want[tag]=true; });
-    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
     const points=[]; Object.keys(want).sort().slice(0,16).forEach(tag=>{ const row=pointRow(tag); if(row) points.push(row); });
-    const catalog=[]; Object.keys(L).sort().forEach(tag=>{ const l=L[tag]; if(!l) return; catalog.push({tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||''}); });
+    const catalog=[]; Object.keys(L).sort().forEach(tag=>{ const row=pointRow(tag); if(row) catalog.push(row); });
     let selected=null, help=null;
     if(S.selAlm!=null&&E&&typeof E.get==='function'){
       selected=alarmRow(E.get(S.selAlm));
@@ -1879,7 +1886,7 @@ class Component extends DCLogic {
       const n=nid&&this.topo.nodes[nid];
       arch={mode:S.archMode||'', profile:S.archProfile||'', tag:S.archTag||null, node:n?{id:n.id,label:n.label,layer:n.layer,kind:n.kind,role:n.trainingDescription||''}:null};
     }
-    return {unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),screen,catalog,alarms,points,selected,help,drill,arch};
+    return {capturedAtSim:this.P&&this.P.t,unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),screen,catalog,alarms,points,selected,help,drill,arch};
   }
   coachScrub(t){
     let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ');
@@ -1942,7 +1949,16 @@ class Component extends DCLogic {
       this.setState({coachText:'PIP is part of Launch Station.command. LIVE DIAGNOSIS below still works.', coachStatus:'OFFLINE', coachMood:'off'});
       return;
     }
-    if(this._coachBusy) return;
+    const manual=kind!=='tip';
+    let feed=(this.state.coachFeed||[]).slice();
+    if(this._coachBusy){
+      if(!manual) return;
+      this._coachGen=(this._coachGen||0)+1;
+      if(this._coachAc&&this._coachAc.abort) this._coachAc.abort();
+      if(this._coachLiveId) feed=feed.filter(m=>m.id!==this._coachLiveId);
+      this._coachBusy=false; this._coachFinished=true; this._coachLiveId=0;
+    }
+    if(manual){ this._coachLastManualAt=Date.now(); this._coachTipPending=null; }
     this._coachBusy=true;
     this._coachThink='';
     this._coachDraft='';
@@ -1950,11 +1966,13 @@ class Component extends DCLogic {
     this._coachLiveId=++this._coachMid;
     this._coachGen=(this._coachGen||0)+1;
     const gen=this._coachGen;
-    const feed=(this.state.coachFeed||[]).slice();
     if(kind==='ask'&&question) feed.unshift({id:++this._coachMid, who:'YOU', text:question, kind:'ask'});
     this.setState({assist:true, coachMood:'think', coachStatus:'THINKING', coachThink:'', coachFeed:feed,
       assistQ:kind==='ask'?'':this.state.assistQ});
-    const body=JSON.stringify({kind:kind||'explain', ask:question||'', projection:this.coachProjection(), history:this.coachHist()});
+    const projection=this.coachProjection();
+    this._coachRequestKind=kind||'explain';
+    this._coachRequestSig=this.coachAlarmSig(projection);
+    const body=JSON.stringify({kind:this._coachRequestKind, ask:question||'', projection, history:this.coachHist()});
     this._coachAc=(typeof AbortController==='function')?new AbortController():null;
     this._coachFinished=false;
     this._coachUsingStream=false;
@@ -2031,6 +2049,12 @@ class Component extends DCLogic {
     if(this._coachFinished) return;
     this._coachFinished=true;
     this._coachBusy=false;
+    if(this._coachRequestKind==='tip'&&this._coachRequestSig!==this.coachAlarmSig(this.coachProjection())){
+      const feed=(this.state.coachFeed||[]).filter(m=>!this._coachLiveId||m.id!==this._coachLiveId);
+      this._coachLiveId=0; this._coachThink=''; this._coachDraft='';
+      this.setState({coachFeed:feed,coachThink:'',coachMood:'idle',coachStatus:this.state.coachModel||'LOCAL'});
+      return;
+    }
     this.coachFlush(true);
     const spoken=this.coachScrub(this._coachDraft||'') || (ok?'I looked. Ask a tag, or hit EXPLAIN ALARM.':'PIP lost the model. LIVE DIAGNOSIS still works.');
     const feed=(this.state.coachFeed||[]).map(m=>{
@@ -2047,15 +2071,24 @@ class Component extends DCLogic {
     });
     this._coachThink=''; this._coachDraft='';
   }
+  coachAlarmSig(p){ return ((p&&p.alarms)||[]).map(a=>a.tag+'.'+a.cond+'.'+a.state).join('|'); }
   coachWatch(){
     if(!this.state.coachLive||this._coachBusy) return;
     const p=this.coachProjection();
-    const sig=(p.alarms||[]).map(a=>a.tag+'.'+a.cond+'.'+a.state).join('|');
+    const sig=this.coachAlarmSig(p);
     if(!this._coachSig){ this._coachSig=sig; return; }
-    const prev=this._coachSig; this._coachSig=sig;
-    const fresh=(p.alarms||[]).some(a=>a.state==='UNACK'&&prev.indexOf(a.tag+'.'+a.cond+'.UNACK')<0);
     const now=Date.now();
-    if(fresh&&(!this._coachTipAt||now-this._coachTipAt>8000)){ this._coachTipAt=now; this.coachAsk('tip',''); }
+    if(sig!==this._coachSig){
+      const prev=this._coachSig; this._coachSig=sig;
+      const fresh=(p.alarms||[]).some(a=>a.state==='UNACK'&&prev.indexOf(a.tag+'.'+a.cond+'.UNACK')<0);
+      if(fresh) this._coachTipPending={sig,at:now};
+      else this._coachTipPending=null;
+      return;
+    }
+    const pending=this._coachTipPending;
+    if(!pending||pending.sig!==sig||now-pending.at<3000) return;
+    if((this._coachLastManualAt&&now-this._coachLastManualAt<30000)||(this._coachTipAt&&now-this._coachTipAt<30000)) return;
+    this._coachTipPending=null; this._coachTipAt=now; this.coachAsk('tip','');
   }
   publishCoach(){ /* kept so older calls compile; boot is componentDidMount */ }
   // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------

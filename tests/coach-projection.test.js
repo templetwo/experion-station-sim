@@ -33,6 +33,10 @@ test('coach projection contains live alarms and no fault ids', () => {
   assert.ok(p.screen && p.screen.displayName);
   assert.ok(Array.isArray(p.catalog) && p.catalog.length >= 20);
   assert.ok(p.catalog.some((r) => r.tag === 'FIC102' && /feed/i.test(r.desc || '')));
+  assert.ok(p.alarms.every((a) => Object.prototype.hasOwnProperty.call(a, 'alarmValue')));
+  assert.ok(p.alarms.every((a) => a.valueMeaning === 'point PV at alarm evaluation'));
+  assert.ok(p.alarms.every((a) => Object.prototype.hasOwnProperty.call(a, 'pv')));
+  assert.equal(typeof p.capturedAtSim, 'number');
 });
 
 test('coach projection during A1 names the drill, not the engine fault', () => {

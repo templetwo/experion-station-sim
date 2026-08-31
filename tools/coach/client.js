@@ -26,7 +26,7 @@
   var busy = false;
   var lastSig = '';
   var lastTipAt = 0;
-  var modelName = 'granite4.2:8b';
+  var modelName = 'granite4:1b';
 
   fetch('/api/health').then(function (r) { return r.json(); }).then(function (j) {
     if (j && j.model) modelName = j.model;
