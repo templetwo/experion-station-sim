@@ -88,7 +88,16 @@ test('coverage matrix marks tasks done after the corresponding handlers run', ()
   run(c, 4);
   const done = () => Training.coverage(c.tasksDone).flatMap((g) => g.rows).filter((r) => r.done).map((r) => r.id);
   assert.equal(Training.tasks().length >= 30, true, 'about 30 tasks');
-  assert.deepEqual(Training.GROUPS.length, 8);
+  // 8 -> 9 at stage S4: the coverage matrix gained the Architecture task group, per
+  // V3-PLAN section 6 ("the Coverage matrix in src/training.js gains the architecture task
+  // group and maps A-drills to tasks"). The eight legacy groups are unchanged and still
+  // first in order; this asserts the addition, not a rewrite.
+  assert.deepEqual(Training.GROUPS.length, 9);
+  assert.deepEqual(Training.GROUPS.slice(0, 8), [
+    'Navigation and displays', 'Alarms', 'Control and faceplates', 'Batch and sequences',
+    'Trends and history', 'Messages and confirmations', 'Security and signatures',
+    'Abnormal situation handling',
+  ], 'the eight legacy groups must survive unchanged and in order');
   assert.deepEqual(done(), []);
   c.raiseA('TIC201', 'PVHI', 'High', 170, 'DEG C', 'x');
   c.ackAlarm(c.alarmEngine.unacked()[0]);
@@ -107,7 +116,7 @@ test('coverage matrix marks tasks done after the corresponding handlers run', ()
   assert.ok(!got.includes('alm.unshelve'));
   c.setState({ dlg: { type: 'coverage' } });
   const v = c.renderVals();
-  assert.equal(v.dg.covGroups.length, 8);
+  assert.equal(v.dg.covGroups.length, 9);   // + Architecture (S4)
   const ack = v.dg.covGroups.find((g) => g.name === 'Alarms').rows.find((r) => r.label.startsWith('Acknowledge an alarm'));
   assert.equal(ack.tick, '✓');
   assert.match(ack.drills, /D1/);

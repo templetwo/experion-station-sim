@@ -47,6 +47,36 @@ function faultIdsUsedByDrills() {
   return used;
 }
 
+test('dispatch and the scorer agree on the training command names', () => {
+  // The SEVENTH prose-versus-code divergence in this build, caught by a seat before it
+  // wrote a line. src/dispatch.js declared MARK_EVIDENCE: 'MARK_EVIDENCE' while
+  // src/drill-arch.js -- the scorer that READS these -- matches 'TRAINING.MARK_EVIDENCE',
+  // and V3-PLAN section 6 agrees with the scorer. drill-arch's own header says why:
+  // "no existing dispatch.js yet to borrow real names from". Both were written in
+  // parallel during stage SA, each inventing the vocabulary the other would need.
+  //
+  // This CANNOT be fixed by importing, and that is the whole point: hard rule 3 forbids
+  // sibling requires (the modules are plain browser scripts, no bundler), so two files
+  // must independently spell one vocabulary. When a shared vocabulary cannot be shared by
+  // construction, a cross-module test is the only thing that keeps it honest.
+  const Dispatch = require('../src/dispatch.js');
+  const ACTION = DrillArch.ACTION || (DrillArch.ACTIONS || {});
+  const pairs = [['MARK_EVIDENCE'], ['PIN_COMPARE'], ['SUBMIT_HYPOTHESIS']];
+  for (const [key] of pairs) {
+    assert.ok(Dispatch.TYPES[key], `dispatch.TYPES.${key} is missing`);
+    assert.ok(ACTION[key], `drill-arch ACTION.${key} is missing`);
+    assert.equal(Dispatch.TYPES[key], ACTION[key],
+      `dispatch and the scorer disagree on ${key}: dispatch says ${JSON.stringify(Dispatch.TYPES[key])}, ` +
+      `the scorer matches ${JSON.stringify(ACTION[key])}. A command the scorer cannot match is a ` +
+      'command that scores zero, silently, with every individual suite still green.');
+  }
+  // Canonical form is namespaced, per V3-PLAN section 6.
+  for (const [key] of pairs) {
+    assert.match(Dispatch.TYPES[key], /^TRAINING\./,
+      `${key} must be namespaced TRAINING.<VERB> -- the spec names it that way and the scorer matches it`);
+  }
+});
+
 test('the fault-id vocabulary is exactly the thirteen the plan fixes', () => {
   const expected = [
     'FROZEN_MEASUREMENT', 'BIASED_MEASUREMENT', 'NOISY_MEASUREMENT', 'VALVE_RESPONSE_FAILURE',

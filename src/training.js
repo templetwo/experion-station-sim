@@ -30,12 +30,16 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  var GROUPS = ['Navigation and displays', 'Alarms', 'Control and faceplates', 'Batch and sequences', 'Trends and history', 'Messages and confirmations', 'Security and signatures', 'Abnormal situation handling'];
+  var GROUPS = ['Navigation and displays', 'Alarms', 'Control and faceplates', 'Batch and sequences', 'Trends and history', 'Messages and confirmations', 'Security and signatures', 'Abnormal situation handling', 'Architecture'];
   var PASS_MARK = 80;
   var PASS_LABEL = PASS_MARK + ' % pass mark — independent training threshold, not a vendor certification';
 
   function T(id, group, label, drills, features) { return { id: id, group: group, label: label, drills: drills || [], features: features || [] }; }
   var ALL = ['D1', 'D2', 'D3', 'D4', 'D6', 'D9', 'D11', 'D12'];
+  // The twelve architecture drills (V3-PLAN section 6; src/drill-arch.js). Task ids below
+  // are the contract the app's taskDone() calls at S3/S4 integration -- new ids only, the
+  // eight legacy drills and their tasks are untouched.
+  var ARCH_ALL = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12'];
 
   function tasks() {
     var G = GROUPS;
@@ -81,7 +85,22 @@
       T('abn.assist', G[7], 'Use the Ops Assistant guidance', ALL, ['Ops Assistant panel']),
       T('abn.drill', G[7], 'Complete a drill debrief', ALL, ['Drill debrief']),
       T('abn.pass', G[7], 'Pass a drill at the 80 % mark', ALL, ['Drill debrief']),
-      T('abn.disable', G[7], 'Disable and re-enable alarms for an asset (MNGR, signed)', [], ['Alarm Summary asset pane'])
+      T('abn.disable', G[7], 'Disable and re-enable alarms for an asset (MNGR, signed)', [], ['Alarm Summary asset pane']),
+      // Architecture (V3-PLAN sections 6 and 7): the conceptual FIELD -> INFORMATION model
+      T('arch.open', G[8], 'Open the architecture view for a point (ARCH or SIGNAL PATH)', ARCH_ALL, ['ARCH command', 'SIGNAL PATH', 'View menu']),
+      T('arch.trace', G[8], 'Trace a measurement or command path in Trace mode', ['A1', 'A2', 'A3', 'A5', 'A6', 'A7', 'A8', 'A10'], ['ARCH Trace mode', 'Node inspector']),
+      T('arch.profile', G[8], 'Compare the console and flex station paths', ['A7', 'A8', 'A9'], ['ARCH profile chips']),
+      T('arch.evidence', G[8], 'Inspect a node diagnostic and mark it as evidence', ARCH_ALL, ['Node inspector', 'MARK EVIDENCE']),
+      T('arch.compare', G[8], 'Pin two or three points side by side to compare', ['A1', 'A2', 'A3', 'A12'], ['PIN COMPARE']),
+      T('arch.hypothesis', G[8], 'Submit a failure-domain hypothesis', ARCH_ALL, ['SUBMIT HYPOTHESIS']),
+      T('arch.safe', G[8], 'Keep the process safe before localizing the fault', ARCH_ALL, ['Faceplates', 'Drill safety gate']),
+      T('arch.verify', G[8], 'Verify the process response after a corrective action', ARCH_ALL, ['VERIFY', 'Trend display', 'Faceplates']),
+      T('arch.redundancy', G[8], 'Recognise degraded redundancy without overreacting', ['A4', 'A6'], ['ARCH Trace mode', 'System Status']),
+      T('arch.domain', G[8], 'Tell controller, server and station failure domains apart', ['A5', 'A7', 'A8', 'A9'], ['ARCH Learn mode', 'Blast radius']),
+      T('arch.history', G[8], 'Distinguish live control from historical data', ['A10'], ['Trend display', 'ARCH Trace mode']),
+      T('arch.assist', G[8], 'Operate without the Ops Assistant', ['A11'], ['Ops Assistant panel']),
+      T('arch.cascade', G[8], 'Separate a root cause from its downstream safeguards', ['A12'], ['Alarm Summary', 'ARCH Trace mode']),
+      T('arch.debrief', G[8], 'Review the architecture debrief timeline', ARCH_ALL, ['Debrief timeline'])
     ];
   }
 

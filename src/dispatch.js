@@ -129,16 +129,41 @@
   // Reserved for later stages (V3-PLAN sections 4 and 8). No handler is
   // registered for any of these by this module -- they are names, not yet
   // behaviour. S2/S3/S4 register real handlers under these exact strings.
+  //
+  // THE THREE TRAINING.* VALUES ARE DOTTED, AND THAT IS NOT COSMETIC. src/drill-arch.js
+  // is the SCORER and it matches on the exact string: its ACTION map holds
+  // 'TRAINING.MARK_EVIDENCE', 'TRAINING.PIN_COMPARE', 'TRAINING.SUBMIT_HYPOTHESIS', and
+  // matchAction compares `e.actionType !== r.actionType` with no normalisation.
+  // V3-PLAN section 172 writes them dotted too. These three carried BARE values here
+  // until S3; registering under a bare value would have produced commands that validate,
+  // journal and replay perfectly and score ZERO -- silently, with dispatch's own suite and
+  // drill-arch's own suite both green, because nothing spans the two modules. The scorer
+  // and the spec are the authority on this vocabulary; this constant follows them.
+  //
+  // THE BARE/DOTTED SPLIT IS PRINCIPLED, DO NOT "HARMONISE" IT. Bare names are LEGACY v2
+  // journal ops the scorer matches as-is -- drill-arch's ACTION.ACK is 'ACK' because the
+  // app has journaled op:'ACK' since v2. Dotted TRAINING.* names are commands INTRODUCED
+  // by v3. The form encodes "existed before v3" versus "new in v3", so making them
+  // uniform would erase real information.
   var TYPES = Object.freeze({
     FAULT_INJECT: 'FAULT_INJECT',
     FAULT_CLEAR: 'FAULT_CLEAR',
-    MARK_EVIDENCE: 'MARK_EVIDENCE',
-    PIN_COMPARE: 'PIN_COMPARE',
-    SUBMIT_HYPOTHESIS: 'SUBMIT_HYPOTHESIS',
+    MARK_EVIDENCE: 'TRAINING.MARK_EVIDENCE',
+    PIN_COMPARE: 'TRAINING.PIN_COMPARE',
+    SUBMIT_HYPOTHESIS: 'TRAINING.SUBMIT_HYPOTHESIS',
+    VERIFY: 'TRAINING.VERIFY',
     DRILL_START: 'DRILL_START',
     DRILL_END: 'DRILL_END',
     SNAPSHOT_RESTORE: 'SNAPSHOT_RESTORE'
   });
+
+  // The failure DOMAINS a trainee may name. Pinned literally rather than required from
+  // src/topology.js, because this module takes no sibling src/*.js dependency (purity:
+  // it must work unbundled in the browser where every src file is a plain <script>).
+  // Same precedent as fault-engine's FAULT_IDS. src/topology.js's LAYERS is the
+  // authority; tests/dispatch-training.test.js asserts these two lists are identical, so
+  // the copy cannot drift without a test going red.
+  var LAYERS = Object.freeze(['FIELD', 'IO', 'CONTROL', 'NETWORK', 'SERVICE', 'HMI', 'INFORMATION']);
 
   function errMsg(err) { return (err && err.message) ? err.message : String(err); }
 
@@ -285,5 +310,154 @@
     };
   }
 
-  return { create: create, ACTORS: ACTORS, TYPES: TYPES };
+  // ==================================================== S3: evidence and hypothesis
+  /*
+   * V3-PLAN section 6: "Evidence and hypothesis are first-class commands, journaled and
+   * scored." These three register through the EXISTING register(type, {validate, apply,
+   * journal}) seam -- dispatch itself needs no structural change, and every entry keeps
+   * {t, op, tag, arg} intact so journalText() and replayPlan() work untouched.
+   *
+   * WHY registerTraining() RATHER THAN PRE-REGISTERING ON create(). create() must keep
+   * returning a dispatcher with NO handlers: tests/dispatch.test.js asserts every reserved
+   * TYPE is rejected on a bare create(), and that assertion is load-bearing -- it is what
+   * proves TYPES are documented names rather than hidden behaviour. Registration stays an
+   * explicit, opt-in act by the caller who owns the ctx those handlers need.
+   *
+   * EVIDENCE MUST BE INSPECTED, NOT MERELY CLICKED. The scorer rewards gathering, not
+   * clicking, so MARK_EVIDENCE requires ctx.wasInspected(target) to return true. If the
+   * caller supplies no wasInspected at all the command is REFUSED, not waved through:
+   * failing closed is the only honest default for a gate that feeds scoring. A trainee
+   * who never opened a node cannot have gathered evidence from it.
+   *
+   * A HYPOTHESIS NAMES A DOMAIN, NEVER A FAULT ID. Fault ids do not exist in the
+   * trainee's world (fault-engine keeps them INSTRUCTOR_ONLY, and tests/leakage.test.js
+   * proves the trainee projection never carries one). SUBMIT_HYPOTHESIS accepts only a
+   * value from LAYERS, and says so by name when it refuses.
+   *
+   * Purity: no DOM, no timers, no globals, no Math.random, no Date.now. simTime arrives
+   * as an argument on the command. State is plain JSON, safe through
+   * JSON.parse(JSON.stringify(...)) for snapshot/restore with no special handling.
+   */
+
+  function createTrainingState() { return { evidence: [], pins: [], hypotheses: [], verifications: [] }; }
+
+  function cloneTraining(st) {
+    var s = st || createTrainingState();
+    return {
+      evidence: (s.evidence || []).map(function (e) { return { target: e.target, t: e.t }; }),
+      pins: (s.pins || []).map(function (p) { return { targets: p.targets.slice(), t: p.t }; }),
+      hypotheses: (s.hypotheses || []).map(function (h) { return { domain: h.domain, t: h.t }; }),
+      verifications: (s.verifications || []).map(function (v) { return { target: v.target, t: v.t }; })
+    };
+  }
+
+  function knownNode(ctx, id) {
+    if (!ctx || !ctx.graph || !ctx.graph.nodes) return false;
+    return Object.prototype.hasOwnProperty.call(ctx.graph.nodes, id);
+  }
+
+  function trainingStateOf(ctx) {
+    if (!ctx.training) ctx.training = createTrainingState();
+    return ctx.training;
+  }
+
+  var TRAINING_HANDLERS = {};
+
+  TRAINING_HANDLERS[TYPES.MARK_EVIDENCE] = {
+    validate: function (ctx, cmd) {
+      var target = cmd.target;
+      if (typeof target !== 'string' || !target) return 'MARK_EVIDENCE requires a target node id';
+      if (!knownNode(ctx, target)) return 'unknown target node: ' + target;
+      if (typeof ctx.wasInspected !== 'function') {
+        return 'inspection state unavailable: ctx.wasInspected(target) is required, so evidence cannot be verified as gathered';
+      }
+      if (!ctx.wasInspected(target)) {
+        return 'not inspected: ' + target + ' was never opened, so marking it is clicking rather than gathering';
+      }
+      return true;
+    },
+    apply: function (ctx, cmd) {
+      trainingStateOf(ctx).evidence.push({ target: cmd.target, t: cmd.simTime });
+    }
+  };
+
+  TRAINING_HANDLERS[TYPES.PIN_COMPARE] = {
+    validate: function (ctx, cmd) {
+      var p = cmd.payload || {};
+      var targets = p.targets;
+      if (!Array.isArray(targets)) return 'PIN_COMPARE requires payload.targets as an array';
+      // "two or three points pinned side by side" -- V3-PLAN section 6. One is not a
+      // comparison and four is not the affordance being taught.
+      if (targets.length < 2 || targets.length > 3) {
+        return 'PIN_COMPARE takes two or three targets, got ' + targets.length;
+      }
+      for (var i = 0; i < targets.length; i++) {
+        if (typeof targets[i] !== 'string' || !targets[i]) return 'PIN_COMPARE targets must be node ids';
+        if (!knownNode(ctx, targets[i])) return 'unknown target node: ' + targets[i];
+        if (targets.indexOf(targets[i]) !== i) return 'duplicate target: ' + targets[i] + ' -- a point compared against itself is not a comparison';
+      }
+      return true;
+    },
+    apply: function (ctx, cmd) {
+      trainingStateOf(ctx).pins.push({ targets: cmd.payload.targets.slice(), t: cmd.simTime });
+    }
+  };
+
+  TRAINING_HANDLERS[TYPES.SUBMIT_HYPOTHESIS] = {
+    validate: function (ctx, cmd) {
+      var p = cmd.payload || {};
+      var domain = p.domain;
+      if (typeof domain !== 'string' || !domain) return 'SUBMIT_HYPOTHESIS requires payload.domain';
+      if (LAYERS.indexOf(domain) < 0) {
+        return 'not a failure domain: ' + domain + ' -- a hypothesis names one of ' +
+          LAYERS.join(', ') + ', never a fault id';
+      }
+      return true;
+    },
+    apply: function (ctx, cmd) {
+      trainingStateOf(ctx).hypotheses.push({ domain: cmd.payload.domain, t: cmd.simTime });
+    }
+  };
+
+  // TRAINING.VERIFY -- the trainee re-checks a point AFTER acting, to confirm the picture
+  // is resolved or understood. drill-arch scores it as category 'verification',
+  // required:true, 15 points of the default rubric; without it every A-drill caps at 85
+  // and the 80 pass mark is reachable only by an otherwise perfect run. Same shape and
+  // same inspection rule as MARK_EVIDENCE: you cannot verify a point you never opened.
+  TRAINING_HANDLERS[TYPES.VERIFY] = {
+    validate: function (ctx, cmd) {
+      var target = cmd.target;
+      if (typeof target !== 'string' || !target) return 'VERIFY requires a target node id';
+      if (!knownNode(ctx, target)) return 'unknown target node: ' + target;
+      if (typeof ctx.wasInspected !== 'function') {
+        return 'inspection state unavailable: ctx.wasInspected(target) is required, so a re-check cannot be verified as performed';
+      }
+      if (!ctx.wasInspected(target)) {
+        return 'not inspected: ' + target + ' was never opened, so it cannot have been re-checked';
+      }
+      return true;
+    },
+    apply: function (ctx, cmd) {
+      trainingStateOf(ctx).verifications.push({ target: cmd.target, t: cmd.simTime });
+    }
+  };
+
+  /** Register the four S3 training commands on a dispatcher from create(). */
+  function registerTraining(dispatcher) {
+    if (!dispatcher || typeof dispatcher.register !== 'function') {
+      throw new Error('ESS.Dispatch.registerTraining: a dispatcher from create() is required');
+    }
+    Object.keys(TRAINING_HANDLERS).forEach(function (type) {
+      dispatcher.register(type, TRAINING_HANDLERS[type]);
+    });
+    return dispatcher;
+  }
+
+  return {
+    create: create, ACTORS: ACTORS, TYPES: TYPES, LAYERS: LAYERS,
+    registerTraining: registerTraining,
+    createTrainingState: createTrainingState,
+    trainingSnapshot: cloneTraining,
+    trainingRestore: cloneTraining
+  };
 });
