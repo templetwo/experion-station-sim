@@ -1071,9 +1071,36 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <sc-for list="{{ arch.inspector.traceActions }}" as="ta" hint-placeholder-count="2">
           <div style="display:inline-block;margin:2px 4px 6px 0;padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ ta.cb }}">{{ ta.label }}</div>
         </sc-for>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid #B6B6B2;display:flex;flex-wrap:wrap;gap:4px">
+          <div style="padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ arch.inspector.evidenceChip.cb }}">{{ arch.inspector.evidenceChip.label }}</div>
+          <div style="padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ arch.inspector.verifyChip.cb }}">{{ arch.inspector.verifyChip.label }}</div>
+          <div style="padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ arch.inspector.pinChip.cb }}">{{ arch.inspector.pinChip.label }}</div>
+        </div>
       </sc-if>
       <sc-if value="{{ arch.inspectorEmpty }}" hint-placeholder-val="{{ true }}">
         <div style="color:#55524c">Click a node in the diagram to inspect it.</div>
+      </sc-if>
+      <sc-if value="{{ arch.hasPins }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid #B6B6B2">
+          <div style="font-weight:700;font-size:12px;margin-bottom:6px">PINNED FOR COMPARISON ({{ arch.pinCount }})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+            <sc-for list="{{ arch.pinTrayView }}" as="pt" hint-placeholder-count="3">
+              <div style="padding:2px 6px;font-size:10.5px;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e;white-space:nowrap" onClick="{{ pt.cb }}">{{ pt.label }} ✕</div>
+            </sc-for>
+          </div>
+          <div style="padding:3px 10px;display:inline-block;font-size:10.5px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ arch.compareChip.cb }}">{{ arch.compareChip.label }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ arch.diagnoseOn }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid #B6B6B2">
+          <div style="font-weight:700;font-size:12px;margin-bottom:6px">SUBMIT HYPOTHESIS</div>
+          <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">Name the failure domain. Not scored until the drill ends — this only records your call.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <sc-for list="{{ arch.hypothesisChips }}" as="h" hint-placeholder-count="7">
+              <div style="padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e" onClick="{{ h.cb }}">{{ h.label }}</div>
+            </sc-for>
+          </div>
+        </div>
       </sc-if>
       <sc-if value="{{ arch.showPath }}" hint-placeholder-val="{{ false }}">
         <div style="margin-top:14px;padding-top:10px;border-top:1px solid #B6B6B2">
@@ -1532,6 +1559,10 @@ class Component extends DCLogic {
   state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
     // ARCH view state (V3-PLAN S1) -- view-only, never process/control/alarm/topology state.
     archMode:'learn', archProfile:'console', archTag:null, archSel:null, archBeginner:true,
+    // S3 pin-compare staging (V3-PLAN section 6) -- view-only, like archSel; the pinned
+    // targets themselves are only committed to P.training once COMPARE dispatches
+    // TRAINING.PIN_COMPARE. Cleared on a successful compare.
+    archPinTray:[],
     // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
     // the topology fault matrix: which layer is shown and the one (node, fault) cell
     // currently staged for configuration. The actual engine/schedule state this feeds lives
@@ -2021,13 +2052,20 @@ class Component extends DCLogic {
     if(!this.can('ENGR')) return;
     const l=this.L[tag]; if(!l||!l.alm[cond]) return;
     const key=tag+'.'+cond;
-    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE','IN SERVICE','OUT OF SERVICE',reason); this.journal('OOS',tag,'ON',{cond}); this.taskDone('alm.oos'); }); return; }
+    // Safety gate live (V3-PLAN section 6, DO item 4): a POINT.SUPPRESS ActionEvent is
+    // synthesized only on the path that actually mutated state -- withSignature's fn only
+    // runs once a real signature has been accepted, so a refused/pending signature never
+    // reaches archSynthEvent, which is exactly the outcome-based contract A2/A3's gates
+    // depend on (matchAction already drops accepted:false; refusals here never even
+    // produce an entry to drop).
+    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE','IN SERVICE','OUT OF SERVICE',reason); this.journal('OOS',tag,'ON',{cond}); this.taskDone('alm.oos'); this.archSynthEvent('POINT.SUPPRESS','CM-'+l.cm,{arg:'ON'}); }); return; }
     const r=this.alarmEngine.get(key); if(r&&r.disabledBy){ this.msgZone('CONDITION DISABLED BY '+r.disabledBy+' — RE-ENABLE THE ASSET'); return; }
     const evs=this.alarmEngine.rts(key,this.P.t); if(!evs.length) return;
     this.logAlarmEvents(evs);
     this.configChange(tag,cond+' SERVICE STATE','OUT OF SERVICE','IN SERVICE','');
     this.journal('OOS',tag,'OFF',{cond});
     this.taskDone('alm.oos');
+    this.archSynthEvent('POINT.SUPPRESS','CM-'+l.cm,{arg:'OFF'});
   }
   hornNew(){ this.setState({silenced:false}); }
   beep(freq,dur){ try{ if(!this.actx) this.actx=new (window.AudioContext||window.webkitAudioContext)(); const c=this.actx; if(c.state==='suspended') c.resume(); const o=c.createOscillator(), g=c.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.05; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+dur); }catch(e){} }
@@ -2899,6 +2937,160 @@ class Component extends DCLogic {
       }
     }
   }
+  // ---------- S3: evidence/hypothesis training commands + the A-drill lane ----------
+  // V3-PLAN section 6 ("Evidence and hypothesis are first-class commands, journaled and
+  // scored") and DO items 1-4 of this stage: wire TRAINING.MARK_EVIDENCE, TRAINING.
+  // PIN_COMPARE, TRAINING.SUBMIT_HYPOTHESIS and TRAINING.VERIFY to real controls through
+  // ESS.Dispatch, keep evidence fail-closed on explicit inspection, and make the safety
+  // gate live and outcome-based. Every control here dispatches fresh -- no cached ctx
+  // object survives a snapshot restore by accident.
+  archTrainingCtx(){
+    return {
+      graph:this.topo, training:this.P.training,
+      wasInspected:(id)=>!!this.P.archInspected[id],
+      journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)
+    };
+  }
+  // RETAINS the RETURNED ActionEvent, never re-reads the journal -- dispatch() journals a
+  // legacy {t,op,tag,arg} entry (what journalText/replayPlan consume) and RETURNS an
+  // ActionEvent {seq,simTime,actor,actionType,target,payload,accepted} (what drill-arch's
+  // matchAction/scoreDrill consume); feeding the journal to the scorer scores ZERO with no
+  // error (tests/dispatch-training.test.js, "THE TRAP"). Only kept when an A-drill is
+  // active -- there is nothing to score against otherwise, and the array must not grow
+  // unbounded across an ordinary training session with no drill running.
+  archRetainEvent(ev){ if(this.P.aDrill) this.P.aDrill.events.push(ev); }
+  dispatchTraining(type,target,payload){
+    const ev=this.dispatcher.dispatch(this.archTrainingCtx(),
+      {type,actor:'TRAINEE',target:target==null?null:target,payload:payload==null?null:payload,simTime:this.P.t});
+    this.archRetainEvent(ev);
+    return ev;
+  }
+  // Safety gate live (V3-PLAN section 6, DO item 4): a synthesized ActionEvent for one of
+  // drill-arch's own safety-gate/expected-action vocabularies (MODE.SET, POINT.SUPPRESS,
+  // ACK), appended ONLY when an A-drill is active and ONLY from a call site that already
+  // mutated real state -- outcome-based by construction, since a refused attempt never
+  // reaches the line that calls this. NEVER journaled: the underlying legacy op (MODE/OOS/
+  // ASSET/ACK) already journals once elsewhere; a second entry here would double-apply on
+  // replay. drill-arch's own matchAction is untouched -- this only ever feeds it data.
+  archSynthEvent(actionType,target,payload){
+    if(!this.P.aDrill) return;
+    this.P.aDrill.events.push({seq:this.P.aDrill.events.length+1, simTime:this.P.t, actor:'TRAINEE',
+      actionType, target, payload:payload==null?null:payload, accepted:true});
+  }
+  // The ONE explicit-open site (advisory Q5): selecting a node in the ARCH view is what
+  // "explicitly inspected" means. Records it in P.archInspected (survives snapshot/
+  // restore/replay for free -- a Set would not) BEFORE opening the inspector, so
+  // MARK_EVIDENCE/VERIFY's fail-closed wasInspected check is already satisfied by the time
+  // their buttons are reachable.
+  archSelectNode(id){ if(!id) return; this.P.archInspected[id]=true; this.setState({archSel:id}); }
+  markEvidence(id){
+    if(!id) return;
+    const ev=this.dispatchTraining(ESS.Dispatch.TYPES.MARK_EVIDENCE,id,null);
+    this.msgZone(ev.accepted?('EVIDENCE MARKED: '+id):('REFUSED: '+ev.reason));
+    this.setState(s=>({tk:s.tk+1}));
+  }
+  verifyNode(id){
+    if(!id) return;
+    const ev=this.dispatchTraining(ESS.Dispatch.TYPES.VERIFY,id,null);
+    this.msgZone(ev.accepted?('VERIFIED: '+id):('REFUSED: '+ev.reason));
+    this.setState(s=>({tk:s.tk+1}));
+  }
+  // Pin-compare tray: view-only staging (like archStageNode for the instructor panel) for
+  // "two or three points pinned side by side" (V3-PLAN section 6) -- PIN_COMPARE's own
+  // validate() enforces the 2-3/distinct/known-node rules; this tray only ever hands it a
+  // candidate list, never bypasses the dispatch validation.
+  togglePin(id){
+    if(!id) return;
+    const tray=this.state.archPinTray||[];
+    const i=tray.indexOf(id);
+    if(i>=0){ this.setState({archPinTray:tray.filter(x=>x!==id)}); return; }
+    if(tray.length>=3){ this.msgZone('PIN TRAY HOLDS AT MOST THREE POINTS'); return; }
+    this.setState({archPinTray:tray.concat([id])});
+  }
+  comparePins(){
+    const tray=this.state.archPinTray||[];
+    if(tray.length<2){ this.msgZone('PIN AT LEAST TWO POINTS TO COMPARE'); return; }
+    const ev=this.dispatchTraining(ESS.Dispatch.TYPES.PIN_COMPARE,null,{targets:tray.slice()});
+    if(ev.accepted){ this.msgZone('PINNED FOR COMPARISON: '+tray.join(', ')); this.setState({archPinTray:[]}); }
+    else { this.msgZone('REFUSED: '+ev.reason); this.setState(s=>({tk:s.tk+1})); }
+  }
+  // A hypothesis names a topology LAYER, never a fault id -- a trainee has no fault ids in
+  // their world (dispatch.js's own validate refuses anything outside ESS.Dispatch.LAYERS).
+  // NEUTRAL acknowledgment only: never correctness feedback mid-drill, which would leak
+  // the answer by binary search across repeated tries -- the score is revealed at drill
+  // end, the same rule submitDebrief follows for the legacy D-series.
+  submitHypothesis(domain){
+    const ev=this.dispatchTraining(ESS.Dispatch.TYPES.SUBMIT_HYPOTHESIS,null,{domain});
+    this.msgZone(ev.accepted?('HYPOTHESIS RECORDED: '+domain):('REFUSED: '+ev.reason));
+    this.setState(s=>({tk:s.tk+1}));
+  }
+
+  // ---------- A-drills A1-A6: a PARALLEL lane to the legacy D-series this.state.drill.
+  // drillWatch/dHook/dAct/dTrip/endDrill/scoreDrill all read D-shaped def fields (rel,
+  // act, stable, trips, q, a) an A-series DrillDefinition does not carry, so reusing that
+  // slot mis-scores or crashes (architect addendum Q4) -- P.aDrill is its own lane.
+  // Injection is driven from the drill's own faultTimeline tSec offsets relative to drill
+  // start, deterministic, no rand draw: the three legacy-upset-reserved (faultId, node)
+  // pairs go through injectFault(k,true) exactly as the panel's archFaultState() already
+  // expects; every other fault fires through archFireFault(...) DIRECTLY -- never
+  // setArchFault/setUpset, which mirror to trainee surfaces via instrLog.
+  aDrillReservedUpsetKey(faultId,targetNodeId){
+    const UB=ESS.UpsetBridge;
+    for(const k of ['xmtr','drift','stick']){
+      if(UB.faultIdFor(k)!==faultId) continue;
+      if(UB.topologyTargets(k,this.topo).indexOf(targetNodeId)>=0) return k;
+    }
+    return null;
+  }
+  aDrillFire(step){
+    (step.targets||[]).forEach(target=>{
+      const k=this.aDrillReservedUpsetKey(step.faultId,target);
+      if(k){ this.injectFault(k,true); return; }
+      this.archFireFault(step.faultId,target,'STEP',0,null,null,this.P.t);
+    });
+  }
+  aDrillClear(step){
+    (step.targets||[]).forEach(target=>{
+      const k=this.aDrillReservedUpsetKey(step.faultId,target);
+      if(k){ this.injectFault(k,false); return; }
+      this.archClearNow(step.faultId,target);
+    });
+  }
+  // Mutual exclusion is enforced HERE and at the legacy drills-dialog callback
+  // (renderVals' `dg.drills`/`randomDrill`), never by editing startDrill()/drillWatch --
+  // those read D-shaped fields an A-drill does not have.
+  startADrill(id){
+    const def=ESS.DrillArch.drillById(id);
+    if(!def){ this.msgZone('UNKNOWN ARCHITECTURE DRILL '+id); return; }
+    if(this.state.drill){ this.msgZone('A DRILL IS ALREADY ACTIVE — END IT FIRST'); return; }
+    if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ALREADY ACTIVE'); return; }
+    this.P.aDrill={id,startedAt:this.P.t,fired:[],events:[]};
+    this.journal('ADRILL',id,'',{instr:true});
+    this.instrNote('A-DRILL '+id+' ARMED — '+def.title.toUpperCase());
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: architecture drill '+id+' armed',{confirm:true,src:'INSTR'});
+    this.setState(s=>({tk:s.tk+1}));
+  }
+  aDrillWatch(dt){
+    const d=this.P.aDrill; if(!d) return;
+    const def=ESS.DrillArch.drillById(d.id); if(!def) return;
+    const elapsed=this.P.t-d.startedAt;
+    (def.faultTimeline||[]).forEach((step,i)=>{
+      if(d.fired.indexOf(i)>=0) return;
+      if(elapsed>=step.tSec*1000){ d.fired.push(i); this.aDrillFire(step); }
+    });
+  }
+  endADrill(reason){
+    const d=this.P.aDrill; if(!d) return null;
+    const def=ESS.DrillArch.drillById(d.id);
+    if(def) (def.faultTimeline||[]).forEach(step=>this.aDrillClear(step));
+    const score=ESS.DrillArch.scoreDrill(d.id,d.events.slice());
+    this.journal('ADRILLEND',d.id,reason,{instr:true});
+    this.P.aDrill=null;
+    this.instrNote('A-DRILL '+d.id+' ENDED — '+reason+' — SCORE '+score.score+'/100 — '+(score.pass?'PASS':'NOT PASSED'));
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: architecture drill '+d.id+' ended — score '+score.score+'/100',{confirm:true,src:'INSTR'});
+    this.setState(s=>({tk:s.tk+1}));
+    return score;
+  }
   // ---------- Architecture panel view model (instructorView() below merges this in) ----------
   archStageSelect(nodeId,faultId){
     const def=ESS.FaultEngine.getFaultDef(faultId);
@@ -3111,6 +3303,11 @@ class Component extends DCLogic {
       case 'SEED': this.setSeed(e.arg); break;
       case 'DRILL': { const d=this.drillDefs().find(x=>x.id===e.tag); if(d) this.startDrill(d); break; }
       case 'DRILLEND': this.endDrill(e.arg||'ENDED BY INSTRUCTOR'); break;
+      // A-drill lane (V3-PLAN S3): same shape as DRILL/DRILLEND above, its own op codes so
+      // applyJournalEntry's switch (which silently ignores an op it does not recognise)
+      // does not confuse the two lanes.
+      case 'ADRILL': this.startADrill(e.tag); break;
+      case 'ADRILLEND': this.endADrill(e.arg||'ENDED BY INSTRUCTOR'); break;
       case 'CTLACTN': this.setCtlAction(e.tag,e.arg); break;
       case 'PVTRACK': this.setPvTrack(e.tag,e.arg==='ON'); break;
       case 'OOS': this.setOos(e.tag,e.cond,e.arg==='ON'); break;
@@ -3237,6 +3434,16 @@ class Component extends DCLogic {
     this.dHook('ACK',r.tag);
     this.journal('ACK',r.tag,r.key);
     this.taskDone('alm.ack');
+    // Safety-gate/scoring lane: this app has no NEW dispatch action for "acknowledge" --
+    // it reuses the existing alarm ack. drill-arch's own ACK action (V3-PLAN section 6's
+    // "stabilize" category) targets the drill's primary topology node, e.g. 'XMTR-FIC102'
+    // for A1, so an accepted ack is mapped to that point's FIELD-layer node id the same
+    // way topology.js derives it (id('XMTR',tag) for a measured point, id('DRV',tag) for a
+    // motor). This only credits drills whose fault is wired to real physics (A1's legacy
+    // 'xmtr' upset raises FIC102 BADPV; the nine engine-only faults raise no alarm at all
+    // -- see the S3 report) but never fabricates a match: matchAction still requires the
+    // exact node id, so acking an unrelated alarm during an unrelated drill scores nothing.
+    this.archSynthEvent('ACK',(this.L[r.tag]&&this.L[r.tag].kind==='motor'?'DRV-':'XMTR-')+r.tag,null);
   }
   ackTop(){ const a=this.state.selAlm!=null? this.alarmEngine.get(this.state.selAlm) : this.topUnack(); if(!a){this.msgZone('NO UNACKNOWLEDGED ALARM');return;} this.ackAlarm(a); }
   ackPage(){
@@ -3323,6 +3530,11 @@ class Component extends DCLogic {
     this.dAct('MODE',tag,m,0);
     this.journal('MODE',tag,m);
     this.taskDone('ctl.mode');
+    // Safety gate live (V3-PLAN section 6, DO item 4): only reached once transferMode has
+    // actually accepted the change (the two early returns above -- security level, program
+    // ownership, and `!r.ok` -- all exit before this line), so a refused MODE change never
+    // produces an event to score against. A1/A4/A6/A8/A9/A10/A11's gates are all MODE.SET.
+    this.archSynthEvent('MODE.SET','CM-'+l.cm,{mode:m});
   }
   openEntry(tag,param){
     const l=this.L[tag];
@@ -3795,8 +4007,12 @@ class Component extends DCLogic {
       reasons:this.shelveReasons().map(r=>({label:r,bg:(S.dlg&&S.dlg.reasonSel===r)?'#B8C4D4':'#D4D0C8',bc:(S.dlg&&S.dlg.reasonSel===r)?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({dlg:{...S.dlg,reasonSel:r}})})),
       shelfGo:()=>this.shelve(S.dlg&&S.dlg.dur),
       commentCur:selA&&selA.comment?selA.comment:'(none)',commentGo:()=>this.commentAlarm(S.dlgReason),commentKey:(e)=>{if(e.key==='Enter')this.commentAlarm(S.dlgReason);},
-      drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>this.startDrill(d)})),
-      randomDrill:()=>{const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
+      // Mutual exclusion with an active A-drill (V3-PLAN S3, architect addendum Q4) is
+      // enforced HERE, at the D-series' own dialog callbacks, rather than by editing
+      // startDrill() -- that function, drillWatch and the rest of the legacy lane read
+      // D-shaped def fields an A-series DrillDefinition does not carry.
+      drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } this.startDrill(d); }})),
+      randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:'',dbGuide:'',dbGuideOn:false};
@@ -3917,15 +4133,24 @@ class Component extends DCLogic {
     const health=ESS.FaultEngine.healthProjection(this.archFaultState(),G);
     const view=ESS.ArchitectureViewModel.build({
       graph:G, health, mode:S.archMode, profile:S.archProfile,
-      // Stage scope, declared here rather than in a plan document: S1 ships Learn and
-      // Trace. S3 adds 'diagnose', S4 adds 'debrief', each as part of implementing it.
-      // Unimplemented modes are hidden, never shown disabled -- a trainee must not be able
-      // to reach a stub. (V3-PLAN section 9; architect ruling 2026-08-30.)
-      availableModes:['learn','trace'],
-      beginner:S.archBeginner, tag, selection, selectedNode:selNode, evidence:[]
+      // Stage scope, declared here rather than in a plan document: S1 shipped Learn and
+      // Trace; S3 turns on Diagnose here, as part of implementing it (evidence/hypothesis
+      // commands below, the safety gate live) -- S4 adds 'debrief'. Unimplemented modes
+      // stay hidden, never shown disabled -- a trainee must not be able to reach a stub.
+      // (V3-PLAN section 9; architect ruling 2026-08-30.) Diagnose itself is SAFE BY
+      // CONSTRUCTION at the module boundary (architecture-view-model.js has no truth
+      // parameter at all -- see its own header); turning it on here adds no new leak
+      // surface, only reveals the mode that was already implemented, view-safe, one
+      // stage early on purpose. tests/app-diagnose.test.js is the app-level proof.
+      availableModes:['learn','trace','diagnose'],
+      // Live evidence (S3): the inspector's "Evidence collected" row now reads the
+      // P-resident training state instead of the S1 stub. Still never truth -- this is
+      // the trainee's OWN recorded actions, not a fault projection.
+      beginner:S.archBeginner, tag, selection, selectedNode:selNode,
+      evidence:(this.P.training&&this.P.training.evidence)||[]
     });
 
-    const selectNode=(id)=>()=>this.setState({archSel:id});
+    const selectNode=(id)=>()=>this.archSelectNode(id);
     const blastSet=view.blast?new Set(view.blast.nodes.concat([view.blast.nodeId])):null;
     const pathSet=new Set();
     if(view.path&&view.path.branches) view.path.branches.forEach(b=>b.nodes.forEach(n=>pathSet.add(n.id)));
@@ -3983,9 +4208,27 @@ class Component extends DCLogic {
     const selPointRefs=(selNode&&G.nodes[selNode]&&G.nodes[selNode].pointRefs)||[];
     const traceActions=selPointRefs.map(t=>({label:'TRACE '+t,cb:()=>this.openArch(t,'trace')}));
 
+    // S3 training controls (V3-PLAN section 6, DO items 1-3). MARK EVIDENCE and VERIFY
+    // target the open inspector's node; both are offered only once a node is selected,
+    // which is also the one explicit-open event that satisfies dispatch's fail-closed
+    // wasInspected check (archSelectNode marks it BEFORE these buttons are even
+    // reachable) -- clicking one here can never be "marking a node you never opened".
+    const evidenceChip=selNode?{label:'MARK EVIDENCE',cb:()=>this.markEvidence(selNode)}:null;
+    const verifyChip=selNode?{label:'VERIFY',cb:()=>this.verifyNode(selNode)}:null;
+    const pinTray=S.archPinTray||[];
+    const pinChip=selNode?{label:pinTray.indexOf(selNode)>=0?'UNPIN':'PIN',cb:()=>this.togglePin(selNode)}:null;
+    const pinTrayView=pinTray.map(id=>({id,label:(G.nodes[id]&&G.nodes[id].label)||id,cb:()=>this.togglePin(id)}));
+    const compareChip={label:'COMPARE PINNED ('+pinTray.length+')',cb:()=>this.comparePins()};
+    // SUBMIT HYPOTHESIS: seven chips, one per ESS.Dispatch.LAYERS domain (identical to
+    // ESS.Topology.LAYERS -- tests/dispatch-training.test.js pins the two lists equal),
+    // rendered only in Diagnose mode (V3-PLAN addendum Q3). A trainee names a failure
+    // DOMAIN, never a fault id -- dispatch.js's own validate refuses anything else.
+    const diagnoseOn=S.archMode==='diagnose';
+    const hypothesisChips=diagnoseOn?ESS.Dispatch.LAYERS.map(dom=>({label:dom,cb:()=>this.submitHypothesis(dom)})):[];
+
     const inspector=view.inspector?{
       title:view.inspector.title, layer:view.inspector.layer, kind:view.inspector.kind,
-      rows:view.inspector.rows, traceActions
+      rows:view.inspector.rows, traceActions, evidenceChip, verifyChip, pinChip
     }:null;
 
     const branches=(view.path&&view.path.branches||[]).map(b=>({
@@ -4004,7 +4247,9 @@ class Component extends DCLogic {
       inspector, hasInspector:!!inspector, inspectorEmpty:!inspector,
       showPath:S.archMode!=='learn',
       pathEmpty:!!view.empty, pathEmptyText:view.emptyText,
-      branches
+      branches,
+      hasPins:pinTray.length>0, pinTrayView, pinCount:String(pinTray.length), compareChip,
+      diagnoseOn, hypothesisChips
     };
   }
   // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)

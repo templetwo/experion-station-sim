@@ -54,7 +54,12 @@ test('createState is a superset of the app P shape with the new fields', () => {
   // P.archPending / P.archMeta (V3-PLAN S2, the instructor Architecture panel, DO item 1)
   // are the same exception for the same reason: the panel's own onset/duration/ramp
   // schedule ledger, attached alongside P.archFaults, never read by src/models.js.
-  const APP_ONLY_FIELDS = ['archFaults', 'archPending', 'archMeta'];
+  // P.archInspected / P.training / P.aDrill (V3-PLAN S3, DO items 1-4) are the same
+  // exception again: explicit-inspection tracking, the evidence/hypothesis training
+  // state and the A-drill lane are all attached in initSim() AFTER createState(), never
+  // read by src/models.js, for the identical D1 reason -- the deterministic physics core
+  // must not know the training/scoring layer exists.
+  const APP_ONLY_FIELDS = ['archFaults', 'archPending', 'archMeta', 'archInspected', 'training', 'aDrill'];
   for (const k of Object.keys(c.P)) { if (APP_ONLY_FIELDS.includes(k)) continue; assert.ok(k in P, 'missing ' + k); }
   for (const k of Object.keys(c.P.b)) assert.ok(k in P.b, 'missing b.' + k);
   for (const k of Object.keys(c.P.h)) assert.ok(k in P.h, 'missing h.' + k);

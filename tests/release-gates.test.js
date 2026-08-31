@@ -227,20 +227,33 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
     assert.ok(!plan.refused);
   });
 
-  await t.test('BLOCKED AT THE SURFACE: the instructor is not told a replay was refused', { skip:
-    'GATE 3 IS MET IN THE MODEL AND NOT MET AT THE UI, and the two must not be blurred. ' +
-    'src/instructor.js now refuses correctly and loudly (asserted live above). But the app ' +
-    "page's startReplay reads only `if (!plan.entries.length)` and reports " +
-    '"NO ACTIONS RECORDED AFTER SNAPSHOT" — so a REFUSED replay, where the module has ' +
-    'PROVEN actions were dropped, is shown to the instructor as nothing having happened. ' +
-    'That message is false and reassuring, which is the exact failure the refusal was built ' +
-    'to prevent, moved up one layer. plan.legacy is not read either, so an unverifiable ' +
-    'legacy replay is indistinguishable from a verified one. Gate 3 says an INSTRUCTOR can ' +
-    'restore and replay and obtain the same causal sequence — that is a claim about the ' +
-    'instructor-facing surface, not only the module. Found by cross-lens at ac7e5c6 and ' +
-    'reported to the lead; the app page is locked to the S3 lane. This flips to a live ' +
-    'assertion when startReplay surfaces plan.refused and plan.legacy.'
-  }, () => {});
+  await t.test('the INSTRUCTOR is told a replay was refused, and what was lost', () => {
+    // WAS BLOCKED, NOW LIVE. Gate 3 claims an INSTRUCTOR can restore and replay — a claim
+    // about the instructor-facing surface, not only the module. Until 934b81d the app's
+    // startReplay read only plan.entries.length and rendered a REFUSED plan as "NO ACTIONS
+    // RECORDED AFTER SNAPSHOT": false, and reassuring, which is the failure the refusal
+    // exists to prevent moved up one layer. Found by cross-lens at ac7e5c6, fixed by the
+    // lead at 934b81d.
+    // SCOPE OF THIS ASSERTION, stated exactly: it reads the WORKING-TREE page, because that
+    // is what a test file in the tree can read. The claim that the fix is also in the
+    // COMMITTED bytes was verified separately by hand (git show 934b81d:<page> | grep
+    // 'REPLAY REFUSED' -> 2 occurrences) and is NOT what this assertion proves. On this
+    // branch the working tree has repeatedly not been the commit — 934b81d itself ships a
+    // page calling this.aDrillWatch and this.archSynthEvent with zero definitions in the
+    // committed bytes — so the distinction is load-bearing, not pedantry.
+    const page = rd(APP_PAGE);
+    const at = page.indexOf('startReplay(i){');
+    assert.ok(at > 0, 'startReplay is gone from the app page');
+    const body = page.slice(at, at + 2000);
+    const refusedAt = body.indexOf('plan.refused');
+    const emptyAt = body.indexOf('plan.entries.length');
+    assert.ok(refusedAt > 0, 'startReplay does not read plan.refused — a refused replay would be silent');
+    assert.ok(refusedAt < emptyAt,
+      'startReplay checks entries.length BEFORE plan.refused, so a refusal still renders as ' +
+      '"nothing recorded" — the order is the whole fix');
+    assert.match(body, /REPLAY REFUSED/, 'the refusal is not surfaced to the instructor by name');
+    assert.match(body, /lostFromSeq/, 'the refusal message does not say WHICH actions were lost');
+  });
 });
 
 // ==================================================== GATE 4 — SEPARATION
