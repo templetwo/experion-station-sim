@@ -1573,6 +1573,18 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <sc-if value="{{ asst.hitsNone }}" hint-placeholder-val="{{ false }}">
       <div style="margin:4px 8px;font-size:10.5px;color:#55524c">No matching topic — try the chips above, or Help → Shortcut Keys.</div>
     </sc-if>
+    <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">AI TIPS</div>
+    <sc-if value="{{ asst.coachLive }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:2px 8px;font-size:9px;color:#55524c">{{ asst.coachStatus }} · local model · does not control the plant</div>
+      <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e;font-size:10.5px;line-height:1.45;color:#3c3c3c;min-height:48px">{{ asst.coachText }}</div>
+      <div style="display:flex;gap:4px;padding:2px 8px 8px 8px">
+        <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ asst.coachExplain }}">EXPLAIN ALARM</div>
+        <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ asst.coachAsk }}">ASK AI</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ asst.coachOff }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:4px 8px 8px 8px;font-size:10.5px;color:#55524c;line-height:1.45">Offline. The LIVE DIAGNOSIS above is always on. Live model tips need the coach sidecar, then open the station from that sidecar.</div>
+    </sc-if>
   </div>
   <div style="padding:5px 8px;font-size:9px;color:#6a665e;border-top:1px solid #9a968e;line-height:1.4">Advisory guidance representative of good operating practice — verify against your site procedures.</div>
 </div>
@@ -1605,6 +1617,7 @@ class Component extends DCLogic {
     // S3 pin-compare staging (V3-PLAN section 6) -- view-only, like archSel; the pinned
     // targets themselves are only committed to P.training once COMPARE dispatches
     // TRAINING.PIN_COMPARE. Cleared on a successful compare.
+    coachLive:false, coachText:'', coachStatus:'OFFLINE',
     archPinTray:[],
     // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
     // the topology fault matrix: which layer is shown and the one (node, fault) cell
@@ -4117,7 +4130,13 @@ class Component extends DCLogic {
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
     const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ, qChange:(e)=>this.setState({assistQ:e.target.value}),
       chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>this.setState({assistQ:c3})})),
-      hits, hitsNone:qq.length>2&&hits.length===0};
+      hits, hitsNone:qq.length>2&&hits.length===0,
+      // AI tips: the PAGE never fetches (Gate 4). A sidecar client may hang
+      // window.__ESS_COACH_ASK. file:// stays offline and shows coachOff.
+      coachLive:!!S.coachLive, coachOff:!S.coachLive,
+      coachText:S.coachText||'', coachStatus:S.coachStatus||'OFFLINE',
+      coachExplain:()=>{ if(typeof window!=='undefined'&&typeof window.__ESS_COACH_ASK==='function') window.__ESS_COACH_ASK('explain'); },
+      coachAsk:()=>{ if(typeof window!=='undefined'&&typeof window.__ESS_COACH_ASK==='function') window.__ESS_COACH_ASK('ask', this.state.assistQ); }};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
     const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};

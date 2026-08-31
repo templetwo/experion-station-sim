@@ -13,8 +13,9 @@ A browser-based, single-page training simulator that reproduces the conventions 
 | U3 | Two-pass fired heater (Badgwell form) with tube-skin temperatures and excess O2, fixed-bed reactor with quench | Nonlinear exotherm, trip avoidance |
 
 ## Run it
-- **From this folder:** open `Launcher.dc.html` (or the simulator file directly) in a modern browser. Needs `support.js` and the `src/` folder beside the app; React is fetched from a CDN on first load.
-- **Offline / single file:** `dist/experion-station-sim-standalone.html`, fully self-contained, no network needed.
+- **Station + AI coach (one launch):** double-click `Launch Station.command`, or `python3 tools/coach/launch.py`. One browser window: the console, Ops Assistant, and granite tips. Leave the Terminal open. The raw `.html` file cannot talk to a model (browsers block that); this launch is the together path.
+- **From this folder, no AI:** open `Launcher.dc.html` (or the simulator file directly) in a modern browser. Needs `support.js` and the `src/` folder beside the app; React is fetched from a CDN on first load.
+- **Offline / single file, no AI:** `dist/experion-station-sim-standalone.html`, fully self-contained, no network needed.
 
 ## Quick reference
 - Command zone: a tag (`FIC102`), `ALM`, `EVT`, `MSG`, `TRN`, `SYS`, `KPI`, `MOC`, `INSTR`, `PHILOSOPHY`, `COVERAGE`, `RECORD`, `ALMHELP`, `ASSIST`, `ARCH`, `DRILL`, `HELP`, `U1`/`U2`/`U3`, `SIL`, `ACK`
