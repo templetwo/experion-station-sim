@@ -30,6 +30,9 @@ test('coach projection contains live alarms and no fault ids', () => {
   assert.deepEqual(leaked, [], 'coach projection leaked fault ids: ' + leaked.join(','));
   assert.ok(!blob.includes('INSTRUCTOR_ONLY'));
   assert.ok(!blob.includes('archFaults'));
+  assert.ok(p.screen && p.screen.displayName);
+  assert.ok(Array.isArray(p.catalog) && p.catalog.length >= 20);
+  assert.ok(p.catalog.some((r) => r.tag === 'FIC102' && /feed/i.test(r.desc || '')));
 });
 
 test('coach projection during A1 names the drill, not the engine fault', () => {

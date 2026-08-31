@@ -1844,8 +1844,12 @@ class Component extends DCLogic {
     const recs=(E&&typeof E.list==='function')?E.list():[];
     const alarmRow=(a)=>a?{tag:a.tag||'',cond:a.cond||'',prio:a.prio||'',state:a.state||'',val:this.coachRnd(a.val),eu:a.eu||'',desc:a.desc||''}:null;
     const alarms=recs.slice(0,12).map(alarmRow).filter(Boolean);
-    const want={}; recs.forEach(a=>{ if(a&&a.tag) want[a.tag]=true; }); if(S.sel) want[S.sel]=true;
-    const points=[]; Object.keys(want).sort().slice(0,10).forEach(tag=>{ const l=L[tag]; if(!l) return; points.push({tag,pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv}); });
+    const fps=(S.fps||[]).map(f=>f&&f.tag).filter(Boolean).slice(0,6);
+    const want={}; recs.forEach(a=>{ if(a&&a.tag) want[a.tag]=true; });
+    [S.sel, S.detailTag, S.archTag].concat(fps).forEach(tag=>{ if(tag) want[tag]=true; });
+    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
+    const points=[]; Object.keys(want).sort().slice(0,16).forEach(tag=>{ const row=pointRow(tag); if(row) points.push(row); });
+    const catalog=[]; Object.keys(L).sort().forEach(tag=>{ const l=L[tag]; if(!l) return; catalog.push({tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||''}); });
     let selected=null, help=null;
     if(S.selAlm!=null&&E&&typeof E.get==='function'){
       selected=alarmRow(E.get(S.selAlm));
@@ -1859,7 +1863,23 @@ class Component extends DCLogic {
       const def=ESS.DrillArch&&ESS.DrillArch.drillById(this.P.aDrill.id);
       drill={id:this.P.aDrill.id, title:def&&def.title?def.title:this.P.aDrill.id};
     }
-    return {unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),alarms,points,selected,help,drill};
+    const dispNames={graphic:'UNIT GRAPHIC',alarms:'ALARM SUMMARY',events:'EVENT JOURNAL',msgs:'MESSAGE SUMMARY',trend:'TRENDS',detail:'POINT DETAIL',sys:'SYSTEM STATUS',kpi:'ALARM KPI',arch:'ARCHITECTURE',instr:'INSTRUCTOR'};
+    const unack=(E&&typeof E.unacked==='function')?E.unacked().length:0;
+    const selL=S.sel&&L[S.sel];
+    const screen={
+      display:S.display||'', displayName:dispNames[S.display]||S.display||'',
+      unit:S.unit||'', selected:S.sel||null, selectedDesc:selL?selL.desc:'',
+      detailTag:S.detailTag||null, faceplates:fps, assistOn:!!S.assist,
+      archOn:S.display==='arch', archMode:S.archMode||'', archSel:S.archSel||null, archTag:S.archTag||null,
+      speed:S.speed, unack:unack, sec:S.sec||'', oper:this.operName()
+    };
+    let arch=null;
+    if(S.display==='arch' && this.topo && this.topo.nodes){
+      const nid=S.archSel||null;
+      const n=nid&&this.topo.nodes[nid];
+      arch={mode:S.archMode||'', profile:S.archProfile||'', tag:S.archTag||null, node:n?{id:n.id,label:n.label,layer:n.layer,kind:n.kind,role:n.trainingDescription||''}:null};
+    }
+    return {unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),screen,catalog,alarms,points,selected,help,drill,arch};
   }
   coachScrub(t){
     let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ');
@@ -1981,6 +2001,7 @@ class Component extends DCLogic {
     if(!s) return;
     let ev; try{ ev=JSON.parse(s); }catch(e){ return; }
     if(ev.t==='think'){ this._coachThink=this.coachScrub((this._coachThink||'')+(ev.d||'')); this.coachFlush(false); }
+    else if(ev.t==='tool'){ this._coachThink=this.coachScrub('checking '+(ev.d||'the board')); this.coachFlush(true); }
     else if(ev.t==='text'){ this._coachDraft=this.coachScrub((this._coachDraft||'')+(ev.d||'')); this.coachFlush(false); }
     else if(ev.t==='err'){ this._coachDraft=this.coachScrub(ev.d||'PIP lost the model.'); this.coachFinish(false, gen); }
     else if(ev.t==='done'){ this.coachFinish(!!ev.ok, gen); }
@@ -4413,7 +4434,7 @@ class Component extends DCLogic {
     const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ,
       qChange:(e)=>this.setState({assistQ:e.target.value}),
       qKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.coachAsk('ask', this.state.assistQ); } },
-      chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),
+      chips:["What am I looking at?","What is this screen?","How do I drive this station?","Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),
       hits, hitsNone:qq.length>2&&hits.length===0,
       coachLive:!!S.coachLive, coachOff:!S.coachLive,
       coachBadge:S.coachLive?(S.coachModel||'PIP'):'TRAINING AID',

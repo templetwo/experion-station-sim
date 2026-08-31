@@ -8,7 +8,9 @@ The page may call relative `/api/coach/` only, fail-open. This process sits
 beside the station, serves the standalone build, and talks to **local Ollama**.
 
 PIP is the little analog-gauge watchstander: hover character, thought bubbles
-from granite think, streaming feed in Ops Assistant.
+from granite think, streaming feed in Ops Assistant. Granite has tools
+(`looking_at`, `get_point`, `get_alarms`, `station_help`, `list_points`) so it
+can explain the screen and the station, not only dump alarms.
 
 ## Run
 
