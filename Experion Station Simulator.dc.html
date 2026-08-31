@@ -14,6 +14,12 @@
 <script src="./src/philosophy.js"></script>
 <script src="./src/instructor.js"></script>
 <script src="./src/training.js"></script>
+<script src="./src/dispatch.js"></script>
+<script src="./src/topology.js"></script>
+<script src="./src/fault-engine.js"></script>
+<script src="./src/signal-path.js"></script>
+<script src="./src/drill-arch.js"></script>
+<script src="./src/architecture-view-model.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -498,7 +504,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <div style="width:30px"></div><div style="width:130px">Pen</div><div style="flex:1">Description</div><div style="width:100px;text-align:right">Value</div><div style="width:70px;padding-left:10px">Units</div><div style="width:130px;text-align:right">Range</div>
     </div>
     <sc-for list="{{ tv.pens }}" as="p" hint-placeholder-count="4">
-      <div style="display:flex;align-items:center;padding:3px 8px;font-size:12px;background:#C6C6C6;border:1px solid #B2B2AE;border-top:none">
+      <div style="display:flex;align-items:center;padding:3px 8px;font-size:12px;background:#C6C6C6;border:1px solid #B2B2AE;border-top:none;cursor:pointer" onClick="{{ p.cb }}" title="Signal path">
         <div style="width:30px"><div style="width:18px;height:4px;background:{{ p.color }}"></div></div>
         <div style="width:130px;font-weight:700">{{ p.label }}</div><div style="flex:1">{{ p.desc }}</div><div style="width:100px;text-align:right;font-weight:700">{{ p.val }}</div><div style="width:70px;padding-left:10px">{{ p.eu }}</div><div style="width:130px;text-align:right">{{ p.range }}</div>
       </div>
@@ -514,6 +520,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <div style="font-size:12px;color:#3c3c3c">{{ dpt.desc }}</div>
     <div style="flex:1"></div>
     <div style="font-size:11px;color:#55524c">CM: {{ dpt.cm }} · EXEC PERIOD 500 mS (SIM) · {{ dpt.kindT }}</div>
+    <div style="padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ dpt.sigPath }}">SIGNAL PATH</div>
   </div>
   <div style="display:flex;gap:2px;padding:4px 8px 0 8px;background:#CCC8C0;user-select:none">
     <sc-for list="{{ dpt.tabs }}" as="t" hint-placeholder-count="5">
@@ -938,6 +945,87 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </sc-if>
 
+<sc-if value="{{ isArch }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Architecture" style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none;flex-wrap:wrap">
+    <div style="font-weight:700;font-size:13px;margin-right:8px">ARCHITECTURE</div>
+    <sc-for list="{{ arch.modeChips }}" as="m" hint-placeholder-count="4">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ m.bc }};background:{{ m.bg }}" onClick="{{ m.cb }}">{{ m.label }}</div>
+    </sc-for>
+    <div style="width:14px"></div>
+    <div style="font-size:11px;color:#55524c">Profile:</div>
+    <sc-for list="{{ arch.profileChips }}" as="p" hint-placeholder-count="2">
+      <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ p.bc }};background:{{ p.bg }}" onClick="{{ p.cb }}">{{ p.label }}</div>
+    </sc-for>
+    <div style="width:14px"></div>
+    <div style="padding:3px 10px;font-size:11px;cursor:pointer;border:2px solid;border-color:{{ arch.beginnerChip.bc }};background:{{ arch.beginnerChip.bg }}" onClick="{{ arch.beginnerChip.cb }}">{{ arch.beginnerChip.label }}</div>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;color:#55524c">Traced point: {{ arch.tagT }}</div>
+  </div>
+  <div style="padding:4px 8px;font-size:10.5px;color:#55524c;background:#CFCFCB;border-bottom:1px solid #B6B6B2">{{ arch.profileHelp }}</div>
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="flex:1;overflow:auto;padding:8px;position:relative">
+      <div style="position:relative;height:16px;width:{{ arch.svgW }}px;margin-bottom:2px">
+        <sc-for list="{{ arch.layers }}" as="ly" hint-placeholder-count="7">
+          <div style="position:absolute;left:{{ ly.headerX }}px;top:0;font-weight:700;font-size:10px;color:#55524c;text-transform:uppercase;white-space:nowrap">{{ ly.label }}</div>
+        </sc-for>
+      </div>
+      <svg width="{{ arch.svgW }}" height="{{ arch.svgH }}" style="background:#FAFAF8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;display:block">
+        <sc-for list="{{ arch.edges }}" as="e" hint-placeholder-count="20">
+          <line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" style="stroke:{{ e.stroke }};stroke-width:1"></line>
+        </sc-for>
+        <sc-for list="{{ arch.layers }}" as="ly2" hint-placeholder-count="7">
+          <sc-for list="{{ ly2.nodes }}" as="n" hint-placeholder-count="10">
+            <rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="2" style="fill:{{ n.fill }};stroke:{{ n.stroke }};stroke-width:{{ n.sw }};cursor:pointer" onClick="{{ n.cb }}"><title>{{ n.title }}</title></rect>
+            <text x="{{ n.tx }}" y="{{ n.ty }}" style="font:9px Tahoma;fill:#1c1c1c;pointer-events:none">{{ n.shortLabel }}</text>
+          </sc-for>
+        </sc-for>
+      </svg>
+    </div>
+    <div style="width:320px;flex:none;background:#CFCFCB;border-left:1px solid #9a968e;overflow-y:auto;padding:10px;font-size:11.5px;line-height:1.5">
+      <sc-if value="{{ arch.hasInspector }}" hint-placeholder-val="{{ false }}">
+        <div style="font-weight:700;font-size:12px;margin-bottom:2px">{{ arch.inspector.title }}</div>
+        <div style="font-size:10.5px;color:#55524c;margin-bottom:8px">{{ arch.inspector.layer }} · {{ arch.inspector.kind }}</div>
+        <sc-for list="{{ arch.inspector.rows }}" as="r" hint-placeholder-count="7">
+          <div style="margin-bottom:6px"><div style="font-weight:700;color:#55524c;font-size:10.5px;text-transform:uppercase">{{ r.label }}</div><div>{{ r.value }}</div></div>
+        </sc-for>
+        <sc-for list="{{ arch.inspector.traceActions }}" as="ta" hint-placeholder-count="2">
+          <div style="display:inline-block;margin:2px 4px 6px 0;padding:3px 8px;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ ta.cb }}">{{ ta.label }}</div>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{ arch.inspectorEmpty }}" hint-placeholder-val="{{ true }}">
+        <div style="color:#55524c">Click a node in the diagram to inspect it.</div>
+      </sc-if>
+      <sc-if value="{{ arch.showPath }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid #B6B6B2">
+          <div style="font-weight:700;font-size:12px;margin-bottom:6px">SIGNAL PATH</div>
+          <sc-if value="{{ arch.pathEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color:#55524c">{{ arch.pathEmptyText }}</div>
+          </sc-if>
+          <sc-for list="{{ arch.branches }}" as="b" hint-placeholder-count="4">
+            <div style="margin-bottom:10px">
+              <div style="font-weight:700;font-size:10.5px;color:#31548F;margin-bottom:3px">{{ b.label }}</div>
+              <sc-if value="{{ b.available }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+                  <sc-for list="{{ b.nodes }}" as="pn" hint-placeholder-count="6">
+                    <div style="padding:2px 6px;font-size:10.5px;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e;white-space:nowrap" onClick="{{ pn.cb }}">{{ pn.label }}</div>
+                  </sc-for>
+                </div>
+                <div style="font-size:10.5px;color:#55524c;margin-top:3px">{{ b.describeText }}</div>
+              </sc-if>
+              <sc-if value="{{ b.unavailable }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:10.5px;color:#55524c">Not applicable for this point.</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="padding:4px 8px;background:#CCC8C0;border-top:1px solid #9a968e;font-size:11px;color:#3c3c3c">{{ arch.banner }}</div>
+</div>
+</sc-if>
+
 <sc-for list="{{ fps }}" as="fp" hint-placeholder-count="1">
   <div style="position:absolute;left:{{ fp.x }}px;top:{{ fp.y }}px;width:242px;background:#D4D0C8;border:2px solid;border-color:{{ fp.frameBc }};box-shadow:4px 4px 10px rgba(0,0,0,0.4);z-index:{{ fp.z }};user-select:none" onMouseDown="{{ fp.front }}">
     <div style="display:flex;align-items:center;background:#41608A;color:#FFFFFF;padding:3px 6px;cursor:move;gap:6px" onMouseDown="{{ fp.dragStart }}">
@@ -1049,6 +1137,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.sil }}">SILENCE</div>
       <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.ack }}">ACK</div>
       <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.detail }}">DETAIL</div>
+      <div style="flex:1;text-align:center;padding:3px 0;font-size:10.5px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.sigPath }}">SIG PATH</div>
     </div>
     <div style="padding:0 8px 6px 8px;font-size:10px;color:#55524c;display:flex;gap:8px"><div>{{ fp.modeLine }}</div><div style="flex:1"></div><div style="font-weight:700;color:#31548F">{{ fp.initT }}</div></div>
   </div>
@@ -1361,7 +1450,9 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'' };
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
+    // ARCH view state (V3-PLAN S1) -- view-only, never process/control/alarm/topology state.
+    archMode:'learn', archProfile:'console', archTag:null, archSel:null, archBeginner:true };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -1431,6 +1522,11 @@ class Component extends DCLogic {
     this.histTags().forEach(t=>this.hist[t]=[]);
     this.addEvent('SYSTEM','STN01','OPERATOR STATION STARTED — SIMULATION MODE','','');
     this.applyPhaseSet(this.phaseSetKey(),true);
+    // ARCH view (V3-PLAN S1): the topology graph is derived from L/V, which initSim just
+    // rebuilt, so cache it here rather than in renderVals() (runs at every setState, not
+    // just 2 Hz) — see CODE-MAP / advisory Q2. Re-cached at restoreSnapshot() too, which
+    // replaces L/V wholesale.
+    this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
   }
 
   // ---------- helpers ----------
@@ -2284,6 +2380,8 @@ class Component extends DCLogic {
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
     this.seed=snap.seed||this.seed; this.rand=ESS.Models.createRand(this.seed); if(snap.randState!=null) this.rand.setState(snap.randState);
     this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={}; this._lastPhase=this.P.b.phase;
+    // restoreSnapshot replaces this.L/this.V wholesale, so the cached graph must be rebuilt too.
+    this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
     const t=this.P.t;
     for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
     this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
@@ -2470,13 +2568,17 @@ class Component extends DCLogic {
     const h=this.state.hist.slice(0,this.state.hi+1); h.push({d,arg});
     const st={display:d, hist:h, hi:h.length-1, menu:null};
     if(d==='detail'&&arg) st.detailTag=arg;
+    if(d==='arch'&&arg) st.archTag=arg;
     this.setState(st);
     const task={alarms:'alm.summary',events:'trn.events',msgs:'msg.open',trend:'trn.open',detail:'nav.detail',sys:'nav.sys',kpi:'alm.kpi'}[d];
     if(task) this.taskDone(task);
   }
-  goBack(){ const {hist,hi}=this.state; if(hi<=0){this.msgZone('NO EARLIER DISPLAY');return;} const p=hist[hi-1]; const st={hi:hi-1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
-  goFwd(){ const {hist,hi}=this.state; if(hi>=hist.length-1){this.msgZone('NO LATER DISPLAY');return;} const p=hist[hi+1]; const st={hi:hi+1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
+  goBack(){ const {hist,hi}=this.state; if(hi<=0){this.msgZone('NO EARLIER DISPLAY');return;} const p=hist[hi-1]; const st={hi:hi-1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; if(p.d==='arch'&&p.arg)st.archTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
+  goFwd(){ const {hist,hi}=this.state; if(hi>=hist.length-1){this.msgZone('NO LATER DISPLAY');return;} const p=hist[hi+1]; const st={hi:hi+1,display:p.d}; if(p.d==='detail'&&p.arg)st.detailTag=p.arg; if(p.d==='arch'&&p.arg)st.archTag=p.arg; this.setState(st); this.taskDone('nav.back'); }
   setUnit(u){ this.setState({unit:u}); this.taskDone('nav.unit'); }
+  // SIGNAL PATH entry points (faceplates, Point Detail, alarm rows, trend pens) open the
+  // ARCH view pre-scoped to a tag in Trace mode -- view state only (V3-PLAN S1).
+  openArch(tag,mode){ if(mode) this.setState({archMode:mode}); this.nav('arch',tag); }
   // Change log view: the Event Summary filtered to CONFIG entries (MOC, RESOURCES 2.13).
   openChangeLog(){ this.setState({evtFilter:'CONFIG'}); this.nav('events'); this.taskDone('sec.moc'); }
   parseCmd(){
@@ -2489,7 +2591,7 @@ class Component extends DCLogic {
     if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return true; }
     if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return true; }
     if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return true; }
-    const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi'};
+    const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi',ARCH:'arch',ARCHITECTURE:'arch','SIGNAL PATH':'arch'};
     if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); this.taskDone('alm.help'); return true; }
     if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return true; }
     if(map[c]){ this.nav(map[c]); return true; }
@@ -2727,7 +2829,7 @@ class Component extends DCLogic {
     const menusDef=[
       {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'},dlgName:''})},{l:'Sign Off (View Only)',f:()=>this.signOff()},{sep:true},
         ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
-      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
+      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{l:'Architecture',f:()=>this.nav('arch',S.archTag)},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()},{sep:true},{l:'Disable / Enable Alarms for Asset… (MNGR)',f:()=>this.toggleAssetAlarms(S.almAsset)}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
@@ -2816,7 +2918,8 @@ class Component extends DCLogic {
       filters:['MAIN','UNACK','SHELVED','SUPPRESSED','OOS'].map(f=>({label:f==='MAIN'?'ALL':f,bg:S.shelfView===f?'#B8C4D4':'#D4D0C8',bc:S.shelfView===f?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:setS({shelfView:f})})),
       helpOn:S.almHelp,helpBg:S.almHelp?'#B8C4D4':'#D4D0C8',helpBc:S.almHelp?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',helpToggle:()=>{const on=!S.almHelp;this.setState({almHelp:on});if(on)this.taskDone('alm.help');},
       help:{title:helpSel?(selA.tag+' '+selA.cond+' — '+selA.desc):'No alarm selected — click a row.',fields:helpSel?this.helpFields(helpSel):[],comment:selA&&selA.comment?selA.comment:'none'},
-      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()},{label:assetDis?'ENABLE ASSET':'DISABLE ASSET',cb:()=>this.toggleAssetAlarms(asset)}],
+      btns:[{label:'ACK',cb:()=>this.ackTop()},{label:'ACK PAGE',cb:()=>this.ackPage()},{label:'SILENCE',cb:()=>this.silence()},{label:'SHELVE…',cb:()=>this.openShelve()},{label:'UNSHELVE',cb:()=>this.unshelve()},{label:'COMMENT…',cb:()=>this.openComment()},{label:'SAVE VIEW',cb:()=>this.saveView()},{label:assetDis?'ENABLE ASSET':'DISABLE ASSET',cb:()=>this.toggleAssetAlarms(asset)},
+        {label:'SIGNAL PATH',cb:()=>{ if(selA&&this.L[selA.tag]) this.openArch(selA.tag,'trace'); else this.msgZone('SIGNAL PATH NOT AVAILABLE FOR THIS SOURCE'); }}],
       selInfo:selA?('Selected: '+selA.tag+' '+selA.cond+' — first '+this.fT(selA.t)+(selA.count>1?', last '+this.fT(selA.lastT)+', ×'+selA.count:'')+(selA.comment?' · comment: '+selA.comment:'')+' · double-click for Point Detail'):('Location '+asset+' · '+S.shelfView+' · click a row to select; double-click for Point Detail.'),
       countTxt:'ACTIVE: URGENT '+cnt('Urgent')+' · HIGH '+cnt('High')+' · LOW '+cnt('Low')+' · UNACK '+counts.unack+' · SHELVED '+E.shelved().length+' · SUPPRESSED '+E.suppressed().length+' · OOS '+E.oos().length+(this.disabledAssets.size?' · ASSETS DISABLED '+[...this.disabledAssets].join(', '):'')+' · SHOWN '+rows.length};
     // events (CONFIG = management-of-change entries, RESOURCES 2.13)
@@ -2846,7 +2949,7 @@ class Component extends DCLogic {
         const stride=Math.max(1,Math.floor((h.length-start)/420));
         for(let i=start;i<h.length;i+=stride){ const r=h[i]; if(r[0]<t0) continue; const x=44+(r[0]-t0)/(span*60000)*1006; const y=404-((r[idx]-lo)/(hi-lo))*394; pts.push(x.toFixed(1)+','+Math.max(6,Math.min(410,y)).toFixed(1)); }
         const cur=fld==='pv'?l.pv:fld==='sp'?l.sp:l.op;
-        return {pts:pts.join(' '),color,dash:dash||'none',label:tag+'.'+fld.toUpperCase(),desc:l.desc,val:this.fmt(cur,isOp?1:l.dec),eu:isOp?'%':l.eu,range:this.fmt(lo,0)+' – '+this.fmt(hi,0)};
+        return {pts:pts.join(' '),color,dash:dash||'none',label:tag+'.'+fld.toUpperCase(),desc:l.desc,val:this.fmt(cur,isOp?1:l.dec),eu:isOp?'%':l.eu,range:this.fmt(lo,0)+' – '+this.fmt(hi,0),cb:()=>this.openArch(tag,'trace')};
       });
     };
     const tg=TGS[S.tg];
@@ -2976,6 +3079,7 @@ class Component extends DCLogic {
       mRow('Alarm on-delay','ALMDELAY',this.fmt(this.almDelay(dl),0)+' S',true,dl.almDelay!=null?'engineer-set':'default by point type')
     ];
     const dpt={tag:dl.tag,desc:dl.desc,cm:dl.cm,kindT:isPid?'REGULATORY PID POINT':(dl.kind==='motor'?'DEVICE CONTROL POINT':'DATA ACQUISITION POINT'),
+      sigPath:()=>this.openArch(dl.tag,'trace'),
       tabs:tabsDef.map(t=>({label:tabL[t],bg:tab===t?'#C6C6C6':'#BEBAB2',bb:tab===t?'1px solid #C6C6C6':'1px solid #9a968e',cb:setS({detailTab:t})})),
       isMain:tab==='main',isAlm:tab==='alarms',isTune:tab==='tuning',isChart:tab==='chart',isCm:tab==='cm',
       mainRows,tuneRows,almRows,almCfg,almNote:almNoteTxt,helpConds,help:{fields:this.helpFields(this.alarmHelpFor(dl.tag,helpCond))},chartPens,chartGrid:gridY,cmBlocks,cmWires,
@@ -3013,6 +3117,7 @@ class Component extends DCLogic {
         noteT:l.badPv?'BADPV — SHED ('+l.shed.replace('SHED','')+')':'',
         sil:()=>this.silence(),ack:()=>{const a2=E.unacked().filter(x=>x.tag===f.tag).sort(E.compare)[0];if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
         detail:()=>this.nav('detail',f.tag),
+        sigPath:()=>this.openArch(f.tag,'trace'),
         modeLine:isP?('MODE '+l.mode+' · MODEATTR '+l.modeAttr):(isM?'DEVCTL':'DATAACQ'),initT:l.init?'INITMAN':'',
         stT:l.run?'RUN':(l.trip?'TRIP':'STOP'),stBg:l.run?'#37474F':(l.trip?UC:'#E8E8E4'),stFg:l.run?'#FFFFFF':(l.trip?UT:'#000'),
         cmdT:l.cmd||'',fbT:l.run?'RUNNING':'STOPPED',
@@ -3088,6 +3193,7 @@ class Component extends DCLogic {
     const drill=S.drill;
     const disp=this.effDisplay();
     const instr=this.instructorView();
+    const arch=this.archView(disp);
     const activeUpsets=ESS.Instructor.upsetDefs().filter(d=>this.upsetOn(d.k)).map(d=>d.k.toUpperCase());
     const simRows=[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'FROZEN':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'24 CMS / 10 VALVES / 3 UNITS'}];
     if(!this.instr.hidden) simRows.push({k:'Upsets',v:activeUpsets.length?activeUpsets.join(', '):'NONE'});
@@ -3098,8 +3204,8 @@ class Component extends DCLogic {
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
       cMsg:pend, msgOn:pend>0, msgBg:pend>0&&blink?'#7a1a00':'transparent', msgFg:pend>0&&blink?'#FFFFFF':'#7a1a00', msgGo:()=>this.nav('msgs'),
       disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
-      isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isInstr:disp==='instr'&&instr.on, instr,
-      gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg,
+      isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
+      gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg, arch,
       utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
@@ -3153,6 +3259,120 @@ class Component extends DCLogic {
       tiles,checks,prio,prioNote:m.priority.total?'Distribution of '+m.priority.total+' annunciated alarms (Journal excluded). Deviation from target: LOW '+m.priority.deviation.Low+', HIGH '+m.priority.deviation.High+', URGENT '+m.priority.deviation.Urgent+' points.':'No annunciated alarms in the window.',
       lists,actors,actorsEmpty:actors.length===0,
       footer:'Thresholds: about '+T.perDayAcceptable+' alarms per day acceptable and '+T.perDayManageable+' manageable; '+T.per10minTarget+' per 10 min target, '+T.per10minManageable+' manageable, '+T.per10minMax+' in 10 min is a flood; time in flood under '+T.floodPctMax+' %; top-10 alarms '+T.top10PctTarget+'–'+T.top10PctMax+' % of load; chattering zero; standing under '+T.standingMax+'; priority split 80 / 15 / 5 (Low / High / Urgent). Figures from the exida white paper on ISA-18.2 performance metrics and the alarm-performance-analyser benchmark notes (RESOURCES 2.7, 2.8), which summarise ISA-18.2 and EEMUA 191. The standing-alarm threshold is scaled to 10 min for a training session; the plant figure is 24 h.'};
+  }
+  // ARCH view (V3-PLAN S1: Topology + Trace). Reads this.topo, the graph cached in
+  // initSim()/restoreSnapshot() -- never rebuilt here, since renderVals() runs on every
+  // setState (advisory Q2), not just the 2 Hz tick. Only computed when the ARCH display
+  // is actually showing; a cheap {} stub otherwise. Every closure below only calls
+  // this.setState with view-only keys (archMode/archProfile/archTag/archSel) or
+  // this.openArch/this.msgZone -- no process, control, alarm or topology mutation, per
+  // the S1 exit condition. Health is passed as null: S2 wires ESS.FaultEngine into the
+  // app; until then every node defaults HEALTHY, which is also why no failure colour is
+  // invented here (V3-PLAN addendum Q6.3, Q1 -- ESS.Palette has no health palette).
+  archView(disp){
+    const S=this.state;
+    if(disp!=='arch'||!this.topo) return {};
+    const G=this.topo, tag=S.archTag, selNode=S.archSel;
+
+    // The app owns SignalPath.resolve/applicablePaths/describe -- the pure view model
+    // has no sibling require and only ever sees the results, handed in as `selection`.
+    let selection=null;
+    if(tag){
+      const applicable=ESS.SignalPath.applicablePaths(G,tag);
+      const resolved={}, describeMap={};
+      applicable.forEach(pt=>{
+        const r=ESS.SignalPath.resolve(G,tag,{path:pt,profile:S.archProfile});
+        resolved[pt]=r; describeMap[pt]=ESS.SignalPath.describe(G,r);
+      });
+      selection={applicable,resolved,describe:describeMap};
+    }
+
+    const view=ESS.ArchitectureViewModel.build({
+      graph:G, health:null, mode:S.archMode, profile:S.archProfile,
+      // Stage scope, declared here rather than in a plan document: S1 ships Learn and
+      // Trace. S3 adds 'diagnose', S4 adds 'debrief', each as part of implementing it.
+      // Unimplemented modes are hidden, never shown disabled -- a trainee must not be able
+      // to reach a stub. (V3-PLAN section 9; architect ruling 2026-08-30.)
+      availableModes:['learn','trace'],
+      beginner:S.archBeginner, tag, selection, selectedNode:selNode, evidence:[]
+    });
+
+    const selectNode=(id)=>()=>this.setState({archSel:id});
+    const blastSet=view.blast?new Set(view.blast.nodes.concat([view.blast.nodeId])):null;
+    const pathSet=new Set();
+    if(view.path&&view.path.branches) view.path.branches.forEach(b=>b.nodes.forEach(n=>pathSet.add(n.id)));
+
+    let maxX=0,maxY=0;
+    view.layers.forEach(ly=>ly.nodes.forEach(n=>{ maxX=Math.max(maxX,n.x+n.w); maxY=Math.max(maxY,n.y+n.h); }));
+    const svgW=Math.max(200,maxX+16), svgH=Math.max(120,maxY+16);
+
+    // Semantic-token -> chrome colour, done here (never in the pure module -- it emits
+    // tokens only). S1 never sees a non-HEALTHY token, so this is only ever the neutral
+    // case plus the (mutation-free) view-only selection/path/blast highlights.
+    const nodeVisual=(n)=>{
+      const isSel=n.id===selNode;
+      const inBlast=!!(blastSet&&blastSet.has(n.id)&&!isSel);
+      const onPath=!!(pathSet.has(n.id)&&!isSel);
+      let fill='#D4D0C8', stroke='#6E6E6E', sw=1;
+      if(onPath){ fill='#EFE0A0'; stroke='#8a6d1a'; }
+      if(inBlast){ fill='#C7D3E3'; stroke='#31548F'; }
+      if(isSel){ fill='#B8C4D4'; stroke='#31548F'; sw=2.5; }
+      return {fill,stroke,sw};
+    };
+
+    const layers=view.layers.map(ly=>({
+      id:ly.id, label:ly.label, headerX:ly.nodes.length?ly.nodes[0].x:0,
+      nodes:ly.nodes.map(n=>{
+        const vis=nodeVisual(n);
+        return {id:n.id, x:n.x, y:n.y, w:n.w, h:n.h, tx:n.x+6, ty:n.y+n.h/2+3,
+          fill:vis.fill, stroke:vis.stroke, sw:vis.sw,
+          shortLabel:n.label.length>20?n.label.slice(0,19)+'…':n.label,
+          title:n.label+' ('+n.healthLabel+')', cb:selectNode(n.id)};
+      })
+    }));
+
+    const edges=view.edges.map(e=>({id:e.id,x1:e.x1,y1:e.y1,x2:e.x2,y2:e.y2,
+      stroke:(pathSet.has(e.from)&&pathSet.has(e.to))?'#8a6d1a':((blastSet&&blastSet.has(e.from)&&blastSet.has(e.to))?'#31548F':'#B6B6B2')}));
+
+    const modeChips=view.modes.map(m=>({id:m.id,label:m.label,
+      bg:m.active?'#B8C4D4':'#D4D0C8',bc:m.active?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',
+      cb:()=>this.setState({archMode:m.id})}));
+    const profileChips=view.profiles.map(p=>({id:p.id,label:p.label,
+      bg:p.active?'#B8C4D4':'#D4D0C8',bc:p.active?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',
+      cb:()=>this.setState({archProfile:p.id})}));
+    const beginnerChip={label:view.beginner?'BEGINNER VIEW':'ADVANCED VIEW',
+      bg:'#D4D0C8',bc:'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',
+      cb:()=>this.setState({archBeginner:!S.archBeginner})};
+
+    // pointRefs on the selected topology node, offered as one-click "trace this point"
+    // actions -- reads this.topo directly (never mutates it; Topology.node() returns the
+    // live object, so this only ever reads .pointRefs, never assigns into it).
+    const selPointRefs=(selNode&&G.nodes[selNode]&&G.nodes[selNode].pointRefs)||[];
+    const traceActions=selPointRefs.map(t=>({label:'TRACE '+t,cb:()=>this.openArch(t,'trace')}));
+
+    const inspector=view.inspector?{
+      title:view.inspector.title, layer:view.inspector.layer, kind:view.inspector.kind,
+      rows:view.inspector.rows, traceActions
+    }:null;
+
+    const branches=(view.path&&view.path.branches||[]).map(b=>({
+      type:b.type, available:b.available, unavailable:!b.available,
+      label:(b.type||'').toUpperCase(), describeText:b.describeText,
+      nodes:b.nodes.map(n=>({id:n.id,label:n.label,cb:selectNode(n.id)}))
+    }));
+
+    return {
+      banner:view.banner, modeChips, profileChips, beginnerChip,
+      profileHelp:S.archProfile==='flex'
+        ? 'FLEX profile: this simulator has one physical station; FLEX is a view profile reading the data server’s cache on that same station, not a second machine.'
+        : 'CONSOLE profile: this simulator has one physical station; CONSOLE is a view profile reading the controller directly on that same station, not a second machine.',
+      tagT:tag||'(none selected — use a SIGNAL PATH action, or trace a point from its inspector)',
+      svgW, svgH, layers, edges,
+      inspector, hasInspector:!!inspector, inspectorEmpty:!inspector,
+      showPath:S.archMode!=='learn',
+      pathEmpty:!!view.empty, pathEmptyText:view.emptyText,
+      branches
+    };
   }
   // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)
   philosophyView(){
