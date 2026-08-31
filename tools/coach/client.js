@@ -1,5 +1,5 @@
 // @artifact dev
-/* Injected only by tools/coach/serve.py. The PAGE never fetches. */
+/* Injected only by tools/coach/serve.py. Uses window.__ESS_COACH_CORE__ from the station. */
 (function () {
   'use strict';
   if (window.__ESS_COACH_UI__) return;
@@ -14,20 +14,7 @@
     'HISTORIAN_GAP', 'ASSISTANT_LOSS', 'INSTRUCTOR_ONLY'
   ];
 
-  function findLogic() {
-    var all = document.getElementsByTagName('*');
-    for (var i = 0; i < all.length; i++) {
-      var L = all[i].logic;
-      if (L && L.alarmEngine && L.L && typeof L.setState === 'function') return L;
-    }
-    return null;
-  }
-
-  function projection() {
-    var c = findLogic();
-    if (!c || !window.ESS_COACH_PROJ) return null;
-    return window.ESS_COACH_PROJ.build(c);
-  }
+  function core() { return window.__ESS_COACH_CORE__ || null; }
 
   function scrub(text) {
     var t = String(text || '');
@@ -36,39 +23,41 @@
     return t;
   }
 
-  function paint(patch) {
-    var c = findLogic();
-    if (!c) return;
-    var next = { coachLive: true, assist: true };
-    Object.keys(patch).forEach(function (k) { next[k] = patch[k]; });
-    c.setState(next);
-  }
-
   var busy = false;
   var lastSig = '';
   var lastTipAt = 0;
+  var modelName = 'granite4.2:8b';
+
+  fetch('/api/health').then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.model) modelName = j.model;
+  }).catch(function () {});
 
   function advise(kind, question) {
-    var p = projection();
-    if (!p) { paint({ coachStatus: 'WAITING', coachText: 'Station not ready yet.' }); return; }
+    var c = core();
+    if (!c) return;
+    var p = c.projection();
+    if (!p) {
+      c.paint({ coachStatus: modelName, coachText: 'Station not ready yet.' });
+      return;
+    }
     if (busy) return;
     busy = true;
-    paint({ coachStatus: 'THINKING', assist: true });
+    c.paint({ coachStatus: 'THINKING · ' + modelName });
     fetch('/api/advise', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind: kind, ask: question || '', projection: p })
     }).then(function (r) { return r.json(); }).then(function (j) {
       busy = false;
-      paint({
-        coachStatus: j.ok ? 'LOCAL MODEL' : 'SIDECAR DOWN',
+      c.paint({
+        coachStatus: j.ok ? modelName : 'SIDECAR DOWN',
         coachText: scrub(j.text || j.error || 'No reply.')
       });
     }).catch(function () {
       busy = false;
-      paint({
+      c.paint({
         coachStatus: 'SIDECAR DOWN',
-        coachText: 'Cannot reach the local model. LIVE DIAGNOSIS above still works.'
+        coachText: 'Cannot reach ' + modelName + '. LIVE DIAGNOSIS above still works.'
       });
     });
   }
@@ -81,9 +70,16 @@
   }
 
   function tick() {
-    var c = findLogic();
-    if (c && !c.state.coachLive) paint({ coachStatus: 'LOCAL MODEL', coachText: 'Watching the board. I will speak when an alarm raises. EXPLAIN ALARM or type a question and ASK AI.' });
-    var p = projection();
+    var c = core();
+    if (!c) { setTimeout(tick, 400); return; }
+    if (!c._hello) {
+      c._hello = true;
+      c.paint({
+        coachStatus: modelName,
+        coachText: 'Watching the board on ' + modelName + '. I will speak when an alarm raises. EXPLAIN ALARM, or type a question and ASK AI.'
+      });
+    }
+    var p = c.projection();
     if (!p) { setTimeout(tick, 800); return; }
     if (!lastSig) { lastSig = sigOf(p); setTimeout(tick, 2000); return; }
     var s = sigOf(p);
@@ -98,5 +94,5 @@
     }
     setTimeout(tick, 2000);
   }
-  setTimeout(tick, 600);
+  setTimeout(tick, 400);
 })();

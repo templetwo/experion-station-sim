@@ -1743,6 +1743,7 @@ class Component extends DCLogic {
     // just 2 Hz) — see CODE-MAP / advisory Q2. Re-cached at restoreSnapshot() too, which
     // replaces L/V wholesale.
     this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
+    this.publishCoach();
   }
 
   // ---------- helpers ----------
@@ -1757,6 +1758,21 @@ class Component extends DCLogic {
   // meta.who / meta.lvl override the stamp for entries an automatic program wrote (e.g. SCM202 phase limit sets).
   addEvent(type,src,desc,oldV,newV,meta){ const m=meta||{}; this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:m.lvl||this.state.sec, who:m.who||this.operName()}); if(this.events.length>600) this.events.length=600; }
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
+  // Optional AI coach (tools/coach). The page never fetches. A sidecar script
+  // may call window.__ESS_COACH_CORE__.paint. file:// leaves this unused.
+  coachProjection(){
+    const P=(typeof window!=='undefined'&&window.ESS_COACH_PROJ)||(typeof globalThis!=='undefined'&&globalThis.ESS_COACH_PROJ);
+    if(P&&typeof P.build==='function') return P.build(this);
+    return {alarms:[],points:[],selected:null,help:null,drill:null};
+  }
+  publishCoach(){
+    if(typeof window==='undefined') return;
+    const self=this;
+    window.__ESS_COACH_CORE__={
+      projection(){ return self.coachProjection(); },
+      paint(p){ self.setState(Object.assign({coachLive:true,assist:true},p||{})); }
+    };
+  }
   // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------
   // opts.confirm marks a message the operator must confirm; the status bar counts unconfirmed messages and blinks MSG.
   postMsg(txt,opts){
@@ -3793,6 +3809,7 @@ class Component extends DCLogic {
   // ---------- render ----------
   renderVals(){
     if(!this.L) this.initSim();
+    this.publishCoach();
     const S=this.state, L=this.L, P=this.P, V=this.V;
     const blink=S.blink;
     const pc=(p)=>this.prioColor(p), pd=(p)=>this.prioDark(p), pt=(p)=>this.prioText(p);
