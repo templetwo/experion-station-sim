@@ -358,6 +358,61 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
   });
 });
 
+// ==================================================== BUILD INTEGRITY
+
+test('BUILD INTEGRITY: the page never calls a method it does not define', async (t) => {
+  // NOT one of the five gates — a guard against the failure class that has broken this
+  // branch THREE times: a commit staged from a dirty tree while another lane was mid-edit,
+  // capturing a page that CALLS a method whose definition lives only in the working tree.
+  // aaba44a (stamp computed over a dirty tree), 5733756 (two lanes mixed into one sha), and
+  // 934b81d (this.aDrillWatch + this.archSynthEvent called, zero definitions) were all the
+  // same shape. Every module suite stayed green each time, because the defect is in the
+  // PAGE and only the folder build exercises it.
+  //
+  // The instrument is seat 3/3's, from its 934b81d verdict: compare every `this.X(` CALL in
+  // the page against every method DEFINITION in it. Adopted here so it runs on every suite
+  // rather than only when a verifier happens to look.
+  const page = rd(APP_PAGE);
+
+  await t.test('every this.X() call resolves to a definition or an assigned field', () => {
+    const calls = new Set();
+    const callRe = /this\.([A-Za-z_$][\w$]*)\s*\(/g;
+    let m;
+    while ((m = callRe.exec(page))) calls.add(m[1]);
+
+    const defined = new Set();
+    // class methods:  "  name(args) {"
+    const defRe = /^\s{2}([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/gm;
+    while ((m = defRe.exec(page))) defined.add(m[1]);
+    // assigned function fields:  "this.name = (…) =>" / "= function"
+    const assignRe = /this\.([A-Za-z_$][\w$]*)\s*=\s*(?:function\b|\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g;
+    while ((m = assignRe.exec(page))) defined.add(m[1]);
+    // anything assigned at all can hold a callable supplied elsewhere
+    const anyAssign = /this\.([A-Za-z_$][\w$]*)\s*=/g;
+    while ((m = anyAssign.exec(page))) defined.add(m[1]);
+
+    // Inherited from DCLogic and the browser surface the harness stubs.
+    const INHERITED = new Set(['setState', 'forceUpdate', 'render', 'renderVals',
+      'componentDidMount', 'componentDidUpdate', 'componentWillUnmount', 'constructor']);
+
+    const missing = [...calls].filter((n) => !defined.has(n) && !INHERITED.has(n)).sort();
+    assert.deepEqual(missing, [],
+      'the app page calls methods it does not define: ' + missing.join(', ') +
+      '. This is the signature of a commit staged from a dirty tree — the definitions ' +
+      'exist in someone\'s working tree and not in what was committed. Stage by path, and ' +
+      'verify the slice in a scratch clone at the sha before announcing it.');
+  });
+
+  await t.test('POSITIVE CONTROL: the scan would catch a missing definition', () => {
+    // Without this the assertion above passes on an empty call set or a broken regex.
+    const calls = (page.match(/this\.[A-Za-z_$][\w$]*\s*\(/g) || []).length;
+    assert.ok(calls > 100, `only ${calls} this.X() calls found — the scan regex is not working`);
+    const fake = 'class C {\n  a(){ this.definitelyNotDefined(1); }\n}';
+    const fakeCalls = [...fake.matchAll(/this\.([A-Za-z_$][\w$]*)\s*\(/g)].map((x) => x[1]);
+    assert.ok(fakeCalls.includes('definitelyNotDefined'), 'the call regex misses a real call');
+  });
+});
+
 // ==================================================== GATE 5 — PROVENANCE
 
 test('GATE 5 PROVENANCE: every concept traces to a registered public source', async (t) => {
