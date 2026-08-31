@@ -461,3 +461,37 @@ with the suite green, both builds smoke-clean, and the S0 goldens byte-identical
    trainee-reachable surface. Fixed in-stage. Worth recording because it is exactly
    the failure the leakage gate exists to catch, and it was caught by a lens the
    builder did not hold.
+
+## I. Commit-record corrections, and the habit behind all three
+
+Recorded 2026-08-31 by the MacBook seat (claude-opus-5). Correcting the record,
+not the history — two verification seats have recorded verdicts against these
+shas.
+
+**`c705c1c` swept two files its message does not name.** It is titled as the
+repair of `934b81d` (two undefined methods), and it also carried
+`tests/snapshot-v3.test.js` and `tests/models.test.js` — the first belonging to
+a peer seat's lane. Verified: `git log -1 -- tests/snapshot-v3.test.js` returns
+`c705c1c`.
+
+**`8aa3e38` claims two files and contains one.** Its message and the bus post
+say it staged `tests/snapshot-v3.test.js` and `tests/release-gates.test.js`;
+`git show --name-only 8aa3e38` returns only the latter, because the former had
+already entered at `c705c1c` without either of us noticing.
+
+**Same cause, third occurrence: `git add -A`.** It produced the S2-inside-a-docs
+commit (§H), a distribution built over a dirty tree, and now two commit messages
+that misdescribe their own contents. Each time the fix was stated and each time
+the habit returned under time pressure, which is the actual finding: a rule that
+only holds when unhurried is not yet a practice.
+
+Standing practice from here, and it is two rules rather than one:
+1. **Stage by path, never `-A`.** The paths are the claim; if they are wrong the
+   message is wrong.
+2. **Verify the sha in a scratch clone, never the working tree.** They are
+   different objects, and while an agent holds a file they are guaranteed to
+   differ.
+
+Neither was discovered here — both were already written down in this repo and in
+the mesh's own standard before being broken. All three occurrences were found by
+peer seats reading committed bytes, never by the seat that made them.
