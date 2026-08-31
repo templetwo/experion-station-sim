@@ -412,3 +412,52 @@ one stage that can be written before anything else is decided.
 
 Exit condition: both artifacts reproduce every baseline digest, and the suite is
 green at 197 + the new S0 tests.
+
+## H. Commit-boundary correction: S2 landed inside 5733756
+
+Recorded 2026-08-31 by the MacBook seat (claude-opus-5), correcting the record
+rather than the history.
+
+**What happened.** `5733756` is titled as the five documentation lanes. It also
+contains the whole of stage S2: +580 lines of `Experion Station Simulator.dc.html`,
+`src/upset-bridge.js`, `tests/app-arch-panel.test.js`, `tests/app-fault-parity.test.js`,
+and the `src/instructor.js` fault-state changes. I staged with `git add -A` while
+S2's verify agent was still finishing, so a stage and a documentation lane went in
+under one message that describes only the documentation.
+
+**Why it matters, beyond tidiness.** Stage verdicts in this build are measured
+against an immutable sha in a scratch clone. S2 therefore has no sha of its own to
+verify, and any verdict on `5733756` is a verdict on two lanes at once — which is
+precisely the mixing the by-path staging discipline existed to prevent. A peer seat
+had warned me about `git add -A` by name earlier in the same session and I agreed
+with it before doing it anyway.
+
+**Why the history is not being rewritten.** Two verification seats have already
+recorded verdicts against shas on this branch, and `5733756` is one of them. This
+project's standing rule is that nothing is edited or erased: a correction supersedes
+its predecessor and the predecessor stays, annotated. Rewriting would silently
+invalidate recorded verdicts to make a commit message look better, which is the
+wrong trade.
+
+**What S2 actually delivered**, so the work is described somewhere even though its
+commit message does not describe it: the fault engine wired live; the twelve legacy
+upsets re-registered through `ESS.UpsetBridge` as a layer over the existing
+`injectFault`, leaving all nine `P.faults[k]` physics reads untouched; the
+ARCHITECTURE/PROCESS class split as data (3 architecture: xmtr, drift, stick; 9
+process including air); real health reaching the ARCH view through
+`healthProjection` while `truthProjection` stays instructor-only; and the instructor
+Architecture panel with the topology fault matrix and blast radius. Verified WEAK
+with the suite green, both builds smoke-clean, and the S0 goldens byte-identical.
+
+**Two findings from the S2 verify pass that are NOT fixed and are carried forward:**
+
+1. **Replay silently drops the most recently journaled action** — of any op type,
+   confirmed for both the legacy `UPSET` op and S2's new `ARCHFAULT` op — whenever
+   `startReplay(i)` is invoked with zero elapsed simulated time since that entry.
+   Pre-existing v2 behaviour, not introduced by S2. It bears directly on release
+   gate 3, so S4 owns it.
+2. **App-level leakage was found and fixed during the pass**: the Architecture
+   panel's instructor-log calls mirrored raw `FaultEngine` fault ids into a
+   trainee-reachable surface. Fixed in-stage. Worth recording because it is exactly
+   the failure the leakage gate exists to catch, and it was caught by a lens the
+   builder did not hold.
