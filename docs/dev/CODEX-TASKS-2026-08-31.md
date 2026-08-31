@@ -14,15 +14,16 @@ weaken an assertion to get green. Do not tag. Do not force-push.
 
 | | |
 |---|---|
-| Branch | `v3`, tracks `origin/v3` |
+| Branch | `v3`, tracks `origin/v3` (local may be ahead) |
 | Do not tag | `v3.0.0` |
-| Audit sha | `cf5693a` (then local docs commits may sit on top) |
-| Suite | 708 / 707 pass / 1 skip / 0 fail. Green is not gate-3. |
+| Audit sha | `cf5693a` |
+| Items 1-3 sha | `df003bf` (see `docs/dev/CODEX-REPORT-2026-08-31.md`) |
+| Suite at df003bf | 714 / 713 pass / 1 skip / 0 fail. Green is not a tag. |
 | S0 goldens | UNMOVED vs `f8301fb`. Do not edit them. |
 
-Independent probe (this seat): A1, four accepted TRAINING.* after a snapshot,
-then replay: **4 events / score 60 → 0 events / score 0**. Journal contains
-`TRAINING.MARK_EVIDENCE` etc. `applyJournalEntry` drops them.
+Audit-time probe (falsified gate 3): A1, four accepted TRAINING.* after a
+snapshot, then replay: **4 events / score 60 → 0 / 0**. That probe now holds
+at `df003bf` (**4 / 60 → 4 / 60**). Report: `docs/dev/CODEX-REPORT-2026-08-31.md`.
 
 ---
 
@@ -40,45 +41,18 @@ Anthony still owes a ruling on live fault effects (item 4). Do not guess.
 
 ## Order (uncontested first)
 
-### 1. Replay TRAINING.*  — tag blocker, no D1 conflict
+### 1. Replay TRAINING.*  — DONE at `df003bf`
 
-Page: `applyJournalEntry`. Also whatever inspect-state MARK_EVIDENCE/VERIFY
-need on replay (`P.archInspected` must survive or be reconstructed, or replay
-will fail-closed).
+Probe holds. Live wrong-mode still refuses. Test: `tests/app-adrill-replay.test.js`.
 
-`dispatch()` already journals `TRAINING.MARK_EVIDENCE` / `PIN_COMPARE` /
-`SUBMIT_HYPOTHESIS` / `VERIFY` (and should journal `DEBRIEF` once the page
-calls it). Replay must call the same `dispatchTraining` / `archRetainEvent`
-path, not invent a second scorer feed.
+### 2. Debrief completable  — DONE at `df003bf`
 
-Test, committed, must fail until fixed: the probe in TAG-AUDIT-2026-08-31
-(snapshot, four accepted actions, `startReplay` + `replayToEnd`, assert
-event count and score unchanged). The existing mid-drill restore test is
-not this probe. Do not "fix" the test by asserting 0.
+YES/NO → `TRAINING.DEBRIEF`. Score + pvT + `P.archFaultLog`. Record before destroy.
 
-Off-limits: `src/models.js`, S0 goldens, `src/drill-arch.js` scorer.
+### 3. INTERLOCK.DEFEAT is live or gone  — A5 DONE at `df003bf`; A12 still open
 
-### 2. Debrief completable
-
-Page: call `TRAINING.DEBRIEF` from a real control (ARCH Debrief, after the
-drill, without requiring Learn). Do not null `P.aDrill.events` before a
-training record is written (or snapshot the events onto the record first).
-`archDebriefView`: pass `score`, a durable fault timeline (not only currently
-active), keep process samples on rows.
-
-Test: a clean A1 run can earn the debrief category from the UI path; Debrief
-mode shows a SCORE row and process values; TRAINEE_SAFE still leaks no fault
-id (`tests/app-debrief.test.js` stays the leakage pin).
-
-Same page as item 1. One agent. Sequential with 1, not parallel.
-
-### 3. INTERLOCK.DEFEAT is live or gone
-
-Either synthesize it from a real accepted UI action (name the call site),
-or remove those gates from A5/A12 until a real action exists. Module tests
-that fabricate the event are not a live gate.
-
-Do not silently drop the gates without a test that names the reversal.
+Call site: `motorCmd` START → `archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag)`.
+A12 target `XMTR-TIC201` is not that path. Do not drop the A12 gate.
 
 ### 4. Live fault effects / passable A-drills — WAIT FOR THE RULING
 
@@ -98,9 +72,9 @@ screenshot is not that.
 
 ### 7. Previous leftover S4 (only after 1–3)
 
-Coverage `taskDone('arch.*')` at real call sites. Alarm Help/philosophy
-architecture copy. Training record for A-drills with breakdown mapped to
-`{label, earned, max, note}`.
+Coverage `taskDone('arch.*')` at remaining real call sites. Alarm Help/philosophy
+architecture copy. A-drill training-record shape `{label, earned, max, note}`
+already landed with item 2.
 
 ---
 
