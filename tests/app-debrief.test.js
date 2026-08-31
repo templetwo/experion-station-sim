@@ -45,12 +45,29 @@ test('ARCH Debrief chip is available when no A-drill is running', () => {
 
 test('Debrief timeline contains journaled operator actions', () => {
   const c = boot();
+  const { run } = require('./_fixture');
+  run(c, 20);
   c.setMode('FIC102', 'MAN');
   c.setState({ display: 'arch', archMode: 'debrief' });
   const v = c.renderVals();
   assert.equal(v.arch.debrief.empty, false);
   assert.ok(v.arch.debrief.rows.some((r) => /MODE/.test(r.text)),
     'expected a MODE row, got ' + JSON.stringify(v.arch.debrief.rows.map((r) => r.text)));
+  assert.ok(v.arch.debrief.rows.some((r) => r.pvT),
+    'process samples must not be stripped at render');
+  assert.ok(v.arch.debrief.rows.some((r) => r.kind === 'SCORE' || /score/i.test(v.arch.debrief.summary) || r.lane === 'SCORE') ||
+    v.arch.debrief.summary, 'summary present');
+});
+
+test('Debrief chip stays available during an A-drill (TRAINING.DEBRIEF is debrief-only)', () => {
+  const c = boot();
+  c.applyPreset('U1_SS');
+  c.startADrill('A1');
+  c.setState({ display: 'arch', archMode: 'debrief' });
+  const v = c.renderVals();
+  const ids = (v.arch.modeChips || []).map((m) => m.id);
+  assert.ok(ids.includes('debrief'), 'debrief chip hidden during A-drill: ' + ids.join(','));
+  assert.ok(!ids.includes('learn'), 'Learn must stay hidden during an A-drill');
 });
 
 test('startReplay opens ARCH in debrief mode', () => {

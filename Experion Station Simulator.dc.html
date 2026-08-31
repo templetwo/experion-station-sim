@@ -1077,12 +1077,20 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <div style="margin-top:10px;background:#FAFAF8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;padding:8px 10px;max-width:{{ arch.svgW }}px">
           <div style="font-weight:700;font-size:12px;margin-bottom:4px">DEBRIEF TIMELINE</div>
           <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">{{ arch.debrief.summary }} · {{ arch.debrief.projection }}</div>
+          <sc-if value="{{ arch.debrief.ask }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11.5px;margin-bottom:6px">Cause vs symptom: was the failure domain you named correct?</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ arch.debrief.yes }}">YES</div>
+              <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ arch.debrief.no }}">NO</div>
+            </div>
+          </sc-if>
           <sc-if value="{{ arch.debrief.empty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#55524c">No journaled actions yet. Run an exercise, then replay a snapshot to fill this timeline.</div></sc-if>
           <sc-for list="{{ arch.debrief.rows }}" as="dr" hint-placeholder-count="8">
             <div style="display:flex;gap:8px;font-size:11px;padding:2px 0;border-bottom:1px solid rgba(0,0,0,0.06);color:{{ dr.fg }}">
               <div style="width:48px;flex:none;color:#55524c">{{ dr.rel }}</div>
               <div style="width:88px;flex:none;font-weight:700">{{ dr.lane }}</div>
               <div style="flex:1">{{ dr.text }}</div>
+              <div style="width:140px;flex:none;color:#55524c;font-size:10px">{{ dr.pvT }}</div>
             </div>
           </sc-for>
         </div>
@@ -1685,6 +1693,8 @@ class Component extends DCLogic {
     // travels through snapshot/restore/replay and is reset to null by every initSim(),
     // including the one applyPreset() runs internally -- no drill survives a preset load.
     this.P.aDrill = null;
+    this.P.archFaultLog = [];
+    this._lastADrill = null;
     // Instructor station state survives a process reset (snapshots, password, hidden flag, seed); the run-bound parts
     // (backtrack ring, action journal, replay) start fresh. Every random draw goes through the seeded generator so a
     // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4).
@@ -2605,6 +2615,7 @@ class Component extends DCLogic {
     if(!this.P.archInspected) this.P.archInspected = {};
     if(!this.P.training) this.P.training = ESS.Dispatch.createTrainingState();
     if(this.P.aDrill===undefined) this.P.aDrill = null;
+    if(!this.P.archFaultLog) this.P.archFaultLog = [];
     this.alarmEngine.restore(snap.alarms);
     this.restoreDisabledAssets(snap.disabledAssets);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
@@ -2911,13 +2922,18 @@ class Component extends DCLogic {
     this.P.archFaults=r.state;
     this.P.archMeta[r.instance.instanceId]={mode,rampSec:mode==='RAMP'?rampSec:0,targetMagnitude:magnitude,
       startedAt:simTimeNow,expiresAt:durationSec?simTimeNow+durationSec*1000:null};
+    this.archFaultLogPush(faultId,targetNodeId,'ACTIVE');
     return true;
   }
   archClearNow(faultId,targetNodeId){
     const pendingIdx=(this.P.archPending||[]).findIndex(e=>e.faultId===faultId&&e.targetNodeId===targetNodeId);
     if(pendingIdx>=0){ this.P.archPending.splice(pendingIdx,1); return; }
     const r=ESS.FaultEngine.deactivate(this.P.archFaults,{faultId,targetNodeId});
-    if(r.accepted){ this.P.archFaults=r.state; delete this.P.archMeta[faultId+'@'+targetNodeId]; }
+    if(r.accepted){ this.P.archFaults=r.state; delete this.P.archMeta[faultId+'@'+targetNodeId]; this.archFaultLogPush(faultId,targetNodeId,'CLEAR'); }
+  }
+  archFaultLogPush(faultId,targetNodeId,phase){
+    if(!this.P.archFaultLog) this.P.archFaultLog=[];
+    this.P.archFaultLog.push({t:this.P.t, faultId:faultId, targetNodeId:targetNodeId, phase:phase||'ACTIVE'});
   }
   // Dispatch entry points the panel and applyJournalEntry's replay cases both call.
   setArchFault(faultId,targetNodeId,opts){
@@ -2988,6 +3004,7 @@ class Component extends DCLogic {
       // was the state until this line existed -- the gate was correct and the seam was
       // empty, which reads exactly like a broken gate from either side alone.
       archMode:this.state.archMode,
+      replaying:!!this._replayApplying,
       wasInspected:(id)=>!!this.P.archInspected[id],
       journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)
     };
@@ -3086,7 +3103,7 @@ class Component extends DCLogic {
   aDrillFire(step){
     (step.targets||[]).forEach(target=>{
       const k=this.aDrillReservedUpsetKey(step.faultId,target);
-      if(k){ this.injectFault(k,true); return; }
+      if(k){ this.injectFault(k,true); this.archFaultLogPush(step.faultId,target,'ACTIVE'); return; }
       // Magnitude-bearing engine faults (BIASED_MEASUREMENT, NOISY_MEASUREMENT) refuse
       // activate() without an explicit number or a seeded rand. A-drills never hand the
       // live generator to the engine (that would shift every later noise sample). Prefer
@@ -3161,12 +3178,36 @@ class Component extends DCLogic {
     const def=ESS.DrillArch.drillById(d.id);
     if(def) (def.faultTimeline||[]).forEach(step=>this.aDrillClear(step));
     const score=ESS.DrillArch.scoreDrill(d.id,d.events.slice());
+    const rec=this.aDrillRecordShape(score);
+    this._lastADrill=rec;
+    if(!this._replayApplying){
+      ESS.Training.addRecord(this.trainingRecords,ESS.Training.recordFor(this.operName(),d.id,def?def.title:d.id,rec,this.P.t,reason),20);
+      this.taskDone('abn.drill'); if(rec.pass) this.taskDone('abn.pass');
+    }
     this.journal('ADRILLEND',d.id,reason,{instr:true});
     this.P.aDrill=null;
     this.instrNote('A-DRILL '+d.id+' ENDED — '+reason+' — SCORE '+score.score+'/100 — '+(score.pass?'PASS':'NOT PASSED'));
     if(!this.instr.hidden) this.postMsg('INSTRUCTOR: architecture drill '+d.id+' ended — score '+score.score+'/100',{confirm:true,src:'INSTR'});
     this.setState(s=>({tk:s.tk+1}));
     return score;
+  }
+  aDrillRecordShape(score){
+    return {
+      score:score.score, pass:score.pass, passMark:score.passMark,
+      breakdown:(score.breakdown||[]).map(r=>({
+        label:r.category||r.label, earned:r.earned,
+        max:r.weight!=null?r.weight:r.max,
+        note:r.note||((r.matched!=null&&r.required!=null)?(r.matched+'/'+r.required):'')
+      }))
+    };
+  }
+  submitADrillDebrief(correct){
+    if(!this.P.aDrill){ this.msgZone('NO ARCHITECTURE DRILL ACTIVE'); return; }
+    this.setState({archMode:'debrief'});
+    const ev=this.dispatchTraining(ESS.Dispatch.TYPES.DEBRIEF,null,{correct:!!correct});
+    if(ev.accepted) this.taskDone('arch.debrief');
+    this.msgZone(ev.accepted?(correct?'DEBRIEF RECORDED — LOCALIZATION MARKED CORRECT':'DEBRIEF RECORDED — LOCALIZATION MARKED INCORRECT'):('REFUSED: '+ev.reason));
+    this.setState(s=>({tk:s.tk+1}));
   }
   // ---------- Architecture panel view model (instructorView() below merges this in) ----------
   archStageSelect(nodeId,faultId){
@@ -3391,6 +3432,17 @@ class Component extends DCLogic {
       // does not confuse the two lanes.
       case 'ADRILL': this.startADrill(e.tag); break;
       case 'ADRILLEND': this.endADrill(e.arg||'ENDED BY INSTRUCTOR'); break;
+      // Scoring commands are journaled as op === Dispatch type (TRAINING.MARK_EVIDENCE
+      // etc.). Re-dispatch through the same path that retains ActionEvents. During
+      // replay, archTrainingCtx.replaying skips Diagnose/inspect gates: those were
+      // already passed live. Spectator archMode is debrief (startReplay).
+      case 'TRAINING.MARK_EVIDENCE':
+      case 'TRAINING.PIN_COMPARE':
+      case 'TRAINING.SUBMIT_HYPOTHESIS':
+      case 'TRAINING.VERIFY':
+      case 'TRAINING.DEBRIEF':
+        this.dispatchTraining(e.op, e.tag===''?null:e.tag, (e.arg===''||e.arg==null)?null:e.arg);
+        break;
       case 'CTLACTN': this.setCtlAction(e.tag,e.arg); break;
       case 'PVTRACK': this.setPvTrack(e.tag,e.arg==='ON'); break;
       case 'OOS': this.setOos(e.tag,e.cond,e.arg==='ON'); break;
@@ -3678,7 +3730,9 @@ class Component extends DCLogic {
       if(m.run) return;
       if(m.lock>0){ this.msgZone('START INHIBITED — LOCKOUT '+Math.ceil(m.lock)+' S'); return; }
       if(tag==='P101' && this.P.tankL<5){ this.raiseA('P101','CMDFAIL','High',0,'','START PERMISSIVE NOT MET — TK-101 LEVEL LOW'); this.msgZone('PERMISSIVE NOT MET: TK-101 LEVEL < 5%'); return; }
+      const wasTrip=!!m.trip;
       m.run=true; m.trip=false; m.cmd='START'; this.addEvent('OPERATOR',tag,'START COMMAND','STOP','RUN'); if(tag==='P101') this.clearA('P101','CMDFAIL'); this.dAct('START',tag,'',0); this.journal('START',tag);
+      if(wasTrip) this.archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null);
     } else {
       if(!m.run) return;
       m.run=false; m.cmd='STOP'; m.lock=15; this.addEvent('OPERATOR',tag,'STOP COMMAND','RUN','STOP'); this.journal('STOP',tag);
@@ -4228,9 +4282,10 @@ class Component extends DCLogic {
     const view=ESS.ArchitectureViewModel.build({
       graph:G, health, mode:modeForBuild, profile:S.archProfile,
       // Stage scope: S1 Learn/Trace, S3 Diagnose, S4 Debrief. A live A-drill hides Learn
-      // (answer key) and Debrief (review is for after / during replay). Unimplemented
-      // modes stay hidden, never shown disabled.
-      availableModes:aDrillActive?['trace','diagnose']:['learn','trace','diagnose','debrief'],
+      // (answer key). Debrief stays available: TRAINING.DEBRIEF is debrief-only, so the
+      // category cannot be earned if the chip is hidden until the drill is destroyed.
+      // Unimplemented modes stay hidden, never shown disabled.
+      availableModes:aDrillActive?['trace','diagnose','debrief']:['learn','trace','diagnose','debrief'],
       // Live evidence (S3): the inspector's "Evidence collected" row now reads the
       // P-resident training state instead of the S1 stub. Still never truth -- this is
       // the trainee's OWN recorded actions, not a fault projection.
@@ -4355,6 +4410,7 @@ class Component extends DCLogic {
   // only packages live journals. Replay and instructor sessions may reveal architecture
   // truth; a trainee reviewing without replay gets TRAINEE_SAFE (no fault ids).
   archFaultTimeline(){
+    if(this.P.archFaultLog&&this.P.archFaultLog.length) return this.P.archFaultLog.slice();
     const list=(this.P.archFaults&&this.P.archFaults.activeFaults)||[];
     return list.map(f=>({
       t:f.activatedAt!=null?f.activatedAt:this.t0,
@@ -4383,23 +4439,33 @@ class Component extends DCLogic {
   archDebriefView(){
     const I=ESS.Instructor;
     const reveal=!!(this.instructorAllowed()||(this.instr&&this.instr.replay));
+    let score=null;
+    if(this.P.aDrill) score=this.aDrillRecordShape(ESS.DrillArch.scoreDrill(this.P.aDrill.id,this.P.aDrill.events.slice()));
+    else if(this._lastADrill) score=this._lastADrill;
     const out=ESS.Debrief.build({
       journal:this.archDebriefJournalSafe(reveal), alarmLog:this.alarmLog, events:this.events,
-      hist:this.hist, faultTimeline:this.archFaultTimeline(), t0:this.t0
+      hist:this.hist, faultTimeline:this.archFaultTimeline(), score:score, t0:this.t0
     },{
       projection:reveal?'DEBRIEF_REVEALED':'TRAINEE_SAFE',
       journalText:e=>I.journalText(e,t=>this.fT(t)),
       tags:['FIC102','TIC201','LIC101']
     });
     const counts=out.summary&&out.summary.counts||{};
+    const aDrillOn=!!this.P.aDrill;
     return {
-      rows:(out.rows||[]).map(r=>({
-        rel:this.mmss(r.rel||0), lane:r.lane, actor:r.actor, kind:r.kind, text:r.text,
-        fg:r.kind==='REFUSED'?'#7A2E0E':'#1c1c1c'
-      })),
+      rows:(out.rows||[]).map(r=>{
+        const pv=r.process||{};
+        const pvT=Object.keys(pv).map(k=>k+' '+(pv[k].pv!=null?this.fmt(pv[k].pv,1):'')).join(' · ');
+        return {
+          rel:this.mmss(r.rel||0), lane:r.lane, actor:r.actor, kind:r.kind, text:r.text,
+          pvT:pvT, hasPv:!!pvT,
+          fg:r.kind==='REFUSED'?'#7A2E0E':(r.kind==='SCORE'?'#0a3a12':'#1c1c1c')
+        };
+      }),
       empty:!out.rows.length,
-      summary:(counts.operator||0)+' operator · '+(counts.instructor||0)+' instructor · '+(counts.refused||0)+' refused',
-      projection:out.projection
+      summary:(counts.operator||0)+' operator · '+(counts.instructor||0)+' instructor · '+(counts.refused||0)+' refused'+(score?(' · score '+score.score+'/100'):''),
+      projection:out.projection,
+      ask:aDrillOn, yes:()=>this.submitADrillDebrief(true), no:()=>this.submitADrillDebrief(false)
     };
   }
   // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)

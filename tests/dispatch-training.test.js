@@ -376,6 +376,24 @@ test('every scoring command is gated to the mode where earning it means somethin
       assert.match(ev.reason, /mode unavailable/);
     });
   }
+
+  await t.test('replay re-applies a Diagnose command while the spectator view is Debrief', () => {
+    // startReplay sets archMode to debrief. Live MARK_EVIDENCE in debrief must still refuse.
+    // Replay of an already-accepted command must not.
+    const live = makeCtx({ archMode: 'debrief' });
+    live.inspect('XMTR-FIC102');
+    const refused = wired(live).dispatch(live, {
+      type: Dispatch.TYPES.MARK_EVIDENCE, actor: 'TRAINEE', target: 'XMTR-FIC102', simTime: 10
+    });
+    assert.equal(refused.accepted, false, 'live marking in debrief must still refuse');
+
+    const replay = makeCtx({ archMode: 'debrief' });
+    replay.replaying = true;
+    const ev = wired(replay).dispatch(replay, {
+      type: Dispatch.TYPES.MARK_EVIDENCE, actor: 'TRAINEE', target: 'XMTR-FIC102', simTime: 10
+    });
+    assert.equal(ev.accepted, true, 'replay of an accepted mark refused: ' + ev.reason);
+  });
 });
 
 

@@ -59,7 +59,10 @@ test('createState is a superset of the app P shape with the new fields', () => {
   // state and the A-drill lane are all attached in initSim() AFTER createState(), never
   // read by src/models.js, for the identical D1 reason -- the deterministic physics core
   // must not know the training/scoring layer exists.
-  const APP_ONLY_FIELDS = ['archFaults', 'archPending', 'archMeta', 'archInspected', 'training', 'aDrill'];
+  // P.archFaultLog (S4 debrief durable timeline): append-only instructor log of
+  // ARCHFAULT activate/clear, attached in initSim() AFTER createState(). models.js
+  // never reads it. Same D1 exception -- do not move this key into createState().
+  const APP_ONLY_FIELDS = ['archFaults', 'archPending', 'archMeta', 'archInspected', 'training', 'aDrill', 'archFaultLog'];
   for (const k of Object.keys(c.P)) { if (APP_ONLY_FIELDS.includes(k)) continue; assert.ok(k in P, 'missing ' + k); }
   for (const k of Object.keys(c.P.b)) assert.ok(k in P.b, 'missing b.' + k);
   for (const k of Object.keys(c.P.h)) assert.ok(k in P.h, 'missing h.' + k);

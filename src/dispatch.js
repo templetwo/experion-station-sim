@@ -199,6 +199,12 @@
   function requireMode(ctx, type) {
     var want = COMMAND_MODE[type];
     if (!want) return true;
+    // Replay re-applies an already-accepted command. The spectator view is Debrief
+    // (startReplay sets archMode to debrief) but MARK_EVIDENCE was earned in Diagnose.
+    // Re-validating against the spectator mode would refuse every scoring command and
+    // zero the A-drill score. Live attempts still fail closed. tests/dispatch-training
+    // pins both sides.
+    if (ctx && ctx.replaying === true) return true;
     if (typeof ctx.archMode !== 'string' || !ctx.archMode) {
       return 'mode unavailable: ctx.archMode is required, so ' + type + ' cannot be shown to have been earned in ' + want;
     }
@@ -418,7 +424,7 @@
       if (typeof ctx.wasInspected !== 'function') {
         return 'inspection state unavailable: ctx.wasInspected(target) is required, so evidence cannot be verified as gathered';
       }
-      if (!ctx.wasInspected(target)) {
+      if (ctx.replaying !== true && !ctx.wasInspected(target)) {
         return 'not inspected: ' + target + ' was never opened, so marking it is clicking rather than gathering';
       }
       return true;
@@ -485,7 +491,7 @@
       if (typeof ctx.wasInspected !== 'function') {
         return 'inspection state unavailable: ctx.wasInspected(target) is required, so a re-check cannot be verified as performed';
       }
-      if (!ctx.wasInspected(target)) {
+      if (ctx.replaying !== true && !ctx.wasInspected(target)) {
         return 'not inspected: ' + target + ' was never opened, so it cannot have been re-checked';
       }
       return true;
