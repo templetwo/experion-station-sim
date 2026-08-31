@@ -22,20 +22,17 @@ learn here to a real console; nothing else is borrowed.
 
 **What this document describes, as of this writing.** The architecture-drill
 curriculum below — the twelve drills, the scoring rubric, the safety gate, and
-the trainee/instructor projection split — is fully specified as data and as
-pure, independently unit-tested logic (`src/drill-arch.js`,
-`src/fault-engine.js`, `src/architecture-view-model.js`), and every claim below
-is verified against that code. It is not yet wired into the running
-application: the ARCH display currently exposes only Learn and Trace
-(`availableModes:['learn','trace']`; Diagnose and Debrief are V3-PLAN stages S3
-and S4), and no `TRAINING.*` command is dispatched from any UI control yet.
-`src/training.js` now carries the coverage-matrix task ids the architecture
+the trainee/instructor projection split — is specified as data, as independently
+unit-tested logic, and as a live trainee path. ARCH exposes Learn, Trace,
+Diagnose and Debrief. A1 to A12 start from the Training Drills dialog
+(`startADrillFromMenu`): the drill's `basePreset` loads, the fault timeline
+arms, and the view opens in Diagnose. Evidence, pin-compare, hypothesis and
+verify commands are Diagnose-only. Learn is hidden while an A-drill is running.
+`src/training.js` carries the coverage-matrix task ids the architecture
 curriculum will report against (an Architecture group, `ARCH_ALL`), but
 nothing in the app calls `taskDone()` for any of them yet, and the 20-entry
 training record (`ESS.Training.addRecord`/`recordFor`) still records only the
-eight legacy drills. This describes the design the simulator's architecture
-curriculum is built to; a trainee sitting at today's console cannot yet run
-one of these drills end to end.
+eight legacy drills.
 
 ## Two curricula, not one
 
@@ -282,8 +279,8 @@ indicator, a channel reporting bad quality. In Diagnose mode specifically, the
 view withholds the full downstream blast radius of a selected node (it falls
 back to the one-hop structural picture) precisely because handing the trainee
 the whole answer would remove the reasoning the drill exists to test.
-Diagnose mode itself is not yet reachable in the running app — S1 ships Learn
-and Trace only; this is the behaviour it is built to have once S3 turns it on.
+Diagnose is reachable: the Training Drills dialog starts A1 to A12 in that
+mode, and the ARCH mode chips offer it whenever Learn is not hidden.
 
 **An instructor sees truth.** A separate, instructor-only projection of the
 same underlying state carries the actual active fault: its id, its domain, its
