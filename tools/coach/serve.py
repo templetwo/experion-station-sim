@@ -90,17 +90,8 @@ def ollama_chat(kind: str, ask: str, projection: dict) -> tuple[bool, str]:
 
 
 def injected_html() -> bytes:
-    html = DIST.read_text(encoding="utf-8")
-    snippet = (
-        '<script src="/coach/projection.js"></script>'
-        '<script src="/coach/client.js"></script>'
-    )
-    if "/coach/client.js" not in html:
-        if "</html>" in html:
-            html = html.replace("</html>", snippet + "</html>", 1)
-        else:
-            html = html + snippet
-    return html.encode("utf-8")
+    # The station page now owns the coach UI and relative /api/coach calls.
+    return DIST.read_bytes()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -129,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/coach/projection.js":
             self._send(200, (COACH / "projection.js").read_bytes(), "text/javascript; charset=utf-8")
             return
-        if path == "/api/health":
+        if path in ("/api/health", "/api/coach/health"):
             payload = json.dumps({"ok": True, "model": MODEL, "bind": "%s:%s" % (HOST, PORT)}).encode()
             self._send(200, payload, "application/json")
             return
@@ -137,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path != "/api/advise":
+        if path not in ("/api/advise", "/api/coach/advise"):
             self._send(404, b"not found", "text/plain")
             return
         n = int(self.headers.get("Content-Length") or "0")

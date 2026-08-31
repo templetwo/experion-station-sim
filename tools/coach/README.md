@@ -24,9 +24,10 @@ Env: `COACH_MODEL`, `COACH_PORT`, `OLLAMA_HOST`.
 
 ## What you get
 
-The **Ops Assistant** column on the right of the station grows an **AI TIPS**
-block (EXPLAIN ALARM / ASK AI). That slot is in the program. The model call
-is still the sidecar (Gate 4: the committed page never fetches).
+The **Ops Assistant** column **is** the coach when you use Launch Station.command.
+COACH at the top talks to local granite. LIVE DIAGNOSIS below is rule-based and
+always on. The page calls relative `/api/coach/` only, fail-open, never from
+`step()`. Opening the raw html stays offline.
 
 - New UNACK alarm → one short tip (debounced)
 - **EXPLAIN ALARM** → selected alarm, or the worst active one

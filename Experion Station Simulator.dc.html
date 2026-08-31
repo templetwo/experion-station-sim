@@ -1527,11 +1527,34 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 <div data-screen-label="Ops Assistant" style="width:302px;flex:none;display:flex;flex-direction:column;background:#CCC8C0;border-left:2px solid #9a968e;min-height:0">
   <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#41608A;color:#FFFFFF">
     <div style="font-weight:700;font-size:12px;flex:1">OPS ASSISTANT</div>
-    <div style="font-size:9px;border:1px solid #FFFFFF;padding:1px 5px">TRAINING AID</div>
+    <div style="font-size:9px;border:1px solid #FFFFFF;padding:1px 5px">{{ asst.coachBadge }}</div>
     <div style="padding:1px 7px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ asst.close }}">✕</div>
   </div>
   <div style="flex:1;overflow-y:auto;min-height:0">
-    <div style="padding:6px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c">LIVE DIAGNOSIS</div>
+    <div style="padding:6px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c">COACH</div>
+    <div style="padding:2px 8px;font-size:9px;color:#55524c">{{ asst.coachStatus }} · advisory · does not control the plant</div>
+    <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e;font-size:10.5px;line-height:1.45;color:#3c3c3c;min-height:56px">{{ asst.coachText }}</div>
+    <div style="display:flex;gap:4px;padding:2px 8px 8px 8px">
+      <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ asst.coachExplain }}">EXPLAIN ALARM</div>
+    </div>
+    <div style="padding:4px 8px">
+      <input value="{{ asst.q }}" onChange="{{ asst.qChange }}" onKeyDown="{{ asst.qKey }}" placeholder="ask about this board…" style="width:100%;padding:4px 6px;font-size:11px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px 8px">
+      <sc-for list="{{ asst.chips }}" as="c" hint-placeholder-count="4">
+        <div style="font-size:9.5px;padding:2px 7px;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e" style-hover="background:#B8C4D4" onClick="{{ c.cb }}">{{ c.label }}</div>
+      </sc-for>
+    </div>
+    <sc-for list="{{ asst.hits }}" as="h" hint-placeholder-count="1">
+      <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e">
+        <div style="font-size:11px;font-weight:700;margin-bottom:3px">{{ h.t }}</div>
+        <div style="font-size:10.5px;line-height:1.45;color:#3c3c3c">{{ h.a }}</div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ asst.hitsNone }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:4px 8px;font-size:10.5px;color:#55524c">No matching topic. Press Enter to ask the coach.</div>
+    </sc-if>
+    <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">LIVE DIAGNOSIS</div>
     <sc-for list="{{ asst.issues }}" as="i" hint-placeholder-count="3">
       <div style="margin:4px 8px;background:#D4D0C8;border:1px solid #9a968e">
         <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer" onClick="{{ i.click }}">
@@ -1555,36 +1578,6 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         </sc-if>
       </div>
     </sc-for>
-    <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">ASK ABOUT A PROBLEM</div>
-    <div style="padding:4px 8px">
-      <input value="{{ asst.q }}" onChange="{{ asst.qChange }}" placeholder="e.g. why is my SP entry rejected?" style="width:100%;padding:4px 6px;font-size:11px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px 8px">
-      <sc-for list="{{ asst.chips }}" as="c" hint-placeholder-count="4">
-        <div style="font-size:9.5px;padding:2px 7px;cursor:pointer;background:#D4D0C8;border:1px solid #9a968e" style-hover="background:#B8C4D4" onClick="{{ c.cb }}">{{ c.label }}</div>
-      </sc-for>
-    </div>
-    <sc-for list="{{ asst.hits }}" as="h" hint-placeholder-count="1">
-      <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e">
-        <div style="font-size:11px;font-weight:700;margin-bottom:3px">{{ h.t }}</div>
-        <div style="font-size:10.5px;line-height:1.45;color:#3c3c3c">{{ h.a }}</div>
-      </div>
-    </sc-for>
-    <sc-if value="{{ asst.hitsNone }}" hint-placeholder-val="{{ false }}">
-      <div style="margin:4px 8px;font-size:10.5px;color:#55524c">No matching topic — try the chips above, or Help → Shortcut Keys.</div>
-    </sc-if>
-    <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">AI TIPS</div>
-    <sc-if value="{{ asst.coachLive }}" hint-placeholder-val="{{ false }}">
-      <div style="padding:2px 8px;font-size:9px;color:#55524c">{{ asst.coachStatus }} · local model · does not control the plant</div>
-      <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e;font-size:10.5px;line-height:1.45;color:#3c3c3c;min-height:48px">{{ asst.coachText }}</div>
-      <div style="display:flex;gap:4px;padding:2px 8px 8px 8px">
-        <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ asst.coachExplain }}">EXPLAIN ALARM</div>
-        <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ asst.coachAsk }}">ASK AI</div>
-      </div>
-    </sc-if>
-    <sc-if value="{{ asst.coachOff }}" hint-placeholder-val="{{ true }}">
-      <div style="margin:4px 8px 8px 8px;font-size:10.5px;color:#55524c;line-height:1.45">Offline. The LIVE DIAGNOSIS above is always on. Live model tips need the coach sidecar, then open the station from that sidecar.</div>
-    </sc-if>
   </div>
   <div style="padding:5px 8px;font-size:9px;color:#6a665e;border-top:1px solid #9a968e;line-height:1.4">Advisory guidance representative of good operating practice — verify against your site procedures.</div>
 </div>
@@ -1617,7 +1610,7 @@ class Component extends DCLogic {
     // S3 pin-compare staging (V3-PLAN section 6) -- view-only, like archSel; the pinned
     // targets themselves are only committed to P.training once COMPARE dispatches
     // TRAINING.PIN_COMPARE. Cleared on a successful compare.
-    coachLive:false, coachText:'', coachStatus:'OFFLINE',
+    coachLive:false, coachText:'LIVE DIAGNOSIS below always works. Launch Station.command starts the local coach on this board.', coachStatus:'OFFLINE', coachModel:'',
     archPinTray:[],
     // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
     // the topology fault matrix: which layer is shown and the one (node, fault) cell
@@ -1631,8 +1624,9 @@ class Component extends DCLogic {
     this.iv = setInterval(()=>this.tick(), 500);
     this.kd = (e)=>this.onKey(e);
     window.addEventListener('keydown', this.kd);
+    this.coachBoot();
   }
-  componentWillUnmount(){ clearInterval(this.iv); window.removeEventListener('keydown', this.kd); }
+  componentWillUnmount(){ clearInterval(this.iv); if(this._coachIv) clearInterval(this._coachIv); window.removeEventListener('keydown', this.kd); }
 
   initSim(){
     const now = Date.now();
@@ -1758,21 +1752,88 @@ class Component extends DCLogic {
   // meta.who / meta.lvl override the stamp for entries an automatic program wrote (e.g. SCM202 phase limit sets).
   addEvent(type,src,desc,oldV,newV,meta){ const m=meta||{}; this.events.unshift({id:this.eid++, t:this.P?this.P.t:Date.now(), type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:m.lvl||this.state.sec, who:m.who||this.operName()}); if(this.events.length>600) this.events.length=600; }
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
-  // Optional AI coach (tools/coach). The page never fetches. A sidecar script
-  // may call window.__ESS_COACH_CORE__.paint. file:// leaves this unused.
+  // Foundational coach: same Ops Assistant column. Relative /api/coach only,
+  // fail-open, never from step(). file:// has no API so this no-ops.
+  // Gate 4 exception is the fetch('/api/coach/ lines below, named and tested.
+  coachOnHttp(){
+    try{
+      const p=(typeof location!=='undefined'&&location.protocol)||'';
+      return p==='http:'||p==='https:';
+    }catch(e){ return false; }
+  }
+  coachRnd(v){ return (typeof v==='number'&&isFinite(v))?Math.round(v*10)/10:null; }
   coachProjection(){
-    const P=(typeof window!=='undefined'&&window.ESS_COACH_PROJ)||(typeof globalThis!=='undefined'&&globalThis.ESS_COACH_PROJ);
-    if(P&&typeof P.build==='function') return P.build(this);
-    return {alarms:[],points:[],selected:null,help:null,drill:null};
+    const S=this.state||{}, L=this.L||{}, E=this.alarmEngine;
+    const recs=(E&&typeof E.list==='function')?E.list():[];
+    const alarmRow=(a)=>a?{tag:a.tag||'',cond:a.cond||'',prio:a.prio||'',state:a.state||'',val:this.coachRnd(a.val),eu:a.eu||'',desc:a.desc||''}:null;
+    const alarms=recs.slice(0,12).map(alarmRow).filter(Boolean);
+    const want={}; recs.forEach(a=>{ if(a&&a.tag) want[a.tag]=true; }); if(S.sel) want[S.sel]=true;
+    const points=[]; Object.keys(want).sort().slice(0,10).forEach(tag=>{ const l=L[tag]; if(!l) return; points.push({tag,pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv}); });
+    let selected=null, help=null;
+    if(S.selAlm!=null&&E&&typeof E.get==='function'){
+      selected=alarmRow(E.get(S.selAlm));
+      if(selected&&ESS.AlarmHelp){
+        const h=ESS.AlarmHelp.resolve(selected.tag,selected.cond,{prio:selected.prio,eu:selected.eu});
+        if(h) help={priority:h.priority,setting:h.setting,responseTime:h.responseTime,consequence:h.consequence,probableCause:h.probableCause,correctiveAction:h.correctiveAction};
+      }
+    }
+    let drill=null;
+    if(this.P&&this.P.aDrill&&this.P.aDrill.id){
+      const def=ESS.DrillArch&&ESS.DrillArch.drillById(this.P.aDrill.id);
+      drill={id:this.P.aDrill.id, title:def&&def.title?def.title:this.P.aDrill.id};
+    }
+    return {unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),alarms,points,selected,help,drill};
   }
-  publishCoach(){
-    if(typeof window==='undefined') return;
-    const self=this;
-    window.__ESS_COACH_CORE__={
-      projection(){ return self.coachProjection(); },
-      paint(p){ self.setState(Object.assign({coachLive:true,assist:true},p||{})); }
-    };
+  coachScrub(t){
+    let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ').trim();
+    const ids=(ESS.FaultEngine&&ESS.FaultEngine.FAULT_IDS)||[];
+    ids.forEach(id=>{ s=s.split(id).join('[hidden]'); });
+    return s.split('INSTRUCTOR_ONLY').join('[hidden]');
   }
+  coachBoot(){
+    if(!this.coachOnHttp()||typeof fetch!=='function') return;
+    this.coachPing();
+    if(!this._coachIv) this._coachIv=setInterval(()=>this.coachWatch(), 2000);
+  }
+  coachPing(){
+    if(!this.coachOnHttp()||typeof fetch!=='function') return;
+    fetch('/api/coach/health').then(r=>r.json()).then(j=>{
+      const m=(j&&j.model)||'local';
+      this.setState({coachLive:true, coachModel:m, coachStatus:m, assist:true,
+        coachText:this.state.coachText&&this.state.coachLive?this.state.coachText
+          :('Watching this board on '+m+'. EXPLAIN ALARM, or type a question and press Enter.')});
+    }).catch(()=>{ this.setState({coachLive:false, coachStatus:'OFFLINE'}); });
+  }
+  coachAsk(kind, question){
+    if(!this.coachOnHttp()||typeof fetch!=='function'){
+      this.setState({coachText:'Coach is part of Launch Station.command. LIVE DIAGNOSIS below still works.', coachStatus:'OFFLINE'});
+      return;
+    }
+    if(this._coachBusy) return;
+    this._coachBusy=true;
+    this.setState({coachStatus:'THINKING', assist:true});
+    fetch('/api/coach/advise',{method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({kind:kind||'explain', ask:question||'', projection:this.coachProjection()})})
+      .then(r=>r.json()).then(j=>{
+        this._coachBusy=false;
+        this.setState({coachLive:!!j.ok, coachStatus:j.ok?(this.state.coachModel||'LOCAL'):'OFFLINE',
+          coachText:this.coachScrub(j.text||j.error||'No reply.')});
+      }).catch(()=>{
+        this._coachBusy=false;
+        this.setState({coachLive:false, coachStatus:'OFFLINE', coachText:'Coach unreachable. LIVE DIAGNOSIS below still works.'});
+      });
+  }
+  coachWatch(){
+    if(!this.state.coachLive||this._coachBusy) return;
+    const p=this.coachProjection();
+    const sig=(p.alarms||[]).map(a=>a.tag+'.'+a.cond+'.'+a.state).join('|');
+    if(!this._coachSig){ this._coachSig=sig; return; }
+    const prev=this._coachSig; this._coachSig=sig;
+    const fresh=(p.alarms||[]).some(a=>a.state==='UNACK'&&prev.indexOf(a.tag+'.'+a.cond+'.UNACK')<0);
+    const now=Date.now();
+    if(fresh&&(!this._coachTipAt||now-this._coachTipAt>8000)){ this._coachTipAt=now; this.coachAsk('tip',''); }
+  }
+  publishCoach(){ /* kept so older calls compile; boot is componentDidMount */ }
   // ---------- messages (Message Summary; confirm flag per message, RESOURCES 2.12 "silence / ack / confirm") ----------
   // opts.confirm marks a message the operator must confirm; the status bar counts unconfirmed messages and blinks MSG.
   postMsg(txt,opts){
@@ -2397,7 +2458,7 @@ class Component extends DCLogic {
     {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. TIC212 is PROGRAM for the whole batch, FIC211 during FEED. HOLD the sequence to take the monomer feed back (the attribute returns to OPERATOR), or wait for the sequence to end.'},
     {k:['pv tracking','pvtrack','track','bumpless','bump'],t:'PV tracking and bumpless transfer',a:'With PV tracking ON (Loop Tune, ENGR) the SP follows the PV while the loop is in MAN, so a return to AUTO starts at zero error and the output does not step. The integrator is re-initialised on every mode change so MAN → AUTO and AUTO → CAS are bumpless either way. Default ON for the cascade secondaries FIC102, TIC202 and TIC213.'},
     {k:['state','phase set','limit set','state-based','disabled','batch alarm'],t:'State-based alarm limits',a:'Unit 02 alarm limits follow the SCM202 phase: the level low alarm is off during CHARGE, DRAIN and IDLE, the monomer flow low alarm is active only in FEED, and the temperature limits tighten in REACT. Every phase change journals the limit set applied; Point Detail → Alarms shows the phase set in force and any conditions it disabled.'},
-    {k:['assistant','guide','coach','panel'],t:'About this assistant',a:'It watches live process state and lists detected issues with step-by-step guidance (GO jumps to the right display). It is a training aid — on a real console, follow site procedures and your shift supervisor.'}
+    {k:['assistant','guide','coach','panel','granite','ai'],t:'About this assistant',a:'The COACH at the top of this panel is the local board model when you start with Launch Station.command. LIVE DIAGNOSIS below is rule-based and always on. The coach does not move valves or change modes. On a real console, follow site procedures.'}
   ]; }
   // Cascade maps (master OP -> slave SP and the inverse for INITMAN back-calculation) shared by the PID step and mode transfers.
   pidCtx(){
@@ -3575,6 +3636,7 @@ class Component extends DCLogic {
     if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return true; }
     if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return true; }
     if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return true; }
+    if(c==='COACH'||c==='EXPLAIN'){ this.setState({assist:true}); this.coachAsk('explain',''); return true; }
     const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi',ARCH:'arch',ARCHITECTURE:'arch','SIGNAL PATH':'arch'};
     if(c==='ALMHELP'||c==='ALARM HELP'){ this.setState({almHelp:!this.state.almHelp}); this.nav('alarms'); this.taskDone('alm.help'); return true; }
     if(this.L[c]){ this.nav('detail',c); this.setState({sel:c}); return true; }
@@ -4145,15 +4207,16 @@ class Component extends DCLogic {
       steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go?()=>{this.taskDone('abn.assist');st3.go();}:(()=>{})}))}));
     const qq=S.assistQ.trim().toLowerCase();
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
-    const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ, qChange:(e)=>this.setState({assistQ:e.target.value}),
+    const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ,
+      qChange:(e)=>this.setState({assistQ:e.target.value}),
+      qKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.coachAsk('ask', this.state.assistQ); } },
       chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>this.setState({assistQ:c3})})),
       hits, hitsNone:qq.length>2&&hits.length===0,
-      // AI tips: the PAGE never fetches (Gate 4). A sidecar client may hang
-      // window.__ESS_COACH_ASK. file:// stays offline and shows coachOff.
       coachLive:!!S.coachLive, coachOff:!S.coachLive,
+      coachBadge:S.coachLive?(S.coachModel||'COACH'):'TRAINING AID',
       coachText:S.coachText||'', coachStatus:S.coachStatus||'OFFLINE',
-      coachExplain:()=>{ if(typeof window!=='undefined'&&typeof window.__ESS_COACH_ASK==='function') window.__ESS_COACH_ASK('explain'); },
-      coachAsk:()=>{ if(typeof window!=='undefined'&&typeof window.__ESS_COACH_ASK==='function') window.__ESS_COACH_ASK('ask', this.state.assistQ); }};
+      coachExplain:()=>this.coachAsk('explain',''),
+      coachAsk:()=>this.coachAsk('ask', this.state.assistQ)};
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
     const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};

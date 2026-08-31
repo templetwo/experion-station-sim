@@ -286,12 +286,25 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
     assert.deepEqual(offenders, [], offenders.join('\n'));
   });
 
-  await t.test('the app page reaches the network nowhere', () => {
+  await t.test('the app page reaches the network nowhere except relative /api/coach/', () => {
+    // Anthony 2026-08-31: the Ops Assistant coach is foundational when the station
+    // is launched with Launch Station.command. The page may call fetch('/api/coach/...')
+    // only. Fail-open. Never from step(). file:// has no API so it no-ops.
+    // src/*.js still has zero network. An absolute or foreign fetch still fails this gate.
     const offenders = [];
-    rd(APP_PAGE).split('\n').forEach((line, i) => {
-      if (NETWORK.test(line) || DYNAMIC_IMPORT.test(line)) offenders.push(`app:${i + 1} ${line.trim().slice(0, 80)}`);
+    const page = rd(APP_PAGE);
+    page.split('\n').forEach((line, i) => {
+      if (!(NETWORK.test(line) || DYNAMIC_IMPORT.test(line))) return;
+      if (/fetch\s*\(\s*['`]\/api\/coach\//.test(line)) return;
+      offenders.push(`app:${i + 1} ${line.trim().slice(0, 80)}`);
     });
     assert.deepEqual(offenders, [], offenders.join('\n'));
+    assert.match(page, /fetch\s*\(\s*['`]\/api\/coach\//,
+      'the named /api/coach exception must exist in the page or this test is a hollow pass');
+    const stepAt = page.indexOf('step(dt){');
+    assert.ok(stepAt > 0, 'step(dt) missing');
+    const stepBody = page.slice(stepAt, stepAt + 1800);
+    assert.equal(/fetch\s*\(/.test(stepBody), false, 'step() must never call fetch');
   });
 
   await t.test('no absolute URL outside XML namespaces', () => {

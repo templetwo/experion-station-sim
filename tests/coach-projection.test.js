@@ -1,12 +1,11 @@
 // @artifact dev
-// The AI coach sidecar may only see TRAINEE_SAFE board state.
+// Coach projection is TRAINEE_SAFE. The page method is the source of truth.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { load } = require('../tools/logic-harness');
 const FaultEngine = require('../src/fault-engine.js');
-const { build } = require('../tools/coach/projection.js');
 const { run } = require('./_fixture');
 
 const { Component } = load();
@@ -22,7 +21,7 @@ test('coach projection contains live alarms and no fault ids', () => {
   c.applyPreset('U1_SS');
   c.setUpset('xmtr', true);
   run(c, 20);
-  const p = build(c);
+  const p = c.coachProjection();
   assert.ok(p.alarms.length, 'expected alarms after xmtr: ' + JSON.stringify(p.alarms));
   assert.ok(p.alarms.some((a) => a.tag === 'FIC102' && a.cond === 'BADPV'),
     'FIC102 BADPV should be visible: ' + JSON.stringify(p.alarms));
@@ -37,9 +36,16 @@ test('coach projection during A1 names the drill, not the engine fault', () => {
   const c = boot();
   c.applyPreset('U1_SS');
   c.startADrill('A1');
-  const p = build(c);
+  const p = c.coachProjection();
   assert.equal(p.drill && p.drill.id, 'A1');
   assert.match(p.drill.title, /frozen/i);
   const blob = JSON.stringify(p);
   assert.ok(!blob.includes('FROZEN_MEASUREMENT'), blob);
+});
+
+test('harness is file protocol so the coach does not fetch', () => {
+  const c = boot();
+  assert.equal(c.coachOnHttp(), false);
+  c.coachAsk('explain', '');
+  assert.match(c.state.coachStatus, /OFFLINE/);
 });
