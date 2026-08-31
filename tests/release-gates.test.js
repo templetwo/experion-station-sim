@@ -26,6 +26,7 @@ const { load } = require('../tools/logic-harness');
 const Topology = require('../src/topology.js');
 const SignalPath = require('../src/signal-path.js');
 const DrillArch = require('../src/drill-arch.js');
+const Instructor = require('../src/instructor.js');
 
 const ROOT = path.join(__dirname, '..');
 const APP_PAGE = path.join(ROOT, 'Experion Station Simulator.dc.html');
@@ -198,17 +199,47 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
     assert.ok(fs.existsSync(path.join(__dirname, 'determinism.test.js')));
   });
 
-  await t.test('BLOCKED: full record -> restore -> replay equality', { skip:
-    'GATE 3 IS BLOCKED, WHICH IS NOT THE SAME AS UNWIRED — do not read this skip as ' +
-    '"S4 will build it". The mechanism EXISTS and has a known defect: replay silently ' +
-    'DROPS the most recently journaled action, for any op type (confirmed on legacy UPSET ' +
-    'and on ARCHFAULT), when startReplay is invoked with zero elapsed sim time. Found by ' +
-    'seat 1/3 during S2 verification, pre-existing from v2, braided at #360, owned and ' +
-    'carried to S4. It bears directly on this gate: "an instructor can restore and replay ' +
-    'the same exercise and obtain the same causal sequence and score." Until it is fixed, ' +
-    'gate 3 CANNOT be declared met, and asserting it here would either duplicate a known ' +
-    'red or paper over it. Also open: replayPlan cannot detect journal truncation across a ' +
-    'snapshot on the legacy snap.journalSeq==null path (thread #28), which S4 must rule on.'
+  await t.test('replay REFUSES across a truncation rather than returning a short plan', () => {
+    // GATE 3 WAS BLOCKED HERE UNTIL ac7e5c6 AND IS NOW LIVE AT MODEL LEVEL. The failure
+    // class the gate exists to catch is a replay that reports COMPLETE while reproducing a
+    // DIFFERENT exercise. An explicit refusal is the opposite of that, so a refused replay
+    // is the gate WORKING, never a gate failure. Cross-lens judgment, seat mbp-v3-gates.
+    const CAP = Instructor.JOURNAL_CAP;
+    const I = Instructor.create({});
+    for (let n = 0; n < 50; n++) Instructor.journalAdd(I, { t: n, op: 'UPSET', tag: 'x', arg: n });
+    const snap = { t: 49, journalSeq: I.seq };
+    for (let n = 0; n < CAP + 500; n++) Instructor.journalAdd(I, { t: 100 + n, op: 'UPSET', tag: 'x', arg: n });
+    const plan = Instructor.replayPlan(I, snap, Infinity);
+    assert.equal(plan.entries.length, 0, 'a truncated replay must not be returned short');
+    assert.equal(plan.refused, 'JOURNAL_TRUNCATED');
+    assert.ok(/seq \d+-\d+/.test(plan.reason), 'the refusal must name the lost range, not just refuse');
+    assert.equal(typeof plan.lostFromSeq, 'number');
+  });
+
+  await t.test('CONTROL: an untruncated journal is NOT refused', () => {
+    // Without this the assertion above would pass against a replay that refuses everything.
+    const I = Instructor.create({});
+    for (let n = 0; n < 50; n++) Instructor.journalAdd(I, { t: n, op: 'UPSET', tag: 'x', arg: n });
+    const snap = { t: 49, journalSeq: I.seq };
+    for (let n = 0; n < 10; n++) Instructor.journalAdd(I, { t: 100 + n, op: 'UPSET', tag: 'x', arg: n });
+    const plan = Instructor.replayPlan(I, snap, Infinity);
+    assert.equal(plan.entries.length, 10);
+    assert.ok(!plan.refused);
+  });
+
+  await t.test('BLOCKED AT THE SURFACE: the instructor is not told a replay was refused', { skip:
+    'GATE 3 IS MET IN THE MODEL AND NOT MET AT THE UI, and the two must not be blurred. ' +
+    'src/instructor.js now refuses correctly and loudly (asserted live above). But the app ' +
+    "page's startReplay reads only `if (!plan.entries.length)` and reports " +
+    '"NO ACTIONS RECORDED AFTER SNAPSHOT" — so a REFUSED replay, where the module has ' +
+    'PROVEN actions were dropped, is shown to the instructor as nothing having happened. ' +
+    'That message is false and reassuring, which is the exact failure the refusal was built ' +
+    'to prevent, moved up one layer. plan.legacy is not read either, so an unverifiable ' +
+    'legacy replay is indistinguishable from a verified one. Gate 3 says an INSTRUCTOR can ' +
+    'restore and replay and obtain the same causal sequence — that is a claim about the ' +
+    'instructor-facing surface, not only the module. Found by cross-lens at ac7e5c6 and ' +
+    'reported to the lead; the app page is locked to the S3 lane. This flips to a live ' +
+    'assertion when startReplay surfaces plan.refused and plan.legacy.'
   }, () => {});
 });
 

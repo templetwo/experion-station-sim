@@ -1600,6 +1600,25 @@ class Component extends DCLogic {
     // replay for free (advisory Q3(B)). See archFireFault()/archFaultTick().
     this.P.archPending = [];
     this.P.archMeta = {};
+    // S3: "explicitly inspected" and the evidence/hypothesis training state (V3-PLAN
+    // section 6, addendum Q5). Both are P-resident so ESS.Instructor.clone's JSON round
+    // trip snapshots/restores/replays them for free -- a Set would silently serialize to
+    // {} on clone, so this is a plain object keyed by node id, never a Set (advisory Q5).
+    // archInspected records EVERY node id a trainee has explicitly opened (selectNode);
+    // dispatch.js's MARK_EVIDENCE/VERIFY validate() fails closed against exactly this map
+    // via ctx.wasInspected. training is ESS.Dispatch's own plain-JSON shape
+    // ({evidence,pins,hypotheses,verifications}) so trainingStateOf(ctx) mutates it in
+    // place and nothing here needs to know that shape's internals.
+    this.P.archInspected = {};
+    this.P.training = ESS.Dispatch.createTrainingState();
+    // The A-drill lane (V3-PLAN S3, architect addendum Q4): a PARALLEL lane to the legacy
+    // D-series this.state.drill -- drillWatch/dHook/dAct/dTrip/endDrill/scoreDrill all read
+    // D-shaped def fields (rel, act, stable, trips, q, a) an A-series DrillDefinition does
+    // not have, so reusing that slot mis-scores or crashes. null when no A-drill is armed;
+    // see startADrill()/aDrillWatch()/endADrill(). Lives on P (not this.state) so it
+    // travels through snapshot/restore/replay and is reset to null by every initSim(),
+    // including the one applyPreset() runs internally -- no drill survives a preset load.
+    this.P.aDrill = null;
     // Instructor station state survives a process reset (snapshots, password, hidden flag, seed); the run-bound parts
     // (backtrack ring, action journal, replay) start fresh. Every random draw goes through the seeded generator so a
     // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4).
@@ -1731,6 +1750,15 @@ class Component extends DCLogic {
     }
     this.journal('ASSET',id,on?'ON':'OFF',{reason});
     this.taskDone('abn.disable');
+    // Safety gate live (V3-PLAN section 6, DO item 4): OUTCOME-BASED, so a synthesized
+    // ActionEvent is appended only on this ACCEPTED path -- every early `return false`
+    // above (bad asset id, already in the requested state) never reaches here, exactly
+    // the refusal-is-never-retained shape the gate needs. Never journaled a second time:
+    // the ASSET op above already journaled once; archSynthEvent only appends to the
+    // retained A-drill scoring array, nothing replay-visible. Maps every point under the
+    // asset to its control-module node so a POINT.SUPPRESS gate keyed on a specific CM
+    // (e.g. A7's) can still be tripped by disabling the whole asset it belongs to.
+    for(const tag of this.assetTags(id)){ const l=this.L[tag]; if(l&&l.cm) this.archSynthEvent('POINT.SUPPRESS','CM-'+l.cm,{arg:on?'ON':'OFF'}); }
     return true;
   }
   parkDisabled(tag,cond,by,spec){
@@ -2056,6 +2084,7 @@ class Component extends DCLogic {
     this.alarmTick();
     this.valveWatch(dt);
     this.drillWatch(dt);
+    this.aDrillWatch(dt);
     this.archFaultTick();
     for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift(); }
     this.backtrackTick();
@@ -2495,6 +2524,14 @@ class Component extends DCLogic {
     // those instances, which is a safe default, never a thrown error.
     if(!this.P.archPending) this.P.archPending = [];
     if(!this.P.archMeta) this.P.archMeta = {};
+    // S3 defaulting, same pattern: a pre-S3 snapshot predates archInspected/training/
+    // aDrill entirely. Absent inspection means nothing was explicitly opened (fails
+    // closed correctly -- MARK_EVIDENCE/VERIFY simply refuse until re-opened), absent
+    // training means no evidence/pins/hypotheses/verifications recorded, and a missing
+    // or undefined aDrill means no architecture drill was running.
+    if(!this.P.archInspected) this.P.archInspected = {};
+    if(!this.P.training) this.P.training = ESS.Dispatch.createTrainingState();
+    if(this.P.aDrill===undefined) this.P.aDrill = null;
     this.alarmEngine.restore(snap.alarms);
     this.restoreDisabledAssets(snap.disabledAssets);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
@@ -2568,6 +2605,10 @@ class Component extends DCLogic {
   // fixture keep working without touching src/instructor.js (advisory Q1/Q5).
   registerDispatchHandlers(){
     const self=this;
+    // S3: the four evidence/hypothesis commands (MARK_EVIDENCE, PIN_COMPARE,
+    // SUBMIT_HYPOTHESIS, VERIFY), registered exactly the way tests/dispatch-training.test.js
+    // models it -- one call, on the dispatcher this same guard creates once (initSim).
+    ESS.Dispatch.registerTraining(this.dispatcher);
     this.dispatcher.register(ESS.Dispatch.TYPES.FAULT_INJECT,{
       validate:(ctx,cmd)=>{
         const k=cmd.target;
@@ -2982,7 +3023,22 @@ class Component extends DCLogic {
   startReplay(i){
     const s=this.instr.snapshots[i]; if(!s){ this.msgZone('SNAPSHOT SLOT '+(i+1)+' IS EMPTY'); return; }
     const plan=ESS.Instructor.replayPlan(this.instr,s,this.P.t);
+    // A REFUSED plan is not an empty one. replayPlan refuses when the action journal was
+    // truncated across this snapshot, i.e. it can PROVE actions were lost. Reporting that as
+    // "no actions recorded" would be false and, worse, reassuring -- it is the exact failure
+    // the refusal exists to prevent, moved up one layer into the UI. Say what was lost.
+    if(plan.refused){
+      this.msgZone('REPLAY REFUSED — '+(plan.reason||plan.refused)+' · SNAPSHOT '+s.name);
+      this.instrNote('REPLAY REFUSED for snapshot '+s.name+': '+(plan.reason||plan.refused)
+        +(plan.lostFromSeq!=null?(' · actions '+plan.lostFromSeq+'..'+plan.lostToSeq+' were dropped from the journal'):'')
+        +'. The exercise cannot be reproduced faithfully, so it is not replayed at all.');
+      return;
+    }
     if(!plan.entries.length){ this.msgZone('NO ACTIONS RECORDED AFTER SNAPSHOT '+s.name); return; }
+    // An unverifiable legacy replay must not look identical to a verified one. A v2-shaped
+    // snapshot carries no journalSeq, so truncation across it cannot be detected even in
+    // principle; the plan flags that rather than guessing, and the instructor is told.
+    if(plan.legacy) this.instrNote('REPLAY of legacy snapshot '+s.name+': this snapshot predates action sequencing, so completeness of the replayed journal CANNOT be verified.');
     this.restoreSnapshot(s,'REPLAY FROM SNAPSHOT: '+s.name);
     this.instr.replay=plan;
     this.instrLog('REPLAY STARTED — '+plan.entries.length+' ACTIONS TO '+this.fT(plan.toT));
