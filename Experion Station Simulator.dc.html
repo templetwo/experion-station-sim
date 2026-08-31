@@ -2990,11 +2990,44 @@ class Component extends DCLogic {
   }
   stopReplay(){ if(this.instr.replay){ this.instr.replay=null; this.instrLog('REPLAY STOPPED'); } }
   // Runs the replay to its end synchronously; the trajectory is deterministic, so this equals watching it live.
-  replayToEnd(){ let guard=0; while(this.instr.replay&&guard++<200000) this.step(0.5); }
+  // Run the replay to its end and stop at EXACTLY toT, the instant the live exercise stopped.
+  // Stepping "while a replay exists" overshot by one step: applyReplayDue runs at the HEAD of
+  // step(), so an entry standing at t === toT is only applied by a step that STARTS at toT, and
+  // that step then advances the clock past it. The replay finished at toT + dt with one extra
+  // step of physics against a live run that finished at toT, so every trajectory digest differed
+  // even though the actions matched. Step only while short of toT, then DRAIN the entries
+  // standing at toT without advancing the clock again.
+  replayToEnd(){
+    let guard=0; const r=this.instr&&this.instr.replay; if(!r) return;
+    while(this.instr.replay&&this.P.t<r.toT&&guard++<200000) this.step(0.5);
+    this.applyReplayDue();
+  }
   // Replayed entries already passed the security gate when they were recorded, so can() is bypassed only while one is
   // being applied; live input during a replay is gated as usual.
-  applyReplayDue(){ const r=this.instr&&this.instr.replay; if(!r) return; const due=ESS.Instructor.replayDue(r,this.P.t); this._replayApplying=true; try{ for(const e of due) this.applyJournalEntry(e); } finally{ this._replayApplying=false; } }
-  replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
+  applyReplayDue(){
+    const r=this.instr&&this.instr.replay; if(!r) return;
+    const due=ESS.Instructor.replayDue(r,this.P.t);
+    this._replayApplying=true;
+    try{ for(const e of due) this.applyJournalEntry(e); } finally{ this._replayApplying=false; }
+    // Complete HERE, at the head of the step, the moment the last entry has been applied and the
+    // clock has reached toT -- before advanceClock runs. Completing only at the tail
+    // (replayCheckDone) let the replay take ONE MORE step than the live run did, so it finished
+    // at toT + dt while the live exercise finished at toT: same actions, one extra step of
+    // physics, and every trajectory digest differed. The live run's final step is the one that
+    // BROUGHT the clock to toT; the replay must stop at the same instant, not after it.
+    this.replayCheckDone();
+  }
+  // A replay is complete when the clock has reached toT AND every entry has been applied.
+  // The second half is load-bearing: step() calls applyReplayDue() BEFORE advanceClock(), so
+  // on the step where P.t reaches toT the entries standing at exactly t === toT have not been
+  // applied yet. Completing on the clock alone nulled the replay first, and the next
+  // applyReplayDue() returned early on a null replay -- so the LAST action of any exercise was
+  // silently dropped whenever it sat at toT, which is every exercise replayed with zero elapsed
+  // simulated time since that action. Pre-existing v2 behaviour, found by the S2 verify pass and
+  // confirmed for the legacy UPSET op, ARCHFAULT and MODE. A replay that loses an action
+  // reproduces a DIFFERENT exercise while reporting success, which is exactly what release
+  // gate 3 exists to catch.
+  replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT&&r.i>=r.entries.length){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
   applyJournalEntry(e){
     switch(e.op){
       case 'MODE': this.setMode(e.tag,e.arg); break;

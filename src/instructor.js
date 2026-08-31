@@ -23,6 +23,7 @@
 //                                entry at least backMs old could be almost RING_MS further back than asked)
 //   trimAfter(I, t, seq)         drop ring entries later than t and journal entries after sequence seq (time when seq is null)
 //   journalAdd(I, entry)         append {t, op, tag, ...} stamped with the next sequence number; capped
+//   replayRefusal(I, snap)       null, or {code, reason, lostFromSeq?, lostToSeq?} when the journal no longer covers the snapshot
 //   replayPlan(I, snap, nowT)    entries journaled after the snapshot (by sequence, so actions taken while frozen at the
 //                                snapshot time count) up to nowT, ordered; instructor entries (instr:true) included
 //   replayDue(replay, t)         entries whose time has come, advancing the cursor
@@ -115,10 +116,46 @@
     I.lastRingT = I.ring.length ? I.ring[I.ring.length - 1].t : -Infinity;
   }
 
+  // Truncation is REMEMBERED, not just performed (thread #28, S4): when the cap splices the
+  // oldest entries away, the seq and sim time of the last one lost are kept on I (lazily, so
+  // create()'s shape is unchanged for callers that never overflow). replayPlan reads them to
+  // refuse a replay that would silently cross the gap.
   function journalAdd(I, entry) {
     entry.seq = ++I.seq;
     I.journal.push(entry);
-    if (I.journal.length > JOURNAL_CAP) I.journal.splice(0, I.journal.length - JOURNAL_CAP);
+    if (I.journal.length > JOURNAL_CAP) {
+      var dropped = I.journal.splice(0, I.journal.length - JOURNAL_CAP);
+      var last = dropped[dropped.length - 1];
+      I.journalDroppedSeq = last.seq;
+      I.journalDroppedT = last.t;
+      I.journalDroppedCount = (I.journalDroppedCount || 0) + dropped.length;
+    }
+  }
+
+  /** Why a replay from `snap` cannot be trusted, or null when the journal fully covers it.
+   *  Sequence-carrying snapshots: seq is contiguous (every journalAdd increments), so an oldest
+   *  surviving seq above snap.journalSeq + 1 PROVES entries after the snapshot were spliced away;
+   *  an empty journal with I.seq beyond the snapshot proves the same. Legacy snapshots
+   *  (journalSeq == null, pre-S0) carry no sequence, so the only evidence is a REMEMBERED drop
+   *  whose sim time postdates the snapshot; drops that happened before this module started
+   *  remembering them are undetectable on that path, and that limitation is deliberate and named
+   *  rather than papered over with a guess. */
+  function replayRefusal(I, snap) {
+    if (!snap) return { code: 'NO_SNAPSHOT', reason: 'no snapshot to replay from' };
+    if (snap.journalSeq != null) {
+      var oldest = I.journal.length ? I.journal[0].seq : null;
+      if (oldest != null && oldest > snap.journalSeq + 1) {
+        return { code: 'JOURNAL_TRUNCATED', reason: 'journal truncated across the snapshot: actions seq ' + (snap.journalSeq + 1) + '-' + (oldest - 1) + ' were dropped by the ' + JOURNAL_CAP + '-entry cap; a replay would silently omit them', lostFromSeq: snap.journalSeq + 1, lostToSeq: oldest - 1 };
+      }
+      if (oldest == null && I.seq > snap.journalSeq) {
+        return { code: 'JOURNAL_EMPTY_AFTER_SNAPSHOT', reason: 'the journal holds none of the ' + (I.seq - snap.journalSeq) + ' actions recorded after the snapshot (cleared or truncated); a replay would reproduce a different exercise', lostFromSeq: snap.journalSeq + 1, lostToSeq: I.seq };
+      }
+      return null;
+    }
+    if (I.journalDroppedT != null && I.journalDroppedT > snap.t) {
+      return { code: 'JOURNAL_TRUNCATED_LEGACY', reason: 'legacy snapshot (no sequence): ' + I.journalDroppedCount + ' journal entries were dropped by the cap and the last dropped (seq ' + I.journalDroppedSeq + ') postdates the snapshot; a replay would silently omit actions', lostToSeq: I.journalDroppedSeq };
+    }
+    return null;
   }
 
   function logAdd(I, t, txt) {
@@ -134,11 +171,21 @@
   // carries no `accepted` field at all) passes this check same as `true` -- only an
   // explicit accepted:false is excluded. src/dispatch.js's header documents the hazard this
   // closes; tests/dispatch.test.js pins the fix.
+  // A plan that would cross a truncation is REFUSED (entries: [], refused: <code>, reason)
+  // rather than returned short: a short replay that reports REPLAY COMPLETE reproduces a
+  // different exercise, which is the failure class release gate 3 exists to catch. Callers
+  // that only test entries.length see "nothing to replay"; callers that read `refused`
+  // can say why. replayRefusal(I, snap) gives the same answer without building a plan.
   function replayPlan(I, snap, nowT) {
+    var refusal = replayRefusal(I, snap);
+    if (refusal) {
+      return { entries: [], i: 0, fromT: snap.t, endT: snap.t, toT: nowT, refused: refusal.code, reason: refusal.reason,
+        lostFromSeq: refusal.lostFromSeq == null ? null : refusal.lostFromSeq, lostToSeq: refusal.lostToSeq == null ? null : refusal.lostToSeq };
+    }
     var afterSnap = snap.journalSeq == null ? function (e) { return e.t > snap.t; } : function (e) { return e.seq > snap.journalSeq; };
     var list = I.journal.filter(function (e) { return afterSnap(e) && e.t <= nowT && e.accepted !== false; })
       .sort(function (a, b) { return a.t - b.t || a.seq - b.seq; }).map(clone);
-    return { entries: list, i: 0, fromT: snap.t, endT: list.length ? list[list.length - 1].t : snap.t, toT: nowT };
+    return { entries: list, i: 0, fromT: snap.t, endT: list.length ? list[list.length - 1].t : snap.t, toT: nowT, legacy: snap.journalSeq == null };
   }
 
   function replayDue(replay, t) {
@@ -237,6 +284,7 @@
 
   return {
     create: create, resetRun: resetRun, clone: clone, makeSnapshot: makeSnapshot,
+    replayRefusal: replayRefusal,
     pushRing: pushRing, ringPick: ringPick, trimAfter: trimAfter,
     journalAdd: journalAdd, logAdd: logAdd, nonFinitePath: nonFinitePath, replayPlan: replayPlan, replayDue: replayDue, journalText: journalText,
     presets: presets, upsetDefs: upsetDefs, variableDefs: variableDefs, getPath: getPath, setPath: setPath, speeds: speeds,
