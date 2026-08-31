@@ -35,7 +35,42 @@ a{color:#1a4a7a;text-decoration:none}a:hover{color:#0a3a6a;text-decoration:under
 input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 ::-webkit-scrollbar{width:14px;height:14px;background:#D4D0C8}
 ::-webkit-scrollbar-thumb{background:#B4B0A8;border:2px solid #D4D0C8}
-</style>
+.ess-pip{position:fixed;z-index:920;bottom:46px;width:108px;cursor:pointer;user-select:none;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.28));transition:right .22s ease,transform .18s ease}
+.ess-pip:hover{transform:translateY(-5px) rotate(-4deg)}
+.ess-pip[data-mood=idle]{animation:ess-pip-idle 2.8s ease-in-out infinite}
+.ess-pip[data-mood=think]{animation:ess-pip-bob .7s ease-in-out infinite}
+.ess-pip[data-mood=talk]{animation:ess-pip-talk .34s ease-in-out infinite}
+.ess-pip[data-mood=alarm]{animation:ess-pip-alarm .5s steps(2) infinite}
+.ess-pip[data-mood=off]{filter:grayscale(.85) drop-shadow(2px 3px 0 rgba(0,0,0,.2));opacity:.78}
+.ess-pip-svg{display:block;margin:0 auto}
+.ess-pip[data-mood=think] .ess-pip-eye{animation:ess-pip-blink .7s infinite}
+.ess-pip[data-mood=talk] .ess-pip-needle{transform-origin:44px 58px;animation:ess-pip-needle .28s ease-in-out infinite}
+.ess-pip-tag{margin-top:2px;text-align:center;font:700 10px Tahoma,Verdana,sans-serif;color:#1a1a1a;background:#FFE000;border:2px solid #3c3c3c;padding:1px 4px}
+.ess-pip-cloud{position:absolute;bottom:118px;right:0;width:196px;background:#F4F0D8;border:2px solid #3c3c3c;padding:7px 8px 9px;font:10px Tahoma,Verdana,sans-serif;color:#2c2c2c;line-height:1.35;box-shadow:3px 3px 0 #6E6E6E}
+.ess-pip-cloud:after{content:"";position:absolute;bottom:-12px;right:34px;width:0;height:0;border:12px solid transparent;border-top-color:#3c3c3c}
+.ess-pip-cloud-k{font-weight:700;font-size:9px;letter-spacing:.08em;color:#6E4000;margin-bottom:3px}
+.ess-pip-cloud-t{max-height:88px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical}
+.ess-pip-dots{display:flex;gap:5px;padding:6px 2px 2px}
+.ess-pip-dots span{width:7px;height:7px;border-radius:50%;background:#3c3c3c;animation:ess-pip-dot 1s infinite}
+.ess-pip-dots span:nth-child(2){animation-delay:.15s}
+.ess-pip-dots span:nth-child(3){animation-delay:.3s}
+.ess-coach-feed{margin:4px 8px;max-height:210px;overflow-y:auto;background:#E8E4D8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E}
+.ess-coach-row{padding:6px 8px;border-bottom:1px solid #C8C4B8}
+.ess-coach-row:last-child{border-bottom:0}
+.ess-coach-who{font-size:9px;font-weight:700;letter-spacing:.06em;margin-bottom:2px}
+.ess-coach-body{font-size:10.5px;line-height:1.45;color:#2c2c2c;white-space:pre-wrap}
+.ess-coach-live .ess-coach-body:after{content:"▍";animation:ess-pip-caret 1s steps(1) infinite}
+@keyframes ess-pip-idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes ess-pip-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+@keyframes ess-pip-talk{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes ess-pip-alarm{0%{filter:drop-shadow(2px 3px 0 rgba(0,0,0,.28))}50%{filter:drop-shadow(0 0 6px #CC0000)}}
+@keyframes ess-pip-blink{0%,100%{opacity:1}50%{opacity:.12}}
+@keyframes ess-pip-needle{0%{transform:rotate(-22deg)}50%{transform:rotate(26deg)}100%{transform:rotate(-22deg)}}
+@keyframes ess-pip-dot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
+@keyframes ess-pip-caret{0%,49%{opacity:1}50%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+.ess-pip,.ess-pip[data-mood],.ess-pip-eye,.ess-pip-needle,.ess-pip-dots span,.ess-coach-live .ess-coach-body:after{animation:none}
+}</style>
 </helmet>
 <div style="position:fixed;inset:0;display:flex;flex-direction:column;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;background:#D4D0C8;color:#000;font-variant-numeric:tabular-nums" onMouseMove="{{ rootMove }}" onMouseUp="{{ rootUp }}">
 
@@ -1531,11 +1566,19 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <div style="padding:1px 7px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ asst.close }}">✕</div>
   </div>
   <div style="flex:1;overflow-y:auto;min-height:0">
-    <div style="padding:6px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c">COACH</div>
+    <div style="padding:6px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c">PIP · BOARD COACH</div>
     <div style="padding:2px 8px;font-size:9px;color:#55524c">{{ asst.coachStatus }} · advisory · does not control the plant</div>
-    <div style="margin:4px 8px;padding:6px 8px;background:#EDEDE8;border:1px solid #9a968e;font-size:10.5px;line-height:1.45;color:#3c3c3c;min-height:56px">{{ asst.coachText }}</div>
-    <div style="display:flex;gap:4px;padding:2px 8px 8px 8px">
+    <div class="ess-coach-feed">
+      <sc-for list="{{ asst.feed }}" as="m" hint-placeholder-count="2">
+        <div class="ess-coach-row {{ m.liveCls }}">
+          <div class="ess-coach-who" style="color:{{ m.whoFg }}">{{ m.who }}</div>
+          <div class="ess-coach-body">{{ m.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:4px;padding:4px 8px 8px 8px">
       <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ asst.coachExplain }}">EXPLAIN ALARM</div>
+      <div style="padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ asst.coachAsk }}">ASK PIP</div>
     </div>
     <div style="padding:4px 8px">
       <input value="{{ asst.q }}" onChange="{{ asst.qChange }}" onKeyDown="{{ asst.qKey }}" placeholder="ask about this board…" style="width:100%;padding:4px 6px;font-size:11px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
@@ -1583,6 +1626,39 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </sc-if>
 
+<div class="ess-pip" data-mood="{{ pal.mood }}" style="right:{{ pal.right }}" title="{{ pal.title }}" onClick="{{ pal.click }}">
+  <sc-if value="{{ pal.thinkOn }}" hint-placeholder-val="{{ false }}">
+    <div class="ess-pip-cloud">
+      <div class="ess-pip-cloud-k">THINKING</div>
+      <sc-if value="{{ pal.thinkHas }}" hint-placeholder-val="{{ false }}">
+        <div class="ess-pip-cloud-t">{{ pal.think }}</div>
+      </sc-if>
+      <sc-if value="{{ pal.thinkWait }}" hint-placeholder-val="{{ false }}">
+        <div class="ess-pip-dots"><span></span><span></span><span></span></div>
+      </sc-if>
+    </div>
+  </sc-if>
+  <svg class="ess-pip-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 102" width="88" height="102" aria-hidden="true">
+    <rect x="18" y="18" width="52" height="68" fill="#D4D0C8" stroke="#3c3c3c" stroke-width="2"/>
+    <rect x="20" y="20" width="48" height="9" fill="#FFE000" stroke="#3c3c3c" stroke-width="1"/>
+    <text x="44" y="27" text-anchor="middle" font-size="6.2" font-family="Tahoma,Verdana,sans-serif" font-weight="700" fill="#1a1a1a">PIP</text>
+    <circle cx="44" cy="58" r="22" fill="#EDE9DC" stroke="#3c3c3c" stroke-width="2"/>
+    <circle cx="44" cy="58" r="18" fill="none" stroke="#9a968e" stroke-width="1" stroke-dasharray="2 3"/>
+    <circle class="ess-pip-eye" cx="36" cy="52" r="3.4" fill="#1a1a1a"/>
+    <circle class="ess-pip-eye" cx="52" cy="52" r="3.4" fill="#1a1a1a"/>
+    <circle cx="36.8" cy="51.2" r="1" fill="#FFFFFF"/>
+    <circle cx="52.8" cy="51.2" r="1" fill="#FFFFFF"/>
+    <line class="ess-pip-needle" x1="44" y1="58" x2="44" y2="40" stroke="#CC0000" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="44" cy="58" r="2.4" fill="#41608A" stroke="#3c3c3c" stroke-width="1"/>
+    <path d="M34 66 Q44 73 54 66" fill="none" stroke="#3c3c3c" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="26" y="86" width="12" height="10" fill="#41608A" stroke="#3c3c3c" stroke-width="1.5"/>
+    <rect x="50" y="86" width="12" height="10" fill="#41608A" stroke="#3c3c3c" stroke-width="1.5"/>
+    <line x1="44" y1="8" x2="44" y2="18" stroke="#3c3c3c" stroke-width="2"/>
+    <circle cx="44" cy="7" r="3.5" fill="#CC0000" stroke="#3c3c3c" stroke-width="1.2"/>
+  </svg>
+  <div class="ess-pip-tag">{{ pal.tag }}</div>
+</div>
+
 </div>
 
 <div style="display:flex;align-items:center;gap:10px;padding:3px 8px;border-top:2px solid #9a968e;background:#CCC8C0;user-select:none;font-size:11px">
@@ -1610,7 +1686,8 @@ class Component extends DCLogic {
     // S3 pin-compare staging (V3-PLAN section 6) -- view-only, like archSel; the pinned
     // targets themselves are only committed to P.training once COMPARE dispatches
     // TRAINING.PIN_COMPARE. Cleared on a successful compare.
-    coachLive:false, coachText:'LIVE DIAGNOSIS below always works. Launch Station.command starts the local coach on this board.', coachStatus:'OFFLINE', coachModel:'',
+    coachLive:false, coachText:'LIVE DIAGNOSIS below always works. Launch Station.command wakes PIP on this board.', coachStatus:'OFFLINE', coachModel:'',
+    coachFeed:[{id:0,who:'PIP',text:'LIVE DIAGNOSIS below always works. Launch Station.command wakes PIP on this board.',kind:'hello'}], coachThink:'', coachMood:'off',
     archPinTray:[],
     // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
     // the topology fault matrix: which layer is shown and the one (node, fault) cell
@@ -1626,7 +1703,7 @@ class Component extends DCLogic {
     window.addEventListener('keydown', this.kd);
     this.coachBoot();
   }
-  componentWillUnmount(){ clearInterval(this.iv); if(this._coachIv) clearInterval(this._coachIv); window.removeEventListener('keydown', this.kd); }
+  componentWillUnmount(){ clearInterval(this.iv); if(this._coachIv) clearInterval(this._coachIv); if(this._coachAc&&this._coachAc.abort) this._coachAc.abort(); window.removeEventListener('keydown', this.kd); }
 
   initSim(){
     const now = Date.now();
@@ -1785,10 +1862,30 @@ class Component extends DCLogic {
     return {unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),alarms,points,selected,help,drill};
   }
   coachScrub(t){
-    let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ').trim();
+    let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ');
+    s=s.replace(/<[^>]*>/g,' ');
     const ids=(ESS.FaultEngine&&ESS.FaultEngine.FAULT_IDS)||[];
     ids.forEach(id=>{ s=s.split(id).join('[hidden]'); });
     return s.split('INSTRUCTOR_ONLY').join('[hidden]');
+  }
+  coachHist(){
+    const out=[];
+    const feed=this.state.coachFeed||[];
+    for(let i=feed.length-1;i>=0;i--){
+      const m=feed[i];
+      if(!m||!m.text) continue;
+      if(m.kind==='hello'||m.kind==='sys'||m.kind==='live') continue;
+      if(m.who==='YOU') out.push({role:'user',content:String(m.text).slice(0,800)});
+      if(m.who==='PIP') out.push({role:'assistant',content:String(m.text).slice(0,800)});
+    }
+    return out.slice(-6);
+  }
+  coachPush(who, text, kind){
+    if(!this._coachMid) this._coachMid=1;
+    const row={id:++this._coachMid, who:who, text:text||'', kind:kind||''};
+    const feed=[row].concat(this.state.coachFeed||[]).slice(0,14);
+    this.setState({coachFeed:feed, coachText:who==='PIP'&&text?text:this.state.coachText});
+    return row;
   }
   coachBoot(){
     if(!this.coachOnHttp()||typeof fetch!=='function') return;
@@ -1799,29 +1896,135 @@ class Component extends DCLogic {
     if(!this.coachOnHttp()||typeof fetch!=='function') return;
     fetch('/api/coach/health').then(r=>r.json()).then(j=>{
       const m=(j&&j.model)||'local';
-      this.setState({coachLive:true, coachModel:m, coachStatus:m, assist:true,
-        coachText:this.state.coachText&&this.state.coachLive?this.state.coachText
-          :('Watching this board on '+m+'. EXPLAIN ALARM, or type a question and press Enter.')});
-    }).catch(()=>{ this.setState({coachLive:false, coachStatus:'OFFLINE'}); });
+      const hello=(this.state.coachFeed||[]).length
+        ? this.state.coachFeed
+        : [{id:1, who:'PIP', text:'Watching this board on '+m+'. Click me, EXPLAIN ALARM, or just talk.', kind:'hello'}];
+      this.setState({coachLive:true, coachModel:m, coachStatus:m, assist:true, coachMood:'idle',
+        coachFeed:hello, coachText:hello[0]&&hello[0].text});
+    }).catch(()=>{ this.setState({coachLive:false, coachStatus:'OFFLINE', coachMood:'off'}); });
+  }
+  coachPalClick(){
+    this.setState({assist:true});
+    if(!this.coachOnHttp()||!this.state.coachLive){
+      this.setState({coachStatus:'OFFLINE', coachMood:'off',
+        coachText:'Wake me with Launch Station.command. LIVE DIAGNOSIS still works.'});
+      this.coachPush('PIP','Wake me with Launch Station.command. LIVE DIAGNOSIS still works.','sys');
+      return;
+    }
+    if(this._coachBusy) return;
+    const now=Date.now();
+    if(this._coachPalAt&&now-this._coachPalAt<12000) return;
+    this._coachPalAt=now;
+    this.coachAsk('ask','Check in. What should I be looking at on this board right now?');
   }
   coachAsk(kind, question){
     if(!this.coachOnHttp()||typeof fetch!=='function'){
-      this.setState({coachText:'Coach is part of Launch Station.command. LIVE DIAGNOSIS below still works.', coachStatus:'OFFLINE'});
+      this.setState({coachText:'PIP is part of Launch Station.command. LIVE DIAGNOSIS below still works.', coachStatus:'OFFLINE', coachMood:'off'});
       return;
     }
     if(this._coachBusy) return;
     this._coachBusy=true;
-    this.setState({coachStatus:'THINKING', assist:true});
-    fetch('/api/coach/advise',{method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({kind:kind||'explain', ask:question||'', projection:this.coachProjection()})})
-      .then(r=>r.json()).then(j=>{
-        this._coachBusy=false;
-        this.setState({coachLive:!!j.ok, coachStatus:j.ok?(this.state.coachModel||'LOCAL'):'OFFLINE',
-          coachText:this.coachScrub(j.text||j.error||'No reply.')});
-      }).catch(()=>{
-        this._coachBusy=false;
-        this.setState({coachLive:false, coachStatus:'OFFLINE', coachText:'Coach unreachable. LIVE DIAGNOSIS below still works.'});
-      });
+    this._coachThink='';
+    this._coachDraft='';
+    if(!this._coachMid) this._coachMid=1;
+    this._coachLiveId=++this._coachMid;
+    this._coachGen=(this._coachGen||0)+1;
+    const gen=this._coachGen;
+    const feed=(this.state.coachFeed||[]).slice();
+    if(kind==='ask'&&question) feed.unshift({id:++this._coachMid, who:'YOU', text:question, kind:'ask'});
+    this.setState({assist:true, coachMood:'think', coachStatus:'THINKING', coachThink:'', coachFeed:feed,
+      assistQ:kind==='ask'?'':this.state.assistQ});
+    const body=JSON.stringify({kind:kind||'explain', ask:question||'', projection:this.coachProjection(), history:this.coachHist()});
+    this._coachAc=(typeof AbortController==='function')?new AbortController():null;
+    this._coachFinished=false;
+    this._coachUsingStream=false;
+    const opts={method:'POST', headers:{'Content-Type':'application/json'}, body:body};
+    if(this._coachAc) opts.signal=this._coachAc.signal;
+    fetch('/api/coach/stream', opts).then(r=>{
+      if(gen!==this._coachGen) return;
+      if(!r||!r.ok||!r.body||typeof r.body.getReader!=='function') throw new Error('nostream');
+      this._coachUsingStream=true;
+      return this.coachReadStream(r, gen);
+    }).catch(err=>{
+      if(gen!==this._coachGen||this._coachFinished||this._coachUsingStream) return;
+      if(err&&err.name==='AbortError'){ this.coachFinish(false, gen); return; }
+      fetch('/api/coach/advise',{method:'POST', headers:{'Content-Type':'application/json'}, body:body}).then(r=>r.json()).then(j=>{
+        if(gen!==this._coachGen) return;
+        this._coachDraft=this.coachScrub(j.text||j.error||'No reply.');
+        this._coachThink=this.coachScrub(j.thinking||'');
+        this.coachFinish(!!j.ok, gen);
+      }).catch(()=>this.coachFinish(false, gen));
+    });
+  }
+  coachReadStream(resp, gen){
+    const reader=resp.body.getReader();
+    const dec=new TextDecoder();
+    let buf='';
+    const pump=()=>reader.read().then(chunk=>{
+      if(gen!==this._coachGen) return;
+      if(chunk.done){
+        if(buf.trim()) this.coachOnEvent(buf, gen);
+        this.coachFinish(true, gen);
+        return;
+      }
+      buf+=dec.decode(chunk.value,{stream:true});
+      const lines=buf.split('\n');
+      buf=lines.pop();
+      for(let i=0;i<lines.length;i++) this.coachOnEvent(lines[i], gen);
+      return pump();
+    });
+    return pump().catch(()=>this.coachFinish(false, gen));
+  }
+  coachOnEvent(line, gen){
+    if(gen!=null&&gen!==this._coachGen) return;
+    const s=String(line||'').trim();
+    if(!s) return;
+    let ev; try{ ev=JSON.parse(s); }catch(e){ return; }
+    if(ev.t==='think'){ this._coachThink=this.coachScrub((this._coachThink||'')+(ev.d||'')); this.coachFlush(false); }
+    else if(ev.t==='text'){ this._coachDraft=this.coachScrub((this._coachDraft||'')+(ev.d||'')); this.coachFlush(false); }
+    else if(ev.t==='err'){ this._coachDraft=this.coachScrub(ev.d||'PIP lost the model.'); this.coachFinish(false, gen); }
+    else if(ev.t==='done'){ this.coachFinish(!!ev.ok, gen); }
+  }
+  coachFlush(force){
+    const now=Date.now();
+    if(!force&&this._coachPaintAt&&now-this._coachPaintAt<60) return;
+    this._coachPaintAt=now;
+    const think=this.coachScrub(this._coachThink||'').slice(-360);
+    const spoken=this.coachScrub(this._coachDraft||'');
+    const feed=(this.state.coachFeed||[]).map(m=>Object.assign({},m));
+    if(this._coachLiveId){
+      const i=feed.findIndex(m=>m.id===this._coachLiveId);
+      if(spoken){
+        if(i>=0){ feed[i].text=spoken; feed[i].kind='live'; feed[i].who='PIP'; }
+        else feed.unshift({id:this._coachLiveId, who:'PIP', text:spoken, kind:'live'});
+      }
+    }
+    this.setState({
+      coachThink:think, coachFeed:feed, coachText:spoken||this.state.coachText,
+      coachMood:spoken?'talk':'think',
+      coachStatus:spoken?'SPEAKING':'THINKING'
+    });
+  }
+  coachFinish(ok, gen){
+    if(gen!=null&&gen!==this._coachGen) return;
+    if(this._coachFinished) return;
+    this._coachFinished=true;
+    this._coachBusy=false;
+    this.coachFlush(true);
+    const spoken=this.coachScrub(this._coachDraft||'') || (ok?'I looked. Ask a tag, or hit EXPLAIN ALARM.':'PIP lost the model. LIVE DIAGNOSIS still works.');
+    const feed=(this.state.coachFeed||[]).map(m=>{
+      if(this._coachLiveId&&m.id===this._coachLiveId) return Object.assign({},m,{text:spoken, kind:'said', who:'PIP'});
+      return m;
+    });
+    const hasLive=feed.some(m=>this._coachLiveId&&m.id===this._coachLiveId);
+    if(!hasLive) feed.unshift({id:this._coachLiveId||++this._coachMid, who:'PIP', text:spoken, kind:'said'});
+    this._coachLiveId=0;
+    this.setState({
+      coachLive:!!ok, coachFeed:feed, coachText:spoken||this.state.coachText, coachThink:'',
+      coachMood:ok?'idle':(this.state.coachLive?'idle':'off'),
+      coachStatus:ok?(this.state.coachModel||'LOCAL'):'OFFLINE'
+    });
+    this._coachThink=''; this._coachDraft='';
   }
   coachWatch(){
     if(!this.state.coachLive||this._coachBusy) return;
@@ -4210,13 +4413,31 @@ class Component extends DCLogic {
     const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ,
       qChange:(e)=>this.setState({assistQ:e.target.value}),
       qKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.coachAsk('ask', this.state.assistQ); } },
-      chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>this.setState({assistQ:c3})})),
+      chips:["Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),
       hits, hitsNone:qq.length>2&&hits.length===0,
       coachLive:!!S.coachLive, coachOff:!S.coachLive,
-      coachBadge:S.coachLive?(S.coachModel||'COACH'):'TRAINING AID',
+      coachBadge:S.coachLive?(S.coachModel||'PIP'):'TRAINING AID',
       coachText:S.coachText||'', coachStatus:S.coachStatus||'OFFLINE',
       coachExplain:()=>this.coachAsk('explain',''),
-      coachAsk:()=>this.coachAsk('ask', this.state.assistQ)};
+      coachAsk:()=>this.coachAsk('ask', this.state.assistQ),
+      feed:(S.coachFeed||[]).map(m=>({
+        who:m.who||'PIP',
+        text:m.text||(m.kind==='live'?'…':''),
+        whoFg:m.who==='YOU'?'#31548F':'#6E4000',
+        liveCls:m.kind==='live'?'ess-coach-live':''
+      }))};
+    const palThink=!!(S.coachMood==='think'||(S.coachThink&&S.coachThink.length));
+    const pal={
+      mood:(S.coachMood==='think'||S.coachMood==='talk')?S.coachMood:(!S.coachLive?'off':(counts.unack?'alarm':'idle')),
+      right:S.assist?'322px':'18px',
+      click:()=>this.coachPalClick(),
+      title:S.coachLive?'PIP — click to talk':'PIP is asleep. Launch Station.command to wake the coach.',
+      thinkOn:palThink,
+      thinkHas:!!(S.coachThink&&String(S.coachThink).trim()),
+      thinkWait:S.coachMood==='think'&&!(S.coachThink&&String(S.coachThink).trim()),
+      think:S.coachThink||'',
+      tag:S.coachLive?(S.coachMood==='think'?'PIP · THINK':(S.coachMood==='talk'?'PIP · TALK':'PIP')):'PIP · OFF'
+    };
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
     const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
@@ -4282,7 +4503,7 @@ class Component extends DCLogic {
       disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
       isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
       gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg, arch,
-      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst,
+      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst, pal,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
       entryRef:(el)=>{ if(el&&document.activeElement!==el) el.focus(); },

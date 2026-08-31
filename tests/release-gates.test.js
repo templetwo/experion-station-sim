@@ -324,6 +324,20 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
     assert.deepEqual(offenders, [], offenders.join('\n'));
   });
 
+  await t.test('THE SPEC AND THIS GATE MUST NOT DISAGREE', () => {
+    // Seat 3/3 found this: a gate that grants an exception the spec does not name is a
+    // weaker gate under the same name. Resolution (a): V3-PLAN 11.4 / Rule 7 / §12 now
+    // name the local coach. Do not delete this assertion.
+    const spec = rd(path.join(ROOT, 'docs', 'dev', 'V3-PLAN.md'));
+    const page = rd(APP_PAGE);
+    const coreHasCoach = /fetch\s*\(\s*['`]\/api\/coach\//.test(page);
+    const specNamesCoach = /coach/i.test(spec);
+    assert.equal(coreHasCoach && !specNamesCoach, false,
+      'GATE 4 SPEC/TEST DIVERGENCE: the core calls fetch(\'/api/coach/...\') and this suite ' +
+      'permits it, but docs/dev/V3-PLAN.md never mentions the coach. Resolve by amending the ' +
+      'spec to name the exception, or by moving the coach out of the core.');
+  });
+
   await t.test('nothing in the core names a gateway or model service', () => {
     const BANNED = /\b(gateway|grpc|websocket server|model service|inference endpoint|openai|anthropic|api[_-]?key)\b/i;
     const offenders = [];

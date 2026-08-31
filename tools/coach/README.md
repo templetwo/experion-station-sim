@@ -1,40 +1,38 @@
 <!-- @artifact dev -->
-# AI coach sidecar
+# AI coach sidecar (PIP)
 
-Optional. Not in v3.0.0. Not in the deterministic core.
+Optional. Not in the v3.0.0 tag. Not in the deterministic core.
 
-V3-PLAN Rule 7 / Gate 4: the station never fetches, never waits on a model.
-This process sits beside it. It serves a copy of the standalone build, injects
-a panel, and asks a **local Ollama** model to explain alarms or give a short
-tip. Hidden instructor fault ids are stripped from the prompt inputs (they are
-never sent) and from the model text if it invents one.
+V3-PLAN Rule 7 / Gate 4: `step()` never fetches. `src/*.js` never fetches.
+The page may call relative `/api/coach/` only, fail-open. This process sits
+beside the station, serves the standalone build, and talks to **local Ollama**.
+
+PIP is the little analog-gauge watchstander: hover character, thought bubbles
+from granite think, streaming feed in Ops Assistant.
 
 ## Run
 
-Ollama must already be up. Default model is `granite4.2:8b` (think off for
-tips). Override with `COACH_MODEL`.
+Ollama must already be up. Default model is `granite4.2:8b` with think on.
+Override with `COACH_MODEL`. `COACH_THINK=false` turns thinking off.
 
 ```bash
 python3 tools/coach/serve.py
 ```
 
+Or double-click **Launch Station.command**.
+
 Open **http://127.0.0.1:8766/**  (not the `file://` dist).
 
-Env: `COACH_MODEL`, `COACH_PORT`, `OLLAMA_HOST`.
+Env: `COACH_MODEL`, `COACH_PORT`, `OLLAMA_HOST`, `COACH_THINK`.
 
 ## What you get
 
-The **Ops Assistant** column **is** the coach when you use Launch Station.command.
-COACH at the top talks to local granite. LIVE DIAGNOSIS below is rule-based and
-always on. The page calls relative `/api/coach/` only, fail-open, never from
-`step()`. Opening the raw html stays offline.
-
-- New UNACK alarm → one short tip (debounced)
-- **EXPLAIN ALARM** → selected alarm, or the worst active one
-- Type in ASK ABOUT A PROBLEM, then **ASK AI**
-- System prompt: `tools/coach/prompt.txt`
-
-The existing Ops Assistant (rule-based LIVE DIAGNOSIS) is unchanged.
+- PIP hovers over the console. Click to talk. Thought cloud while granite thinks.
+- Streaming feed in OPS ASSISTANT (newest first, SOE-style).
+- EXPLAIN ALARM, ASK PIP, topic chips, type + Enter.
+- New UNACK → one short tip (debounced).
+- Multi-turn: last few YOU/PIP lines go back with the next question.
+- LIVE DIAGNOSIS below is still the rule-based assistant.
 
 ## What it must not do
 

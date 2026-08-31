@@ -26,6 +26,8 @@ Two rules are added for v3:
 
 **Rule 7. The deterministic core never waits on a network or a model.** No fetch, no socket, no timer-coupled external call anywhere in simulation, control, alarm, topology, fault, drill, or scoring logic. The Ops Assistant in the core remains rule-based and offline. Any future AI or network capability lives in a separate optional sidecar (Section 12) and may only observe projections and propose commands; it never mutates state directly.
 
+Named exception (Gate 4): `Launch Station.command` may start a local coach sidecar. The page may call relative `/api/coach/` only, fail-open, never from `step()`. `src/*.js` still has zero network. `file://` stays offline. Hidden-fault truth never enters the coach projection. This is not the deferred REST/WebSocket/gRPC gateway.
+
 ## 2. Scope decisions
 
 | In v3.0.0 | Deferred (not in this release) |
@@ -248,12 +250,14 @@ Exact canonical equality applies within the same runtime/model build; any future
 1. **Learning:** a trainee can start at a bad-looking PV and reason through field, I/O, control, network, server/HMI, and information layers.
 2. **Operations:** drills reward keeping the simulated process safe over guessing the root cause; the safety gate is live.
 3. **Determinism:** an instructor can restore and replay the same exercise and obtain the same causal sequence and score.
-4. **Separation:** the standalone runs fully offline; nothing in the core references a gateway or model service.
+4. **Separation:** the standalone `file://` build runs fully offline. Nothing in `src/*.js` references a gateway or model service. The optional local coach sidecar (Launch Station.command, relative `/api/coach/` only, fail-open, never from `step()`) is the named Gate 4 exception; it is not a gateway.
 5. **Provenance:** every vendor-specific concept traces to a registered public source; the automated provenance test passes; rules 1 and 6 hold across the diff.
 
-## 12. Deferred sidecar (design constraints only; do not build in v3)
+## 12. Optional local coach; deferred networked gateway
 
-When the networked gateway comes, it is a separate package with its own dependencies and CI, speaking to the core only through `dispatch` and the selectors. REST for control-plane, WebSocket for telemetry with mandatory `seq` and gap-resync, gRPC service-to-service only. Real authentication (OIDC/OAuth with PKCE) is fully separate from the pedagogical oper/supv/engr/mngr passwords. The AI context contract sends a bounded projection that physically excludes hidden-fault truth, and AI output is advisory: hypotheses with evidence for and against, never direct writes. Any AI-proposed action becomes an explicit proposed command requiring human acceptance, then journals like any other actor. None of this ships in v3; it is recorded here so no v3 decision forecloses it.
+A local Ollama coach (PIP) may ride beside the station when launched with `Launch Station.command`. It serves the standalone page, streams granite replies, and never mutates process/control/alarm/topology state. Projection is TRAINEE_SAFE. Close the sidecar and the trainer is the same offline artifact.
+
+The networked gateway remains deferred: a separate package with its own dependencies and CI, speaking to the core only through `dispatch` and the selectors. REST for control-plane, WebSocket for telemetry with mandatory `seq` and gap-resync, gRPC service-to-service only. Real authentication (OIDC/OAuth with PKCE) is fully separate from the pedagogical oper/supv/engr/mngr passwords. The AI context contract sends a bounded projection that physically excludes hidden-fault truth, and AI output is advisory: hypotheses with evidence for and against, never direct writes. Any AI-proposed action becomes an explicit proposed command requiring human acceptance, then journals like any other actor. The gateway itself does not ship in v3.0.0.
 
 ## 13. v3.1 candidate: a recycle-plant unit, the clean way
 

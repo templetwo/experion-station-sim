@@ -88,7 +88,7 @@ def main() -> int:
         print("  %s/" % BASE)
     else:
         print("Browser should open. Leave this terminal open while you train.")
-        print("Right column: OPS ASSISTANT → AI TIPS. EXPLAIN ALARM / ASK AI.")
+        print("PIP hovers on the board. Click PIP, EXPLAIN ALARM, or just talk.")
 
     if child is not None:
         try:
