@@ -17,7 +17,7 @@ assertion to get green.
 | | |
 |---|---|
 | Branch / HEAD | `v3` @ `fb3123a` (feat `f5a8107` + docs). Working tree was clean after those two commits. |
-| `origin/v3` | **Does not exist.** `git ls-remote --heads origin` returns `main` only. Do not push. |
+| `origin/v3` | **Exists.** Anthony pushed 2026-08-31. Tip at push was `2fb1ebe`. `main` remains 2.0.0. Do not force-push. |
 | Tag | `3.0.0` is not cut. Do not tag. |
 | SHA-measured suite | scratch clone of `fb3123a`: **708 tests, 707 pass, 1 skip, 0 fail**. Skip is gate 5's diff-wide human review, named in `tests/release-gates.test.js`. |
 | Dist | 644,094 bytes, 21 manifest entries. `tools/smoke.sh` folder ok / dist ok on this repo. |
@@ -54,7 +54,7 @@ These are on `f5a8107`. Treat a reimplementation as the named fail mode.
 
 | Item | Why |
 |---|---|
-| `git push origin v3` | Laptop-only until he says. |
+| `git push origin v3` | Already pushed 2026-08-31. Do not force-push. Ordinary push only if you have new commits and he asked. |
 | `git tag 3.0.0` | Same. |
 | `git add -A` | This branch paid for that three times. Path-stage. |
 | Hand-edit `dist/` or `support.js` or `src/model-id.js` | Rule 2. Stamp via `python3 tools/build-dist.py`. |
