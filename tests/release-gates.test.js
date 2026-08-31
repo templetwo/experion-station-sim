@@ -88,13 +88,24 @@ test('GATE 1 LEARNING: every layer is reachable, and every drill localises to a 
     assert.deepEqual(bad, [], `drills localising to a non-layer: ${bad.join(', ')}`);
   });
 
-  await t.test('SKIPPED: the trainee-facing reasoning flow', { skip:
-    'GATE 1 is only HALF assertable at this sha. The model half (layers exist, are ' +
-    'reachable, and every drill localises to one) is asserted above. The interaction half ' +
-    '— a trainee actually starting at a bad-looking PV and reasoning through the layers in ' +
-    'the UI — is the Diagnose mode wired by S3 (V3-PLAN section 9, "S3 Diagnose + scoring"). ' +
-    'Asserting it today would be asserting aspiration.'
-  }, () => {});
+  await t.test('a trainee starts an A-drill from the Training Drills dialog and lands in Diagnose', () => {
+    const { Component } = load();
+    const c = new Component({});
+    c.initSim();
+    c.setState({ dlg: { type: 'drills' } });
+    const listed = c.renderVals().dg.archDrills || [];
+    assert.equal(listed.length, 12, 'A1-A12 must be reachable from the trainee dialog');
+    assert.deepEqual(listed.map((x) => x.id), drillIds);
+    const a6 = listed.find((x) => x.id === 'A6');
+    a6.cb();
+    assert.equal(c.P.aDrill && c.P.aDrill.id, 'A6');
+    assert.equal(c.state.display, 'arch');
+    assert.equal(c.state.archMode, 'diagnose');
+    const chips = (c.renderVals().arch.modeChips || []).map((m) => m.label || m.id);
+    assert.ok(chips.some((x) => String(x).toUpperCase().includes('DIAGNOSE')),
+      'Diagnose must be offered: ' + chips.join(','));
+    assert.ok(!chips.some((x) => x === 'LEARN'), 'Learn stays hidden during the drill');
+  });
 });
 
 // ==================================================== GATE 2 — OPERATIONS

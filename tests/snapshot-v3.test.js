@@ -46,14 +46,20 @@ function realV2Snapshot(c) {
 // ==================================================== 1. THE SHAPE
 
 test('snapshot v3: the v2 shape is pinned and carries no version marker', async (t) => {
-  await t.test('makeSnapshot emits no schemaVersion of any kind', () => {
+  await t.test('makeSnapshot emits schemaVersion 3.0 on new records', () => {
     const c = boot();
     const snap = c.snapshotData('x');
-    assert.equal('schemaVersion' in snap, false,
-      'a version marker appeared in the snapshot. That is allowed, but the migration must ' +
-      'STILL key on absence for the v2 records already in the wild — update this test ' +
-      'deliberately rather than deleting it.');
+    assert.equal(snap.schemaVersion, '3.0');
+    assert.equal('architecture' in snap, true,
+      'v3 snapshots carry a top-level architecture view; restore still keys v2 on ABSENCE');
     assert.equal('version' in snap, false);
+  });
+
+  await t.test('migration still keys on ABSENCE: a stripped v2 record has no schemaVersion', () => {
+    const c = boot();
+    const v2 = realV2Snapshot(c);
+    assert.equal('schemaVersion' in v2, false,
+      'realV2Snapshot must keep producing the wild-v2 shape (no marker) so restore can detect it');
   });
 
   await t.test('the v2 key set is exactly what migration must cope with', () => {

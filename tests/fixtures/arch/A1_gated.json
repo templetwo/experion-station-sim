@@ -11,10 +11,10 @@
     "VLV-FV102"
   ],
   "domain": "FIELD",
-  "eventCount": 5,
-  "physicsDigest": "ff1d1ff7ff2583f6c308d5d432f8328ea15f385e62084ebe62b183a6e5d53042",
+  "eventCount": 6,
+  "physicsDigest": "4bb6c5c082908644edf1178e933da5a90b8621ec07e0027b962eda42506b66ee",
   "healthDigest": "e0d1edee5b48877c7831aee0dcfdd24dbf5c7a8c77b7476d63a18ecd25bcbfa8",
-  "score": 90,
-  "pass": true,
-  "gated": false
+  "score": 79,
+  "pass": false,
+  "gated": true
 }

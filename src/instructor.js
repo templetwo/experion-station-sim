@@ -29,6 +29,7 @@
 //   replayDue(replay, t)         entries whose time has come, advancing the cursor
 //   journalText(e, fmtT)         one-line text for a journal entry
 //   presets()                    initial-condition definitions (data only)
+//   compoundScripts()            ordered architecture-fault timelines (instructor staging)
 //   upsetDefs()                  upset list with the magnitude control where meaningful
 //   variableDefs()               instructor variables and their ranges
 //   speeds()                     [1, 2, 5, 10]
@@ -75,17 +76,39 @@
     return null;
   }
 
+  // V3-PLAN §4 snapshot v3. New records carry schemaVersion. v2 records in the wild
+  // carry NO version marker at all; restore MUST key on absence of the field, never
+  // on `schemaVersion < 3` (undefined < 3 is false, which would skip migration).
+  var SCHEMA_VERSION = '3.0';
+
+  function architectureFromProcess(P) {
+    P = P || {};
+    var faults = P.archFaults || {};
+    var meta = P.archMeta || {};
+    var active = Array.isArray(faults.activeFaults) ? clone(faults.activeFaults) : [];
+    return {
+      nodeHealth: meta.nodeHealth && typeof meta.nodeHealth === 'object' ? clone(meta.nodeHealth) : {},
+      edgeHealth: meta.edgeHealth && typeof meta.edgeHealth === 'object' ? clone(meta.edgeHealth) : {},
+      activeFaults: active,
+      profile: typeof meta.profile === 'string' && meta.profile ? meta.profile : 'console'
+    };
+  }
+
   function makeSnapshot(src, name) {
     var bad = nonFinitePath({ P: src.P, L: src.L, V: src.V }, '');
     if (bad) throw new Error('non-finite value at ' + bad);
+    var ess = (typeof globalThis !== 'undefined' && globalThis.ESS) || null;
     return {
+      schemaVersion: SCHEMA_VERSION,
+      modelId: src.modelId != null ? src.modelId : (ess && ess.MODEL_ID) || null,
       name: name || '', t: src.t, wall: src.wall || 0,
       seed: src.seed, randState: src.randState == null ? null : src.randState,
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
       disabledAssets: Array.isArray(src.disabledAssets) ? src.disabledAssets.slice() : [],
-      drill: src.drill ? clone(src.drill) : null
+      drill: src.drill ? clone(src.drill) : null,
+      architecture: src.architecture ? clone(src.architecture) : architectureFromProcess(src.P)
     };
   }
 
@@ -282,12 +305,43 @@
 
   function speeds() { return [1, 2, 5, 10]; }
 
+  // V3-PLAN section 8: compound scripts as ordered fault timelines. Data only;
+  // the app's runCompoundScript() fires each step through setArchFault so every
+  // onset is dispatch-journaled. Reserved legacy pairs (xmtr/drift/stick) are
+  // deliberately not used here -- the matrix already excludes them.
+  function compoundScripts() {
+    return [
+      {
+        id: 'CS1',
+        title: 'Degraded path, then bias, then history gap',
+        desc: 'V3-PLAN section 8 example: net-path degradation, then a transmitter bias, then history loss. Three independent domains, staggered onsets.',
+        steps: [
+          { tSec: 0, faultId: 'NET_PATH_DEGRADED', target: 'NET-U1-B' },
+          { tSec: 30, faultId: 'BIASED_MEASUREMENT', target: 'XMTR-TIC201', magnitude: 2 },
+          { tSec: 60, faultId: 'HISTORIAN_GAP', target: 'SVC-HISTORY' }
+        ]
+      },
+      {
+        id: 'CS2',
+        title: 'Partition then server',
+        desc: 'Both of U3\'s redundant network paths fail together, then the data server degrades. Common-cause comms followed by a service fault.',
+        steps: [
+          { tSec: 0, faultId: 'COMMS_PARTITION', target: 'NET-U3-A' },
+          { tSec: 0, faultId: 'COMMS_PARTITION', target: 'NET-U3-B' },
+          { tSec: 45, faultId: 'SERVER_SERVICE_DEGRADED', target: 'SVC-SERVER' }
+        ]
+      }
+    ];
+  }
+
   return {
     create: create, resetRun: resetRun, clone: clone, makeSnapshot: makeSnapshot,
+    SCHEMA_VERSION: SCHEMA_VERSION, architectureFromProcess: architectureFromProcess,
     replayRefusal: replayRefusal,
     pushRing: pushRing, ringPick: ringPick, trimAfter: trimAfter,
     journalAdd: journalAdd, logAdd: logAdd, nonFinitePath: nonFinitePath, replayPlan: replayPlan, replayDue: replayDue, journalText: journalText,
     presets: presets, upsetDefs: upsetDefs, variableDefs: variableDefs, getPath: getPath, setPath: setPath, speeds: speeds,
+    compoundScripts: compoundScripts,
     RING_MS: RING_MS, RING_SPAN_MS: RING_SPAN_MS, SLOTS: SLOTS, JOURNAL_CAP: JOURNAL_CAP, DEFAULT_SEED: DEFAULT_SEED
   };
 });

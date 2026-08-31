@@ -18,6 +18,8 @@ const Dispatch = require('../src/dispatch.js');
 const Topology = require('../src/topology.js');
 const DrillArch = require('../src/drill-arch.js');
 const Instructor = require('../src/instructor.js');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function builtGraph() {
   const { Component } = load();
@@ -35,6 +37,9 @@ function makeCtx(opts) {
   const I = Instructor.create({});
   return {
     graph,
+    // Every scoring command is mode-gated and FAILS CLOSED, so a ctx with no archMode
+    // refuses everything. Default to the mode the four evidence commands live in.
+    archMode: opts.archMode === undefined ? 'diagnose' : opts.archMode,
     training: Dispatch.createTrainingState(),
     instr: I,
     journal: I.journal,
@@ -290,5 +295,129 @@ test('deterministic, and survives snapshot/restore', async (t) => {
     const ev = bare.dispatch(makeCtx(), { type: Dispatch.TYPES.MARK_EVIDENCE, actor: 'TRAINEE', target: 'XMTR-FIC102', simTime: 1 });
     assert.equal(ev.accepted, false);
     assert.match(ev.reason, /no handler registered/);
+  });
+});
+
+
+// ==================================================== 5. MODE GATING (architect's final ruling)
+
+test('every scoring command is gated to the mode where earning it means something', async (t) => {
+  // ARCHITECT'S FINAL RULING, 2026-08-31, superseding two earlier versions. V3-PLAN line 186:
+  // "Learn shows the answer; Diagnose asks the learner to infer it". A trainee mid-A-drill
+  // could switch to Learn, read which nodes the blast radius lights up, mark or pin exactly
+  // those, and bank evidence points for reading the answer key.
+  //
+  // THE LIST IS DERIVED, NOT TYPED. Two rulings each missed a command by enumerating from
+  // memory — PIN_COMPARE first, then DEBRIEF. So the authoritative list is re-derived here
+  // from drill-arch's expectedActions, where the scoring truth actually lives. A sixth
+  // scoring command added later fails this file rather than slipping through ungated.
+  const scoring = new Set();
+  DrillArch.drillIds().forEach((id) => {
+    DrillArch.drillById(id).expectedActions.forEach((a) => scoring.add(a.actionType));
+  });
+  const trainingCmds = [...scoring].filter((t2) => /^TRAINING\./.test(t2)).sort();
+
+  await t.test('THE GENERALISATION: every TRAINING.* scoring command has a mode gate', () => {
+    const ungated = trainingCmds.filter((t2) => !Dispatch.COMMAND_MODE[t2]);
+    assert.deepEqual(ungated, [],
+      'scoring commands with no mode gate: ' + ungated.join(', ') +
+      '. Every command that can earn rubric points must be gated to the mode in which ' +
+      'earning it means something. Add it to COMMAND_MODE in src/dispatch.js.');
+    assert.ok(trainingCmds.length >= 5, `only ${trainingCmds.length} TRAINING commands derived — the derivation is not working`);
+  });
+
+  await t.test('ACK is correctly NOT gated: it is a legacy v2 journal op, not a dispatch command', () => {
+    // Guards against someone "completing" the list by gating a command that does not exist
+    // in dispatch. The app has journaled op:'ACK' since v2 and the scorer matches it as-is.
+    assert.ok(scoring.has('ACK'), 'ACK is no longer a scored action — re-derive this expectation');
+    assert.equal(Dispatch.COMMAND_MODE['ACK'], undefined);
+  });
+
+  // A minimal valid command per type, so each can be ACCEPTED in its own mode.
+  function cmdFor(type, ctx) {
+    const base = { type, actor: 'TRAINEE', simTime: 10 };
+    if (type === Dispatch.TYPES.MARK_EVIDENCE || type === Dispatch.TYPES.VERIFY) {
+      ctx.inspect('XMTR-FIC102');
+      return Object.assign(base, { target: 'XMTR-FIC102' });
+    }
+    if (type === Dispatch.TYPES.PIN_COMPARE) {
+      return Object.assign(base, { payload: { targets: ['XMTR-FIC102', 'VLV-FV102'] } });
+    }
+    if (type === Dispatch.TYPES.SUBMIT_HYPOTHESIS) return Object.assign(base, { payload: { domain: 'FIELD' } });
+    if (type === Dispatch.TYPES.DEBRIEF) return Object.assign(base, { payload: { correct: true } });
+    throw new Error('no fixture for ' + type);
+  }
+
+  for (const type of trainingCmds) {
+    const want = Dispatch.COMMAND_MODE[type];
+    const wrong = want === 'diagnose' ? 'learn' : 'diagnose';
+
+    await t.test(`${type}: ACCEPTED in ${want}`, () => {
+      // THE POSITIVE CONTROL. Without it the whole section passes against a validate()
+      // that refuses everything, which is the failure mode of a gate nobody can satisfy.
+      const ctx = makeCtx({ archMode: want });
+      const ev = wired(ctx).dispatch(ctx, cmdFor(type, ctx));
+      assert.equal(ev.accepted, true, `${type} refused in its own mode: ${ev.reason}`);
+    });
+
+    await t.test(`${type}: REFUSED in ${wrong}, with a reason naming the mode`, () => {
+      const ctx = makeCtx({ archMode: wrong });
+      const ev = wired(ctx).dispatch(ctx, cmdFor(type, ctx));
+      assert.equal(ev.accepted, false, `${type} was allowed in ${wrong} — scoring credit for the wrong mode`);
+      assert.match(ev.reason, /wrong mode/);
+      assert.match(ev.reason, new RegExp(want), 'the refusal does not name the mode it requires');
+      assert.equal(ctx.journal[0].accepted, false, 'the refusal must still be journaled');
+    });
+
+    await t.test(`${type}: FAILS CLOSED when ctx.archMode is absent`, () => {
+      const ctx = makeCtx({ archMode: null });
+      const ev = wired(ctx).dispatch(ctx, cmdFor(type, ctx));
+      assert.equal(ev.accepted, false, `${type} passed with no mode at all — a scoring gate must not default open`);
+      assert.match(ev.reason, /mode unavailable/);
+    });
+  }
+});
+
+
+// ==================================================== 6. THE CTX CONTRACT
+
+test('the app builds a ctx carrying every field these handlers read', async (t) => {
+  // WRITTEN AFTER THIS SEAT SHIPPED THE BUG IT CATCHES. The mode gate fails closed on a
+  // missing ctx.archMode — correct in isolation. But the app's archTrainingCtx() supplied
+  // {graph, training, wasInspected, journalAdd} and NOT archMode, so in the real app EVERY
+  // scoring command was refused, in every mode, including the legitimate one. The leak was
+  // closed and so was the path it was supposed to leave open.
+  //
+  // These unit tests were green throughout, because makeCtx() above supplies archMode. Two
+  // green suites with nothing spanning them — the same failure this build has produced
+  // eight times, committed here by the seat that has been cataloguing it. A behavioural
+  // sweep (seat 3/3's) caught what a contract test structurally could not see.
+  //
+  // The list is DERIVED from what src/dispatch.js actually reads off ctx, never typed, so a
+  // handler that starts depending on a new ctx field fails here until the app supplies it.
+  const dispatchSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'dispatch.js'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8');
+
+  const needed = new Set();
+  const re = /\bctx\.([A-Za-z_$][\w$]*)/g;
+  let m;
+  while ((m = re.exec(dispatchSrc))) needed.add(m[1]);
+
+  await t.test('the derivation is not vacuous', () => {
+    assert.ok(needed.size >= 4, `only ${needed.size} ctx fields derived from dispatch.js`);
+    for (const k of ['graph', 'wasInspected', 'journalAdd', 'archMode']) {
+      assert.ok(needed.has(k), `dispatch.js no longer reads ctx.${k} — re-derive this expectation`);
+    }
+  });
+
+  await t.test('archTrainingCtx() supplies all of them', () => {
+    const at = appSrc.indexOf('archTrainingCtx(){');
+    assert.ok(at > 0, 'archTrainingCtx is gone from the app page');
+    const body = appSrc.slice(at, appSrc.indexOf('\n  }', at));
+    const missing = [...needed].filter((k) => !new RegExp('\\b' + k + '\\s*:').test(body)).sort();
+    assert.deepEqual(missing, [],
+      'the app builds a training ctx missing fields dispatch reads: ' + missing.join(', ') +
+      '. Every handler that reads one of these FAILS CLOSED, so the commands are refused in ' +
+      'every mode and the feature is silently dead. Fix in archTrainingCtx().');
   });
 });

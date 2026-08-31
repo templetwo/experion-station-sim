@@ -192,7 +192,11 @@
       objectives: spec.objectives.slice(),
       basePreset: spec.basePreset,
       trigger: { type: 'DRILL_START', description: spec.triggerNote || 'Drill begins once the base preset has settled; fault timing below is relative to drill start.' },
-      faultTimeline: spec.faultTimeline.map(function (f) { return { tSec: f.tSec, faultId: f.faultId, targets: f.targets.slice(), note: f.note }; }),
+      faultTimeline: spec.faultTimeline.map(function (f) {
+        var step = { tSec: f.tSec, faultId: f.faultId, targets: f.targets.slice(), note: f.note };
+        if (f.magnitude != null) step.magnitude = f.magnitude;
+        return step;
+      }),
       expectedActions: actions,
       scoringRules: scoringRules,
       safetyGate: [gate],
@@ -425,7 +429,7 @@
       ],
       basePreset: 'U1_HIFEED',
       primary: 'XMTR-TIC201', domain: 'FIELD', compare: ['XMTR-TIC201', 'CM-CM3_TIC201'],
-      faultTimeline: [{ tSec: 120, faultId: 'BIASED_MEASUREMENT', targets: ['XMTR-TIC201'], note: 'TIC201 biases low while R-201 is already running hot at high feed; the controller responds to the bad reading by heating further, and downstream alarms follow.' }],
+      faultTimeline: [{ tSec: 120, faultId: 'BIASED_MEASUREMENT', targets: ['XMTR-TIC201'], magnitude: 2, note: 'TIC201 biases low while R-201 is already running hot at high feed; the controller responds to the bad reading by heating further, and downstream alarms follow.' }],
       gate: { actionType: 'INTERLOCK.DEFEAT', target: 'XMTR-TIC201' },
       gateDescription: 'Defeating or overriding the R-201 protective response that engaged downstream, instead of correcting the biased TIC201 measurement that caused it, treats the safeguard as the problem it just caught.',
       abortRules: [

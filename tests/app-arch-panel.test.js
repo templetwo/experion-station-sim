@@ -291,6 +291,36 @@ test('archPanel(): the matrix respects the layer filter and excludes reserved pa
   assert.match(row.recoveryT, /instructor/i, 'recovery condition text is surfaced');
 });
 
+test('compound scripts are data, listed on the panel, and RUN schedules delayed ARCH_FAULT_ACTIVATE steps', () => {
+  const Instructor = require('../src/instructor.js');
+  const scripts = Instructor.compoundScripts();
+  assert.ok(scripts.length >= 1, 'at least the V3-PLAN section 8 example must exist');
+  const cs1 = scripts.find((s) => s.id === 'CS1');
+  assert.ok(cs1, 'CS1 is the spec example: net-path degradation, then bias, then history loss');
+  assert.equal(cs1.steps.length, 3);
+  assert.equal(cs1.steps[0].faultId, 'NET_PATH_DEGRADED');
+  assert.equal(cs1.steps[1].faultId, 'BIASED_MEASUREMENT');
+  assert.equal(cs1.steps[2].faultId, 'HISTORIAN_GAP');
+  assert.ok(cs1.steps[0].tSec <= cs1.steps[1].tSec && cs1.steps[1].tSec <= cs1.steps[2].tSec,
+    'onsets must be ordered in time');
+
+  const c = boot('MNGR');
+  c.setState({ display: 'instr' });
+  const panel = c.archPanel();
+  assert.equal(panel.scripts.length, scripts.length);
+  const row = panel.scripts.find((s) => s.id === 'CS1');
+  assert.ok(row);
+  row.cb();
+  const pending = (c.P.archPending || []).concat(
+    FaultEngine.listActive(c.archFaultState()).map((inst) => ({ faultId: inst.faultId, targetNodeId: inst.targetNodeId, now: true }))
+  );
+  const fired = new Set(pending.map((e) => e.faultId + '@' + (e.targetNodeId || e.target)));
+  assert.ok(fired.has('NET_PATH_DEGRADED@NET-U1-B') || FaultEngine.isActive(c.archFaultState(), 'NET_PATH_DEGRADED', 'NET-U1-B'),
+    't=0 step must be active or pending immediately');
+  assert.ok((c.P.archPending || []).some((e) => e.faultId === 'HISTORIAN_GAP' && e.targetNodeId === 'SVC-HISTORY'),
+    't=60 history gap must be pending, not already active');
+});
+
 test('archPanel() is unreachable for a non-instructor render, same as the rest of instructorView()', () => {
   const c = boot('OPER');
   c.instr.auth = false;

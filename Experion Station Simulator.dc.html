@@ -21,6 +21,7 @@
 <script src="./src/signal-path.js"></script>
 <script src="./src/drill-arch.js"></script>
 <script src="./src/architecture-view-model.js"></script>
+<script src="./src/debrief.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -892,6 +893,18 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             <div style="color:#55524c;margin-top:1px">Recovery: {{ a.recoveryT }} · Blast radius: {{ a.blastT }}</div>
           </div>
         </sc-for>
+        <div style="font-weight:700;font-size:11.5px;margin-top:10px">COMPOUND SCRIPTS</div>
+        <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">Ordered fault timelines. RUN schedules each step through the same ARCH_FAULT_ACTIVATE dispatch as a matrix injection (onset delay = the step's tSec). Not a scored drill: instructor staging only.</div>
+        <sc-for list="{{ arch.scripts }}" as="cs" hint-placeholder-count="2">
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 4px;border-bottom:1px solid rgba(0,0,0,0.06)">
+            <div style="flex:1">
+              <div style="font-size:11.5px;font-weight:700">{{ cs.id }} - {{ cs.title }}</div>
+              <div style="font-size:10.5px;color:#55524c">{{ cs.desc }}</div>
+              <div style="font-size:10px;color:#55524c;margin-top:2px">{{ cs.stepsT }}</div>
+            </div>
+            <div style="padding:3px 12px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ cs.cb }}">RUN</div>
+          </div>
+        </sc-for>
         <div style="font-size:10.5px;color:#55524c;margin-top:6px">Every injection here routes through the same dispatch/journal boundary as UPSETS above (INSTRUCTOR actor, journaled once, replays deterministically) and honours the HIDDEN UPSETS switch. Blast radius and recovery condition are instructor-only; the trainee's ARCH view (Learn/Trace) sees only the resulting symptom, never this table.</div>
       </div>
 
@@ -1060,6 +1073,20 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           </sc-for>
         </sc-for>
       </svg>
+      <sc-if value="{{ arch.debriefOn }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px;background:#FAFAF8;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;padding:8px 10px;max-width:{{ arch.svgW }}px">
+          <div style="font-weight:700;font-size:12px;margin-bottom:4px">DEBRIEF TIMELINE</div>
+          <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">{{ arch.debrief.summary }} · {{ arch.debrief.projection }}</div>
+          <sc-if value="{{ arch.debrief.empty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#55524c">No journaled actions yet. Run an exercise, then replay a snapshot to fill this timeline.</div></sc-if>
+          <sc-for list="{{ arch.debrief.rows }}" as="dr" hint-placeholder-count="8">
+            <div style="display:flex;gap:8px;font-size:11px;padding:2px 0;border-bottom:1px solid rgba(0,0,0,0.06);color:{{ dr.fg }}">
+              <div style="width:48px;flex:none;color:#55524c">{{ dr.rel }}</div>
+              <div style="width:88px;flex:none;font-weight:700">{{ dr.lane }}</div>
+              <div style="flex:1">{{ dr.text }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
     </div>
     <div style="width:320px;flex:none;background:#CFCFCB;border-left:1px solid #9a968e;overflow-y:auto;padding:10px;font-size:11.5px;line-height:1.5">
       <sc-if value="{{ arch.hasInspector }}" hint-placeholder-val="{{ false }}">
@@ -1321,7 +1348,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       </sc-if>
 
       <sc-if value="{{ dg.isDrills }}" hint-placeholder-val="{{ false }}">
-        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:10px;line-height:1.5">A fault is injected 8–15 s after start (no announcement). Respond as an operator: <b>Silence → Ack → read condition → check trend → act → verify</b>. Scored on detection, action, trip avoidance, stabilization, and diagnosis.</div>
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:10px;line-height:1.5">Process drills (D-series): a fault is injected 8–15 s after start (no announcement). Respond as an operator: <b>Silence → Ack → read condition → check trend → act → verify</b>. Scored on detection, action, trip avoidance, stabilization, and diagnosis.</div>
         <sc-for list="{{ dg.drills }}" as="d" hint-placeholder-count="6">
           <div style="display:flex;align-items:center;padding:6px 8px;border:1px solid #B6B6B2;background:#CFCFCB;margin-bottom:4px">
             <div style="width:36px;font-weight:700">{{ d.id }}</div>
@@ -1332,6 +1359,14 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <div style="display:flex;justify-content:flex-end;margin-top:6px">
           <div style="padding:4px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ dg.randomDrill }}">RANDOM DRILL</div>
         </div>
+        <div style="font-size:11.5px;color:#3c3c3c;margin:12px 0 8px 0;line-height:1.5">Architecture drills (A1–A12): a hidden failure in the conceptual FIELD → INFORMATION path. Start loads the drill's initial condition and opens ARCH in Diagnose. Mark evidence, pin a comparison, name the failure domain, verify. Learn is hidden while a drill is running — it shows the answer.</div>
+        <sc-for list="{{ dg.archDrills }}" as="ad" hint-placeholder-count="12">
+          <div style="display:flex;align-items:center;padding:6px 8px;border:1px solid #B6B6B2;background:#CFCFCB;margin-bottom:4px">
+            <div style="width:36px;font-weight:700">{{ ad.id }}</div>
+            <div style="flex:1;font-size:12px">{{ ad.name }}</div>
+            <div style="padding:3px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ ad.cb }}">START</div>
+          </div>
+        </sc-for>
       </sc-if>
 
       <sc-if value="{{ dg.isDebrief }}" hint-placeholder-val="{{ false }}">
@@ -2947,6 +2982,12 @@ class Component extends DCLogic {
   archTrainingCtx(){
     return {
       graph:this.topo, training:this.P.training,
+      // The CURRENT view mode, and dispatch's requireMode() FAILS CLOSED without it: every
+      // scoring command is gated to the mode in which earning it means something, so an
+      // absent archMode refuses in Diagnose too and no A-drill can be scored at all. That
+      // was the state until this line existed -- the gate was correct and the seam was
+      // empty, which reads exactly like a broken gate from either side alone.
+      archMode:this.state.archMode,
       wasInspected:(id)=>!!this.P.archInspected[id],
       journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)
     };
@@ -3025,7 +3066,7 @@ class Component extends DCLogic {
     this.setState(s=>({tk:s.tk+1}));
   }
 
-  // ---------- A-drills A1-A6: a PARALLEL lane to the legacy D-series this.state.drill.
+  // ---------- A-drills A1-A12: a PARALLEL lane to the legacy D-series this.state.drill.
   // drillWatch/dHook/dAct/dTrip/endDrill/scoreDrill all read D-shaped def fields (rel,
   // act, stable, trips, q, a) an A-series DrillDefinition does not carry, so reusing that
   // slot mis-scores or crashes (architect addendum Q4) -- P.aDrill is its own lane.
@@ -3046,7 +3087,19 @@ class Component extends DCLogic {
     (step.targets||[]).forEach(target=>{
       const k=this.aDrillReservedUpsetKey(step.faultId,target);
       if(k){ this.injectFault(k,true); return; }
-      this.archFireFault(step.faultId,target,'STEP',0,null,null,this.P.t);
+      // Magnitude-bearing engine faults (BIASED_MEASUREMENT, NOISY_MEASUREMENT) refuse
+      // activate() without an explicit number or a seeded rand. A-drills never hand the
+      // live generator to the engine (that would shift every later noise sample). Prefer
+      // the step's own magnitude; otherwise the range midpoint, same as archStageSelect.
+      let mag=step.magnitude;
+      if(mag==null){
+        const def=ESS.FaultEngine.getFaultDef(step.faultId);
+        if(def&&def.magnitudeRange){
+          const r=def.magnitudeRange;
+          mag=Math.round(((r.min+r.max)/2)/r.step)*r.step;
+        }
+      }
+      this.archFireFault(step.faultId,target,'STEP',0,null,mag==null?null:mag,this.P.t);
     });
   }
   aDrillClear(step){
@@ -3069,6 +3122,30 @@ class Component extends DCLogic {
     this.instrNote('A-DRILL '+id+' ARMED — '+def.title.toUpperCase());
     if(!this.instr.hidden) this.postMsg('INSTRUCTOR: architecture drill '+id+' armed',{confirm:true,src:'INSTR'});
     this.setState(s=>({tk:s.tk+1}));
+  }
+  // Trainee-menu entry: load the drill's own basePreset (initSim wipes aDrill, so this
+  // MUST run before startADrill), arm the drill, then open ARCH in Diagnose. startADrill
+  // itself does none of this -- fixture scripts and ADRILL replay call it on an already
+  // settled plant and must not jump the display.
+  startADrillFromMenu(id){
+    const def=ESS.DrillArch.drillById(id);
+    if(!def){ this.msgZone('UNKNOWN ARCHITECTURE DRILL '+id); return; }
+    if(this.state.drill){ this.msgZone('A DRILL IS ALREADY ACTIVE — END IT FIRST'); return; }
+    if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ALREADY ACTIVE'); return; }
+    this.applyPreset(def.basePreset);
+    this.startADrill(id);
+    this.setState({display:'arch',archMode:'diagnose',dlg:null});
+  }
+  runCompoundScript(id){
+    const s=(ESS.Instructor.compoundScripts()||[]).find(x=>x.id===id);
+    if(!s){ this.msgZone('UNKNOWN COMPOUND SCRIPT '+id); return; }
+    (s.steps||[]).forEach(step=>{
+      this.setArchFault(step.faultId,step.target,{delaySec:step.tSec||0,
+        durationSec:step.durationSec==null?null:step.durationSec,mode:'STEP',
+        magnitude:step.magnitude==null?null:step.magnitude});
+    });
+    this.instrNote('COMPOUND SCRIPT '+id+' ARMED — '+s.title.toUpperCase());
+    this.setState(x=>({tk:x.tk+1}));
   }
   aDrillWatch(dt){
     const d=this.P.aDrill; if(!d) return;
@@ -3170,7 +3247,7 @@ class Component extends DCLogic {
   // touched here.
   archPanel(){
     const S=this.state, G=this.topo;
-    if(S.display!=='instr'||!G){ const a=this.archActiveList(); return {layers:[],rows:[],stage:null,active:a,activeCount:String(a.length),activeEmpty:!a.length}; }
+    if(S.display!=='instr'||!G){ const a=this.archActiveList(); return {layers:[],rows:[],stage:null,active:a,activeCount:String(a.length),activeEmpty:!a.length,scripts:[]}; }
     const layerKeys=['ALL'].concat(ESS.Topology.LAYERS);
     const layers=layerKeys.map(l=>({k:l,label:l,
       bg:S.archFilterLayer===l?'#B8C4D4':'#D4D0C8', bc:S.archFilterLayer===l?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',
@@ -3191,7 +3268,12 @@ class Component extends DCLogic {
       rows.push({id,label:n.label,layer:n.layer,kind:n.kind,cells});
     }
     const active=this.archActiveList();
-    return {layers,rows,stage:this.archStageView(),active,activeCount:String(active.length),activeEmpty:!active.length};
+    const scripts=(ESS.Instructor.compoundScripts()||[]).map(s=>({
+      id:s.id, title:s.title, desc:s.desc,
+      stepsT:(s.steps||[]).map(st=>'t='+st.tSec+'s '+st.faultId+' @ '+st.target).join(' ; '),
+      cb:()=>this.runCompoundScript(s.id)
+    }));
+    return {layers,rows,stage:this.archStageView(),active,activeCount:String(active.length),activeEmpty:!active.length,scripts};
   }
   setHidden(on){
     this.instr.hidden=!!on;
@@ -3233,6 +3315,7 @@ class Component extends DCLogic {
     if(plan.legacy) this.instrNote('REPLAY of legacy snapshot '+s.name+': this snapshot predates action sequencing, so completeness of the replayed journal CANNOT be verified.');
     this.restoreSnapshot(s,'REPLAY FROM SNAPSHOT: '+s.name);
     this.instr.replay=plan;
+    this.setState({display:'arch', archMode:'debrief'});
     this.instrLog('REPLAY STARTED — '+plan.entries.length+' ACTIONS TO '+this.fT(plan.toT));
     if(this.state.speed===0) this.setSpeed(1);
   }
@@ -3666,7 +3749,7 @@ class Component extends DCLogic {
         ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
       {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{l:'Architecture',f:()=>this.nav('arch',S.archTag)},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()},{sep:true},{l:'Disable / Enable Alarms for Asset… (MNGR)',f:()=>this.toggleAssetAlarms(S.almAsset)}]},
-      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>this.endDrill('ENDED BY INSTRUCTOR')},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
+      {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>{ if(this.P.aDrill) this.endADrill('ENDED BY INSTRUCTOR'); else this.endDrill('ENDED BY INSTRUCTOR'); }},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
     const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
@@ -3984,7 +4067,7 @@ class Component extends DCLogic {
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
     const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
-    const widths={logon:460,shelve:460,comment:520,drills:560,debrief:620,help:520,philosophy:680,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
+    const widths={logon:460,shelve:460,comment:520,drills:620,debrief:620,help:520,philosophy:680,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
     const cov=ESS.Training.coverage(this.tasksDone), covSum=ESS.Training.coverageSummary(this.tasksDone);
     const recs=this.trainingRecords.map(r=>({t:this.fD(r.t)+' '+this.fT(r.t),oper:r.oper,drill:r.drill+' — '+r.name,score:r.score+'/100',res:r.pass?'PASS':'NOT PASSED',fg:r.pass?'#0a3a12':'#A00000',
       detail:r.breakdown.map(b=>b.label+' '+b.earned+'/'+b.max).join(' · ')}));
@@ -4012,6 +4095,7 @@ class Component extends DCLogic {
       // startDrill() -- that function, drillWatch and the rest of the legacy lane read
       // D-shaped def fields an A-series DrillDefinition does not carry.
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,cb:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } this.startDrill(d); }})),
+      archDrills:ESS.DrillArch.drillIds().map(id=>{ const def=ESS.DrillArch.drillById(id); return {id,name:def.title,cb:()=>this.startADrillFromMenu(id)}; }),
       randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } const ds=this.drillDefs();this.startDrill(ds[Math.floor(this.modelCtx().rand()*ds.length)]);},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
@@ -4049,7 +4133,7 @@ class Component extends DCLogic {
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
       entryRef:(el)=>{ if(el&&document.activeElement!==el) el.focus(); },
-      db:{on:!!drill,tm:drill?this.mmss(P.t-drill.t0):'',end:()=>this.endDrill('ENDED BY INSTRUCTOR')},
+      db:{on:!!drill||!!this.P.aDrill,tm:this.P.aDrill?this.mmss(P.t-this.P.aDrill.startedAt):(drill?this.mmss(P.t-drill.t0):''),end:this.P.aDrill?(()=>this.endADrill('ENDED BY INSTRUCTOR')):(()=>this.endDrill('ENDED BY INSTRUCTOR'))},
       rootMove:(e)=>{ const d=S.drag; if(!d)return; const fps2=S.fps.map(f=>f.tag===d.tag?{...f,x:Math.max(0,e.clientX-d.dx),y:Math.max(0,e.clientY-d.dy)}:f); this.setState({fps:fps2}); },
       rootUp:()=>{ if(S.drag) this.setState({drag:null}); },
       sysPanels:[
@@ -4059,7 +4143,7 @@ class Component extends DCLogic {
         {title:'CONTROLLER C300-SIM',led:'#00A000',rows:[{k:'CEE base cycle',v:'50 mS (EMULATED)'},{k:'CM period',v:'500 mS'},{k:'Redundancy',v:'PRIMARY / SYNCED'}]},
         {title:'NETWORK FTE',led:'#00A000',rows:[{k:'FTE A',v:'OK'},{k:'FTE B',v:'OK'},{k:'Time source',v:'STATION CLOCK'}]},
         {title:'SIMULATION ENGINE',led:'#31548F',rows:simRows},
-        {title:'RELEASE',led:'#00A000',rows:[{k:'Conventions',v:'R530-ERA (REPRESENTATIVE)'},{k:'Build',v:'TRAINING SIM v2.0.0'},{k:'License',v:'EDUCATIONAL'}]}
+        {title:'RELEASE',led:'#00A000',rows:[{k:'Conventions',v:'R530-ERA (REPRESENTATIVE)'},{k:'Build',v:'TRAINING SIM v3.0.0'},{k:'License',v:'EDUCATIONAL'}]}
       ],
       ledSrv:'#00A000', ledCee:'#00A000',
       spdT:S.speed===0?'FROZEN':S.speed+'×', instrOpen:()=>this.openInstructor(),
@@ -4131,18 +4215,22 @@ class Component extends DCLogic {
     }
 
     const health=ESS.FaultEngine.healthProjection(this.archFaultState(),G);
+    // Learn is unavailable while an A-drill is active (V3-PLAN line 186, "Learn shows the
+    // answer" -- lead architect ruling of record, 2026-08-31): HIDDEN, not disabled, same
+    // rule S1 already applies to a mode a stage hasn't shipped yet. Hiding the mode CHIP is
+    // not enough on its own -- build()'s `mode` argument, not `availableModes`, is what
+    // decides whether blast radius renders, so a trainee already sitting in Learn when a
+    // drill starts must be remapped here too, or the chip disappears while the answer stays
+    // on screen. Remapped to 'trace' (never a crash, never a silent mode the trainee did not
+    // choose becoming 'diagnose' and quietly gating their next click).
+    const aDrillActive=!!this.P.aDrill;
+    const modeForBuild=(aDrillActive&&S.archMode==='learn')?'trace':S.archMode;
     const view=ESS.ArchitectureViewModel.build({
-      graph:G, health, mode:S.archMode, profile:S.archProfile,
-      // Stage scope, declared here rather than in a plan document: S1 shipped Learn and
-      // Trace; S3 turns on Diagnose here, as part of implementing it (evidence/hypothesis
-      // commands below, the safety gate live) -- S4 adds 'debrief'. Unimplemented modes
-      // stay hidden, never shown disabled -- a trainee must not be able to reach a stub.
-      // (V3-PLAN section 9; architect ruling 2026-08-30.) Diagnose itself is SAFE BY
-      // CONSTRUCTION at the module boundary (architecture-view-model.js has no truth
-      // parameter at all -- see its own header); turning it on here adds no new leak
-      // surface, only reveals the mode that was already implemented, view-safe, one
-      // stage early on purpose. tests/app-diagnose.test.js is the app-level proof.
-      availableModes:['learn','trace','diagnose'],
+      graph:G, health, mode:modeForBuild, profile:S.archProfile,
+      // Stage scope: S1 Learn/Trace, S3 Diagnose, S4 Debrief. A live A-drill hides Learn
+      // (answer key) and Debrief (review is for after / during replay). Unimplemented
+      // modes stay hidden, never shown disabled.
+      availableModes:aDrillActive?['trace','diagnose']:['learn','trace','diagnose','debrief'],
       // Live evidence (S3): the inspector's "Evidence collected" row now reads the
       // P-resident training state instead of the S1 stub. Still never truth -- this is
       // the trainee's OWN recorded actions, not a fault projection.
@@ -4208,22 +4296,32 @@ class Component extends DCLogic {
     const selPointRefs=(selNode&&G.nodes[selNode]&&G.nodes[selNode].pointRefs)||[];
     const traceActions=selPointRefs.map(t=>({label:'TRACE '+t,cb:()=>this.openArch(t,'trace')}));
 
-    // S3 training controls (V3-PLAN section 6, DO items 1-3). MARK EVIDENCE and VERIFY
-    // target the open inspector's node; both are offered only once a node is selected,
+    // S3 training controls (V3-PLAN section 6, DO items 1-3). MARK EVIDENCE, VERIFY and PIN
+    // target the open inspector's node; all three are offered only once a node is selected,
     // which is also the one explicit-open event that satisfies dispatch's fail-closed
-    // wasInspected check (archSelectNode marks it BEFORE these buttons are even
-    // reachable) -- clicking one here can never be "marking a node you never opened".
-    const evidenceChip=selNode?{label:'MARK EVIDENCE',cb:()=>this.markEvidence(selNode)}:null;
-    const verifyChip=selNode?{label:'VERIFY',cb:()=>this.verifyNode(selNode)}:null;
+    // wasInspected check (archSelectNode marks it BEFORE these buttons are even reachable)
+    // -- clicking one here can never be "marking a node you never opened".
+    //
+    // DIAGNOSE-ONLY, MATCHING dispatch.js's OWN GATE (src/dispatch.js requireMode(),
+    // "every command that can earn rubric points is gated to the mode in which earning it
+    // means something" -- Learn shows blast radius, so marking/pinning/verifying there
+    // would bank rubric points for reading the answer key rather than inferring it).
+    // dispatch.js enforces this as the BINDING rule regardless of what the UI shows (the
+    // scorer reads the journal, not the DOM); hiding these controls outside Diagnose here
+    // is belt-and-braces so a trainee is never shown a button that can only ever refuse.
+    const diagnoseOn=S.archMode==='diagnose';
+    const debriefOn=S.archMode==='debrief';
+    const debrief=debriefOn?this.archDebriefView():{rows:[],empty:true,summary:'',projection:''};
+    const evidenceChip=(diagnoseOn&&selNode)?{label:'MARK EVIDENCE',cb:()=>this.markEvidence(selNode)}:null;
+    const verifyChip=(diagnoseOn&&selNode)?{label:'VERIFY',cb:()=>this.verifyNode(selNode)}:null;
     const pinTray=S.archPinTray||[];
-    const pinChip=selNode?{label:pinTray.indexOf(selNode)>=0?'UNPIN':'PIN',cb:()=>this.togglePin(selNode)}:null;
+    const pinChip=(diagnoseOn&&selNode)?{label:pinTray.indexOf(selNode)>=0?'UNPIN':'PIN',cb:()=>this.togglePin(selNode)}:null;
     const pinTrayView=pinTray.map(id=>({id,label:(G.nodes[id]&&G.nodes[id].label)||id,cb:()=>this.togglePin(id)}));
     const compareChip={label:'COMPARE PINNED ('+pinTray.length+')',cb:()=>this.comparePins()};
     // SUBMIT HYPOTHESIS: seven chips, one per ESS.Dispatch.LAYERS domain (identical to
     // ESS.Topology.LAYERS -- tests/dispatch-training.test.js pins the two lists equal),
     // rendered only in Diagnose mode (V3-PLAN addendum Q3). A trainee names a failure
     // DOMAIN, never a fault id -- dispatch.js's own validate refuses anything else.
-    const diagnoseOn=S.archMode==='diagnose';
     const hypothesisChips=diagnoseOn?ESS.Dispatch.LAYERS.map(dom=>({label:dom,cb:()=>this.submitHypothesis(dom)})):[];
 
     const inspector=view.inspector?{
@@ -4245,11 +4343,63 @@ class Component extends DCLogic {
       tagT:tag||'(none selected — use a SIGNAL PATH action, or trace a point from its inspector)',
       svgW, svgH, layers, edges,
       inspector, hasInspector:!!inspector, inspectorEmpty:!inspector,
-      showPath:S.archMode!=='learn',
+      showPath:modeForBuild!=='learn',
       pathEmpty:!!view.empty, pathEmptyText:view.emptyText,
       branches,
-      hasPins:pinTray.length>0, pinTrayView, pinCount:String(pinTray.length), compareChip,
-      diagnoseOn, hypothesisChips
+      hasPins:diagnoseOn&&pinTray.length>0, pinTrayView, pinCount:String(pinTray.length), compareChip,
+      diagnoseOn, hypothesisChips,
+      debriefOn, debrief
+    };
+  }
+  // S4: ESS.Debrief timeline for ARCH Debrief mode / replay. The module is pure; this
+  // only packages live journals. Replay and instructor sessions may reveal architecture
+  // truth; a trainee reviewing without replay gets TRAINEE_SAFE (no fault ids).
+  archFaultTimeline(){
+    const list=(this.P.archFaults&&this.P.archFaults.activeFaults)||[];
+    return list.map(f=>({
+      t:f.activatedAt!=null?f.activatedAt:this.t0,
+      faultId:f.faultId, targetNodeId:f.targetNodeId, phase:'ACTIVE', health:f.health
+    }));
+  }
+  // LEAKAGE FIX (adversarial verify, S3 round): ESS.Debrief's own journal pass is
+  // unconditional -- it renders every journal row's text regardless of projection
+  // (src/debrief.js's own header: "the module cannot know which prose does" name a
+  // fault, so filtering PROSE is the CALLER's job, explicitly). Three journaled ops
+  // carry a fault identity directly in {tag,arg} and all three stamp instr:true:
+  // legacy 'UPSET' (tag IS the reserved upset key, e.g. 'xmtr'/'drift'/'stick' --
+  // I.journalText renders literally "UPSET xmtr ON"), and 'ARCHFAULT'/'ARCHCLEAR'
+  // (arg IS the literal FaultEngine faultId, e.g. "ARCHFAULT SVC-SERVER
+  // SERVER_SERVICE_DEGRADED"). Left unfiltered, a plain trainee session (no replay,
+  // no instructor auth -- projection TRAINEE_SAFE) that opens ARCH Debrief sees the
+  // root cause verbatim the moment any fault has ever been injected, hidden switch
+  // or not -- the same shape of leak S2 found in the instructor-log mirror. Strip
+  // just these three ops when not revealing, matching the "no trace" guarantee
+  // hiddenNote already promises elsewhere, rather than editing the locked module or
+  // touching any row this method does not itself compose.
+  archDebriefJournalSafe(reveal){
+    if(reveal) return this.instr.journal;
+    return this.instr.journal.filter(e=>!(e&&e.instr&&(e.op==='UPSET'||e.op==='ARCHFAULT'||e.op==='ARCHCLEAR')));
+  }
+  archDebriefView(){
+    const I=ESS.Instructor;
+    const reveal=!!(this.instructorAllowed()||(this.instr&&this.instr.replay));
+    const out=ESS.Debrief.build({
+      journal:this.archDebriefJournalSafe(reveal), alarmLog:this.alarmLog, events:this.events,
+      hist:this.hist, faultTimeline:this.archFaultTimeline(), t0:this.t0
+    },{
+      projection:reveal?'DEBRIEF_REVEALED':'TRAINEE_SAFE',
+      journalText:e=>I.journalText(e,t=>this.fT(t)),
+      tags:['FIC102','TIC201','LIC101']
+    });
+    const counts=out.summary&&out.summary.counts||{};
+    return {
+      rows:(out.rows||[]).map(r=>({
+        rel:this.mmss(r.rel||0), lane:r.lane, actor:r.actor, kind:r.kind, text:r.text,
+        fg:r.kind==='REFUSED'?'#7A2E0E':'#1c1c1c'
+      })),
+      empty:!out.rows.length,
+      summary:(counts.operator||0)+' operator · '+(counts.instructor||0)+' instructor · '+(counts.refused||0)+' refused',
+      projection:out.projection
     };
   }
   // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)

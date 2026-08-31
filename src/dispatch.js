@@ -152,6 +152,7 @@
     PIN_COMPARE: 'TRAINING.PIN_COMPARE',
     SUBMIT_HYPOTHESIS: 'TRAINING.SUBMIT_HYPOTHESIS',
     VERIFY: 'TRAINING.VERIFY',
+    DEBRIEF: 'TRAINING.DEBRIEF',
     DRILL_START: 'DRILL_START',
     DRILL_END: 'DRILL_END',
     SNAPSHOT_RESTORE: 'SNAPSHOT_RESTORE'
@@ -164,6 +165,49 @@
   // authority; tests/dispatch-training.test.js asserts these two lists are identical, so
   // the copy cannot drift without a test going red.
   var LAYERS = Object.freeze(['FIELD', 'IO', 'CONTROL', 'NETWORK', 'SERVICE', 'HMI', 'INFORMATION']);
+
+  // EVERY COMMAND THAT CAN EARN RUBRIC POINTS IS GATED TO THE MODE IN WHICH EARNING IT MEANS
+  // SOMETHING. Architect's final ruling (2026-08-31, superseding two earlier versions).
+  //
+  // WHY, concretely: V3-PLAN line 186 says "Learn shows the answer; Diagnose asks the learner
+  // to infer it", and the view model implements exactly that -- learn emits blast radius,
+  // diagnose forces it to null. So a trainee mid-A-drill could switch to Learn, read which
+  // nodes light up, mark or pin exactly those, switch back, and bank evidence points for
+  // reading the answer key. MARK_EVIDENCE and PIN_COMPARE are BOTH category 'evidence' and
+  // BOTH required, so gating only one leaves half of 25 points open; DEBRIEF is another 10.
+  //
+  // ENFORCEMENT IS HERE, NOT IN THE UI. The scorer reads the JOURNAL, not the DOM. A rule
+  // enforced by which chip is drawn is one refactor from gone, and anything that reaches the
+  // journal scores. Hidden chips are courtesy; this is the boundary that binds.
+  //
+  // DO NOT MAINTAIN THIS LIST FROM MEMORY. It is derived from src/drill-arch.js
+  // expectedActions, where the scoring truth lives -- two rulings missed a command each
+  // (PIN_COMPARE, then DEBRIEF) by enumerating from recollection.
+  // tests/dispatch-training.test.js re-derives the list from the drills and fails if any
+  // scoring command lacks an entry here, so a sixth one cannot be added ungated.
+  var COMMAND_MODE = {};
+  COMMAND_MODE[TYPES.MARK_EVIDENCE] = 'diagnose';
+  COMMAND_MODE[TYPES.PIN_COMPARE] = 'diagnose';
+  COMMAND_MODE[TYPES.SUBMIT_HYPOTHESIS] = 'diagnose';
+  COMMAND_MODE[TYPES.VERIFY] = 'diagnose';
+  COMMAND_MODE[TYPES.DEBRIEF] = 'debrief';
+  COMMAND_MODE = Object.freeze(COMMAND_MODE);
+
+  /** Refuse unless the caller is in the mode where this command can honestly earn its
+   *  points. FAILS CLOSED: no archMode at all is a refusal, never a pass -- a scoring gate
+   *  that defaults open is not a gate. */
+  function requireMode(ctx, type) {
+    var want = COMMAND_MODE[type];
+    if (!want) return true;
+    if (typeof ctx.archMode !== 'string' || !ctx.archMode) {
+      return 'mode unavailable: ctx.archMode is required, so ' + type + ' cannot be shown to have been earned in ' + want;
+    }
+    if (ctx.archMode !== want) {
+      return 'wrong mode: ' + type + ' is ' + want + '-only and was attempted in ' + ctx.archMode +
+        (want === 'diagnose' ? ' -- learn shows the answer, so marking there is transcribing rather than inferring' : '');
+    }
+    return true;
+  }
 
   function errMsg(err) { return (err && err.message) ? err.message : String(err); }
 
@@ -339,7 +383,7 @@
    * JSON.parse(JSON.stringify(...)) for snapshot/restore with no special handling.
    */
 
-  function createTrainingState() { return { evidence: [], pins: [], hypotheses: [], verifications: [] }; }
+  function createTrainingState() { return { evidence: [], pins: [], hypotheses: [], verifications: [], debriefs: [] }; }
 
   function cloneTraining(st) {
     var s = st || createTrainingState();
@@ -347,7 +391,8 @@
       evidence: (s.evidence || []).map(function (e) { return { target: e.target, t: e.t }; }),
       pins: (s.pins || []).map(function (p) { return { targets: p.targets.slice(), t: p.t }; }),
       hypotheses: (s.hypotheses || []).map(function (h) { return { domain: h.domain, t: h.t }; }),
-      verifications: (s.verifications || []).map(function (v) { return { target: v.target, t: v.t }; })
+      verifications: (s.verifications || []).map(function (v) { return { target: v.target, t: v.t }; }),
+      debriefs: (s.debriefs || []).map(function (d) { return { correct: d.correct, t: d.t }; })
     };
   }
 
@@ -365,6 +410,8 @@
 
   TRAINING_HANDLERS[TYPES.MARK_EVIDENCE] = {
     validate: function (ctx, cmd) {
+      var mode = requireMode(ctx, TYPES.MARK_EVIDENCE);
+      if (mode !== true) return mode;
       var target = cmd.target;
       if (typeof target !== 'string' || !target) return 'MARK_EVIDENCE requires a target node id';
       if (!knownNode(ctx, target)) return 'unknown target node: ' + target;
@@ -383,6 +430,8 @@
 
   TRAINING_HANDLERS[TYPES.PIN_COMPARE] = {
     validate: function (ctx, cmd) {
+      var mode = requireMode(ctx, TYPES.PIN_COMPARE);
+      if (mode !== true) return mode;
       var p = cmd.payload || {};
       var targets = p.targets;
       if (!Array.isArray(targets)) return 'PIN_COMPARE requires payload.targets as an array';
@@ -405,6 +454,8 @@
 
   TRAINING_HANDLERS[TYPES.SUBMIT_HYPOTHESIS] = {
     validate: function (ctx, cmd) {
+      var mode = requireMode(ctx, TYPES.SUBMIT_HYPOTHESIS);
+      if (mode !== true) return mode;
       var p = cmd.payload || {};
       var domain = p.domain;
       if (typeof domain !== 'string' || !domain) return 'SUBMIT_HYPOTHESIS requires payload.domain';
@@ -426,6 +477,8 @@
   // same inspection rule as MARK_EVIDENCE: you cannot verify a point you never opened.
   TRAINING_HANDLERS[TYPES.VERIFY] = {
     validate: function (ctx, cmd) {
+      var mode = requireMode(ctx, TYPES.VERIFY);
+      if (mode !== true) return mode;
       var target = cmd.target;
       if (typeof target !== 'string' || !target) return 'VERIFY requires a target node id';
       if (!knownNode(ctx, target)) return 'unknown target node: ' + target;
@@ -442,7 +495,26 @@
     }
   };
 
-  /** Register the four S3 training commands on a dispatcher from create(). */
+  // TRAINING.DEBRIEF -- the trainee answers the drill's debrief question. drill-arch scores
+  // it as category 'debrief', required:true, 10 rubric points, matched on payload {correct}.
+  // It had NO dispatch handler until this change, so there was nothing to mode-gate: the
+  // fifth scoring command, missed by two rulings and by the seat that wrote the other four.
+  TRAINING_HANDLERS[TYPES.DEBRIEF] = {
+    validate: function (ctx, cmd) {
+      var mode = requireMode(ctx, TYPES.DEBRIEF);
+      if (mode !== true) return mode;
+      var p = cmd.payload || {};
+      if (typeof p.correct !== 'boolean') return 'DEBRIEF requires payload.correct as a boolean';
+      return true;
+    },
+    apply: function (ctx, cmd) {
+      var st = trainingStateOf(ctx);
+      if (!st.debriefs) st.debriefs = [];
+      st.debriefs.push({ correct: cmd.payload.correct, t: cmd.simTime });
+    }
+  };
+
+  /** Register the five S3/S4 training commands on a dispatcher from create(). */
   function registerTraining(dispatcher) {
     if (!dispatcher || typeof dispatcher.register !== 'function') {
       throw new Error('ESS.Dispatch.registerTraining: a dispatcher from create() is required');
@@ -454,7 +526,7 @@
   }
 
   return {
-    create: create, ACTORS: ACTORS, TYPES: TYPES, LAYERS: LAYERS,
+    create: create, ACTORS: ACTORS, TYPES: TYPES, LAYERS: LAYERS, COMMAND_MODE: COMMAND_MODE,
     registerTraining: registerTraining,
     createTrainingState: createTrainingState,
     trainingSnapshot: cloneTraining,
