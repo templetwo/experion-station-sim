@@ -45,7 +45,17 @@ function inBand(l) {
 test('createState is a superset of the app P shape with the new fields', () => {
   const c = new Component({}); c.initSim();
   const P = Models.createState(c.P.t);
-  for (const k of Object.keys(c.P)) assert.ok(k in P, 'missing ' + k);
+  // P.archFaults (V3-PLAN S2, src/upset-bridge.js + src/fault-engine.js) is a documented
+  // exception. It is a fault-engine-layer field the app attaches in initSim()
+  // AFTER calling ESS.Models.createState(now) -- never inside it -- because decision D1
+  // keeps src/models.js's physics untouched by the v3 fault engine: models.js must not
+  // know the fault engine exists. c.P legitimately carries a top-level key createState()
+  // does not and, by that same decision, never should.
+  // P.archPending / P.archMeta (V3-PLAN S2, the instructor Architecture panel, DO item 1)
+  // are the same exception for the same reason: the panel's own onset/duration/ramp
+  // schedule ledger, attached alongside P.archFaults, never read by src/models.js.
+  const APP_ONLY_FIELDS = ['archFaults', 'archPending', 'archMeta'];
+  for (const k of Object.keys(c.P)) { if (APP_ONLY_FIELDS.includes(k)) continue; assert.ok(k in P, 'missing ' + k); }
   for (const k of Object.keys(c.P.b)) assert.ok(k in P.b, 'missing b.' + k);
   for (const k of Object.keys(c.P.h)) assert.ok(k in P.h, 'missing h.' + k);
   for (const k of ['Ca', 'x', 'Tjo', 'Qr']) assert.equal(typeof P[k], 'number', k);

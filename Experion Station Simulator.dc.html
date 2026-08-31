@@ -17,6 +17,7 @@
 <script src="./src/dispatch.js"></script>
 <script src="./src/topology.js"></script>
 <script src="./src/fault-engine.js"></script>
+<script src="./src/upset-bridge.js"></script>
 <script src="./src/signal-path.js"></script>
 <script src="./src/drill-arch.js"></script>
 <script src="./src/architecture-view-model.js"></script>
@@ -816,6 +817,84 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         </sc-for>
       </div>
 
+      <div style="grid-column:1 / -1;background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+          <div style="font-weight:700;font-size:12px">ARCHITECTURE — TOPOLOGY FAULT MATRIX</div>
+          <div style="flex:1"></div>
+          <sc-for list="{{ arch.layers }}" as="ly" hint-placeholder-count="8">
+            <div style="padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;background:{{ ly.bg }};border:2px solid;border-color:{{ ly.bc }}" onClick="{{ ly.cb }}">{{ ly.label }}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">Click a fault badge to stage an injection on that node. FIC102's transmitter failure, LIC101's drift and TV-202's stiction are the legacy upsets above and are not offered here again.</div>
+        <div style="max-height:200px;overflow-y:auto;border:1px solid #9a968e;background:#FFFFFF">
+          <sc-for list="{{ arch.rows }}" as="r" hint-placeholder-count="10">
+            <div style="display:flex;align-items:center;gap:8px;padding:2px 6px;font-size:10.5px;border-bottom:1px solid rgba(0,0,0,0.06);flex-wrap:wrap">
+              <div style="width:104px;font-weight:700">{{ r.id }}</div>
+              <div style="width:44px;color:#55524c;font-size:9.5px">{{ r.layer }}</div>
+              <div style="flex:1;min-width:120px;color:#3c3c3c">{{ r.label }}</div>
+              <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="3">
+                <div style="padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;background:{{ c.bg }};border:{{ c.bc }}" onClick="{{ c.cb }}">{{ c.faultId }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ arch.stage }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:8px;padding:8px;background:#EDEDE9;border:1px solid #9a968e">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <div style="font-weight:700;font-size:11.5px;flex:1">STAGE: {{ arch.stage.faultId }} @ {{ arch.stage.nodeId }} — {{ arch.stage.nodeLabel }}</div>
+              <div style="font-size:10px;font-weight:700;color:#A00000">{{ arch.stage.statusT }}</div>
+              <div style="padding:2px 8px;font-size:10.5px;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ arch.stage.close }}">✕</div>
+            </div>
+            <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">Domain {{ arch.stage.domain }} · Recovery condition: {{ arch.stage.recoveryT }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:11px">
+              <div>Onset delay <input value="{{ arch.stage.delayVal }}" onChange="{{ arch.stage.delayChange }}" style="width:46px;padding:1px 4px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" /> s (0 = now)</div>
+              <div>Duration <input value="{{ arch.stage.durationVal }}" onChange="{{ arch.stage.durationChange }}" placeholder="indefinite" style="width:64px;padding:1px 4px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" /> s</div>
+              <div style="display:flex;gap:4px">
+                <div style="padding:2px 10px;font-weight:700;cursor:pointer;background:{{ arch.stage.modeStep.bg }};border:2px solid;border-color:{{ arch.stage.modeStep.bc }}" onClick="{{ arch.stage.modeStep.cb }}">{{ arch.stage.modeStep.label }}</div>
+                <div style="padding:2px 10px;font-weight:700;cursor:pointer;background:{{ arch.stage.modeRamp.bg }};border:2px solid;border-color:{{ arch.stage.modeRamp.bc }}" onClick="{{ arch.stage.modeRamp.cb }}">{{ arch.stage.modeRamp.label }}</div>
+              </div>
+              <sc-if value="{{ arch.stage.isRamp }}" hint-placeholder-val="{{ false }}">
+                <div>Ramp time <input value="{{ arch.stage.rampVal }}" onChange="{{ arch.stage.rampChange }}" style="width:46px;padding:1px 4px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" /> s</div>
+              </sc-if>
+              <sc-if value="{{ arch.stage.hasMag }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:4px">Magnitude
+                  <input type="range" min="{{ arch.stage.magMin }}" max="{{ arch.stage.magMax }}" step="{{ arch.stage.magStep }}" value="{{ arch.stage.magVal }}" onChange="{{ arch.stage.magChange }}" style="width:90px" />
+                  <div style="font-weight:700">{{ arch.stage.magVal }} {{ arch.stage.magEu }}</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="font-size:10px;color:#55524c;margin:6px 0">{{ arch.stage.visibilityT }}</div>
+            <sc-if value="{{ arch.stage.canActivate }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:3px 14px;display:inline-block;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ arch.stage.activate }}">ACTIVATE</div>
+            </sc-if>
+            <sc-if value="{{ arch.stage.showClear }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:3px 14px;display:inline-block;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ arch.stage.clear }}">CLEAR</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <div style="font-weight:700;font-size:11.5px;margin-top:8px">ACTIVE / PENDING ARCHITECTURE FAULTS ({{ arch.activeCount }})</div>
+        <sc-if value="{{ arch.activeEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px;color:#55524c">Nothing active or pending from this panel. (The three legacy upsets' architecture faults, if any, are shown above under UPSETS.)</div>
+        </sc-if>
+        <sc-for list="{{ arch.active }}" as="a" hint-placeholder-count="4">
+          <div style="padding:3px 4px;font-size:10.5px;border-bottom:1px solid rgba(0,0,0,0.06)">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="width:56px;font-weight:700;color:#A00000">{{ a.statusT }}</div>
+              <div style="width:190px;font-weight:700">{{ a.faultId }} @ {{ a.nodeId }}</div>
+              <div style="width:74px;color:#55524c">{{ a.domain }}</div>
+              <div style="width:130px">{{ a.modeT }}</div>
+              <div style="width:70px;font-weight:700">{{ a.magT }}</div>
+              <div style="flex:1"></div>
+              <div style="padding:2px 10px;font-weight:700;cursor:pointer;background:#D4D0C8;border:1px solid #6E6E6E" onClick="{{ a.clear }}">CLEAR</div>
+            </div>
+            <div style="color:#55524c;margin-top:1px">Recovery: {{ a.recoveryT }} · Blast radius: {{ a.blastT }}</div>
+          </div>
+        </sc-for>
+        <div style="font-size:10.5px;color:#55524c;margin-top:6px">Every injection here routes through the same dispatch/journal boundary as UPSETS above (INSTRUCTOR actor, journaled once, replays deterministically) and honours the HIDDEN UPSETS switch. Blast radius and recovery condition are instructor-only; the trainee's ARCH view (Learn/Trace) sees only the resulting symptom, never this table.</div>
+      </div>
+
       <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
         <div style="font-weight:700;font-size:12px;margin-bottom:6px">INSTRUCTOR VARIABLES</div>
         <sc-for list="{{ instr.vars }}" as="v" hint-placeholder-count="6">
@@ -1452,7 +1531,13 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 class Component extends DCLogic {
   state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
     // ARCH view state (V3-PLAN S1) -- view-only, never process/control/alarm/topology state.
-    archMode:'learn', archProfile:'console', archTag:null, archSel:null, archBeginner:true };
+    archMode:'learn', archProfile:'console', archTag:null, archSel:null, archBeginner:true,
+    // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
+    // the topology fault matrix: which layer is shown and the one (node, fault) cell
+    // currently staged for configuration. The actual engine/schedule state this feeds lives
+    // in P (this.P.archFaults/archPending/archMeta), never here -- see archFireFault().
+    archFilterLayer:'ALL', archStageNode:null, archStageFault:null,
+    archStageDelay:'0', archStageDuration:'', archStageMode:'STEP', archStageRamp:'15', archStageMag:'' };
 
   componentDidMount(){
     if(!this.L) this.initSim();
@@ -1497,11 +1582,34 @@ class Component extends DCLogic {
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4)
     this.P = ESS.Models.createState(now);
+    // Architecture fault-engine state (V3-PLAN S2): instructor-scheduled engine faults
+    // that carry no legacy P.faults flag of their own (none yet -- the twelve legacy
+    // upsets stay authoritative in P.faults/P.faultT/V[x].stuck per decision D1; this is
+    // the seat for a future panel-injected fault). Lives in P, not on the Component or in
+    // this.instr, so it travels through snapshot/restore/replay for free -- makeSnapshot's
+    // clone(src.P) and restoreSnapshot's I.clone(snap.P) round-trip it with no edit to
+    // src/instructor.js (advisory Q3(B)). Defaulted below in restoreSnapshot() for a
+    // snapshot taken before this field existed.
+    this.P.archFaults = ESS.FaultEngine.createState();
+    // The panel's own schedule ledger (V3-PLAN S2, DO item 1): archPending holds
+    // instructor-scheduled engine faults not yet at their onset time; archMeta carries,
+    // per active instanceId, the STEP/RAMP mode, ramp length, target magnitude and optional
+    // expiry that the fixed FaultEngine instance shape has no room for. Both are plain P
+    // keys outside tests/_fixture.js's endState() picked-field list, so -- like archFaults
+    // itself -- they are invisible to every golden and travel through snapshot/restore/
+    // replay for free (advisory Q3(B)). See archFireFault()/archFaultTick().
+    this.P.archPending = [];
+    this.P.archMeta = {};
     // Instructor station state survives a process reset (snapshots, password, hidden flag, seed); the run-bound parts
     // (backtrack ring, action journal, replay) start fresh. Every random draw goes through the seeded generator so a
     // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4).
     if(!this.instr) this.instr = ESS.Instructor.create();
     ESS.Instructor.resetRun(this.instr);
+    // The v3 command/event boundary (V3-PLAN section 4): survives a process reset the same
+    // way this.instr does, so a snapshot/replay taken before a reset still has a live
+    // dispatcher to route through afterward. Guarded so a reset never registers the same
+    // handler twice on the same registry.
+    if(!this.dispatcher){ this.dispatcher = ESS.Dispatch.create(); this.registerDispatchHandlers(); }
     this.seed = this.instr.seed;
     this.rand = ESS.Models.createRand(this.seed);
     this.vLag = {};                // valve id -> seconds the valve has not followed its controller output (assistant symptom)
@@ -1948,6 +2056,7 @@ class Component extends DCLogic {
     this.alarmTick();
     this.valveWatch(dt);
     this.drillWatch(dt);
+    this.archFaultTick();
     for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>7200) h.shift(); }
     this.backtrackTick();
     this.replayCheckDone();
@@ -2375,6 +2484,17 @@ class Component extends DCLogic {
   restoreSnapshot(snap,why){
     const I=ESS.Instructor;
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
+    // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
+    // absence means all-healthy, the same pattern the architecture-view addendum uses
+    // elsewhere for a v2-shaped snapshot. Never overwrites a restored value that IS present.
+    if(!this.P.archFaults) this.P.archFaults = ESS.FaultEngine.createState();
+    // Same defaulting for the schedule ledger a pre-panel snapshot (or an older ring/slot
+    // entry) predates: absent means nothing was pending or ramping/expiring, never crashes
+    // archFaultTick(). A restored archFaults WITH archMeta-bearing instances but no archMeta
+    // (an old snapshot saved between S2 sub-changes) just falls back to STEP/no-expiry for
+    // those instances, which is a safe default, never a thrown error.
+    if(!this.P.archPending) this.P.archPending = [];
+    if(!this.P.archMeta) this.P.archMeta = {};
     this.alarmEngine.restore(snap.alarms);
     this.restoreDisabledAssets(snap.disabledAssets);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
@@ -2440,14 +2560,406 @@ class Component extends DCLogic {
   }
   // --- upsets (the faults) with a hidden switch and magnitudes; instructor variables through the P fields the models read
   upsetOn(k){ return !!this.P.faults[k]||(k==='stick'&&this.V.TV202.stuck); }
+  // Registers the FAULT_INJECT dispatch handler once (guarded alongside this.dispatcher in
+  // initSim). D1: apply() calls the EXISTING injectFault(k,on) unchanged -- physics is
+  // byte-identical by construction, not by hope (tests/app-fault-parity.test.js). The
+  // custom journal() reshapes the entry back to the pre-existing {op:'UPSET',tag,arg,instr}
+  // shape so journalText's 'UPSET' case, applyJournalEntry's 'UPSET' case and every replay
+  // fixture keep working without touching src/instructor.js (advisory Q1/Q5).
+  registerDispatchHandlers(){
+    const self=this;
+    this.dispatcher.register(ESS.Dispatch.TYPES.FAULT_INJECT,{
+      validate:(ctx,cmd)=>{
+        const k=cmd.target;
+        if(!ESS.Instructor.upsetDefs().some(d=>d.k===k)) return 'unknown upset: '+k;
+        return true;
+      },
+      apply:(ctx,cmd)=>{
+        const k=cmd.target, on=!!cmd.payload;
+        self.injectFault(k,on);                          // D1: the one, unchanged physics path
+        if(k==='drift'&&!on) self.P.driftOff=0;
+        const def=ESS.Instructor.upsetDefs().find(d=>d.k===k);
+        self.instrLog('UPSET '+(on?'ON':'OFF')+': '+(def?def.label:k)+(self.instr.hidden?' (HIDDEN)':''));
+        return on;
+      },
+      journal:(ctx,cmd)=>({op:'UPSET',tag:cmd.target,arg:cmd.payload?'ON':'OFF',instr:true})
+    });
+    // Architecture panel (V3-PLAN S2, DO item 1): instructor-scheduled engine faults on
+    // topology nodes the twelve legacy upsets do not already own. Deliberately separate
+    // TYPE strings from FAULT_INJECT/FAULT_CLEAR (ESS.Dispatch.TYPES) -- those names are
+    // reserved for later stages by dispatch.js's own header comment, and FAULT_INJECT is
+    // already bound to the legacy-upset handler above with a different cmd.target shape
+    // (an upset key, not a node id); re-registering it here would silently replace that
+    // handler. Every check that can fail lives in validate() (dispatch.js's CONTRACT note
+    // on apply()); apply() only replays a trial FE.activate() that validate() already
+    // proved will succeed against the CURRENT engine state, so it cannot itself throw.
+    this.dispatcher.register('ARCH_FAULT_ACTIVATE',{
+      validate:(ctx,cmd)=>self.archValidateActivate(cmd.payload||{}),
+      apply:(ctx,cmd)=>{
+        const p=cmd.payload;
+        self.scheduleArchFault(p);
+        self.instrLog('ARCH FAULT '+(Number(p.delaySec)>0?'SCHEDULED (+'+Number(p.delaySec)+'S)':'ACTIVATED')+': '+self.archFaultDisplayName(p.faultId)+' @ '+self.archFaultTargetLabel(p.targetNodeId)+(self.instr.hidden?' (HIDDEN)':''));
+        // Configuration numbers (magnitude, onset delay, duration, ramp) are plant-condition
+        // detail, never mirrored to the trainee regardless of the hidden switch -- the same
+        // rule setMagnitude()/setVariable() already follow (advisory Q5).
+        self.instrNote('ARCH FAULT CONFIG '+p.faultId+' @ '+p.targetNodeId+': mode='+(p.mode==='RAMP'?'RAMP '+p.rampSec+'S':'STEP')+
+          ' onset=+'+(Number(p.delaySec)||0)+'S duration='+(p.durationSec==null||p.durationSec===''?'INDEFINITE':p.durationSec+'S')+
+          (p.magnitude==null?'':' magnitude='+p.magnitude));
+        return true;
+      },
+      journal:(ctx,cmd)=>{
+        const p=cmd.payload, def=ESS.FaultEngine.getFaultDef(p.faultId);
+        return {op:'ARCHFAULT',tag:p.targetNodeId,arg:p.faultId,instr:true,
+          delaySec:Number(p.delaySec)||0,
+          durationSec:(p.durationSec==null||p.durationSec==='')?null:Number(p.durationSec),
+          mode:p.mode==='RAMP'?'RAMP':'STEP',
+          rampSec:p.mode==='RAMP'?(Number(p.rampSec)||0):0,
+          magnitude:(def&&def.magnitudeRange)?Number(p.magnitude):null};
+      }
+    });
+    this.dispatcher.register('ARCH_FAULT_CLEAR',{
+      validate:(ctx,cmd)=>self.archValidateClear(cmd.payload||{}),
+      apply:(ctx,cmd)=>{
+        const p=cmd.payload;
+        self.archClearNow(p.faultId,p.targetNodeId);
+        self.instrLog('ARCH FAULT CLEARED: '+self.archFaultDisplayName(p.faultId)+' @ '+self.archFaultTargetLabel(p.targetNodeId)+(self.instr.hidden?' (HIDDEN)':''));
+        return true;
+      },
+      journal:(ctx,cmd)=>({op:'ARCHCLEAR',tag:cmd.payload.targetNodeId,arg:cmd.payload.faultId,instr:true})
+    });
+  }
+  // Routed through ESS.Dispatch (V3-PLAN S2, decision D1): every injection becomes an
+  // ActionEvent with actor INSTRUCTOR and journals exactly once. The physics path
+  // (injectFault) and the journal shape are unchanged from before S2 -- see
+  // registerDispatchHandlers() above.
   setUpset(k,on){
-    this.injectFault(k,on);
-    if(k==='drift'&&!on) this.P.driftOff=0;
-    const def=ESS.Instructor.upsetDefs().find(d=>d.k===k);
-    this.instrLog('UPSET '+(on?'ON':'OFF')+': '+(def?def.label:k)+(this.instr.hidden?' (HIDDEN)':''));
-    this.journal('UPSET',k,on?'ON':'OFF',{instr:true});
+    this.dispatcher.dispatch(
+      {journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)},
+      {type:ESS.Dispatch.TYPES.FAULT_INJECT,actor:'INSTRUCTOR',target:k,payload:!!on,simTime:this.P.t}
+    );
   }
   clearUpsets(){ for(const d of ESS.Instructor.upsetDefs()) if(this.upsetOn(d.k)) this.setUpset(d.k,false); }
+  // Fresh architecture-fault state for THIS INSTANT: any instructor-scheduled engine
+  // faults (this.P.archFaults -- empty until a later stage's panel injects one) chained
+  // with per-call DERIVED instances for the three ARCHITECTURE-class legacy upsets
+  // (ESS.UpsetBridge, decision D2). Deliberately NOT persisted for the derived half
+  // (advisory Q3(A)): P.faults/P.faultT/V.TV202.stuck stay the single physics authority,
+  // so a trainee action that frees TV202 outside setUpset (the TIC202 manual-stroke path)
+  // or a drill that calls injectFault('xmtr'/'stick', ...) directly, bypassing setUpset,
+  // is reflected correctly because this is recomputed from those flags on every call,
+  // never cached or drifted. Read-only: never mutates this.P, this.topo or any flag.
+  archFaultState(){
+    const FE=ESS.FaultEngine, UB=ESS.UpsetBridge, G=this.topo;
+    let state=FE.snapshot(this.P.archFaults||FE.createState());
+    if(!G) return state;
+    for(const k of ['xmtr','drift','stick']){
+      if(!this.upsetOn(k)) continue;
+      const faultId=UB.faultIdFor(k);
+      if(!faultId) continue;
+      for(const targetNodeId of UB.topologyTargets(k,G)){
+        if(FE.isActive(state,faultId,targetNodeId)) continue;
+        const opts={faultId,targetNodeId,simTime:(this.P.faultT&&this.P.faultT[k]!=null)?this.P.faultT[k]:this.P.t};
+        if(k==='drift') opts.magnitude=this.P.mag.drift;   // BIASED_MEASUREMENT needs an explicit magnitude or a seeded rand -- never hand it the live generator (advisory Q1.8)
+        const r=FE.activate(state,G,opts);
+        if(r.accepted) state=r.state;
+      }
+    }
+    return state;
+  }
+  // ---------- Architecture panel (V3-PLAN S2, DO item 1): the topology fault matrix ----------
+  // Everything below configures and fires ENGINE faults the panel targets directly, on
+  // topology nodes none of the twelve legacy upsets already own. archFaultState() above
+  // already folds this.P.archFaults into every health/truth projection, so nothing here
+  // needs to touch archFaultState(), healthProjection or truthProjection -- activating one
+  // of these is indistinguishable, to the rest of S1/S2, from a legacy upset's derived
+  // instance. D1 still holds: this never writes P.faults/P.faultT/V[x].stuck and never
+  // touches src/models.js, so it can only ever affect ARCH-layer health/truth, never the
+  // physics goldens (tests/_fixture.js endState() does not read P.archFaults/archPending/
+  // archMeta at all -- advisory Q3).
+  //
+  // The three (faultId, targetNodeId) pairs the legacy xmtr/drift/stick upsets already
+  // derive (decision D2) are RESERVED here: the panel must not let the instructor layer a
+  // second, physics-disconnected engine fault onto the one node whose legacy upset DOES
+  // move the physics, which would show the trainee a symptom with no matching trend.
+  archReservedPairs(){
+    const UB=ESS.UpsetBridge, G=this.topo;
+    const out=[];
+    for(const k of ['xmtr','drift','stick']){
+      const faultId=UB.faultIdFor(k);
+      if(!faultId) continue;
+      for(const targetNodeId of UB.topologyTargets(k,G||{nodes:{}})) out.push({faultId,targetNodeId});
+    }
+    return out;
+  }
+  archIsReserved(faultId,targetNodeId){ return this.archReservedPairs().some(r=>r.faultId===faultId&&r.targetNodeId===targetNodeId); }
+  // Registered faults legally targetable at this node (kind + the narrower targetIds
+  // allow-list some defs carry, e.g. HISTORIAN_GAP only on SVC-HISTORY), minus the reserved
+  // pairs above. Mirrors FaultEngine's own validateActivation rules rather than re-deriving
+  // them, so a future FAULT_DEFS addition needs no change here.
+  archApplicableFaults(node){
+    const FE=ESS.FaultEngine;
+    return FE.FAULT_IDS.filter(id=>{
+      const d=FE.FAULT_DEFS[id];
+      if(d.targets.indexOf(node.kind)<0) return false;
+      if(d.targetIds&&d.targetIds.indexOf(node.id)<0) return false;
+      if(this.archIsReserved(id,node.id)) return false;
+      return true;
+    });
+  }
+  archLedgerStatus(faultId,targetNodeId){
+    if(ESS.FaultEngine.isActive(this.P.archFaults,faultId,targetNodeId)) return 'ACTIVE';
+    if((this.P.archPending||[]).some(e=>e.faultId===faultId&&e.targetNodeId===targetNodeId)) return 'PENDING';
+    return null;
+  }
+  // Verification-round fix (S2, leakage check item 4): the raw faultId (a FAULT_IDS
+  // constant, e.g. 'NOISY_MEASUREMENT') and the raw topology node id (e.g. 'XMTR-FIC211',
+  // src/topology.js's internal id() scheme) are FaultEngine-internal identifiers, not
+  // trainee-facing text -- unlike the legacy setUpset() precedent, which only ever mirrors
+  // a project-authored prose label (def.label, e.g. "Cooling water loss"). instrLog()
+  // mirrors its argument to the trainee event stream whenever HIDDEN UPSETS is off
+  // (self.instr.hidden===false), so the four ARCH-fault instrLog call sites below use
+  // these two formatters instead of the raw ids -- display-only, never used for the
+  // journal, instrNote's instructor-only CONFIG line, or archTruth, all of which keep the
+  // precise raw identifiers. archFaultTargetLabel reuses this.topo's own node.label, the
+  // same string the trainee-safe ARCH view already renders for that node; nothing new is
+  // disclosed by using it here that Learn/Trace mode does not already show once a fault is
+  // active. archFaultDisplayName is a pure display transform of already-public data (which
+  // fault KIND is active), never a new fact -- matching the level of detail (not the exact
+  // wording) of the legacy upsets' own revealed label under the same HIDDEN=OFF switch.
+  archFaultTargetLabel(targetNodeId){
+    const n=this.topo&&this.topo.nodes[targetNodeId];
+    return n?n.label:targetNodeId;
+  }
+  archFaultDisplayName(faultId){
+    return String(faultId||'').replace(/_/g,' ');
+  }
+  // Every check that can make the command fail: unknown fault/node, reserved pair, already
+  // active/pending, an out-of-range or missing magnitude, a non-positive ramp/onset/duration
+  // -- and finally a TRIAL activation against a snapshot copy of the real engine state, which
+  // reuses FaultEngine's own kind/targetIds/conflict rules instead of re-deriving them. The
+  // magnitude value used for the trial does not affect accept/reject (resolveMagnitude never
+  // range-checks an explicit number), so it is safe even though the real activation may start
+  // a RAMP at 0 instead of the requested target (archFireFault).
+  archValidateActivate(p){
+    const FE=ESS.FaultEngine, def=FE.getFaultDef(p.faultId);
+    if(!def) return 'unknown fault id: '+p.faultId;
+    const node=this.topo&&this.topo.nodes[p.targetNodeId];
+    if(!node) return 'unknown topology node: '+p.targetNodeId;
+    if(this.archIsReserved(p.faultId,p.targetNodeId)) return 'reserved for the legacy upset panel above';
+    if(this.archLedgerStatus(p.faultId,p.targetNodeId)) return 'already active or pending on this node';
+    const mode=p.mode==='RAMP'?'RAMP':'STEP';
+    if(mode==='RAMP'&&!(Number(p.rampSec)>0)) return 'ramp mode needs a positive ramp time';
+    const delaySec=Number(p.delaySec);
+    if(!(delaySec>=0)) return 'onset delay must be zero or greater';
+    const durationSec=(p.durationSec==null||p.durationSec==='')?null:Number(p.durationSec);
+    if(durationSec!=null&&!(durationSec>0)) return 'duration must be blank (indefinite) or greater than zero';
+    let magnitude;
+    if(def.magnitudeRange){
+      magnitude=Number(p.magnitude);
+      if(!isFinite(magnitude)) return 'this fault needs a magnitude';
+      if(magnitude<def.magnitudeRange.min||magnitude>def.magnitudeRange.max) return 'magnitude out of range';
+    }
+    const trial=FE.activate(FE.snapshot(this.P.archFaults),this.topo,{faultId:p.faultId,targetNodeId:p.targetNodeId,simTime:this.P.t,magnitude:magnitude});
+    if(!trial.accepted) return 'engine refused: '+trial.reason;
+    return true;
+  }
+  archValidateClear(p){
+    if(this.archIsReserved(p.faultId,p.targetNodeId)) return 'reserved for the legacy upset panel above';
+    if(!this.archLedgerStatus(p.faultId,p.targetNodeId)) return 'not active or pending';
+    return true;
+  }
+  // apply()-side only: everything that can fail already ran in validate() above, so this is
+  // a mutation that cannot itself throw (dispatch.js's CONTRACT note on apply()).
+  scheduleArchFault(p){
+    if(Number(p.delaySec)>0){
+      this.P.archPending.push({faultId:p.faultId,targetNodeId:p.targetNodeId,fireAt:this.P.t+Number(p.delaySec)*1000,
+        mode:p.mode==='RAMP'?'RAMP':'STEP',rampSec:p.mode==='RAMP'?(Number(p.rampSec)||0):0,
+        durationSec:(p.durationSec==null||p.durationSec==='')?null:Number(p.durationSec),
+        magnitude:p.magnitude==null?null:Number(p.magnitude)});
+      return;
+    }
+    this.archFireFault(p.faultId,p.targetNodeId,p.mode==='RAMP'?'RAMP':'STEP',p.mode==='RAMP'?(Number(p.rampSec)||0):0,
+      (p.durationSec==null||p.durationSec==='')?null:Number(p.durationSec), p.magnitude==null?null:Number(p.magnitude), this.P.t);
+  }
+  // Actually activates one engine-fault instance NOW, at simTimeNow. A RAMP starts its
+  // magnitude at 0 -- archFaultTick() below walks it up to the target over rampSec -- a STEP
+  // starts at the target immediately. Health does not scale with magnitude (FaultEngine's
+  // healthEffect is fixed per fault, V3-PLAN section 3), so ramp-vs-step never changes
+  // WHETHER the ARCH view shows a symptom, only the magnitude number the instructor's truth
+  // view reports while it climbs -- exactly the split D1/D4's physics-authority principle
+  // implies for a fault with no models.js hook to ramp for real. Returns false, silently, on
+  // a rejection at fire time (state changed since scheduling); the caller decides what to log.
+  archFireFault(faultId,targetNodeId,mode,rampSec,durationSec,magnitude,simTimeNow){
+    const FE=ESS.FaultEngine, def=FE.getFaultDef(faultId);
+    const startMag=(mode==='RAMP'&&def&&def.magnitudeRange)?0:magnitude;
+    const r=FE.activate(this.P.archFaults,this.topo,{faultId,targetNodeId,simTime:simTimeNow,magnitude:startMag==null?undefined:startMag});
+    if(!r.accepted) return false;
+    this.P.archFaults=r.state;
+    this.P.archMeta[r.instance.instanceId]={mode,rampSec:mode==='RAMP'?rampSec:0,targetMagnitude:magnitude,
+      startedAt:simTimeNow,expiresAt:durationSec?simTimeNow+durationSec*1000:null};
+    return true;
+  }
+  archClearNow(faultId,targetNodeId){
+    const pendingIdx=(this.P.archPending||[]).findIndex(e=>e.faultId===faultId&&e.targetNodeId===targetNodeId);
+    if(pendingIdx>=0){ this.P.archPending.splice(pendingIdx,1); return; }
+    const r=ESS.FaultEngine.deactivate(this.P.archFaults,{faultId,targetNodeId});
+    if(r.accepted){ this.P.archFaults=r.state; delete this.P.archMeta[faultId+'@'+targetNodeId]; }
+  }
+  // Dispatch entry points the panel and applyJournalEntry's replay cases both call.
+  setArchFault(faultId,targetNodeId,opts){
+    const o=opts||{};
+    this.dispatcher.dispatch(
+      {journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)},
+      {type:'ARCH_FAULT_ACTIVATE',actor:'INSTRUCTOR',target:targetNodeId,
+        payload:{faultId,targetNodeId,delaySec:o.delaySec||0,durationSec:(o.durationSec==null||o.durationSec==='')?null:o.durationSec,
+          mode:o.mode==='RAMP'?'RAMP':'STEP',rampSec:o.rampSec||0,magnitude:o.magnitude==null?null:o.magnitude},
+        simTime:this.P.t}
+    );
+  }
+  clearArchFault(faultId,targetNodeId){
+    this.dispatcher.dispatch(
+      {journalAdd:(entry)=>ESS.Instructor.journalAdd(this.instr,entry)},
+      {type:'ARCH_FAULT_CLEAR',actor:'INSTRUCTOR',target:targetNodeId,payload:{faultId,targetNodeId},simTime:this.P.t}
+    );
+  }
+  // Called once per step(dt), regardless of dt or whether the panel has ever been opened --
+  // cheap (P.archPending/archMeta are empty unless the panel was used) and purely a function
+  // of P.t, so it draws nothing from this.rand and cannot move a golden trajectory by one
+  // extra sample (MEASURED FACTS). Fires due onsets, then walks every active RAMP's magnitude
+  // and every active instance's optional duration expiry.
+  archFaultTick(){
+    const FE=ESS.FaultEngine, P=this.P;
+    if(P.archPending&&P.archPending.length){
+      const due=P.archPending.filter(e=>e.fireAt<=P.t);
+      if(due.length){
+        P.archPending=P.archPending.filter(e=>e.fireAt>P.t);
+        for(const e of due){
+          const ok=this.archFireFault(e.faultId,e.targetNodeId,e.mode,e.rampSec,e.durationSec,e.magnitude,P.t);
+          this.instrLog('ARCH FAULT ONSET'+(ok?'':' REFUSED (STATE CHANGED SINCE SCHEDULING)')+': '+this.archFaultDisplayName(e.faultId)+' @ '+this.archFaultTargetLabel(e.targetNodeId)+(this.instr.hidden?' (HIDDEN)':''));
+        }
+      }
+    }
+    const meta=P.archMeta||{};
+    for(const iid in meta){
+      const m=meta[iid];
+      const inst=(P.archFaults.activeFaults||[]).find(f=>f.instanceId===iid);
+      if(!inst){ delete meta[iid]; continue; } // cleared some other way; defensive, never expected
+      if(m.mode==='RAMP'&&m.targetMagnitude!=null){
+        const elapsed=P.t-m.startedAt, frac=m.rampSec>0?Math.min(1,elapsed/(m.rampSec*1000)):1;
+        const v=Math.round(frac*m.targetMagnitude*1000)/1000;
+        if(inst.magnitude!==v) inst.magnitude=v;
+      }
+      if(m.expiresAt!=null&&P.t>=m.expiresAt){
+        const r=FE.deactivate(P.archFaults,{faultId:inst.faultId,targetNodeId:inst.targetNodeId});
+        if(r.accepted){
+          P.archFaults=r.state; delete meta[iid];
+          this.instrLog('ARCH FAULT AUTO-CLEARED (DURATION ELAPSED): '+this.archFaultDisplayName(inst.faultId)+' @ '+this.archFaultTargetLabel(inst.targetNodeId)+(this.instr.hidden?' (HIDDEN)':''));
+        }
+      }
+    }
+  }
+  // ---------- Architecture panel view model (instructorView() below merges this in) ----------
+  archStageSelect(nodeId,faultId){
+    const def=ESS.FaultEngine.getFaultDef(faultId);
+    let mid='';
+    if(def&&def.magnitudeRange){
+      const r=def.magnitudeRange, raw=(r.min+r.max)/2, stepped=Math.round(raw/r.step)*r.step;
+      mid=String(Math.round(stepped*1000)/1000);
+    }
+    this.setState({archStageNode:nodeId,archStageFault:faultId,archStageDelay:'0',archStageDuration:'',archStageMode:'STEP',archStageRamp:'15',archStageMag:mid});
+  }
+  archStageView(){
+    const S=this.state, G=this.topo;
+    if(!S.archStageNode||!S.archStageFault||!G) return null;
+    const node=G.nodes[S.archStageNode]; if(!node) return null;
+    const def=ESS.FaultEngine.getFaultDef(S.archStageFault); if(!def) return null;
+    const status=this.archLedgerStatus(S.archStageFault,S.archStageNode);
+    const bump=()=>this.setState(s=>({tk:s.tk+1}));
+    return {
+      nodeId:S.archStageNode, nodeLabel:node.label, nodeLayer:node.layer, nodeKind:node.kind,
+      faultId:S.archStageFault, domain:def.domain, recoveryT:def.recovery,
+      statusT:status||'NOT ACTIVE',
+      hasMag:!!def.magnitudeRange,
+      magMin:def.magnitudeRange?String(def.magnitudeRange.min):'0', magMax:def.magnitudeRange?String(def.magnitudeRange.max):'1',
+      magStep:def.magnitudeRange?String(def.magnitudeRange.step):'1', magEu:def.magnitudeRange?def.magnitudeRange.eu:'',
+      magVal:S.archStageMag, magChange:(e)=>this.setState({archStageMag:e.target.value}),
+      delayVal:S.archStageDelay, delayChange:(e)=>this.setState({archStageDelay:e.target.value}),
+      durationVal:S.archStageDuration, durationChange:(e)=>this.setState({archStageDuration:e.target.value}),
+      modeStep:{label:'STEP',bg:S.archStageMode!=='RAMP'?'#B8C4D4':'#D4D0C8',bc:S.archStageMode!=='RAMP'?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({archStageMode:'STEP'})},
+      modeRamp:{label:'RAMP',bg:S.archStageMode==='RAMP'?'#B8C4D4':'#D4D0C8',bc:S.archStageMode==='RAMP'?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setState({archStageMode:'RAMP'})},
+      isRamp:S.archStageMode==='RAMP',
+      rampVal:S.archStageRamp, rampChange:(e)=>this.setState({archStageRamp:e.target.value}),
+      visibilityT:'Follows the HIDDEN UPSETS switch above -- currently '+(this.instr.hidden?'ON: this injection leaves no trace in the trainee journal.':'OFF: this injection is mirrored into the trainee journal, same as an upset.')+' The ARCH view shows the resulting symptom either way (V3-PLAN addendum).',
+      canActivate:!status, showClear:!!status,
+      activate:()=>{ this.setArchFault(S.archStageFault,S.archStageNode,{delaySec:Number(S.archStageDelay)||0,
+        durationSec:S.archStageDuration===''?null:Number(S.archStageDuration), mode:S.archStageMode,
+        rampSec:Number(S.archStageRamp)||0, magnitude:def.magnitudeRange?Number(S.archStageMag):null}); bump(); },
+      clear:()=>{ this.clearArchFault(S.archStageFault,S.archStageNode); bump(); },
+      close:()=>this.setState({archStageNode:null,archStageFault:null})
+    };
+  }
+  // Instructor-only summary of every currently active or pending panel-injected engine
+  // fault: root cause (faultId/domain/target) plus blast radius (ESS.Topology.blastRadius,
+  // the SAME function Learn mode's trainee blast-radius view already uses -- DO item 3: the
+  // instructor sees everything Learn mode shows a trainee, plus the cause). Instructor-only
+  // by construction: this method only exists on instructorView()'s return, itself gated on
+  // instructorAllowed() -- never reachable from archView(), the trainee surface.
+  archActiveList(){
+    const G=this.topo, FE=ESS.FaultEngine;
+    if(!G) return [];
+    const out=[];
+    for(const inst of FE.listActive(this.P.archFaults)){
+      const def=FE.getFaultDef(inst.faultId), meta=(this.P.archMeta||{})[inst.instanceId]||{};
+      const blast=ESS.Topology.blastRadius(G,inst.targetNodeId), node=G.nodes[inst.targetNodeId];
+      out.push({key:inst.instanceId, statusT:'ACTIVE', faultId:inst.faultId, domain:def.domain,
+        nodeId:inst.targetNodeId, nodeLabel:node?node.label:inst.targetNodeId,
+        magT:inst.magnitude==null?'—':String(inst.magnitude)+(def.magnitudeRange?' '+def.magnitudeRange.eu:''),
+        modeT:meta.mode==='RAMP'?('RAMPING OVER '+meta.rampSec+' S'):'STEP',
+        recoveryT:def.recovery,
+        blastT:blast.nodes.length?(blast.nodes.length+' downstream node'+(blast.nodes.length===1?'':'s')+': '+blast.nodes.join(', ')):'no downstream dependents',
+        clear:()=>{ this.clearArchFault(inst.faultId,inst.targetNodeId); this.setState(s=>({tk:s.tk+1})); }});
+    }
+    for(const e of (this.P.archPending||[])){
+      const def=FE.getFaultDef(e.faultId), node=G.nodes[e.targetNodeId];
+      out.push({key:e.faultId+'@'+e.targetNodeId+'#pending', statusT:'PENDING', faultId:e.faultId, domain:def.domain,
+        nodeId:e.targetNodeId, nodeLabel:node?node.label:e.targetNodeId,
+        magT:'—', modeT:'ONSET IN '+Math.max(0,Math.round((e.fireAt-this.P.t)/1000))+' S',
+        recoveryT:def.recovery, blastT:'not yet active',
+        clear:()=>{ this.clearArchFault(e.faultId,e.targetNodeId); this.setState(s=>({tk:s.tk+1})); }});
+    }
+    return out;
+  }
+  // The matrix itself: every topology node with at least one legally targetable, non-reserved
+  // fault, grouped under the current layer filter. Gated on display==='instr' purely to avoid
+  // rebuilding a ~70-row matrix on every renderVals() call the way instructorView()'s other
+  // fields already do unconditionally (advisory Q2 precedent) -- correctness never depends on
+  // this gate, since P.archFaults/archPending are the only state that matters and neither is
+  // touched here.
+  archPanel(){
+    const S=this.state, G=this.topo;
+    if(S.display!=='instr'||!G){ const a=this.archActiveList(); return {layers:[],rows:[],stage:null,active:a,activeCount:String(a.length),activeEmpty:!a.length}; }
+    const layerKeys=['ALL'].concat(ESS.Topology.LAYERS);
+    const layers=layerKeys.map(l=>({k:l,label:l,
+      bg:S.archFilterLayer===l?'#B8C4D4':'#D4D0C8', bc:S.archFilterLayer===l?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',
+      cb:()=>this.setState({archFilterLayer:l})}));
+    const rows=[];
+    for(const id of Object.keys(G.nodes).sort()){
+      const n=G.nodes[id];
+      if(S.archFilterLayer!=='ALL'&&n.layer!==S.archFilterLayer) continue;
+      const faults=this.archApplicableFaults(n);
+      if(!faults.length) continue;
+      const cells=faults.map(faultId=>{
+        const status=this.archLedgerStatus(faultId,id);
+        const sel=S.archStageNode===id&&S.archStageFault===faultId;
+        const bg=status==='ACTIVE'?'#E4B8B8':status==='PENDING'?'#E8D4A0':sel?'#B8C4D4':'#EDEDE9';
+        const bc=sel?'1px solid #31548F':'1px solid #9a968e';
+        return {faultId,statusT:status||'',bg,bc,cb:()=>this.archStageSelect(id,faultId)};
+      });
+      rows.push({id,label:n.label,layer:n.layer,kind:n.kind,cells});
+    }
+    const active=this.archActiveList();
+    return {layers,rows,stage:this.archStageView(),active,activeCount:String(active.length),activeEmpty:!active.length};
+  }
   setHidden(on){
     this.instr.hidden=!!on;
     let scrubbed=0;
@@ -2498,6 +3010,13 @@ class Component extends DCLogic {
       case 'SHELVE': this.shelveAlarm(e.arg,e.mins,e.reason); break;
       case 'UNSHELVE': this.unshelveAlarm(e.arg); break;
       case 'UPSET': this.setUpset(e.tag,e.arg==='ON'); break;
+      // Architecture panel (V3-PLAN S2): only the instructor's SCHEDULING command is
+      // journaled (advisory Q3(B)); re-calling setArchFault here recomputes fireAt as
+      // P.t (= the entry's own simTime during a deterministic replay) + delaySec, so the
+      // automatic onset/ramp/expiry archFaultTick() drives from P.t reproduces itself with
+      // no separate journal entry for the firing, same as a drill's armed injection.
+      case 'ARCHFAULT': this.setArchFault(e.arg,e.tag,{delaySec:e.delaySec,durationSec:e.durationSec,mode:e.mode,rampSec:e.rampSec,magnitude:e.magnitude}); break;
+      case 'ARCHCLEAR': this.clearArchFault(e.arg,e.tag); break;
       case 'MAG': this.setMagnitude(e.tag,e.arg); break;
       case 'VAR': this.setVariable(e.tag,e.arg); break;
       case 'SEED': this.setSeed(e.arg); break;
@@ -2543,6 +3062,7 @@ class Component extends DCLogic {
     const back={count:String(I.ring.length),spanT:oldest!=null?this.mmss(P.t-oldest):'00:00',oldestT:oldest!=null?this.fT(oldest):'—',
       btns:[[30000,'−30 S'],[120000,'−2 MIN'],[600000,'−10 MIN']].map(b=>({label:b[1],cb:()=>this.backtrack(b[0])}))};
     const upsets=X.upsetDefs().map(d=>{ const on=this.upsetOn(d.k), m=d.mag; return {k:d.k,label:d.label,unit:d.unit,on,stateT:on?'ACTIVE':'',hasMag:!!m,
+      cls:ESS.UpsetBridge.classOf(d.k),
       magLabel:m?m.label:'',magVal:m?String(P.mag[m.key]):'0',magT:m?(String(P.mag[m.key])+(m.eu?' '+m.eu:'')):'',magMin:m?String(m.min):'0',magMax:m?String(m.max):'1',magStep:m?String(m.step):'1',
       cb:()=>{this.setUpset(d.k,!on);bump();},magChange:m?(e)=>{this.setMagnitude(m.key,e.target.value);bump();}:()=>{}}; });
     const vars=X.variableDefs().map(d=>{ const v=this.variableValue(d.k); return {k:d.k,label:d.label,valT:this.fmt(v,d.dec)+(d.eu?' '+d.eu:''),val:String(v),min:String(d.min),max:String(d.max),step:String(d.step),
@@ -2556,11 +3076,25 @@ class Component extends DCLogic {
       phase:d?(d.injected?'UPSET ACTIVE':'ARMED — waiting for the injection'):'',rows:d?this.drillRows(d):[],end:()=>this.endDrill('ENDED BY INSTRUCTOR'),
       stats:'Actions journaled: '+I.journal.length+' · alarms acknowledged this session: '+this.alarmLog.filter(a=>a.type==='ack').length+' · active alarms: '+this.alarmEngine.counts().total};
     const log=I.log.slice(0,12).map(e=>({t:this.fT(e.t),txt:e.txt}));
+    // Instructor-only truth (V3-PLAN S2, advisory Q4): truthProjection is read ONLY here,
+    // behind the instructorAllowed() gate at the top of this method -- never inside
+    // archView(), which is a trainee surface. archTruth carries root-cause identifiers
+    // (fault id, domain, target node, magnitude) that must never reach a trainee display.
+    const archTruth=this.topo?ESS.FaultEngine.truthProjection(this.archFaultState(),this.topo).activeFaults.map(f=>
+      ({id:f.instanceId,faultId:f.faultId,domain:f.domain,target:f.targetNodeId,
+        magnitude:f.magnitude,activatedAt:f.activatedAt==null?'':this.fT(f.activatedAt)})):[];
     return {on:true,authT:I.auth?'INSTRUCTOR PASSWORD':'MNGR LEVEL',hiddenOn:I.hidden,hidden:chip(I.hidden?'HIDDEN UPSETS: ON':'HIDDEN UPSETS: OFF',I.hidden,()=>{this.setHidden(!I.hidden);bump();}),
+      archTruth,archTruthEmpty:!archTruth.length,
       hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row; INSTR events mirrored before the switch were removed. The assistant still diagnoses from process symptoms.':'Upsets, snapshots and replays are mirrored into the station journal (source INSTR) and System Status lists active upsets; variables, magnitudes and the seed are never shown to the trainee.',
       lock:()=>this.lockInstructor(),close:()=>this.nav('graphic'),
       seedT:String(this.seed),seedVal:S.instrSeedTxt,seedChange:(e)=>this.setState({instrSeedTxt:e.target.value}),seedKey:(e)=>{if(e.key==='Enter')this.setSeed(S.instrSeedTxt);},seedGo:()=>this.setSeed(S.instrSeedTxt),
-      run,slots,snapName:S.instrSnapName,snapNameChange:(e)=>this.setState({instrSnapName:e.target.value}),presets,back,upsets,clearUpsets:()=>{this.clearUpsets();bump();},vars,journal,assess,log,logEmpty:!log.length};
+      run,slots,snapName:S.instrSnapName,snapNameChange:(e)=>this.setState({instrSnapName:e.target.value}),presets,back,upsets,clearUpsets:()=>{this.clearUpsets();bump();},vars,
+      // Architecture panel (V3-PLAN S2, DO items 1-4): the topology fault matrix, the
+      // staging form for the cell currently selected, and the active/pending list with
+      // blast radius and recovery condition. archTruth above stays as the S2 baseline
+      // wiring proved it; archPanel is the new instructor-facing surface built on top of it.
+      arch:this.archPanel(),
+      journal,assess,log,logEmpty:!log.length};
   }
 
   // ---------- operator actions ----------
@@ -3260,15 +3794,19 @@ class Component extends DCLogic {
       lists,actors,actorsEmpty:actors.length===0,
       footer:'Thresholds: about '+T.perDayAcceptable+' alarms per day acceptable and '+T.perDayManageable+' manageable; '+T.per10minTarget+' per 10 min target, '+T.per10minManageable+' manageable, '+T.per10minMax+' in 10 min is a flood; time in flood under '+T.floodPctMax+' %; top-10 alarms '+T.top10PctTarget+'–'+T.top10PctMax+' % of load; chattering zero; standing under '+T.standingMax+'; priority split 80 / 15 / 5 (Low / High / Urgent). Figures from the exida white paper on ISA-18.2 performance metrics and the alarm-performance-analyser benchmark notes (RESOURCES 2.7, 2.8), which summarise ISA-18.2 and EEMUA 191. The standing-alarm threshold is scaled to 10 min for a training session; the plant figure is 24 h.'};
   }
-  // ARCH view (V3-PLAN S1: Topology + Trace). Reads this.topo, the graph cached in
-  // initSim()/restoreSnapshot() -- never rebuilt here, since renderVals() runs on every
-  // setState (advisory Q2), not just the 2 Hz tick. Only computed when the ARCH display
-  // is actually showing; a cheap {} stub otherwise. Every closure below only calls
+  // ARCH view (V3-PLAN S1: Topology + Trace; S2: real health). Reads this.topo, the graph
+  // cached in initSim()/restoreSnapshot() -- never rebuilt here, since renderVals() runs on
+  // every setState (advisory Q2), not just the 2 Hz tick. Only computed when the ARCH
+  // display is actually showing; a cheap {} stub otherwise. Every closure below only calls
   // this.setState with view-only keys (archMode/archProfile/archTag/archSel) or
-  // this.openArch/this.msgZone -- no process, control, alarm or topology mutation, per
-  // the S1 exit condition. Health is passed as null: S2 wires ESS.FaultEngine into the
-  // app; until then every node defaults HEALTHY, which is also why no failure colour is
-  // invented here (V3-PLAN addendum Q6.3, Q1 -- ESS.Palette has no health palette).
+  // this.openArch/this.msgZone -- no process, control, alarm or topology mutation, per the
+  // S1 exit condition, still true in S2. ARCH IS A TRAINEE SURFACE: health comes from
+  // ESS.FaultEngine.healthProjection (symptoms only) -- NEVER truthProjection or anything
+  // derived from it -- so no fault id, instance id or domain can reach this view, hidden
+  // upset or not (advisory Q4; instructor truth is surfaced only inside instructorView(),
+  // gated on instructorAllowed()). No failure colour is invented here (V3-PLAN addendum
+  // Q6.3, Q1 -- ESS.Palette has no health palette); healthLabel/symptoms flow through as
+  // plain text via the inspector and the node title attribute.
   archView(disp){
     const S=this.state;
     if(disp!=='arch'||!this.topo) return {};
@@ -3287,8 +3825,9 @@ class Component extends DCLogic {
       selection={applicable,resolved,describe:describeMap};
     }
 
+    const health=ESS.FaultEngine.healthProjection(this.archFaultState(),G);
     const view=ESS.ArchitectureViewModel.build({
-      graph:G, health:null, mode:S.archMode, profile:S.archProfile,
+      graph:G, health, mode:S.archMode, profile:S.archProfile,
       // Stage scope, declared here rather than in a plan document: S1 ships Learn and
       // Trace. S3 adds 'diagnose', S4 adds 'debrief', each as part of implementing it.
       // Unimplemented modes are hidden, never shown disabled -- a trainee must not be able
@@ -3307,13 +3846,18 @@ class Component extends DCLogic {
     const svgW=Math.max(200,maxX+16), svgH=Math.max(120,maxY+16);
 
     // Semantic-token -> chrome colour, done here (never in the pure module -- it emits
-    // tokens only). S1 never sees a non-HEALTHY token, so this is only ever the neutral
-    // case plus the (mutation-free) view-only selection/path/blast highlights.
+    // tokens only). Chrome and equipment stay grey per the existing philosophy (V3-PLAN
+    // section 7); a FAILED/DEGRADED node tints its OUTLINE only, from this.prioColor() --
+    // src/palette.js is the only colour source, so this reuses the same Urgent/High tokens
+    // the alarm displays already use rather than inventing a new health palette (V3-PLAN
+    // addendum Q6.3). Selection/path/blast view-only highlights still take precedence.
     const nodeVisual=(n)=>{
       const isSel=n.id===selNode;
       const inBlast=!!(blastSet&&blastSet.has(n.id)&&!isSel);
       const onPath=!!(pathSet.has(n.id)&&!isSel);
       let fill='#D4D0C8', stroke='#6E6E6E', sw=1;
+      if(n.health==='FAILED'){ stroke=this.prioColor('Urgent'); sw=2; }
+      else if(n.health==='DEGRADED'){ stroke=this.prioColor('High'); sw=1.5; }
       if(onPath){ fill='#EFE0A0'; stroke='#8a6d1a'; }
       if(inBlast){ fill='#C7D3E3'; stroke='#31548F'; }
       if(isSel){ fill='#B8C4D4'; stroke='#31548F'; sw=2.5; }

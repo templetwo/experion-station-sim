@@ -49,8 +49,13 @@ function mulberry32(seed) {
 
 test('fault vocabulary: the 13 fault ids are pinned, frozen and fully defined', async (t) => {
   const EXPECTED_IDS = [
-    'FROZEN_MEASUREMENT', 'BIASED_MEASUREMENT', 'NOISY_MEASUREMENT', 'VALVE_RESPONSE_FAILURE',
-    'OPEN_INPUT_BAD_QUALITY',
+    // Order is V3-PLAN section 5's TABLE order, which lists the IO row (open input /
+    // bad quality) BEFORE the FIELD/IO row (valve response failure). The lead's SA brief
+    // had reordered these two and src/fault-engine.js followed the brief while
+    // src/drill-arch.js followed the spec -- the eighth cross-module divergence in this
+    // build, and the only one whose origin was the brief rather than an agent.
+    'FROZEN_MEASUREMENT', 'BIASED_MEASUREMENT', 'NOISY_MEASUREMENT',
+    'OPEN_INPUT_BAD_QUALITY', 'VALVE_RESPONSE_FAILURE',
     'CONTROLLER_LOSS', 'REDUNDANCY_SWITCHOVER',
     'NET_PATH_DEGRADED', 'COMMS_PARTITION',
     'SERVER_SERVICE_DEGRADED',

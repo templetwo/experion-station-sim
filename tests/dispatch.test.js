@@ -208,13 +208,13 @@ test('CONTRACT GAP (adversarial review): apply() has no rollback -- a mutation m
 
 // ---------------------------------------------------------------- real Component / instructor
 
-test('KNOWN HAZARD (thread #28): a rejected command is journaled, and ESS.Instructor.replayPlan schedules it for replay anyway', () => {
+test('FIXED (thread #28): a rejected command is journaled with accepted:false, but ESS.Instructor.replayPlan no longer schedules it for replay', () => {
   const c = newSim();
   run(c, 60); // move off t=0 so this isn't a degenerate boundary case
 
   const d = Dispatch.create();
-  // The concrete hazard is a REFUSAL that reuses a real, existing op replayPlan already
-  // knows how to re-apply (MODE -> applyJournalEntry -> setMode) -- not a made-up type
+  // The concrete hazard was a REFUSAL that reused a real, existing op replayPlan already
+  // knew how to re-apply (MODE -> applyJournalEntry -> setMode) -- not a made-up type
   // applyJournalEntry's switch would silently ignore anyway.
   d.register('MODE', {
     validate: () => 'refused: unsafe MODE change while an interlock is active',
@@ -233,14 +233,20 @@ test('KNOWN HAZARD (thread #28): a rejected command is journaled, and ESS.Instru
   const plan = Instr.replayPlan(c.instr, snap, attemptT + 1);
   const replayed = plan.entries.find((e) => e.seq === ev.seq);
 
-  assert.ok(replayed,
-    'HAZARD CONFIRMED: replayPlan filters only on seq/t and schedules the refused MODE entry ' +
-    'for replay -- applyReplayDue would call applyJournalEntry -> setMode(FIC102, MAN) even ' +
-    'though it was refused. src/instructor.js replayPlan needs an `e.accepted !== false` guard ' +
-    '(thread #28) before dispatch is wired into the app in S2.');
-  assert.equal(replayed.op, 'MODE');
-  assert.equal(replayed.tag, 'FIC102');
-  assert.equal(replayed.accepted, false, 'the marking IS present on the entry -- replayPlan simply never looks at it');
+  // FIXED (V3-PLAN S2, architect decision D3(a)): src/instructor.js replayPlan now filters
+  // on `e.accepted !== false` too, so the refused MODE entry is excluded from the replay
+  // plan -- applyReplayDue can no longer call applyJournalEntry -> setMode(FIC102, MAN) for
+  // an attempt that was never actually applied.
+  assert.equal(replayed, undefined,
+    'the refused entry must not be scheduled for replay now that the D3(a) guard is in place');
+
+  // The record of the refusal is not erased -- only the replay PLAN excludes it. The entry
+  // itself is still in the journal, accepted:false and all.
+  const journaled = c.instr.journal.find((e) => e.seq === ev.seq);
+  assert.ok(journaled, 'the refused entry is still journaled');
+  assert.equal(journaled.op, 'MODE');
+  assert.equal(journaled.tag, 'FIC102');
+  assert.equal(journaled.accepted, false, 'the marking IS present on the entry');
 });
 
 test('determinism: identical dispatched commands under the same seed produce identical end-state digests', () => {

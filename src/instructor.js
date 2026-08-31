@@ -126,9 +126,17 @@
     if (I.log.length > LOG_CAP) I.log.length = LOG_CAP;
   }
 
+  // e.accepted !== false (thread #28, V3-PLAN S2 architect decision D3(a)): a command
+  // dispatch refused is journaled anyway (accepted:false, with a reason -- that marking is
+  // the whole point, the v3 scorer's safety gate needs to see a trainee attempt something
+  // unsafe and get refused), but it was never actually applied, so it must never be
+  // scheduled for replay. `undefined` (every entry journaled outside ESS.Dispatch, which
+  // carries no `accepted` field at all) passes this check same as `true` -- only an
+  // explicit accepted:false is excluded. src/dispatch.js's header documents the hazard this
+  // closes; tests/dispatch.test.js pins the fix.
   function replayPlan(I, snap, nowT) {
     var afterSnap = snap.journalSeq == null ? function (e) { return e.t > snap.t; } : function (e) { return e.seq > snap.journalSeq; };
-    var list = I.journal.filter(function (e) { return afterSnap(e) && e.t <= nowT; })
+    var list = I.journal.filter(function (e) { return afterSnap(e) && e.t <= nowT && e.accepted !== false; })
       .sort(function (a, b) { return a.t - b.t || a.seq - b.seq; }).map(clone);
     return { entries: list, i: 0, fromT: snap.t, endT: list.length ? list[list.length - 1].t : snap.t, toT: nowT };
   }

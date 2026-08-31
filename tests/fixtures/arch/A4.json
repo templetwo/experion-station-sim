@@ -1,0 +1,346 @@
+{
+  "//": "@artifact dev (architecture-drill fixture; see tests/drill-arch-fixtures.test.js)",
+  "fixture": "A4_REDUNDANCY_SWITCHOVER",
+  "model": "760be7b700b967d520848901b11c83892c9802e7790ee1271198e0e2eaf067ab",
+  "seed": 20260830,
+  "scopeNote": "SA pure-module capture (src/drill-arch.js + src/fault-engine.js data only); no topology graph, no live fault activation, no dispatch journal. See this file's header for exactly what stage S3 must add.",
+  "drill": {
+    "id": "A4",
+    "title": "Redundancy switchover",
+    "basePreset": "U3_HILOAD",
+    "domain": "CONTROL"
+  },
+  "definitionDigest": "0f6c9854db4ada281ac9ae95f595962ff5968924ce3d5b68b6ffebddc0dcf68a",
+  "faultTimeline": [
+    {
+      "tSec": 60,
+      "faultId": "REDUNDANCY_SWITCHOVER",
+      "targets": [
+        "CTRL-U3"
+      ],
+      "note": "U3’s primary controller fails over to its standby; the switch is brief and the process stays controlled throughout.",
+      "faultEngineDomain": "CONTROL",
+      "healthEffect": "DEGRADED",
+      "propagate": "NONE",
+      "magnitudeRange": null
+    }
+  ],
+  "expectedActions": [
+    {
+      "id": "ACK",
+      "category": "stabilize",
+      "required": true,
+      "actionType": "ACK",
+      "target": "CTRL-U3",
+      "description": "Acknowledge the indication raised at CTRL-U3."
+    },
+    {
+      "id": "EV1",
+      "category": "evidence",
+      "required": true,
+      "actionType": "TRAINING.MARK_EVIDENCE",
+      "target": "CTRL-U3",
+      "description": "Mark CTRL-U3 as evidence."
+    },
+    {
+      "id": "EV2",
+      "category": "evidence",
+      "required": true,
+      "actionType": "TRAINING.PIN_COMPARE",
+      "payloadMatch": {
+        "targets": [
+          "CTRL-U3",
+          "CEE-U3"
+        ]
+      },
+      "description": "Pin CTRL-U3 against CEE-U3 side by side for comparison."
+    },
+    {
+      "id": "LOC",
+      "category": "localization",
+      "required": true,
+      "actionType": "TRAINING.SUBMIT_HYPOTHESIS",
+      "payloadMatch": {
+        "domain": "CONTROL"
+      },
+      "description": "Submit CONTROL as the failure domain."
+    },
+    {
+      "id": "VER",
+      "category": "verification",
+      "required": true,
+      "actionType": "TRAINING.VERIFY",
+      "target": "CTRL-U3",
+      "description": "Re-check CTRL-U3 after diagnosis to confirm the picture is resolved or understood."
+    },
+    {
+      "id": "DEB",
+      "category": "debrief",
+      "required": true,
+      "actionType": "TRAINING.DEBRIEF",
+      "payloadMatch": {
+        "correct": true
+      },
+      "description": "Answer the debrief question correctly: cause vs symptom for this drill."
+    }
+  ],
+  "safetyGate": [
+    {
+      "id": "GATE",
+      "description": "Seizing manual control across U3’s loops for a brief, self-correcting redundancy switchover is the overreaction this drill penalises -- restraint is the correct response.",
+      "actionType": "MODE.SET",
+      "target": [
+        "CM-CM16_FIC310",
+        "CM-CM19_FIC313",
+        "CM-CM17_TIC311"
+      ],
+      "payloadMatch": {
+        "mode": "MAN"
+      }
+    }
+  ],
+  "scoringRules": [
+    {
+      "category": "stabilize",
+      "weight": 30
+    },
+    {
+      "category": "evidence",
+      "weight": 25
+    },
+    {
+      "category": "localization",
+      "weight": 20
+    },
+    {
+      "category": "verification",
+      "weight": 15
+    },
+    {
+      "category": "debrief",
+      "weight": 10
+    }
+  ],
+  "commands": [
+    {
+      "seq": 1,
+      "simTime": 1000,
+      "actor": "TRAINEE",
+      "actionType": "ACK",
+      "accepted": true,
+      "target": "CTRL-U3"
+    },
+    {
+      "seq": 2,
+      "simTime": 2000,
+      "actor": "TRAINEE",
+      "actionType": "TRAINING.MARK_EVIDENCE",
+      "accepted": true,
+      "target": "CTRL-U3"
+    },
+    {
+      "seq": 3,
+      "simTime": 3000,
+      "actor": "TRAINEE",
+      "actionType": "TRAINING.PIN_COMPARE",
+      "accepted": true,
+      "payload": {
+        "targets": [
+          "CTRL-U3",
+          "CEE-U3"
+        ]
+      }
+    },
+    {
+      "seq": 4,
+      "simTime": 4000,
+      "actor": "TRAINEE",
+      "actionType": "TRAINING.SUBMIT_HYPOTHESIS",
+      "accepted": true,
+      "payload": {
+        "domain": "CONTROL"
+      }
+    },
+    {
+      "seq": 5,
+      "simTime": 5000,
+      "actor": "TRAINEE",
+      "actionType": "TRAINING.VERIFY",
+      "accepted": true,
+      "target": "CTRL-U3"
+    },
+    {
+      "seq": 6,
+      "simTime": 6000,
+      "actor": "TRAINEE",
+      "actionType": "TRAINING.DEBRIEF",
+      "accepted": true,
+      "payload": {
+        "correct": true
+      }
+    }
+  ],
+  "expected": {
+    "domain": "CONTROL",
+    "scoreRange": {
+      "min": 0,
+      "gatedCap": 79,
+      "max": 100
+    },
+    "idealScore": {
+      "drillId": "A4",
+      "score": 100,
+      "pass": true,
+      "passMark": 80,
+      "passLabel": "80 % pass mark — this project’s own architecture-drill threshold, independent of any vendor certification",
+      "gated": false,
+      "gateHits": [],
+      "breakdown": [
+        {
+          "category": "stabilize",
+          "weight": 30,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 30
+        },
+        {
+          "category": "evidence",
+          "weight": 25,
+          "required": 2,
+          "matched": 2,
+          "fraction": 1,
+          "earned": 25
+        },
+        {
+          "category": "localization",
+          "weight": 20,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 20
+        },
+        {
+          "category": "verification",
+          "weight": 15,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 15
+        },
+        {
+          "category": "debrief",
+          "weight": 10,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 10
+        }
+      ]
+    },
+    "gatedScore": {
+      "drillId": "A4",
+      "score": 79,
+      "pass": false,
+      "passMark": 80,
+      "passLabel": "80 % pass mark — this project’s own architecture-drill threshold, independent of any vendor certification",
+      "gated": true,
+      "gateHits": [
+        "GATE"
+      ],
+      "breakdown": [
+        {
+          "category": "stabilize",
+          "weight": 30,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 30
+        },
+        {
+          "category": "evidence",
+          "weight": 25,
+          "required": 2,
+          "matched": 2,
+          "fraction": 1,
+          "earned": 25
+        },
+        {
+          "category": "localization",
+          "weight": 20,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 20
+        },
+        {
+          "category": "verification",
+          "weight": 15,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 15
+        },
+        {
+          "category": "debrief",
+          "weight": 10,
+          "required": 1,
+          "matched": 1,
+          "fraction": 1,
+          "earned": 10
+        }
+      ]
+    },
+    "emptyScore": {
+      "drillId": "A4",
+      "score": 0,
+      "pass": false,
+      "passMark": 80,
+      "passLabel": "80 % pass mark — this project’s own architecture-drill threshold, independent of any vendor certification",
+      "gated": false,
+      "gateHits": [],
+      "breakdown": [
+        {
+          "category": "stabilize",
+          "weight": 30,
+          "required": 1,
+          "matched": 0,
+          "fraction": 0,
+          "earned": 0
+        },
+        {
+          "category": "evidence",
+          "weight": 25,
+          "required": 2,
+          "matched": 0,
+          "fraction": 0,
+          "earned": 0
+        },
+        {
+          "category": "localization",
+          "weight": 20,
+          "required": 1,
+          "matched": 0,
+          "fraction": 0,
+          "earned": 0
+        },
+        {
+          "category": "verification",
+          "weight": 15,
+          "required": 1,
+          "matched": 0,
+          "fraction": 0,
+          "earned": 0
+        },
+        {
+          "category": "debrief",
+          "weight": 10,
+          "required": 1,
+          "matched": 0,
+          "fraction": 0,
+          "earned": 0
+        }
+      ]
+    }
+  }
+}

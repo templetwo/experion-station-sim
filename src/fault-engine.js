@@ -78,8 +78,9 @@
   // Pinned literally so drill-arch can copy this list into its own code/test without
   // requiring this module mid-stage (V3-PLAN addendum).
   var FAULT_IDS = [
-    'FROZEN_MEASUREMENT', 'BIASED_MEASUREMENT', 'NOISY_MEASUREMENT', 'VALVE_RESPONSE_FAILURE',
-    'OPEN_INPUT_BAD_QUALITY',
+    'FROZEN_MEASUREMENT', 'BIASED_MEASUREMENT', 'NOISY_MEASUREMENT',
+    // Spec section 5 table order: the IO row precedes the FIELD/IO valve row.
+    'OPEN_INPUT_BAD_QUALITY', 'VALVE_RESPONSE_FAILURE',
     'CONTROLLER_LOSS', 'REDUNDANCY_SWITCHOVER',
     'NET_PATH_DEGRADED', 'COMMS_PARTITION',
     'SERVER_SERVICE_DEGRADED',
