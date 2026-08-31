@@ -203,7 +203,11 @@
         { id: 'PROCESS_TRIP', description: 'A real trip on any equipment during the drill aborts it for review; an aborted run is not scored as a pass or a fail.' }
       ],
       hints: spec.hints.slice(),
-      sourceBasis: (spec.sourceBasis || ['V3-PLAN section 5', 'V3-PLAN section 6', 'RESOURCES 2.14']).slice()
+      // Canonical registry form is RESOURCES-<section>, matching src/topology.js and
+      // resolved by tests/provenance.test.js against docs/RESOURCES.md. An internal spec
+      // section is NOT a public source and cannot discharge release gate 5, so the
+      // fallback cites the training-assessment precedent rather than V3-PLAN.
+      sourceBasis: (spec.sourceBasis || ['RESOURCES-2.14']).slice()
     });
   }
 
@@ -211,6 +215,8 @@
 
   var DRILLS = Object.freeze([
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): open process models supply the real flow the frozen reading contradicts; standards for measurement quality.
+      sourceBasis: ['RESOURCES-4', 'RESOURCES-2.19'],
       id: 'A1', title: 'Frozen flow measurement',
       objectives: [
         'Distinguish a frozen/stuck measurement from a genuine loss of flow.',
@@ -227,6 +233,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): channel/quality handling per standards; I/O and controller platform concepts.
+      sourceBasis: ['RESOURCES-2.19', 'RESOURCES-2.16'],
       id: 'A2', title: 'Input channel failure',
       objectives: [
         'Distinguish a field-device problem from an I/O-path problem.',
@@ -243,6 +251,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 state and quality model -- GOOD quality is a channel claim, not a correctness proof; process models supply the correlated evidence.
+      sourceBasis: ['RESOURCES-2.5', 'RESOURCES-4'],
       id: 'A3', title: 'Bias with GOOD quality',
       objectives: [
         'Recognise that GOOD quality is not proof of correctness.',
@@ -259,6 +269,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): redundant controller platform concepts.
+      sourceBasis: ['RESOURCES-2.16'],
       id: 'A4', title: 'Redundancy switchover',
       objectives: [
         'Recognise a degraded-redundancy transient for what it is.',
@@ -275,6 +287,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): controller platform concepts; server/SCADA architecture for what goes stale together.
+      sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.13'],
       id: 'A5', title: 'Controller loss',
       objectives: [
         'Recognise a common-cause pattern: many points invalid together, not many independent faults.',
@@ -292,6 +306,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): redundant path concepts; standards for degraded-vs-failed reporting.
+      sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.19'],
       id: 'A6', title: 'Single network path degradation',
       objectives: [
         'Distinguish degraded redundancy from a total communications loss.',
@@ -309,6 +325,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): path loss, server architecture and the stale-data pattern a partition produces.
+      sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.13', 'RESOURCES-2.19'],
       id: 'A7', title: 'Communications partition',
       objectives: [
         'Distinguish a communications failure from a process upset.',
@@ -325,6 +343,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): server/SCADA architecture; station HMI concepts -- the console-vs-flex split this drill exists to teach.
+      sourceBasis: ['RESOURCES-2.13', 'RESOURCES-2.1'],
       id: 'A8', title: 'Server / flex service loss',
       objectives: [
         'Distinguish a server (SERVICE) failure domain from a controller (CONTROL) failure domain.',
@@ -341,6 +361,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): station and HMI concepts: one operator position down is not a plant down.
+      sourceBasis: ['RESOURCES-2.1', 'RESOURCES-2.3'],
       id: 'A9', title: 'Local station failure',
       objectives: [
         'Recognise that one HMI going dark is not a plant-wide event.',
@@ -358,6 +380,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): history collection architecture; HMI trend presentation.
+      sourceBasis: ['RESOURCES-2.13', 'RESOURCES-2.3'],
       id: 'A10', title: 'Historian gap',
       objectives: [
         'Distinguish live control health from historical data availability.',
@@ -374,6 +398,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): operations-assistant concept -- advisory, never control.
+      sourceBasis: ['RESOURCES-2.15'],
       id: 'A11', title: 'Assistant loss',
       objectives: [
         'Recognise the Ops Assistant as advisory, not load-bearing.',
@@ -390,6 +416,8 @@
       ]
     }),
     buildDrill({
+      // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 lifecycle and alarm-management practice for downstream protection firing on a root cause; process models for the cascade itself.
+      sourceBasis: ['RESOURCES-2.5', 'RESOURCES-2.7', 'RESOURCES-4'],
       id: 'A12', title: 'Cascading symptoms',
       objectives: [
         'Trace a chain of alarms and safeguards back to its single root cause.',
