@@ -28,11 +28,10 @@ Diagnose and Debrief. A1 to A12 start from the Training Drills dialog
 (`startADrillFromMenu`): the drill's `basePreset` loads, the fault timeline
 arms, and the view opens in Diagnose. Evidence, pin-compare, hypothesis and
 verify commands are Diagnose-only. Learn is hidden while an A-drill is running.
-`src/training.js` carries the coverage-matrix task ids the architecture
-curriculum will report against (an Architecture group, `ARCH_ALL`), but
-nothing in the app calls `taskDone()` for any of them yet, and the 20-entry
-training record (`ESS.Training.addRecord`/`recordFor`) still records only the
-eight legacy drills.
+Completed A-drills use the same 20-entry training record
+(`ESS.Training.addRecord`/`recordFor`) as the process drills, but carry only the
+neutral trainee title until adjudication; the internal causal title remains an
+instructor/debrief fact.
 
 ## Two curricula, not one
 
@@ -55,15 +54,10 @@ neither replaces the other.
 
 Both scorers enforce the same 80-point pass mark under the same label (see
 *The pass mark*, below), and both return the same score/pass/breakdown shape
-that `ESS.Training.addRecord` keeps in a 20-entry training record — the two
-curricula are built to share that record, though only the eight legacy drills
-are wired into it as of this writing (see the status note above). Neither
-scorer reads the other's inputs, and landing the architecture drills changed
-nothing about how the eight legacy drills are graded — their scoring is
-byte-for-byte what it was before the architecture layer existed. Once an
-instructor can run both curricula in one session, that instructor will see one
-consistent pass/fail line, built two different ways depending on what the drill
-is actually testing.
+that `ESS.Training.addRecord` keeps in a 20-entry training record. Neither
+scorer reads the other's inputs. An instructor can run both curricula in one
+session and sees one consistent pass/fail line, built two different ways
+depending on what the drill is actually testing.
 
 ## The twelve architecture drills
 
@@ -87,24 +81,30 @@ condition behind it, both read from the drill's own data in
 | A9 | Local station failure | One HMI going dark is not a plant-wide event; tell it apart from the server fault it can resemble (A8) | The simulated peer station stops updating; the server and every controller stay healthy |
 | A10 | Historian gap | Tell live control health from historical-data availability; a collection gap is an INFORMATION fault, not a CONTROL fault | History collection stops for an interval; live values and control are unaffected throughout |
 | A11 | Assistant loss | The Ops Assistant is advisory, not load-bearing; operate normally without it | The Ops Assistant becomes unavailable mid-upset; indication and control are unaffected |
-| A12 | Cascading symptoms | Trace a chain of alarms and safeguards back to one root cause; don't mistake a protective response for the failure itself | TIC201 biases low while R-201 is already running hot on high feed; the controller heats further in response, and downstream alarms follow |
+| A12 | Causal measurement bias | Trace a bad field measurement through the cascade controller to its process consequence | TIC201 biases low while R-201 is already running hot on high feed; the master controller raises the cascade demand, warming the jacket and real reactor relative to an unbiased run |
 
 A1 through A11 each inject a single fault from one of the topology's seven
 layers (FIELD, IO, CONTROL, NETWORK, SERVICE, HMI, INFORMATION). A12 is the
-capstone: the same field-layer bias as A1/A3, but staged so that a real
-downstream protective response (R-201's own high-temperature safeguard) also
-engages — testing whether the trainee traces the alarm chain back to the
-biased transmitter that caused it, rather than treating the safeguard that
-caught it as the problem.
+capstone: the same field-layer bias as A1/A3, but applied to the master of a
+cascade. The biased-low TIC201 measurement makes the otherwise healthy master
+raise TIC202's demand, which warms the jacket and real reactor relative to an
+unbiased run. The trainee must distinguish the FIELD root cause from the
+controller and process consequences it produces.
 
 ## How an architecture drill is scored
 
-Every drill asks for the same shape of response, built from six required
-actions across five categories, weighted by default:
+Every drill asks for the same diagnostic response: five recorded actions
+across evidence, localization, verification and debrief, plus one of two
+honest forms of stabilization evidence. A drill with a mapped process alarm
+uses the accepted ACK. An architecture-only fault that leaves the process
+stable uses **safe restraint** instead: stabilization credit appears only after
+the trainee completes the whole diagnostic workflow without taking the drill's
+major-unsafe action. The simulator does not synthesize an alarm just to make
+the rubric reachable.
 
 | Category | What it asks for | Default weight |
 |---|---|---|
-| Stabilize | Acknowledge the indication | 30 |
+| Stabilize | Acknowledge a real mapped indication, or complete the diagnosis while safely restraining action | 30 |
 | Evidence | Mark the primary point as evidence, then pin it side by side against a second, correlated point | 25 |
 | Localization | Submit a **failure domain** — not a specific cause — as the hypothesis | 20 |
 | Verification | Re-check the primary point after diagnosis to confirm the picture is resolved or understood | 15 |
@@ -125,11 +125,23 @@ tests alarm-response urgency the way the legacy drills do, so giving time a
 fabricated small weight would be dishonest; the honest weight is zero.
 Assistant/AI latency never enters either scorer's clock.
 
-Each category's score is the fraction of its required actions the trainee
-actually completed, matched against their own recorded journal — not against
-what they clicked, but against what the system accepted as having happened.
-A category with two required actions and one completed earns half that
-category's weight; nothing is all-or-nothing.
+Each recorded-action category's score is the fraction of its required actions
+the trainee actually completed, matched against their own journal — not
+against what they clicked, but against what the system accepted as having
+happened. Evidence, for example, has two required actions and earns half its
+weight when only one is complete. Safe restraint is necessarily outcome-based:
+it earns its category only when the diagnostic workflow is complete and the
+safety gate remains clear.
+
+Scoring begins at an accepted `DRILL.FAULT_PRESENT` lifecycle receipt for that
+drill. Pre-fault checklist actions remain part of the record but cannot earn
+causal credit. Localization is one binding decision: the first accepted
+post-onset hypothesis is the answer that is scored, so spraying every layer
+cannot turn an early wrong answer into a later correct one. A pre-onset guess
+does not lock out the first eligible post-onset decision. Crossing 80 is also
+not sufficient by itself: every required action must be present before an
+architecture run is labeled a pass. A 90-point run with its required debrief
+missing is therefore incomplete, not passed.
 
 ## The safety gate
 
@@ -164,9 +176,9 @@ examples, in the drills' own words:
 - **A5** — defeating the M202 agitator interlock to force a restart while the
   whole U2 controller domain is stale treats a common-cause failure as a
   single-equipment problem — exactly the wrong localisation.
-- **A12** — defeating or overriding the R-201 protective response that engaged
-  downstream, instead of correcting the biased TIC201 measurement that caused
-  it, treats the safeguard as the problem it just caught.
+- **A12** — suppressing TIC201 because its indication conflicts with independent
+  process evidence hides the symptom instead of locating and correcting the
+  biased field measurement.
 
 A gated score is capped, not zeroed: category credit for genuinely completed
 work is not erased. The cap simply means the pass/fail line cannot be crossed
@@ -207,10 +219,8 @@ depends on anything that isn't in the permanent record of what the trainee did.
 
 ## The eight legacy drills
 
-The original process-operations drills are unchanged by the architecture
-layer's arrival — same fault, same trigger, same scoring, same debrief
-question, byte-for-byte. Each one is a single equipment or process upset with
-one correct sequence of moves:
+Each process-operations drill is a single equipment or process upset with one
+correct sequence of moves:
 
 | # | Title | Teaches | Trainee action |
 |---|---|---|---|
@@ -222,6 +232,21 @@ one correct sequence of moves:
 | D9 | Flash drum pressure high | A loop left in MAN by a previous shift will not respond no matter how the pressure trends | Return the loop to AUTO |
 | D11 | Agitator trip during semi-batch feed (Unit 02) | Why restarting a tripped agitator immediately is dangerous: accumulated, unmixed monomer reacts all at once | Cut monomer feed and maximise cooling before any restart |
 | D12 | Catalyst activity surge — bed overtemp (Unit 03) | Managing a runaway bed temperature at constant preheat before the 480 °C fuel trip | Raise quench flow and/or lower the preheater setpoint |
+
+The drill dialog offers two explicit initial-condition contracts. **Canonical**
+loads the drill's declared preset (and any declared setup, such as D9's
+previous-shift MAN condition) before arming. **Live state** preserves the plant
+exactly as it is and never manufactures that setup or starts a batch. The
+chosen source and preset are retained through snapshot/replay; replay rebuilds
+the canonical state before restoring the label so provenance cannot describe a
+plant state that never existed.
+
+D9 and D12 also define explicit no-alarm response horizons. A qualifying D9
+AUTO recovery must remain safe for 180 simulated seconds; a qualifying D12
+quench/preheat response must remain safe for 300. Only those declared drills
+can complete proactively. Other drills cannot turn a quiet interval into
+stabilization evidence, and a declared proactive run resets its horizon if its
+own safety predicate stops being true.
 
 These are graded by `ESS.Kpi.scoreDrill` against six weighted rows — time to
 acknowledge (20), correct action and its latency (25), no trip on the drill's
@@ -235,15 +260,15 @@ are testing response speed and correct procedure under a known-shape upset,
 not diagnostic reasoning about which architectural layer failed.
 
 The two scorers coexist without touching each other's inputs. Nothing in the
-architecture drills' scoring reads the D-series metrics, and nothing about the
-D-series scoring changed when the architecture drills were added — the two
-curricula are built so that, once both are runnable in the app (see the status
-note above), an instructor can run either one, or mix them in one session, and
-each result is graded on its own terms.
+architecture drills' scoring reads the D-series metrics. An instructor can run
+either family, or mix them in one session, and each result is graded on its own
+terms.
 
 ## The pass mark
 
-Both curricula enforce the same 80-point threshold. The wording actually shown
+Both curricula enforce the same 80-point threshold. Architecture drills also
+require every required action and a fault-present receipt; the threshold does
+not substitute for completion. The wording actually shown
 to a trainee or instructor today — in the drill debrief and the training-record
 note, both driven by `ESS.Training.PASS_LABEL` — is:
 
@@ -271,14 +296,20 @@ to actually diagnose something — so the simulator draws a hard line between
 what a trainee-visible surface can show and what only the instructor's own
 projection carries.
 
-**A trainee sees symptoms.** The ARCH display, the SIGNAL PATH view, and every
-node inspector a trainee can open report *health* — a node is HEALTHY,
-DEGRADED, FAILED or UNKNOWN — and generic, health-derived prose describing what
-that would look like from the board: a stale reading, a degraded redundancy
-indicator, a channel reporting bad quality. In Diagnose mode specifically, the
-view withholds the full downstream blast radius of a selected node (it falls
-back to the one-hop structural picture) precisely because handing the trainee
-the whole answer would remove the reasoning the drill exists to test.
+**A trainee sees evidence and explicitly graded drill cues, not a highlighted
+root node.** Process indications, alarm behavior and independent comparisons
+carry measured evidence. Effects that this simulator does not implement in its
+process state are presented in a separate **SIMULATED ARCHITECTURE INDICATIONS —
+DRILL CUE LANE, NOT PROCESS VALUES** panel. Those authored indications are
+diagnostic exercise inputs; neither the UI nor PIP may promote them to measured
+board facts. The
+ARCH display and SIGNAL PATH view still provide the structural map, but while
+an A-drill is live every topology node reports UNKNOWN: the exact node health
+computed from the hidden fault is itself answer-key truth even when it contains
+no literal fault id. In Diagnose mode the view also withholds the full
+downstream blast radius of a selected node (it falls back to the one-hop
+structural picture), because handing the trainee either the root marker or the
+whole consequence path would remove the reasoning the drill exists to test.
 Diagnose is reachable: the Training Drills dialog starts A1 to A12 in that
 mode, and the ARCH mode chips offer it whenever Learn is not hidden.
 
@@ -287,14 +318,17 @@ same underlying state carries the actual active fault: its id, its domain, its
 target and its magnitude. This is the projection the Architecture panel and
 the debrief timeline draw from when an instructor is reviewing a run.
 
-**No trainee-visible surface ever carries a fault id or root-cause text.**
+**No trainee-visible surface ever carries a fault id, an internal target/node
+identifier, a truth-backed root marker or root-cause text.** Observable
+annunciator identities such as `U1 NETWORK PATH B` remain available when the
+exercise requires comparing redundant members; they identify the indication,
+not the hidden engine node or cause.
 This isn't an interface convention that a busy afternoon could accidentally
-violate — it's guaranteed by what data the trainee-facing views are ever
-handed in the first place. The module that builds the trainee's view has no
-parameter through which a fault id, an instance id, or a root-cause string
-could arrive; it only ever receives the health-and-symptom projection. There
-is no flag to leak, because there is nothing to check — the trainee-safe
-surface is constructed from data that never contained the answer. The red
-failure marker that finally shows a fault's true location belongs to the
-instructor's own view and to the Debrief timeline that replays a completed
-run — never to anything a trainee sees while a drill is still live.
+violate — it is enforced at the application projection boundary. The view
+module has no parameter through which a fault id, instance id or root-cause
+string can arrive, and the live-drill caller replaces truth-derived per-node
+health with a uniform UNKNOWN projection before building the trainee view. The red
+failure marker and exact-node architecture timeline belong to the instructor's
+own view and authorized replay. The live trainee Debrief mode is still
+available for its required response, but it omits truth-backed architecture
+rows; it cannot be used as an answer-key side channel.

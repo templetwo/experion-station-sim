@@ -654,6 +654,7 @@ test('the fouling-rate variable acts on its own as a slow baseline that the foul
 test('D11 armed from an IDLE Unit 02 reaches its first alarm and a debrief (the 12-minute limit counts from the injection)', () => {
   const c = boot('OPER');
   c.startDrill(c.drillDefs().find((d) => d.id === 'D11'));
+  c.seqCmd('START', true); // explicit operator action; LIVE STATE arming itself preserves IDLE
   let g = 0, tInj = 0;
   while (c.state.drill && g++ < 8000) { c.step(0.5); if (c.state.drill && c.state.drill.injected && !tInj) tInj = c.state.drill.tInj; }
   const dd = c.state.dlg && c.state.dlg.type === 'debrief' && c.state.dlg.drill;
@@ -661,7 +662,7 @@ test('D11 armed from an IDLE Unit 02 reaches its first alarm and a debrief (the 
   assert.ok(tInj > dd.t0 + 600000, 'injected well after arming: ' + ((tInj - dd.t0) / 60000).toFixed(1) + ' min');
   assert.ok(dd.m.tAlarm && dd.m.tAlarm >= tInj, 'first alarm after the injection');
   assert.ok(dd.tEnd - tInj >= 720000 - 1000, 'the limit ran from the injection');
-  assert.deepEqual(Object.keys(c.drillFromData(c.drillData() || { id: 'D11', t0: 1, ti: 1 })).sort(), ['def', 'injected', 'm', 'stableFor', 't0', 'tInj', 'ti']);
+  assert.deepEqual(Object.keys(c.drillFromData(c.drillData() || { id: 'D11', t0: 1, ti: 1 })).sort(), ['def', 'injected', 'm', 'preset', 'stableFor', 'startMode', 't0', 'tInj', 'ti']);
   // ungated drills keep counting from arming
   const d = boot('OPER'); d.startDrill(d.drillDefs()[0]); g = 0; while (d.state.drill && g++ < 3000) d.step(0.5);
   const e = d.state.dlg && d.state.dlg.drill; assert.ok(e && e.tEnd - e.t0 <= 720000 + 1000);

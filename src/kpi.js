@@ -36,9 +36,12 @@
  *       (default 20/25/20/15/10/10), ackFast/ackOk/ackSlow seconds
  *       (30/60/120), actionFast/actionOk seconds (180/360), loadTarget/
  *       loadMax per 10 min (1/10), otherTripPenalty/otherTripMax (10/20),
- *       passMark (80). The score is clamped to 0..100.
+ *       allowProactive (false), passMark (80). The score is clamped to 0..100.
  *     The 80 % pass mark is the sim's own threshold, labelled independent of
  *     any vendor certification scheme (RESOURCES 2.12).
+ *     A correct action that precedes or prevents the first alarm receives full
+ *     action credit only when allowProactive is true: tAct proves the action
+ *     occurred, while a missing/later tAlarm distinguishes the proactive case.
  *   thresholds -> the exida/ISA numbers used by the health verdict.
  */
 (function (root, factory) {
@@ -201,7 +204,7 @@
     weights: { ack: 20, action: 25, trip: 20, stable: 15, load: 10, quiz: 10 },
     ackFast: 30, ackOk: 60, ackSlow: 120, actionFast: 180, actionOk: 360,
     loadTarget: THRESHOLDS.per10minTarget, loadMax: THRESHOLDS.per10minMax, passMark: 80,
-    otherTripPenalty: 10, otherTripMax: 20
+    otherTripPenalty: 10, otherTripMax: 20, allowProactive: false
   };
 
   function latencySec(from, to) { return (typeof from === 'number' && typeof to === 'number') ? (to - from) / 1000 : null; }
@@ -216,10 +219,16 @@
     var ackFrac = ack == null ? 0 : ack <= R.ackFast ? 1 : ack <= R.ackOk ? 0.7 : ack <= R.ackSlow ? 0.4 : 0.15;
     rows.push({ id: 'ack', label: 'Time to acknowledge', earned: round(W.ack * ackFrac, 1), max: W.ack, note: ack == null ? 'not acknowledged' : round(ack, 0) + ' s' });
 
+    var hasAct = typeof m.tAct === 'number';
     var act = latencySec(m.tAlarm, m.tAct);
-    var correct = m.actionCorrect !== false && act != null;
-    var actFrac = !correct ? 0 : act <= R.actionFast ? 1 : act <= R.actionOk ? 0.6 : 0.3;
-    rows.push({ id: 'action', label: 'Correct action and latency', earned: round(W.action * actFrac, 1), max: W.action, note: !correct ? 'correct action not taken' : round(act, 0) + ' s' });
+    var correct = m.actionCorrect !== false && hasAct;
+    var proactive = correct && (act == null || act < 0);
+    var proactiveAllowed = proactive && R.allowProactive === true;
+    var actFrac = !correct || (proactive && !proactiveAllowed) ? 0 : proactiveAllowed || act <= R.actionFast ? 1 : act <= R.actionOk ? 0.6 : 0.3;
+    var actNote = !hasAct ? 'correct action not taken' : m.actionCorrect === false ? 'action taken but incorrect' :
+      act == null ? (R.allowProactive ? 'taken proactively — no alarm annunciated' : 'taken without an alarm — drill does not award proactive credit') :
+      act < 0 ? (R.allowProactive ? round(-act, 0) + ' s before alarm' : round(-act, 0) + ' s before alarm — drill does not award proactive credit') : round(act, 0) + ' s';
+    rows.push({ id: 'action', label: 'Correct action and latency', earned: round(W.action * actFrac, 1), max: W.action, note: actNote });
 
     rows.push({ id: 'trip', label: 'Trip avoided', earned: m.trip ? 0 : W.trip, max: W.trip, note: m.trip ? 'unit tripped' : 'no trip' });
     rows.push({ id: 'stable', label: 'Process stabilised', earned: m.tStable ? W.stable : 0, max: W.stable, note: m.tStable ? 'stabilised' : 'not stabilised' });

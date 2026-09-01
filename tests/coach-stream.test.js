@@ -82,3 +82,72 @@ test('coachScrub still strips think tags and fault ids', () => {
   const leaked = FaultEngine.FAULT_IDS.filter((id) => out.includes(id));
   assert.deepEqual(leaked, []);
 });
+
+test('client treats stream EOF without an explicit done event as failure', async () => {
+  const c = new Component({});
+  c.initSim();
+  c._coachGen = 1;
+  c._coachFinished = false;
+  c._coachBusy = true;
+  c._coachLiveId = 0;
+  c._coachRequestKind = 'ask';
+  const response = { body: { getReader: () => ({ read: async () => ({ done: true }) }) } };
+  await c.coachReadStream(response, 1);
+  assert.equal(c.state.coachLive, false);
+  assert.equal(c.state.coachStatus, 'OFFLINE');
+  assert.match(c.state.coachText, /lost the model/i);
+});
+
+function ndjsonResponse(lines) {
+  const bytes = new TextEncoder().encode(lines.join('\n') + '\n');
+  let sent = false;
+  return { body: { getReader: () => ({ read: async () => {
+    if (sent) return { done: true };
+    sent = true;
+    return { done: false, value: bytes };
+  } }) } };
+}
+
+for (const [name, lines] of [
+  ['malformed event', [JSON.stringify({ t: 'text', d: 'Uncertain partial' }), '{bad json', JSON.stringify({ t: 'done', ok: true })]],
+  ['unknown event', [JSON.stringify({ t: 'text', d: 'Uncertain partial' }), JSON.stringify({ t: 'future', d: 'x' }), JSON.stringify({ t: 'done', ok: true })]],
+  ['done without text', [JSON.stringify({ t: 'done', ok: true })]]
+]) {
+  test('client fails closed on '+name, async () => {
+    const c = new Component({});
+    c.initSim();
+    c._coachGen=1; c._coachFinished=false; c._coachBusy=true; c._coachLiveId=0;
+    c._coachRequestKind='ask'; c._coachDraft='';
+    await c.coachReadStream(ndjsonResponse(lines),1);
+    assert.equal(c.state.coachLive,false);
+    assert.equal(c.state.coachStatus,'OFFLINE');
+    assert.match(c.state.coachText,/lost the model/i);
+    assert.doesNotMatch(c.state.coachText,/Uncertain partial/);
+  });
+}
+
+for (const payload of [{ ok: true }, { ok: true, text: {} }]) {
+  test('client rejects malformed fallback success '+JSON.stringify(payload), async () => {
+    const oldFetch=global.fetch;
+    let call=0;
+    global.fetch=async()=>{
+      call++;
+      if(call===1) return {ok:false};
+      return {json:async()=>payload};
+    };
+    try {
+      const c=new Component({});
+      c.initSim();
+      c.coachOnHttp=()=>true;
+      c.setState({coachLive:true});
+      c.coachAsk('ask','test fallback');
+      await new Promise((resolve)=>setImmediate(resolve));
+      await new Promise((resolve)=>setImmediate(resolve));
+      assert.equal(c.state.coachLive,false);
+      assert.equal(c.state.coachStatus,'OFFLINE');
+      assert.match(c.state.coachText,/lost the model/i);
+    } finally {
+      global.fetch=oldFetch;
+    }
+  });
+}

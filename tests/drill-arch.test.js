@@ -145,9 +145,9 @@ test('every basePreset is a real instructor preset id', () => {
   });
 });
 
-test('A12\'s root-cause node (FIELD) is distinct from every node its own hint/compare pair calls out downstream', () => {
-  // Sanity check specific to the "root cause vs downstream protection" teaching point:
-  // A12's declared domain must be FIELD even though the fault cascades into alarms.
+test('A12 keeps the biased transmitter in FIELD while controller and process responses remain consequences', () => {
+  // The controller is healthy: its warmer cascade demand is the deterministic
+  // consequence of trusting the biased field input, not a second failure domain.
   const a12 = DrillArch.drillById('A12');
   assert.equal(DrillArch.domainsOf(a12)[0], 'FIELD');
   assert.equal(Topology.node(GRAPH, 'XMTR-TIC201').layer, 'FIELD');
@@ -176,12 +176,17 @@ test('at least one drill overrides the default weights (per-drill overrides are 
 
 // ---------------------------------------------------------------- expectedActions / safetyGate shape
 
-test('every drill has at least one required expectedAction per category and at least one safetyGate rule', () => {
+test('every drill has a reachable stabilization policy, required actions for the other categories, and a safetyGate rule', () => {
   DrillArch.DRILLS.forEach(d => {
     DrillArch.CATEGORIES.forEach(cat => {
       const req = d.expectedActions.filter(a => a.category === cat && a.required !== false);
-      assert.ok(req.length >= 1, d.id + ' has no required expectedAction for category ' + cat);
+      if (cat === 'stabilize' && d.stabilizationPolicy === 'SAFE_RESTRAINT') {
+        assert.equal(req.length, 0, d.id + ' safe-restraint policy must not hide an alarm ACK inside expectedActions');
+      } else {
+        assert.ok(req.length >= 1, d.id + ' has no required expectedAction for category ' + cat);
+      }
     });
+    assert.ok(d.stabilizationPolicy === 'ACK' || d.stabilizationPolicy === 'SAFE_RESTRAINT', d.id + ' unknown stabilization policy');
     assert.ok(d.safetyGate.length >= 1, d.id + ' has no safetyGate rule');
     d.safetyGate.forEach(g => {
       assert.ok(g.actionType, d.id + ' safetyGate rule missing actionType');
@@ -233,13 +238,14 @@ function idealJournal(d) {
   // One accepted ActionEvent per required expectedAction, built directly from the
   // drill's own data -- this is the "everything done right" journal for any drill.
   let seq = 0;
-  return d.expectedActions.filter(a => a.required !== false).map(a => {
+  const receipt = {seq:++seq,simTime:0,actor:'SYSTEM',actionType:DrillArch.ACTION.FAULT_PRESENT,target:d.id,accepted:true};
+  return [receipt].concat(d.expectedActions.filter(a => a.required !== false).map(a => {
     seq += 1;
     const e = { seq, simTime: seq * 1000, actor: 'TRAINEE', actionType: a.actionType, accepted: true };
     if (a.target !== undefined) e.target = Array.isArray(a.target) ? a.target[0] : a.target;
     if (a.payloadMatch) e.payload = JSON.parse(JSON.stringify(a.payloadMatch));
     return e;
-  });
+  }));
 }
 
 test('scoreDrill throws on an unknown drill id', () => {
@@ -256,10 +262,13 @@ test('scoreDrill: empty journal scores 0 and fails, for every drill (positive co
   });
 });
 
-test('scoreDrill: a journal satisfying only the stabilize action earns exactly that category\'s weight, nothing else', () => {
-  DrillArch.DRILLS.forEach(d => {
+test('scoreDrill: on ACK-policy drills, a matching accepted ACK earns exactly the stabilize category', () => {
+  DrillArch.DRILLS.filter(d => d.stabilizationPolicy === 'ACK').forEach(d => {
     const ack = d.expectedActions.find(a => a.category === 'stabilize');
-    const journal = [{ seq: 1, simTime: 1000, actor: 'TRAINEE', actionType: ack.actionType, target: ack.target, accepted: true }];
+    const journal = [
+      {seq:0,simTime:0,actor:'SYSTEM',actionType:DrillArch.ACTION.FAULT_PRESENT,target:d.id,accepted:true},
+      { seq: 1, simTime: 1000, actor: 'TRAINEE', actionType: ack.actionType, target: ack.target, accepted: true }
+    ];
     const r = DrillArch.scoreDrill(d.id, journal);
     const stabilizeWeight = d.scoringRules.find(row => row.category === 'stabilize').weight;
     assert.equal(r.score, stabilizeWeight, d.id);

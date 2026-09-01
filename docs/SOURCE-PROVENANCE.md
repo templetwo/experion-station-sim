@@ -113,7 +113,7 @@ intent; this one records what shipped):
 | A9 | Local station failure | `RESOURCES-2.1`, `RESOURCES-2.3` |
 | A10 | Historian gap | `RESOURCES-2.13`, `RESOURCES-2.3` |
 | A11 | Assistant loss | `RESOURCES-2.15` |
-| A12 | Cascading symptoms | `RESOURCES-2.5`, `RESOURCES-2.7`, `RESOURCES-4` |
+| A12 | Causal measurement bias | `RESOURCES-2.7`, `RESOURCES-4` |
 
 **Correction, checked against the running code, not assumed:** no two drills
 share a byte-identical `sourceBasis` array — the property `tests/provenance.test.js`

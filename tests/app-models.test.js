@@ -40,12 +40,8 @@ test('every drill fault still produces its expected first alarm inside the drill
   assert.ok(defs.length >= 8);
   for (const def of defs) {
     const c = boot(5);
-    run(c, 60);
-    if (def.needBatch) {
-      c.seqCmd('START', true);
-      assert.ok(run(c, 2400, () => !def.when || def.when(c.P)), def.id + ': batch never reached the injection condition');
-    }
-    c.startDrill(def);
+    c.applyPreset(def.basePreset);
+    c.startDrill(def, { startMode: 'CANONICAL', preset: def.basePreset, applySetup: true });
     assert.ok(c.state.drill && c.state.drill.def.id === def.id, def.id + ' armed');
     const hit = run(c, 720, () => !!(c.state.drill && c.state.drill.m.tAlarm));
     assert.ok(hit, def.id + ' (' + def.fault + '): no alarm on ' + def.rel.join('/') + ' within 12 min; active: ' + activeKeys(c).join(','));

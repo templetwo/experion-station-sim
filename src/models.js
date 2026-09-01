@@ -33,6 +33,8 @@
 //        message(txt)                            optional  message zone (Component.msgZone)
 //        onTrip(src, cond)                       optional  called once per equipment trip with the alarm source and condition
 //                                                          (Component.dTrip for drill scoring)
+//        measurementBias(tag, simTime, span)      optional  deterministic engineering-unit measurement offset;
+//                                                          applied before PID and alarm evaluation, default 0
 //
 // Calibration notes (B4 verification round 2):
 //   - Feed concentration is fixed (Henson/Seborg Caf); it no longer scales with
@@ -100,6 +102,12 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   // first-order lag toward a target: x += (target - x) * dt / tau
   const lag = (x, target, tau, dt) => x + (target - x) * dt / tau;
+
+  function measurementBias(ctx, tag, simTime, span) {
+    if (!ctx || typeof ctx.measurementBias !== 'function') return 0;
+    const value = Number(ctx.measurementBias(tag, simTime, span));
+    return Number.isFinite(value) ? value : 0;
+  }
 
   // ---------------------------------------------------------------- parameters
   const PARAMS = {
@@ -335,7 +343,11 @@
       if (L.FIC102.badPv) { L.FIC102.badPv = false; ctx.clear('FIC102', 'BADPV'); if (ctx.message) ctx.message('FIC102 PV RESTORED'); }
       L.FIC102.pv = P.flow + n(0.25);
     }
-    L.TIC201.pv = P.rT + n(0.15);
+    // The offset is part of the measurement path, not the process state: the PID and
+    // alarm scan consume the biased PV later in the same Component step, so a low
+    // reading can causally drive the master/slave jacket cascade while P.rT remains
+    // the independent physical truth. No callback means byte-identical v2 behavior.
+    L.TIC201.pv = P.rT + measurementBias(ctx, 'TIC201', P.t, L.TIC201.hi - L.TIC201.lo) + n(0.15);
     L.TIC202.pv = P.Tj + n(0.12);
     L.TIC301.pv = P.hxT + n(0.2);
     L.LIC401.pv = P.drumL + n(0.15);

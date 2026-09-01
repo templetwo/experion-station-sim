@@ -140,3 +140,33 @@ test('scoreDrill: rubric overrides weights and pass mark; missing metrics do not
   const wrong = Kpi.scoreDrill({ tAlarm: 0, tAck: 1000, tAct: 2000, actionCorrect: false });
   assert.equal(wrong.breakdown.find(b => b.id === 'action').earned, 0);
 });
+
+test('scoreDrill distinguishes no action, reactive action, and proactive action that prevents an alarm', () => {
+  const actionOnly = { weights: { ack: 0, action: 100, trip: 0, stable: 0, load: 0, quiz: 0 } };
+  const actionRow = (metrics, rubric) => Kpi.scoreDrill(metrics, Object.assign({}, actionOnly, rubric || {})).breakdown.find((b) => b.id === 'action');
+
+  const absent = actionRow({ tAlarm: 100000 });
+  assert.equal(absent.earned, 0);
+  assert.equal(absent.note, 'correct action not taken');
+
+  const reactive = actionRow({ tAlarm: 100000, tAct: 160000 });
+  assert.equal(reactive.earned, 100);
+  assert.equal(reactive.note, '60 s');
+
+  // D9 can be corrected back to AUTO, and D12 quench can be raised, before their
+  // related condition ever annunciates. In both cases tAct is the positive record;
+  // an absent tAlarm means the prescribed action was proactive, not absent.
+  for (const drill of ['D9', 'D12']) {
+    const proactive = actionRow({ tAct: 90000 }, { allowProactive: true });
+    assert.equal(proactive.earned, 100, drill + ': proactive action lost credit');
+    assert.equal(proactive.note, 'taken proactively — no alarm annunciated');
+  }
+
+  const unapproved = actionRow({ tAlarm: 100000, tAct: 90000 });
+  assert.equal(unapproved.earned, 0);
+  assert.match(unapproved.note, /does not award proactive credit/);
+
+  const beforeAlarm = actionRow({ tAlarm: 100000, tAct: 90000 }, { allowProactive: true });
+  assert.equal(beforeAlarm.earned, 100);
+  assert.equal(beforeAlarm.note, '10 s before alarm');
+});

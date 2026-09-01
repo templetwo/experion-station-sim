@@ -80,6 +80,11 @@ function driveDrill(defId) {
   const def = c.drillDefs().find(d => d.id === defId);
   assert.ok(def, `no drill definition for ${defId}`);
 
+  // Reconstruct the historical unattended baseline explicitly. startDrill() is now
+  // fail-honest LIVE STATE: it neither applies D9's previous-shift setup nor starts
+  // D11's batch. These are test preconditions, not side effects of arming.
+  if (def.setup) def.setup(c);
+  if (def.needBatch && c.P.b.phase === 'IDLE') c.seqCmd('START', true);
   c.startDrill(def);
   const d = c.state.drill; // captured now: endDrill() mutates this SAME object, then nulls state.drill
   assert.ok(d, `${defId}: startDrill did not arm (already-active guard fired unexpectedly)`);

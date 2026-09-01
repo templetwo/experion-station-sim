@@ -94,7 +94,7 @@ test('the command vocabulary is the one the scorer actually matches', async (t) 
     // e.actionType, e.target, e.payload, and a legacy entry has none of those field
     // names). Feeding the journal to scoreDrill scores ZERO with no error. So S3's app
     // wiring must retain the RETURNED events for scoring, not re-read the journal.
-    const events = [];
+    const events = [{seq:0,simTime:0,actor:'SYSTEM',actionType:DrillArch.ACTION.FAULT_PRESENT,target:'A1',accepted:true}];
     events.push(d.dispatch(ctx, { type: Dispatch.TYPES.MARK_EVIDENCE, actor: 'TRAINEE', target: primary, simTime: 10 }));
     events.push(d.dispatch(ctx, { type: Dispatch.TYPES.PIN_COMPARE, actor: 'TRAINEE', payload: { targets: compare }, simTime: 20 }));
     events.push(d.dispatch(ctx, { type: Dispatch.TYPES.SUBMIT_HYPOTHESIS, actor: 'TRAINEE', payload: { domain }, simTime: 30 }));

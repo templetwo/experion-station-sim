@@ -504,6 +504,14 @@ test('leakage: the trainee projection never carries fault identity or instructor
       assert.equal(r.accepted, true, `${faultId}: ${r.reason}`);
       const text = JSON.stringify(FaultEngine.healthProjection(r.state, graph));
       assert.equal(leaks(text), false, `${faultId} leaked into the trainee projection`);
+      const projection = FaultEngine.symptomProjection(r.state, graph);
+      const symptomText = JSON.stringify(projection);
+      assert.equal(projection.grade, 'SIMULATED_ARCHITECTURE_INDICATION');
+      assert.ok(projection.observations.length > 0,
+        `${faultId}: symptom projection was empty`);
+      assert.ok(!symptomText.includes(faultId), `${faultId}: symptom projection leaked its fault id`);
+      assert.ok(!symptomText.includes(targetNodeId), `${faultId}: symptom projection leaked its target node id`);
+      assert.ok(!symptomText.includes('INSTRUCTOR_ONLY'), `${faultId}: symptom projection leaked truth visibility`);
     }
   });
 });

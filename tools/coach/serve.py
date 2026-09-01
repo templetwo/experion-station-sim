@@ -69,8 +69,44 @@ if GUIDE_FILE.exists():
 def scrub(text: str) -> str:
     t = text or ""
     for token in BANNED:
-        t = t.replace(token, "[hidden]")
+        t = re.sub(re.escape(token), "[hidden]", t, flags=re.IGNORECASE)
     return t
+
+
+def partial_banned_suffix(text: str) -> int:
+    """Hold a trailing prefix of a banned token until the next stream chunk."""
+    best = 0
+    for token in BANNED:
+        # A complete token can be scrubbed now. Only a proper prefix must wait.
+        limit = min(len(text), len(token) - 1)
+        for size in range(limit, 0, -1):
+            if text[-size:].casefold() == token[:size].casefold():
+                best = max(best, size)
+                break
+    return best
+
+
+class StreamScrubber:
+    """Redact tokens even when an Ollama stream splits them across chunks."""
+
+    def __init__(self) -> None:
+        self.pending = ""
+
+    def push(self, text: str, final: bool = False) -> str:
+        self.pending += text or ""
+        if final:
+            held = partial_banned_suffix(self.pending)
+            # One- and two-letter overlaps are ordinary word endings (for example
+            # "temperature" ends in "re"). Hide only a meaningfully identifying
+            # terminal prefix; short overlaps are safe to release through scrub().
+            if held >= 4:
+                stable = self.pending[:-held] + "[hidden]"
+                self.pending = ""
+                return scrub(stable)
+        hold = 0 if final else partial_banned_suffix(self.pending)
+        stable = self.pending[:-hold] if hold else self.pending
+        self.pending = self.pending[-hold:] if hold else ""
+        return scrub(stable)
 
 
 def spoken_cap(kind: str) -> int:
@@ -172,7 +208,16 @@ def context_pack(ask: str, projection: dict) -> dict:
 
 
 def user_task(kind: str, ask: str, projection: dict) -> str:
-    facts = json.dumps(context_pack(ask, projection), ensure_ascii=False, separators=(",", ":"))
+    packed = context_pack(ask, projection)
+    facts = json.dumps(packed, ensure_ascii=False, separators=(",", ":"))
+    drill = packed.get("drill") if isinstance(packed.get("drill"), dict) else {}
+    cue_notice = ""
+    if drill.get("observationGrade") == "SIMULATED_ARCHITECTURE_INDICATION":
+        cue_notice = (
+            "\nDRILL CUE GRADE: drill.observations are authored simulated architecture "
+            "indications, not measured process values. Present them as cues to investigate; "
+            "do not promote them to confirmed board facts or a root cause.\n"
+        )
     if kind == "explain":
         task = "Explain the selected alarm, or the highest-priority active alarm."
         cap = ASK_WORDS
@@ -186,8 +231,8 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
         cap = TIP_WORDS
         shape = "One or two sentences. No alarm-list recap."
     return (
-        "LIVE BOARD FACTS (authoritative; do not reinterpret units or alarm abbreviations):\n"
-        + facts + "\n\nTASK: " + task + "\n"
+        "BOARD CONTEXT (point and alarm values are authoritative; do not reinterpret units or alarm abbreviations):\n"
+        + facts + cue_notice + "\nTASK: " + task + "\n"
         + "SHAPE: " + shape + "\n"
         + "LIMIT: %s words. Speak as PIP immediately; no headings, labels, preamble, or JSON recap." % cap
     )
@@ -344,6 +389,10 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     text_acc = ""
     spoken_out = ""
     done_reason = ""
+    think_scrubber = StreamScrubber()
+    text_scrubber = StreamScrubber()
+    saw_done = False
+    locally_truncated = False
     with ollama_post(messages, True, THINK, 60, max(180, cap * 3)) as resp:
         while True:
             line = resp.readline()
@@ -354,22 +403,46 @@ def stream_reply(messages: list, cap: int, emit) -> None:
                 continue
             try:
                 chunk = json.loads(line.decode("utf-8"))
-            except json.JSONDecodeError:
-                continue
+            except json.JSONDecodeError as err:
+                raise RuntimeError("Ollama stream emitted malformed NDJSON") from err
             msg = chunk.get("message") or {}
             think_acc, tdelta = split_delta(think_acc, msg.get("thinking") or "")
             text_acc, xdelta = split_delta(text_acc, msg.get("content") or "")
             if tdelta:
-                emit({"t": "think", "d": scrub(tdelta)})
+                safe_think = think_scrubber.push(tdelta)
+                if safe_think:
+                    emit({"t": "think", "d": safe_think})
             if xdelta:
-                room = cap - word_count(spoken_out)
-                piece = take_words(xdelta, room)
-                if piece:
-                    spoken_out += (" " if spoken_out and not piece[:1].isspace() else "") + piece
-                    emit({"t": "text", "d": scrub(piece)})
+                candidate = spoken_out + xdelta
+                # Count the reconstructed answer, not each delta independently:
+                # Ollama may split the last allowed word across two chunks.
+                if word_count(candidate) > cap:
+                    locally_truncated = True
+                elif not locally_truncated:
+                    # Ollama's chunks are exact text deltas. Adding a separator here
+                    # corrupts words split across chunks and can also defeat redaction.
+                    spoken_out = candidate
+                    safe_text = text_scrubber.push(xdelta)
+                    if safe_text:
+                        emit({"t": "text", "d": safe_text})
             if chunk.get("done"):
+                saw_done = True
                 done_reason = str(chunk.get("done_reason") or "")
                 break
+    if not saw_done:
+        raise RuntimeError("Ollama stream ended without a terminal done event")
+    if done_reason and done_reason != "stop":
+        raise RuntimeError("Ollama stream ended before completion: " + done_reason)
+    if locally_truncated:
+        raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+    if not spoken_out.strip():
+        raise RuntimeError("Ollama stream completed without an answer")
+    final_think = think_scrubber.push("", final=True)
+    if final_think:
+        emit({"t": "think", "d": final_think})
+    final_text = text_scrubber.push("", final=True)
+    if final_text:
+        emit({"t": "text", "d": final_text})
     emit({"t": "done", "ok": True, "model": MODEL, "reason": done_reason})
 
 
@@ -380,8 +453,18 @@ def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bo
         with ollama_post(messages, False, THINK, 90, max(280, cap * 4)) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         msg = data.get("message") or {}
-        text = clip_spoken(scrub(msg.get("content") or data.get("response") or "").strip(), cap)
+        raw_text = scrub(msg.get("content") or data.get("response") or "").strip()
+        done_reason = str(data.get("done_reason") or "")
+        if data.get("done") is not True:
+            raise RuntimeError("Ollama response ended without a terminal done event")
+        if done_reason and done_reason != "stop":
+            raise RuntimeError("Ollama response ended before completion: " + done_reason)
+        if word_count(raw_text) > cap:
+            raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+        text = clip_spoken(raw_text, cap)
         thinking = scrub(msg.get("thinking") or "").strip()
+        if not text:
+            raise RuntimeError("Ollama response contained no answer")
         return True, text, thinking
     except Exception as err:
         return False, "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__, ""

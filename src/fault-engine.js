@@ -9,11 +9,19 @@
  * (FAULT_IDS, frozen, exported so drill-arch can reference them literally without
  * requiring this module -- V3-PLAN addendum, "no cross-require mid-stage").
  *
- * THE CAUSE/SYMPTOM SPLIT IS THE SPINE (V3-PLAN section 3). Two projections read
+ * THE CAUSE/SYMPTOM SPLIT IS THE SPINE (V3-PLAN section 3). Three projections read
  * the same engine state:
  *   healthProjection(state, graph) -> trainee view: SYMPTOMS ONLY, keyed by node,
  *     with generic health-derived prose. It never places a fault id, a domain, an
  *     instance id or the literal string "INSTRUCTOR_ONLY" into anything it returns.
+ *     Because the exact changed node is still localization truth, the app does not
+ *     expose this projection during a live A-drill.
+ *   symptomProjection(state, graph) -> authored architecture-drill indications,
+ *     detached from the root node and explicitly graded as simulated cues rather
+ *     than measured process values. Model-backed process effects remain visible on
+ *     their normal board surfaces; this lane covers diagnostic architecture effects.
+ *     It carries no fault, domain, instance, or target-node id and cannot highlight
+ *     a structural node; observable prose may still name an affected subsystem.
  *   truthProjection(state, graph)  -> instructor view: the active faults themselves,
  *     their domain, target, magnitude and root-cause visibility.
  * Neither projection needs to branch on truthVisibility -- every definition carries
@@ -65,6 +73,7 @@
  *   listActive(state)                          -> activeFaults[] (read-only copy)
  *   computeHealth(state, graph)                -> { nodeId: HEALTH } over EVERY node
  *   healthProjection(state, graph)             -> trainee view (see above)
+ *   symptomProjection(state, graph)            -> root-detached simulated drill cues
  *   truthProjection(state, graph)              -> instructor view (see above)
  *   snapshot(state) / restore(json)            plain JSON round-trip
  */
@@ -140,7 +149,7 @@
     BIASED_MEASUREMENT: def({
       id: 'BIASED_MEASUREMENT', domain: 'FIELD', targets: ['TRANSMITTER', 'MOTOR'],
       activation: { style: 'SUSTAINED' },
-      effects: [{ kind: 'BIAS_PV', hook: 'P.driftOff added to pv (models.js:326)' }],
+      effects: [{ kind: 'BIAS_PV', hook: 'measurementBias() supplies a deterministic engineering-unit offset to the model measurement path before PID/alarm evaluation' }],
       observableSymptoms: ['PV inconsistent with correlated evidence', 'quality flag stays GOOD'],
       recovery: 'Cleared explicitly by the instructor; the offset is removed.',
       conflicts: ['FROZEN_MEASUREMENT'], difficulty: 3,
@@ -178,7 +187,7 @@
     CONTROLLER_LOSS: def({
       id: 'CONTROLLER_LOSS', domain: 'CONTROL', targets: ['CONTROLLER'],
       activation: { style: 'SUSTAINED' },
-      effects: [{ kind: 'STALE_GROUP', hook: 'every control module the controller executes goes stale/invalid together' }],
+      effects: [{ kind: 'STALE_GROUP', hook: 'symptomProjection cue lane; topology health only, no process-state mutation' }],
       observableSymptoms: ['a correlated group of points goes stale or invalid together'],
       recovery: 'Cleared explicitly by the instructor; the controller and its modules resume.',
       conflicts: ['REDUNDANCY_SWITCHOVER'], difficulty: 3,
@@ -196,7 +205,7 @@
     NET_PATH_DEGRADED: def({
       id: 'NET_PATH_DEGRADED', domain: 'NETWORK', targets: ['NET_PATH'],
       activation: { style: 'SUSTAINED' },
-      effects: [{ kind: 'PATH_DOWN', hook: 'one member of a redundancyGroup marked FAILED; no propagation while a sibling path is healthy' }],
+      effects: [{ kind: 'PATH_DOWN', hook: 'symptomProjection cue lane plus group-aware topology health; no process-state mutation' }],
       observableSymptoms: ['redundancy-degraded indication only', 'data stays fresh'],
       recovery: 'Cleared explicitly by the instructor; the path rejoins the redundant pair.',
       conflicts: ['COMMS_PARTITION'], difficulty: 2,
@@ -205,7 +214,7 @@
     COMMS_PARTITION: def({
       id: 'COMMS_PARTITION', domain: 'NETWORK', targets: ['NET_PATH'],
       activation: { style: 'SUSTAINED' }, groupWide: true,
-      effects: [{ kind: 'GROUP_DOWN', hook: 'every member of the redundancyGroup marked FAILED together; common-cause propagation' }],
+      effects: [{ kind: 'GROUP_DOWN', hook: 'symptomProjection cue lane plus group-wide topology health; no process-state mutation' }],
       observableSymptoms: ['a common stale-data pattern across a controller\'s points'],
       recovery: 'Cleared explicitly by the instructor; both paths must be restored.',
       conflicts: ['NET_PATH_DEGRADED'], difficulty: 4,
@@ -214,7 +223,7 @@
     SERVER_SERVICE_DEGRADED: def({
       id: 'SERVER_SERVICE_DEGRADED', domain: 'SERVICE', targets: ['SERVER_SVC'],
       activation: { style: 'SUSTAINED' },
-      effects: [{ kind: 'SERVICE_DEGRADE', hook: 'the flex-profile station and the assistant read stale server-cached data; console profile unaffected' }],
+      effects: [{ kind: 'SERVICE_DEGRADE', hook: 'symptomProjection cue lane; topology health only, no process-state mutation' }],
       observableSymptoms: ['flex-profile station stale', 'console-profile station stays healthy'],
       recovery: 'Cleared explicitly by the instructor; cached data resumes updating.',
       conflicts: [], difficulty: 3,
@@ -223,7 +232,7 @@
     STATION_LOSS_PEER: def({
       id: 'STATION_LOSS_PEER', domain: 'HMI', targets: ['STATION'],
       activation: { style: 'SUSTAINED' },
-      effects: [{ kind: 'PEER_DOWN', hook: 'Station Health panel shows the peer profile down; local data unaffected' }],
+      effects: [{ kind: 'PEER_DOWN', hook: 'symptomProjection cue lane; topology health only, no process-state mutation' }],
       observableSymptoms: ['Station Health shows the peer down', 'local station data is unaffected'],
       recovery: 'Cleared explicitly by the instructor; the peer station reappears.',
       conflicts: [], difficulty: 2,
@@ -351,6 +360,15 @@
     return Math.round(v * 1000) / 1000; // fixed precision: keeps digests stable
   }
 
+  function resolveDirection(d, opts) {
+    if (d.id !== 'BIASED_MEASUREMENT') return null;
+    var direction = opts && opts.direction != null ? String(opts.direction).toUpperCase() : 'HIGH';
+    if (direction !== 'HIGH' && direction !== 'LOW') {
+      throw new Error('ESS.FaultEngine.activate: BIASED_MEASUREMENT direction must be HIGH or LOW');
+    }
+    return direction;
+  }
+
   function conflictsWith(d, otherFaultId) {
     var other = FAULT_DEFS[otherFaultId];
     return d.conflicts.indexOf(otherFaultId) >= 0 || (other && other.conflicts.indexOf(d.id) >= 0);
@@ -385,6 +403,8 @@
       activatedAt: typeof opts.simTime === 'number' ? opts.simTime : null,
       magnitude: resolveMagnitude(d, opts)
     };
+    var direction = resolveDirection(d, opts);
+    if (direction) instance.direction = direction;
     var next = cloneState(cur);
     next.activeFaults.push(instance);
     next.activeFaults.sort(function (a, b) { return a.instanceId < b.instanceId ? -1 : a.instanceId > b.instanceId ? 1 : 0; });
@@ -400,6 +420,24 @@
     var next = cloneState(cur);
     next.activeFaults = next.activeFaults.filter(function (f) { return f.instanceId !== iid; });
     return { state: next, accepted: true, reason: null };
+  }
+
+  /**
+   * Resolve one active BIASED_MEASUREMENT into an engineering-unit offset for a
+   * model measurement. Magnitude is percent-of-span per simulated minute; direction
+   * is explicit in the fault instance. Old snapshots without direction retain the
+   * historical upward-bias default. Pure and deterministic: no state mutation and no
+   * random draw.
+   */
+  function measurementBias(state, targetNodeId, simTime, span) {
+    var inst = findActive(state, 'BIASED_MEASUREMENT', targetNodeId);
+    if (!inst) return 0;
+    var rate = Number(inst.magnitude), width = Number(span), now = Number(simTime);
+    if (!isFinite(rate) || !isFinite(width) || !(width > 0) || !isFinite(now) || typeof inst.activatedAt !== 'number') return 0;
+    var minutes = Math.max(0, now - inst.activatedAt) / 60000;
+    if (minutes === 0) return 0;
+    var sign = inst.direction === 'LOW' ? -1 : 1;
+    return sign * rate * width / 100 * minutes;
   }
 
   // ------------------------------------------------------------------ health + projections
@@ -478,6 +516,41 @@
     return { nodeCount: Object.keys(nodes).length, nodes: nodes };
   }
 
+  /**
+   * Authored architecture-drill indications. The engine knows the active cause, but
+   * the projection emits only root-detached drill cues: the definition's authored
+   * symptom prose and, where topology provides it, a process-tag or unit scope. It
+   * explicitly grades these as simulated indications, not measured process values. It
+   * deliberately omits the exact target-node id and never attaches an observation
+   * to a structural map node; either would turn the map into an answer marker.
+   */
+  function symptomProjection(state, graph, opts) {
+    if (!graph || !graph.nodes) throw new Error('ESS.FaultEngine.symptomProjection: graph is required');
+    opts = opts || {};
+    var badPvByTag = opts.badPvByTag || {};
+    var seen = {}, observations = [];
+    ((state && state.activeFaults) || []).forEach(function (f) {
+      var d = FAULT_DEFS[f.faultId], n = graph.nodes[f.targetNodeId];
+      if (!d || !n) return;
+      var refs = (n.pointRefs || []).slice().sort();
+      // A redundant-path annunciator identifies the affected member; withholding A/B
+      // would make A6/A7's required comparison a coin flip. This is an observable
+      // indicator label, not a fault id or a truth marker attached to the graph.
+      var scope = n.kind === 'NET_PATH' ? n.label : (refs.length ? refs.join(', ') : (n.unit || 'PLANT'));
+      var authored = d.observableSymptoms.slice();
+      if (f.faultId === 'FROZEN_MEASUREMENT' && refs.some(function (tag) { return badPvByTag[tag] === true; })) {
+        authored = authored.filter(function (s) { return !/quality flag stays GOOD/i.test(s); });
+        authored.push('quality flag reports BADPV and the loop sheds according to its configured response');
+      }
+      authored.forEach(function (s) {
+        var text = scope + ' — ' + s;
+        if (!seen[text]) { seen[text] = true; observations.push({ scope: scope, text: text }); }
+      });
+    });
+    observations.sort(function (a, b) { return a.text < b.text ? -1 : a.text > b.text ? 1 : 0; });
+    return { grade: 'SIMULATED_ARCHITECTURE_INDICATION', observations: observations };
+  }
+
   /** Instructor view. Root causes: which faults are active, where, and how bad. */
   function truthProjection(state, graph) {
     if (!graph || !graph.nodes) throw new Error('ESS.FaultEngine.truthProjection: graph is required');
@@ -488,6 +561,7 @@
       return {
         instanceId: f.instanceId, faultId: f.faultId, domain: d.domain,
         targetNodeId: f.targetNodeId, activatedAt: f.activatedAt, magnitude: f.magnitude,
+        direction: f.direction || null,
         truthVisibility: d.truthVisibility, recovery: d.recovery,
         observableSymptoms: d.observableSymptoms.slice()
       };
@@ -502,7 +576,9 @@
     FAULT_IDS: FAULT_IDS, FAULT_DEFS: FAULT_DEFS, getFaultDef: getFaultDef,
     createState: createState, activate: activate, deactivate: deactivate,
     isActive: isActive, listActive: listActive,
-    computeHealth: computeHealth, healthProjection: healthProjection, truthProjection: truthProjection,
+    measurementBias: measurementBias,
+    computeHealth: computeHealth, healthProjection: healthProjection,
+    symptomProjection: symptomProjection, truthProjection: truthProjection,
     snapshot: snapshot, restore: restore
   };
 });

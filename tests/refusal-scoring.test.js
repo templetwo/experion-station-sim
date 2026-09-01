@@ -58,6 +58,10 @@ function gateOf(drillId) {
   return g;
 }
 
+function faultReceipt(drillId) {
+  return {seq:0,simTime:0,actor:'SYSTEM',actionType:DrillArch.ACTION.FAULT_PRESENT,target:drillId,accepted:true};
+}
+
 // ==================================================== 1. the gate works at all
 
 test('refusal scoring: the safety gate is not vacuous', async (t) => {
@@ -109,8 +113,8 @@ test('refusal scoring: a refused action also earns no credit', async (t) => {
     const drill = DrillArch.drillById('A1');
     const act = (drill.expectedActions || [])[0];
     assert.ok(act, 'A1 has no expectedActions');
-    const refused = DrillArch.scoreDrill('A1', [entryFor(act, { accepted: false, reason: 'refused' })]);
-    const accepted = DrillArch.scoreDrill('A1', [entryFor(act, { accepted: true })]);
+    const refused = DrillArch.scoreDrill('A1', [faultReceipt('A1'), entryFor(act, { accepted: false, reason: 'refused' })]);
+    const accepted = DrillArch.scoreDrill('A1', [faultReceipt('A1'), entryFor(act, { accepted: true })]);
     assert.ok(accepted.score > refused.score,
       'an accepted expected action scored no higher than a refused one');
     const row = refused.breakdown.find((r) => r.category === act.category);

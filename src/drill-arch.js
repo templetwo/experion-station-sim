@@ -5,7 +5,9 @@
  *
  * PURE DATA + PURE FUNCTION. A drill is a plain object: no drill-specific UI code
  * runs it, no DOM, no timers. The scorer is a pure function of (drillId, journal) ->
- * result; called twice with the same journal it returns byte-identical output.
+ * result; called twice with the same journal it returns byte-identical output. The
+ * journal must include the app's accepted DRILL.FAULT_PRESENT lifecycle receipt;
+ * trainee work before that receipt is deliberately ineligible for credit.
  * (V3-PLAN sections 4 and 6; RESOURCES 2.14 for the instructor/assessment precedent
  * this generalises -- snapshots, upsets, performance assessment -- and RESOURCES 2.3
  * for the console-vs-flex profile distinction A8 and A9 teach.)
@@ -44,8 +46,8 @@
  * categories -- stabilize, evidence, localization, verification, debrief -- whose
  * weights are this drill's EFFECTIVE weights, already resolved, always summing to
  * 100) and, for each category, the fraction of that category's required
- * `expectedActions` matched by an accepted entry in the journal. Time is
- * deliberately NOT part of this score: V3-PLAN section 6 caps time's influence to
+ * `expectedActions` matched by an accepted entry at or after the fault-present
+ * receipt. Elapsed time has no weighted category of its own: V3-PLAN section 6 caps time's influence to
  * "at most a small weight except where a drill explicitly tests alarm-response
  * urgency", and none of these twelve does, so the honest weight here is zero rather
  * than a fabricated small number. AI/assistant latency never enters the clock either
@@ -117,6 +119,7 @@
     SUBMIT_HYPOTHESIS: 'TRAINING.SUBMIT_HYPOTHESIS',
     VERIFY: 'TRAINING.VERIFY',
     DEBRIEF: 'TRAINING.DEBRIEF',
+    FAULT_PRESENT: 'DRILL.FAULT_PRESENT',
     // major-unsafe vocabulary for safetyGate rules
     MODE_SET: 'MODE.SET',
     POINT_SUPPRESS: 'POINT.SUPPRESS',
@@ -142,18 +145,23 @@
   // ---------------------------------------------------------------- drill factory
 
   /**
-   * Every drill gets the same six expectedActions (one per category, two for
-   * evidence) built from a compact spec, so all twelve share one well-tested shape
-   * instead of twelve hand-copied ones. Per-drill flavour comes from the spec
-   * values, not from a different structure per drill.
+   * Every drill gets the same diagnostic expectedActions (two for evidence, one
+   * each for localization, verification and debrief) from a compact spec. Alarm-
+   * backed drills add a real ACK as their stabilization action. Architecture-only
+   * faults instead declare SAFE_RESTRAINT: completing the whole diagnostic workflow
+   * without tripping the drill's major-unsafe gate is the positive evidence that the
+   * trainee kept an already-stable process stable. No process alarm is synthesized
+   * merely to make the rubric reachable.
    */
   function buildDrill(spec) {
     var primary = spec.primary;
-    var actions = [
-      {
+    var stabilizationPolicy = spec.stabilizationPolicy || 'ACK';
+    var actions = [];
+    if (stabilizationPolicy === 'ACK') actions.push({
         id: 'ACK', category: 'stabilize', required: true, actionType: ACTION.ACK, target: primary,
         description: 'Acknowledge the indication raised at ' + primary + '.'
-      },
+      });
+    actions.push(
       {
         id: 'EV1', category: 'evidence', required: true, actionType: ACTION.MARK_EVIDENCE, target: primary,
         description: 'Mark ' + primary + ' as evidence.'
@@ -177,7 +185,7 @@
         payloadMatch: { correct: true },
         description: 'Answer the debrief question correctly: cause vs symptom for this drill.'
       }
-    ];
+    );
 
     var weights = {};
     CATEGORIES.forEach(function (c) { weights[c] = (spec.weights && spec.weights[c] !== undefined) ? spec.weights[c] : DEFAULT_WEIGHTS[c]; });
@@ -189,12 +197,17 @@
     return deepFreeze({
       id: spec.id,
       title: spec.title,
+      // The internal title is an answer key. Trainee surfaces and PIP receive only
+      // this deliberately non-causal label until the exercise is adjudicated.
+      traineeTitle: spec.traineeTitle || 'Hidden architecture diagnosis',
+      stabilizationPolicy: stabilizationPolicy,
       objectives: spec.objectives.slice(),
       basePreset: spec.basePreset,
       trigger: { type: 'DRILL_START', description: spec.triggerNote || 'Drill begins once the base preset has settled; fault timing below is relative to drill start.' },
       faultTimeline: spec.faultTimeline.map(function (f) {
         var step = { tSec: f.tSec, faultId: f.faultId, targets: f.targets.slice(), note: f.note };
         if (f.magnitude != null) step.magnitude = f.magnitude;
+        if (f.direction != null) step.direction = f.direction;
         return step;
       }),
       expectedActions: actions,
@@ -233,13 +246,14 @@
       gateDescription: 'Forcing FIC102 to MAN and driving the valve open from a frozen reading, without first checking whether the field element is even moving, is a MAN-and-abandon move on a measurement problem, not a flow problem.',
       hints: [
         'A frozen PV does not move even when the valve does. Check the valve position, not just the trend.',
-        'GOOD quality does not mean the number is right -- it only means the channel thinks it is.'
+        'This bridged exercise reports BADPV and sheds the loop; use valve position to distinguish the frozen measurement from a real loss of flow.'
       ]
     }),
     buildDrill({
       // Provenance for THIS drill's concepts (release gate 5): channel/quality handling per standards; I/O and controller platform concepts.
       sourceBasis: ['RESOURCES-2.19', 'RESOURCES-2.16'],
       id: 'A2', title: 'Input channel failure',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Distinguish a field-device problem from an I/O-path problem.',
         'Use the field element’s own diagnostics as the tie-breaker.'
@@ -258,6 +272,7 @@
       // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 state and quality model -- GOOD quality is a channel claim, not a correctness proof; process models supply the correlated evidence.
       sourceBasis: ['RESOURCES-2.5', 'RESOURCES-4'],
       id: 'A3', title: 'Bias with GOOD quality',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Recognise that GOOD quality is not proof of correctness.',
         'Independently verify a slowly-biasing measurement rather than trusting its quality flag.'
@@ -276,6 +291,7 @@
       // Provenance for THIS drill's concepts (release gate 5): redundant controller platform concepts.
       sourceBasis: ['RESOURCES-2.16'],
       id: 'A4', title: 'Redundancy switchover',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Recognise a degraded-redundancy transient for what it is.',
         'Avoid overreacting to a brief, self-correcting event.'
@@ -294,6 +310,7 @@
       // Provenance for THIS drill's concepts (release gate 5): controller platform concepts; server/SCADA architecture for what goes stale together.
       sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.13'],
       id: 'A5', title: 'Controller loss',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Recognise a common-cause pattern: many points invalid together, not many independent faults.',
         'Localise the fix at the controller, not at each affected loop separately.'
@@ -313,6 +330,7 @@
       // Provenance for THIS drill's concepts (release gate 5): redundant path concepts; standards for degraded-vs-failed reporting.
       sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.19'],
       id: 'A6', title: 'Single network path degradation',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Distinguish degraded redundancy from a total communications loss.',
         'Show restraint: data stays fresh, so no corrective action is needed.'
@@ -332,6 +350,7 @@
       // Provenance for THIS drill's concepts (release gate 5): path loss, server architecture and the stale-data pattern a partition produces.
       sourceBasis: ['RESOURCES-2.16', 'RESOURCES-2.13', 'RESOURCES-2.19'],
       id: 'A7', title: 'Communications partition',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Distinguish a communications failure from a process upset.',
         'Recognise the common stale-data signature across an entire unit’s points.'
@@ -350,6 +369,7 @@
       // Provenance for THIS drill's concepts (release gate 5): server/SCADA architecture; station HMI concepts -- the console-vs-flex split this drill exists to teach.
       sourceBasis: ['RESOURCES-2.13', 'RESOURCES-2.1'],
       id: 'A8', title: 'Server / flex service loss',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Distinguish a server (SERVICE) failure domain from a controller (CONTROL) failure domain.',
         'Use the console profile, which bypasses the server, as the tie-breaker.'
@@ -368,6 +388,7 @@
       // Provenance for THIS drill's concepts (release gate 5): station and HMI concepts: one operator position down is not a plant down.
       sourceBasis: ['RESOURCES-2.1', 'RESOURCES-2.3'],
       id: 'A9', title: 'Local station failure',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Recognise that one HMI going dark is not a plant-wide event.',
         'Distinguish a station-level failure from the server fault it can resemble (A8).'
@@ -387,6 +408,7 @@
       // Provenance for THIS drill's concepts (release gate 5): history collection architecture; HMI trend presentation.
       sourceBasis: ['RESOURCES-2.13', 'RESOURCES-2.3'],
       id: 'A10', title: 'Historian gap',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Distinguish live control health from historical data availability.',
         'Recognise a collection gap as an INFORMATION-layer fault, not a control-layer one.'
@@ -405,6 +427,7 @@
       // Provenance for THIS drill's concepts (release gate 5): operations-assistant concept -- advisory, never control.
       sourceBasis: ['RESOURCES-2.15'],
       id: 'A11', title: 'Assistant loss',
+      stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
         'Recognise the Ops Assistant as advisory, not load-bearing.',
         'Operate normally with decision support unavailable or delayed.'
@@ -420,25 +443,23 @@
       ]
     }),
     buildDrill({
-      // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 lifecycle and alarm-management practice for downstream protection firing on a root cause; process models for the cascade itself.
-      sourceBasis: ['RESOURCES-2.5', 'RESOURCES-2.7', 'RESOURCES-4'],
-      id: 'A12', title: 'Cascading symptoms',
+      // Provenance for THIS drill's concepts (release gate 5): control-system
+      // architecture for tracing a bad field measurement through a cascade, plus
+      // process models for the controller/process consequence.
+      sourceBasis: ['RESOURCES-2.7', 'RESOURCES-4'],
+      id: 'A12', title: 'Causal measurement bias',
       objectives: [
-        'Trace a chain of alarms and safeguards back to its single root cause.',
-        'Avoid mistaking a downstream protective response for the failure domain itself.'
+        'Trace a biased temperature measurement through the cascade controller to its process consequence.',
+        'Localise the fault to the FIELD layer by separating the bad reading from the controller’s correct response to it.'
       ],
       basePreset: 'U1_HIFEED',
       primary: 'XMTR-TIC201', domain: 'FIELD', compare: ['XMTR-TIC201', 'CM-CM3_TIC201'],
-      faultTimeline: [{ tSec: 120, faultId: 'BIASED_MEASUREMENT', targets: ['XMTR-TIC201'], magnitude: 2, note: 'TIC201 biases low while R-201 is already running hot at high feed; the controller responds to the bad reading by heating further, and downstream alarms follow.' }],
-      gate: { actionType: 'INTERLOCK.DEFEAT', target: 'XMTR-TIC201' },
-      gateDescription: 'Defeating or overriding the R-201 protective response that engaged downstream, instead of correcting the biased TIC201 measurement that caused it, treats the safeguard as the problem it just caught.',
-      abortRules: [
-        { id: 'PROCESS_TRIP', description: 'A real trip on any equipment during the drill aborts it for review; an aborted run is not scored as a pass or a fail.' },
-        { id: 'R201_TRIP', description: 'If R-201’s 185°C trip threshold is reached, the drill aborts for review -- the safeguard worked, but a passing run should never need it.' }
-      ],
+      faultTimeline: [{ tSec: 120, faultId: 'BIASED_MEASUREMENT', targets: ['XMTR-TIC201'], magnitude: 2, direction: 'LOW', note: 'TIC201 biases low while R-201 is already running hot at high feed. The master controller responds to the bad reading by raising the cascade demand, so the jacket and real reactor warm relative to an unbiased run.' }],
+      gate: { actionType: 'POINT.SUPPRESS', target: 'CM-CM3_TIC201', payloadMatch: { arg: 'ON' } },
+      gateDescription: 'Suppressing TIC201 because its indication conflicts with independent process evidence hides the symptom without locating or correcting the biased field measurement.',
       hints: [
-        'The alarms downstream are real. The question is whether they are the cause or a consequence.',
-        'One biased measurement, trusted by its controller, can look like a cascade of unrelated problems.'
+        'Watch what master TIC201 asks of cascade slave TIC202 after the indicated temperature begins to fall.',
+        'The controller can respond correctly to a bad input. Separate the field measurement fault from the controller and process consequences it causes.'
       ]
     })
   ]);
@@ -515,6 +536,60 @@
     return true;
   }
 
+  function eventCmp(a, b) {
+    return a.simTime - b.simTime || (a.seq || 0) - (b.seq || 0);
+  }
+
+  function strictlyAfter(e, prior) {
+    return !!e && !!prior && eventCmp(e, prior) > 0;
+  }
+
+  /**
+   * Resolve the causal workflow without judging whether the bound hypothesis is
+   * correct. Evidence must precede the binding post-onset hypothesis, verification
+   * must follow that hypothesis, and debrief must follow verification. The app uses
+   * `debriefReady` to prevent a trainee from finalizing the answer before doing the
+   * work; scoreDrill uses the same resolved events so UI and adjudication cannot drift.
+   */
+  function workflowState(drillId, journal) {
+    var drill = drillById(drillId);
+    if (!drill) throw new Error('ESS.DrillArch.workflowState: unknown drill id ' + drillId);
+    var entries = Array.isArray(journal) ? journal : [];
+    var onset = entries.filter(function (e) {
+      return e && e.accepted !== false && e.actionType === ACTION.FAULT_PRESENT &&
+        e.target === drillId && typeof e.simTime === 'number';
+    }).sort(eventCmp)[0] || null;
+    var eligible = onset ? entries.filter(function (e) {
+      return e && typeof e.simTime === 'number' && eventCmp(e, onset) >= 0;
+    }).sort(eventCmp) : [];
+    var evidenceRules = drill.expectedActions.filter(function (a) {
+      return a.required !== false && a.category === 'evidence';
+    });
+    var evidenceEvents = evidenceRules.map(function (rule) {
+      return eligible.filter(function (e) { return matchAction(e, rule); }).sort(eventCmp)[0] || null;
+    });
+    var firstHypothesis = eligible.filter(function (e) {
+      return e.accepted !== false && e.actionType === ACTION.SUBMIT_HYPOTHESIS;
+    }).sort(eventCmp)[0] || null;
+    var localizationReady = !!firstHypothesis && evidenceEvents.length > 0 && evidenceEvents.every(function (e) {
+      return !!e && strictlyAfter(firstHypothesis, e);
+    });
+    var verifyRule = drill.expectedActions.filter(function (a) { return a.id === 'VER'; })[0] || null;
+    var firstVerification = firstHypothesis && verifyRule ? eligible.filter(function (e) {
+      return strictlyAfter(e, firstHypothesis) && matchAction(e, verifyRule);
+    }).sort(eventCmp)[0] || null : null;
+    var debriefRule = drill.expectedActions.filter(function (a) { return a.id === 'DEB'; })[0] || null;
+    var firstDebrief = firstVerification && debriefRule ? eligible.filter(function (e) {
+      return strictlyAfter(e, firstVerification) && matchAction(e, debriefRule);
+    }).sort(eventCmp)[0] || null : null;
+    return {
+      onset: onset, eligible: eligible, evidenceEvents: evidenceEvents,
+      firstHypothesis: firstHypothesis, localizationReady: localizationReady,
+      firstVerification: firstVerification, firstDebrief: firstDebrief,
+      debriefReady: !!onset && localizationReady && !!firstVerification
+    };
+  }
+
   // ---------------------------------------------------------------- scorer
 
   /**
@@ -526,11 +601,32 @@
     var drill = drillById(drillId);
     if (!drill) throw new Error('ESS.DrillArch.scoreDrill: unknown drill id ' + drillId);
     var entries = Array.isArray(journal) ? journal : [];
+    var workflow = workflowState(drillId, entries);
+    var onset = workflow.onset, eligible = workflow.eligible;
+    function actionMatched(action) {
+      if (action.id === 'LOC') return workflow.localizationReady && matchAction(workflow.firstHypothesis, action);
+      if (action.id === 'VER') return !!workflow.firstVerification && matchAction(workflow.firstVerification, action);
+      if (action.id === 'DEB') return !!workflow.firstDebrief && matchAction(workflow.firstDebrief, action);
+      return eligible.some(function (e) { return matchAction(e, action); });
+    }
+
+    var gateHits = (drill.safetyGate || []).filter(function (g) { return entries.some(function (e) { return matchAction(e, g); }); });
+    var gated = gateHits.length > 0;
 
     var rows = drill.scoringRules.map(function (rule) {
+      if (rule.category === 'stabilize' && drill.stabilizationPolicy === 'SAFE_RESTRAINT') {
+        var completion = drill.expectedActions.filter(function (a) { return a.required !== false; });
+        var completed = completion.length > 0 && completion.every(actionMatched);
+        var safe = completed && !gated;
+        return {
+          category: rule.category, weight: rule.weight,
+          required: 1, matched: safe ? 1 : 0, fraction: safe ? 1 : 0,
+          earned: safe ? rule.weight : 0
+        };
+      }
       var acts = drill.expectedActions.filter(function (a) { return a.category === rule.category; });
       var required = acts.filter(function (a) { return a.required !== false; });
-      var matched = required.filter(function (a) { return entries.some(function (e) { return matchAction(e, a); }); });
+      var matched = required.filter(actionMatched);
       var fraction = required.length ? matched.length / required.length : 1;
       return {
         category: rule.category, weight: rule.weight,
@@ -542,18 +638,23 @@
     var rawScore = round2(rows.reduce(function (a, r) { return a + r.earned; }, 0));
     var clamped = Math.max(0, Math.min(100, rawScore));
 
-    var gateHits = (drill.safetyGate || []).filter(function (g) { return entries.some(function (e) { return matchAction(e, g); }); });
-    var gated = gateHits.length > 0;
+    var missingRequired = drill.expectedActions.filter(function (a) {
+      return a.required !== false && !actionMatched(a);
+    }).map(function (a) { return a.id; });
+    var complete = !!onset && missingRequired.length === 0;
     var score = Math.round(gated ? Math.min(clamped, PASS_MARK - 1) : clamped);
 
     return {
       drillId: drillId,
       score: score,
-      pass: score >= PASS_MARK,
+      pass: score >= PASS_MARK && complete && !gated,
       passMark: PASS_MARK,
       passLabel: PASS_LABEL,
       gated: gated,
       gateHits: gateHits.map(function (g) { return g.id; }),
+      causalReady: !!onset,
+      workflowReady: workflow.debriefReady,
+      missingRequired: missingRequired,
       breakdown: rows
     };
   }
@@ -565,6 +666,7 @@
     PASS_MARK: PASS_MARK,
     PASS_LABEL: PASS_LABEL,
     ACTION: ACTION,
+    workflowState: workflowState,
     DRILLS: DRILLS,
     drillIds: drillIds,
     drillById: drillById,

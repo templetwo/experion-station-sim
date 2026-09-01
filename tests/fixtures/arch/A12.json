@@ -11,8 +11,8 @@
     "CM-CM3_TIC201"
   ],
   "domain": "FIELD",
-  "eventCount": 4,
-  "physicsDigest": "5bd327f1e9fe49706da7385067189c06815cc6c7711826a9b96d2364a628bb4f",
+  "eventCount": 5,
+  "physicsDigest": "85804ade86c32004c6b63a200da717edb0ad70c2bf265694a4542191fa0b4d5f",
   "healthDigest": "1aa685d2e3e583b0a4553c63a03143a62083f4113d8fb61e36b519c6657e2851",
   "score": 60,
   "pass": false,

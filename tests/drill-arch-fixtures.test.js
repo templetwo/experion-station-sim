@@ -7,8 +7,10 @@
 // read-only here: endState()/digest() are reused as-is, never edited, and its endState()
 // deliberately ignores P.archFaults (V3-PLAN addendum section C.3 / advisory Q4), so a
 // second digest -- a canonical serialization of ESS.FaultEngine.healthProjection, computed
-// entirely in THIS file -- covers the engine-only drills (A2, A4, A5, A6) that move no
-// physics at all. Every script below drives the REAL production wiring this stage built
+// entirely in THIS file -- covers architecture-only drills whose faults intentionally move
+// topology health rather than process physics. A12 is the explicit causal exception: its
+// low TIC201 bias now enters the measurement/controller path, so its physics digest moves.
+// Every script below drives the REAL production wiring this stage built
 // (c.applyPreset, c.startADrill, c.aDrillWatch via c.step, c.archSelectNode, c.markEvidence,
 // c.togglePin/comparePins, c.submitHypothesis, c.verifyNode, c.ackAlarm, c.setMode,
 // c.setOos/c.signAction) and scores the RETAINED ActionEvent array
@@ -22,19 +24,13 @@
 // disagreement fails the test before the fixture file is ever touched, so a nondeterministic
 // scenario can never be captured as if it were a golden.
 //
-// A FINDING, RECORDED HERE RATHER THAN WORKED AROUND: drill-arch's "stabilize" category
-// (30% or more of every drill's rubric) is the ACK action, targeting the drill's primary
-// node. This app has no new dispatch type for "acknowledge" -- it reuses the existing
-// alarm-ack call site (ackAlarm), synthesizing an ACK ActionEvent mapped to that alarm's
-// point's FIELD-layer node id. That is only ever reachable for a drill whose fault is wired
-// to real physics: A1's legacy 'xmtr' upset raises a real FIC102 BADPV alarm, so A1 (and,
-// opportunistically, A3's 'drift' upset if the bias crosses an alarm limit inside the
-// window) can earn full marks. A2/A4/A5/A6's faults are ENGINE-ONLY by design (V3-PLAN
-// addendum decision D1: the nine non-reserved engine faults must not touch src/models.js),
-// so they raise no alarm at all and "stabilize" is UNREACHABLE for them in S3 -- same shape
-// as the already-documented TRAINING.DEBRIEF gap, one category early. The score ranges below
-// are the honest ceiling given that, not a weakened assertion: nobody may fabricate an ACK
-// event for a drill whose fault the physics core was never told to raise.
+// Stabilization is outcome-shaped. A1 keeps real ACK credit because its mapped BADPV alarm
+// genuinely raises. Architecture-only drills use SAFE_RESTRAINT instead: completing every
+// diagnostic action, including the debrief, without tripping their unsafe-action gate earns
+// stabilization. These fixture scripts deliberately stop before the Debrief-mode answer, so
+// their committed scores remain pre-debrief snapshots (60-70), not passability ceilings.
+// tests/architecture-validity.test.js proves the complete ungated path reaches 100 without
+// synthesizing any process alarm.
 'use strict';
 
 const test = require('node:test');
@@ -179,77 +175,80 @@ function driveAndCheck(name, drillId, seconds, scriptFn) {
 
 // ==================================================== A1 - A6, clean runs
 
-test('A1 Frozen flow measurement: a clean run earns full marks except the S4-only debrief category', () => {
+test('A1 Frozen flow measurement: diagnose phase earns 90 but cannot pass before the debrief answer', () => {
   const ackFind = (al) => al.tag === 'FIC102' && al.cond === 'BADPV';
   const r = driveAndCheck('A1', 'A1', 75, () => driveDrill('A1', 75, { ackFind }));
   assert.equal(r.score.score, 90, 'A1 is the one S3 drill whose ACK is reachable (real FIC102 BADPV alarm) -- the ceiling matches the DO advisory\'s "a perfect S3 run scores 90"');
-  assert.equal(r.score.pass, true);
+  assert.equal(r.score.pass, false, 'a numeric score above threshold is not completion without every required action');
   assert.equal(r.score.gated, false);
 });
 
-test('A2 Input channel failure: engine-only fault, ACK unreachable -- ceiling is evidence+localization+verification', () => {
+test('A2 Input channel failure: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A2', 'A2', 65, () => driveDrill('A2', 65));
-  assert.equal(r.score.score, 60, 'OPEN_INPUT_BAD_QUALITY raises no alarm (D1: engine-only faults never touch src/models.js), so stabilize (ACK) scores 0 alongside debrief');
+  assert.equal(r.score.score, 60, 'evidence + localization + verification are present; safe restraint waits for the debrief completion marker');
   assert.equal(r.score.pass, false);
 });
 
-test('A3 Bias with GOOD quality: the bias never crosses an alarm limit inside the drill window', () => {
+test('A3 Bias with GOOD quality: diagnose phase is 60 before SAFE_RESTRAINT/debrief; no alarm is synthesized', () => {
   const ackFind = (al) => al.tag === 'LIC101';
   const r = driveAndCheck('A3', 'A3', 100, () => driveDrill('A3', 100, { ackFind }));
-  assert.equal(r.score.score, 60);
+  assert.equal(r.score.score, 60, 'the engine-only bias stays alarm-free and safe restraint waits for debrief completion');
 });
 
-test('A4 Redundancy switchover: engine-only, no alarm, same 60-point ceiling', () => {
+test('A4 Redundancy switchover: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A4', 'A4', 65, () => driveDrill('A4', 65));
   assert.equal(r.score.score, 60);
 });
 
-test('A5 Controller loss: weighted rubric, ceiling is evidence+localization+verification only', () => {
+test('A5 Controller loss: weighted diagnose-phase fixture is 65 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A5', 'A5', 65, () => driveDrill('A5', 65));
-  assert.equal(r.score.score, 65, 'A5 weights: stabilize 25, evidence 25, localization 30, verification 10, debrief 10 -- 25+30+10=65 with stabilize/debrief unreachable');
+  assert.equal(r.score.score, 65, 'A5 diagnose-phase weights: evidence 25 + localization 30 + verification 10');
 });
 
-test('A6 Single network path degradation: weighted rubric, same shape', () => {
+test('A6 Single network path degradation: weighted diagnose-phase fixture is 70', () => {
   const r = driveAndCheck('A6', 'A6', 50, () => driveDrill('A6', 50));
-  assert.equal(r.score.score, 70, 'A6 weights: evidence 30, localization 25, verification 15 = 70 with stabilize/debrief unreachable');
+  assert.equal(r.score.score, 70, 'A6 diagnose-phase weights: evidence 30 + localization 25 + verification 15');
 });
 
 // ==================================================== A7 - A12 (S4 library)
 
-test('A7 Communications partition: engine-only, ACK unreachable -- ceiling is evidence+localization+verification', () => {
+test('A7 Communications partition: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A7', 'A7', 65, () => driveDrill('A7', 65));
-  assert.equal(r.score.score, 60, 'COMMS_PARTITION raises no process alarm (D1: engine-only faults never touch src/models.js), so stabilize (ACK) scores 0 alongside debrief');
+  assert.equal(r.score.score, 60, 'evidence + localization + verification are present; safe restraint waits for the debrief completion marker');
   assert.equal(r.score.pass, false);
 });
 
-test('A8 Server / flex service loss: engine-only, same 60-point ceiling', () => {
+test('A8 Server / flex service loss: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A8', 'A8', 65, () => driveDrill('A8', 65));
   assert.equal(r.score.score, 60);
 });
 
-test('A9 Local station failure: weighted rubric, ceiling is evidence+localization+verification', () => {
+test('A9 Local station failure: weighted diagnose-phase fixture is 70', () => {
   const r = driveAndCheck('A9', 'A9', 65, () => driveDrill('A9', 65));
-  assert.equal(r.score.score, 70, 'A9 weights: stabilize 20, evidence 25, localization 25, verification 20, debrief 10 -- 25+25+20=70 with stabilize/debrief unreachable');
+  assert.equal(r.score.score, 70, 'A9 diagnose-phase weights: evidence 25 + localization 25 + verification 20');
 });
 
-test('A10 Historian gap: engine-only, same 60-point ceiling', () => {
+test('A10 Historian gap: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A10', 'A10', 65, () => driveDrill('A10', 65));
   assert.equal(r.score.score, 60);
 });
 
-test('A11 Assistant loss: engine-only, same 60-point ceiling', () => {
+test('A11 Assistant loss: diagnose-phase fixture is 60 before SAFE_RESTRAINT/debrief completion', () => {
   const r = driveAndCheck('A11', 'A11', 65, () => driveDrill('A11', 65));
   assert.equal(r.score.score, 60);
 });
 
-test('A12 Cascading symptoms: BIASED_MEASUREMENT on XMTR-TIC201 is not the reserved drift pair, so physics is not driven', () => {
-  // FINDING, recorded rather than worked around: aDrillReservedUpsetKey only maps the
-  // three legacy pairs (xmtr@XMTR-FIC102, drift@XMTR-LIC101, stick@VLV-TV202). A12's
-  // BIASED_MEASUREMENT @ XMTR-TIC201 therefore fires through archFireFault and never
-  // touches src/models.js (D1). The cascade the drill describes is engine-health only
-  // in this wiring; ACK is unreachable and the R-201 trip abort does not fire. Same
-  // 60-point S3/S4 ceiling as the other engine-only drills.
+test('A12 Causal measurement bias: low TIC201 bias moves the real measurement/controller physics digest', () => {
+  // A12 is intentionally not a reserved legacy upset. FaultEngine resolves its signed
+  // %span/min offset; Component.modelCtx carries that into Models before the PID and alarm
+  // scan. Two independent runs must agree before the moved golden is accepted.
   const r = driveAndCheck('A12', 'A12', 135, () => driveDrill('A12', 135));
+  const inst = FaultEngine.listActive(r.c.P.archFaults).find((fault) => fault.instanceId === 'BIASED_MEASUREMENT@XMTR-TIC201');
+  assert.ok(inst, 'A12 causal bias must be active at the fixture endpoint');
+  assert.equal(inst.direction, 'LOW');
+  assert.equal(FaultEngine.measurementBias(r.c.P.archFaults, 'XMTR-TIC201', r.c.P.t, 200), -1,
+    '15 s at 2 %span/min on TIC201\'s 200-degree span is a deterministic -1 degree offset');
+  assert.ok(r.c.L.TIC201.pv < r.c.P.rT, 'the rendered measurement must sit below independent process truth');
   assert.equal(r.score.score, 60);
   assert.equal(r.score.pass, false);
 });
@@ -311,13 +310,13 @@ test('mutual exclusion holds both directions: an A-drill blocks the real D-drill
   c.startADrill('A1');
   assert.equal(c.state.drill, null, 'starting an A-drill must never populate the legacy this.state.drill slot');
 
-  // Exercise the REAL UI callback (renderVals().dg.drills[i].cb), not a hand-rolled
-  // equivalent: this is exactly the closure the Training Drills dialog's button calls.
+  // Exercise the REAL canonical UI callback, not a hand-rolled equivalent: this is
+  // exactly the closure the Training Drills dialog's CANONICAL button calls.
   c.setState({ dlg: { type: 'drills' } });
   const v = c.renderVals();
   const d1 = v.dg.drills.find((x) => x.id === 'D1');
   assert.ok(d1, 'test setup: D1 must be listed');
-  d1.cb();
+  d1.canonicalCb();
   assert.equal(c.state.drill, null, 'the dialog button must refuse to start a D-drill while an A-drill is active');
   assert.equal(c.P.aDrill.id, 'A1', 'the running A-drill must be untouched by the refused D-start attempt');
 
@@ -326,7 +325,7 @@ test('mutual exclusion holds both directions: an A-drill blocks the real D-drill
   c.endADrill('ENDED FOR TEST');
   assert.equal(c.P.aDrill, null);
   const v2 = c.renderVals();
-  v2.dg.drills.find((x) => x.id === 'D1').cb();
+  v2.dg.drills.find((x) => x.id === 'D1').canonicalCb();
   assert.ok(c.state.drill, 'D1 must start once no A-drill is active');
   c.startADrill('A2');
   assert.equal(c.P.aDrill, null, 'startADrill must refuse while a legacy D-drill is running');
