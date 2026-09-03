@@ -453,11 +453,18 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
         task = "A new UNACK alarm episode settled. Call out only the highest priority and the first independent check."
         cap = TIP_WORDS
         shape = "One or two sentences. No alarm-list recap."
+    if _provider() == "anthropic":
+        # The cloud model follows a length request; a complete answer matters more than the
+        # count, so the limit is guidance here and the sidecar never discards a finished answer.
+        limit = ("LENGTH: aim for about %s words and never pad; a complete answer beats a short one. "
+                 "Speak as PIP immediately; no headings, labels, preamble, or JSON recap." % cap)
+    else:
+        limit = "LIMIT: %s words. Speak as PIP immediately; no headings, labels, preamble, or JSON recap." % cap
     return (
         "BOARD CONTEXT (point and alarm values are authoritative; do not reinterpret units or alarm abbreviations):\n"
         + facts + cue_notice + "\nTASK: " + task + "\n"
         + "SHAPE: " + shape + "\n"
-        + "LIMIT: %s words. Speak as PIP immediately; no headings, labels, preamble, or JSON recap." % cap
+        + limit
     )
 
 
@@ -810,16 +817,24 @@ def anthropic_turns(messages: list) -> tuple[list, list]:
     return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}], turns
 
 
+CLOUD_MAX_TOKENS = int(os.environ.get("COACH_CLOUD_MAX_TOKENS", "4096"))   # thinking + answer; the cost ceiling
+
+
 def anthropic_stream_reply(messages: list, cap: int, emit) -> None:
+    """The cloud path has no spoken-word cap (Anthony, 2026-09-03: "rethink the word cap with
+    the API model"). The local cap exists because a small model ignores a length instruction
+    and rambles, and a mid-sentence cut must never look like an answer. The cloud model
+    follows the LENGTH guidance in the prompt; whatever complete answer it returns is
+    relayed in full, and only a genuine cut-off at CLOUD_MAX_TOKENS is reported, as
+    incomplete. `cap` is the guidance figure the prompt already carries."""
     system, turns = anthropic_turns(messages)
     think_scrubber = StreamScrubber()
     text_scrubber = StreamScrubber()
     spoken_out = ""
-    locally_truncated = False
     client = _anthropic_client()
     with client.beta.messages.stream(
         model=_model(),
-        max_tokens=4096,              # thinking counts against this; the spoken cap is enforced below
+        max_tokens=CLOUD_MAX_TOKENS,  # thinking counts against this
         system=system,
         messages=turns,
         thinking={"type": "adaptive", "display": "summarized"},
@@ -838,17 +853,11 @@ def anthropic_stream_reply(messages: list, cap: int, emit) -> None:
                 continue
             if delta.type != "text_delta" or not delta.text:
                 continue
-            candidate = spoken_out + delta.text
-            if word_count(candidate) > cap:
-                locally_truncated = True
-                break                 # stop the generation too: nothing past the cap is ever spoken
-            spoken_out = candidate
+            spoken_out += delta.text
             safe_text = text_scrubber.push(delta.text)
             if safe_text:
                 emit({"t": "text", "d": safe_text})
-        final = None if locally_truncated else stream.get_final_message()
-    if locally_truncated:
-        raise CapExceeded("answer exceeded the spoken-word cap")
+        final = stream.get_final_message()
     if final.stop_reason == "refusal":
         raise CloudRefused("the cloud model declined on policy")
     if final.stop_reason not in ("end_turn", "stop_sequence"):
@@ -877,7 +886,7 @@ def anthropic_chat(kind: str, ask: str, projection: dict, history=None) -> tuple
 
     try:
         anthropic_stream_reply(seed_messages(kind, ask, projection, history), cap, collect)
-        return True, clip_spoken("".join(text_parts), cap), "".join(think_parts).strip()
+        return True, scrub("".join(text_parts)).strip(), "".join(think_parts).strip()
     except Exception as err:
         return False, _failure_message(err), ""
 

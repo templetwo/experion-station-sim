@@ -174,9 +174,13 @@ test('PIP sidecar on the cloud provider: same contract with the page, honest rea
   assert.ok(maxtok.some((f) => f.t === 'err' && /cut off/.test(f.d) && f.reason === 'model'), JSON.stringify(maxtok));
   assert.ok(!maxtok.some((f) => f.t === 'done' && f.ok), 'partial text cannot be success');
 
-  const capped = await frames(await post('/api/coach/stream', { ...request, ask: 'CAPPED_TEST' }));
-  assert.ok(capped.some((f) => f.t === 'err' && f.reason === 'cap'), 'the spoken-word cap applies to the cloud too');
-  assert.ok(!capped.some((f) => f.t === 'done' && f.ok));
+  // No spoken-word cap on the cloud: a long but COMPLETE answer is relayed in full (the local
+  // cap exists for a small model that ignores length instructions; the cloud model follows the
+  // LENGTH guidance, and a finished answer is never discarded). A cut-off stays a failure (MAXTOK).
+  const long = await frames(await post('/api/coach/stream', { ...request, ask: 'CAPPED_TEST' }));
+  assert.ok(long.some((f) => f.t === 'done' && f.ok), 'a complete answer over the local cap is still an answer on the cloud');
+  assert.equal(long.filter((f) => f.t === 'text').map((f) => f.d).join('').split(' ').length, OVER_CAP_WORDS, 'and none of it is dropped');
+  assert.ok(!long.some((f) => f.t === 'err'));
 
   const split = await frames(await post('/api/coach/stream', { ...request, ask: 'SPLIT_BANNED_TEST' }));
   const splitText = split.filter((f) => f.t === 'text').map((f) => f.d).join('');
@@ -197,6 +201,8 @@ test('PIP sidecar on the cloud provider: same contract with the page, honest rea
 
   assert.equal(ollamaHits, 0, 'Ollama must never be contacted on the cloud provider');
   assert.equal(cloudCalls.length, 8);
+  assert.match(cloudCalls[0].body.messages.at(-1).content, /LENGTH: aim for about \d+ words/, 'the cloud prompt carries guidance, not a hard LIMIT');
+  assert.doesNotMatch(cloudCalls[0].body.messages.at(-1).content, /^LIMIT:/m);
 });
 
 test('the cloud provider is opt-in: the default provider is ollama and an unknown provider refuses to start', async () => {
