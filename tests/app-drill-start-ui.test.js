@@ -208,3 +208,36 @@ test('the active-drill banner is anchored away from Unit 02 top-right sequence c
   assert.match(html, /DRILL IN PROGRESS · \{\{ db\.tm \}\} · \{\{ db\.sourceT \}\}/,
     'the banner says whether this is canonical or live-state');
 });
+
+// The trajectory, not just the clock: every point's PV/SP/OP/mode, every valve position,
+// the process states the drills score on, and the seeded generator's cursor. A replay that
+// completes and matches P.t while any of these differ is release gate 3 falsified.
+function trajectory(c) {
+  const L = {}; for (const t in c.L) L[t] = [c.L[t].pv, c.L[t].sp, c.L[t].op, c.L[t].mode];
+  const V = {}; for (const k in c.V) V[k] = c.V[k].pos;
+  return { L, V, P: { t: c.P.t, rT: c.P.rT, tankL: c.P.tankL, drumP: c.P.drumP, hxT: c.P.hxT, bed: c.P.h.bed }, rand: c.rand.getState() };
+}
+
+test('a canonical D start replays when the sim clock is nowhere near the wall clock', () => {
+  // Same failure as the A lane (tests/app-adrills-menu.test.js): presetBaseT was Date.now(),
+  // so an explicitly seeded sim clock left the DRILL entry unreachable by a forward-stepping
+  // replay. Release gate 3 requires the seed to be P.t.
+  const c = new Component({});
+  c.initSim(1700000000000);
+  c.saveSlot(0, 'before D1, sim clock seeded in 2023');
+  c.setState({ dlg: { type: 'drills' } });
+  c.renderVals().dg.drills.find((x) => x.id === 'D1').canonicalCb();
+  const live = { t: c.P.t, preset: c.state.drill.preset, mode: c.state.drill.startMode };
+  assert.equal(live.t - 1700000000000, 120000, 'U1_SS runs forward 120 s and that is the only clock movement');
+  c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 60);   // two JOURNALED trainee actions after the start
+  for (let i = 0; i < 20; i++) c.step(0.5);
+  const liveTraj = trajectory(c);
+
+  c.startReplay(0);
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null, 'the replay must run to completion');
+  assert.ok(c.state.drill, 'the replay must re-arm D1');
+  assert.deepEqual({ t: c.P.t, preset: c.state.drill.preset, mode: c.state.drill.startMode },
+    { t: live.t + 10000, preset: live.preset, mode: live.mode });
+  assert.deepEqual(trajectory(c), liveTraj, 'the replay reproduced a different trajectory (step() must apply due replay entries BEFORE capturing P/L)');
+});

@@ -1,7 +1,7 @@
 // @artifact dev
 // App-level tests for step B5-instructor: the instructor station (Forge PTS instructor
 // feature list, RESOURCES 2.14) with seeded determinism, action-journal replay and
-// snapshot / backtrack after the cstr-ots architecture notes (RESOURCES 4).
+// snapshot / backtrack after the cstr-ots architecture notes (RESOURCES 4.9).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Models = require('../src/models.js');

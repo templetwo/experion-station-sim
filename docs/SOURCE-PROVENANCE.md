@@ -21,18 +21,26 @@ row here from memory.
 ## 1. The id form
 
 A `sourceBasis` entry is a string `RESOURCES-<section>`, where `<section>` is a
-heading number in `docs/RESOURCES.md` — either a top-level section (`RESOURCES-4`
-→ `## 4. Better process dynamics`) or a numbered subsection (`RESOURCES-2.5` →
-`### 2.5 alerta ISA-18.2 alarm state machine`). This is the *canonical* form; it
-is the only form either module writes today, and the automated test rejects any
-other spelling (see §7). An id resolving means exactly one thing: that section
-exists in `docs/RESOURCES.md` and is where a human can go read what the code is
-citing.
+heading number in `docs/RESOURCES.md` — either a top-level section (`RESOURCES-1`
+→ `## 1. Does Honeywell have a GitHub / public code?`) or a numbered subsection
+(`RESOURCES-2.5` → `### 2.5 alerta ISA-18.2 alarm state machine`). This is the
+*canonical* form; it is the only form either module emits in `sourceBasis` today (prose
+comments may still write the space form), and the automated
+test rejects any other spelling (see §7). An id resolving means exactly one thing:
+that section exists in `docs/RESOURCES.md` and is where a human can go read what the
+code is citing.
+
+One top-level id is barred outright: **`RESOURCES-4` is rejected**. Section 4 was a
+single flat table of eleven distinct process-model sources, so every model in it
+resolved to that one id and any new physics could discharge gate 5 by citing a
+section it had never read. Section 4 now carries `### 4.1 … 4.11` headings and
+`tests/provenance.test.js` asserts that no node and no drill cites the bare section
+id — a process-model citation must name the subsection whose model it actually uses.
 
 ## 2. Registry: every sourceBasis id the code emits today
 
 Collected from the live topology graph (`Topology.build`) and all twelve
-`DrillArch.DRILLS` entries. Ten distinct ids are emitted; every one resolves to
+`DrillArch.DRILLS` entries. Fourteen distinct ids are emitted; every one resolves to
 a real `docs/RESOURCES.md` section — none are dangling.
 
 | id | RESOURCES.md section | what it licenses (concept, not text) | emitted by |
@@ -46,7 +54,11 @@ a real `docs/RESOURCES.md` section — none are dangling.
 | `RESOURCES-2.15` | 2.15 Experion Operations Assistant brochure and press release | An advisory ops-assistant surface as a concept, independent of any decision it makes | `topology.js` Ops Assistant node; drill A11 |
 | `RESOURCES-2.16` | 2.16 Orion Console PIN/white paper, C300 PIN, System HINTS | Controller/CEE/CM naming convention and redundant network-path framing | `topology.js` controller, CEE, SCM, CM and network-path nodes; drills A2, A4, A5, A6, A7 |
 | `RESOURCES-2.19` | 2.19 Standards (cite clause numbers only) | Standards-level I/O and redundancy concepts, cited by clause, never by vendor implementation | `topology.js` I/O-channel nodes; drills A1, A2, A6, A7 |
-| `RESOURCES-4` | 4. Better process dynamics | Published/open process-model literature as the source of measured process behaviour | `topology.js` field-measurement (transmitter/drive/valve) nodes; drills A1, A3, A12 |
+| `RESOURCES-4.1` | 4.1 do-mpc industrial polymerization reactor (Lucia, Finkler, Engell) | U2 semi-batch polymer structure as the source of the batch measurements | `topology.js` field-measurement (transmitter/drive/valve) nodes |
+| `RESOURCES-4.2` | 4.2 APMonitor Fired Heater case study (Badgwell) | U3 fired-heater structure as the source of the heater measurements | `topology.js` field-measurement (transmitter/drive/valve) nodes |
+| `RESOURCES-4.3` | 4.3 LearnChemE PFR and flash-drum demos | U3 fixed-bed hot spot and U1 flash as the source of those measurements | `topology.js` field-measurement (transmitter/drive/valve) nodes |
+| `RESOURCES-4.4` | 4.4 APMonitor PDC exothermic CSTR (Henson and Seborg) | U1 CSTR behaviour as the source of the reactor measurements | `topology.js` field-measurement (transmitter/drive/valve) nodes; drill A12 |
+| `RESOURCES-4.6` | 4.6 CBE30338 (Kantor) notebooks | Gravity-drained tank and anti-windup PID as the source of the U1 tank level and its discharge flow | drills A1, A3 |
 
 `RESOURCES-2.14` (2.14 Honeywell Forge Process Training Simulator PIN and
 Workforce Competency white paper) is declared as a fallback default inside
@@ -73,7 +85,7 @@ copy from:
 
 | domain (`BASIS` key) | ids | applied to | the module's own note |
 |---|---|---|---|
-| `FIELD_MEAS` | `RESOURCES-4` | TRANSMITTER / DRIVE nodes, VALVE nodes | "open process models the measurements come from" |
+| `FIELD_MEAS` | `RESOURCES-4.4`, `RESOURCES-4.1`, `RESOURCES-4.2`, `RESOURCES-4.3` | TRANSMITTER / DRIVE nodes, VALVE nodes | "the specific open process models the measurements come from: U1 CSTR, U2 batch, U3 heater, U3 bed / U1 flash" |
 | `IO` | `RESOURCES-2.19` | INPUT CHANNEL, OUTPUT CHANNEL nodes | "standards, cited by clause only" |
 | `CONTROL` | `RESOURCES-2.16` | CONTROLLER, CONTROL EXECUTION (CEE), CM, SCM SEQUENCE nodes | "controller / control-execution concepts" |
 | `NETWORK` | `RESOURCES-2.16` | NETWORK PATH nodes | "redundant path concepts" |
@@ -102,9 +114,9 @@ intent; this one records what shipped):
 
 | drill | title (from code) | sourceBasis |
 |---|---|---|
-| A1 | Frozen flow measurement | `RESOURCES-4`, `RESOURCES-2.19` |
+| A1 | Frozen flow measurement | `RESOURCES-4.6`, `RESOURCES-2.19` |
 | A2 | Input channel failure | `RESOURCES-2.19`, `RESOURCES-2.16` |
-| A3 | Bias with GOOD quality | `RESOURCES-2.5`, `RESOURCES-4` |
+| A3 | Bias with GOOD quality | `RESOURCES-2.5`, `RESOURCES-4.6` |
 | A4 | Redundancy switchover | `RESOURCES-2.16` |
 | A5 | Controller loss | `RESOURCES-2.16`, `RESOURCES-2.13` |
 | A6 | Single network path degradation | `RESOURCES-2.16`, `RESOURCES-2.19` |
@@ -113,7 +125,7 @@ intent; this one records what shipped):
 | A9 | Local station failure | `RESOURCES-2.1`, `RESOURCES-2.3` |
 | A10 | Historian gap | `RESOURCES-2.13`, `RESOURCES-2.3` |
 | A11 | Assistant loss | `RESOURCES-2.15` |
-| A12 | Causal measurement bias | `RESOURCES-2.7`, `RESOURCES-4` |
+| A12 | Causal measurement bias | `RESOURCES-2.7`, `RESOURCES-4.4` |
 
 **Correction, checked against the running code, not assumed:** no two drills
 share a byte-identical `sourceBasis` array — the property `tests/provenance.test.js`
@@ -230,7 +242,7 @@ As of this writing (§2, collected directly from the running code), every
 `sourceBasis` id on both modules is in canonical form, resolves to a real
 `docs/RESOURCES.md` section, and every drill carries at least one `RESOURCES-*`
 citation alongside anything else it declares. `node --test
-tests/provenance.test.js` passes all fifteen of its assertions against the
+tests/provenance.test.js` passes all twenty of its assertions against the
 current code.
 
 ## 8. Verification

@@ -15,7 +15,7 @@
  *   D  = -K * T2 * 60 * d(pv%)/dt   (derivative on PV, optionally filtered)
  * OP is clamped to [OPLOLM, OPHILM]; the integral is back-calculated so
  * the sum equals the clamped value (anti-reset-windup, Kantor CBE30338
- * "PID control with anti-windup", RESOURCES 4) and integration is skipped
+ * "PID control with anti-windup", RESOURCES 4.6) and integration is skipped
  * while the error would push further into the active limit.
  *
  * API
@@ -79,7 +79,7 @@
   }
 
   // Derivative of PV in %/s, optionally through a first-order filter
-  // (derivative-on-measurement filter, Kantor CBE30338, RESOURCES 4).
+  // (derivative-on-measurement filter, Kantor CBE30338, RESOURCES 4.6).
   function pvDerivative(loop, dt, ctx) {
     var raw = ((loop.pv - loop.lastPv) / span(loop)) * 100 / dt;
     var tau = typeof loop.dFilter === 'number' ? loop.dFilter : (ctx && typeof ctx.dFilter === 'number' ? ctx.dFilter : 0);

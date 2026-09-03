@@ -4,3 +4,6 @@ Thumbs.db
 node_modules/
 *.log
 .smoke/
+
+# Python bytecode from the coach sidecar
+__pycache__/

@@ -55,9 +55,21 @@ test('provenance: the registry parse is not vacuous', async (t) => {
   });
 
   await t.test('every section id topology.js actually cites is present', () => {
-    for (const id of ['4', '2.19', '2.16', '2.13', '2.1', '2.3', '2.5', '2.2', '2.15', '2.14']) {
+    // Section 4 was a single flat table of eleven process-model sources until the P2L
+    // restructure gave each its own "### 4.n" heading; topology.js now names the four
+    // models the field measurements actually come from instead of the section as a whole.
+    for (const id of ['4.4', '4.1', '4.2', '4.3',
+                      '2.19', '2.16', '2.13', '2.1', '2.3', '2.5', '2.2', '2.15', '2.14']) {
       assert.ok(SECTIONS.has(id), `RESOURCES.md has no section ${id}`);
     }
+  });
+
+  await t.test('POSITIVE CONTROL: the section 4 subsections parse as their own ids', () => {
+    // If "### 4.1"/"### 4.11" ever stop resolving, the no-bare-RESOURCES-4 test below is
+    // pushing citations at headings that do not exist -- which would be worse than the
+    // flat table it replaced.
+    assert.ok(SECTIONS.has('4.1'), 'RESOURCES.md has no section 4.1');
+    assert.ok(SECTIONS.has('4.11'), 'RESOURCES.md has no section 4.11');
   });
 
   await t.test('POSITIVE CONTROL: a fabricated section id does NOT resolve', () => {
@@ -168,5 +180,51 @@ test('GATE 5: every drill traces to a registered public source', async (t) => {
       'claim byte-identical provenance. Gate 5 says "every vendor-specific CONCEPT traces to ' +
       'a registered public source"; twelve distinct concepts sharing one citation does not ' +
       'trace anything.');
+  });
+});
+
+// ============================================================ 3. section 4 is a registry, not a bucket (gate 5)
+
+test('GATE 5: no citation launders a process model through the bare section-4 id', async (t) => {
+  // docs/RESOURCES.md section 4 lists ELEVEN distinct process-model sources (4.1 do-mpc
+  // polymerization ... 4.11 Bodylight FMU). While it was one flat table every one of them
+  // resolved to the single id RESOURCES-4, so any new physics could discharge gate 5 by
+  // citing a section it had never read. A citation must name the subsection whose model it
+  // actually uses.
+  const BARE_SECTION_4 = 'RESOURCES-4';
+
+  await t.test('section 4 really is a multi-source registry (guards a vacuous rule)', () => {
+    const subs = [...SECTIONS].filter((id) => id.startsWith('4.'));
+    assert.ok(subs.length >= 11,
+      `RESOURCES.md section 4 declares only ${subs.length} subsections (${subs.join(', ')}); ` +
+      'the rule below only means something while section 4 holds several distinct sources');
+  });
+
+  await t.test('no topology node sourceBasis cites the bare section id RESOURCES-4', () => {
+    const offenders = [];
+    for (const id of Object.keys(graph.nodes).sort()) {
+      for (const b of graph.nodes[id].sourceBasis || []) {
+        if (b === BARE_SECTION_4) offenders.push(id);
+      }
+    }
+    assert.deepEqual(offenders, [],
+      'docs/RESOURCES.md section 4 is a registry of eleven distinct process-model sources, ' +
+      'not one source. A node citing the bare "RESOURCES-4" names no model and traces ' +
+      'nothing; cite the subsection (RESOURCES-4.4 for the Henson/Seborg CSTR, RESOURCES-4.2 ' +
+      'for the Badgwell fired heater, and so on).\nnodes: ' + offenders.join(', '));
+  });
+
+  await t.test('no drill sourceBasis cites the bare section id RESOURCES-4', () => {
+    const offenders = [];
+    for (const id of DrillArch.drillIds()) {
+      for (const b of DrillArch.drillById(id).sourceBasis || []) {
+        if (b === BARE_SECTION_4) offenders.push(id);
+      }
+    }
+    assert.deepEqual(offenders, [],
+      'docs/RESOURCES.md section 4 is a registry of eleven distinct process-model sources, ' +
+      'not one source. A drill citing the bare "RESOURCES-4" claims provenance from whichever ' +
+      'of the eleven the reader happens to assume; name the subsection whose model the drill ' +
+      'actually exercises.\ndrills: ' + offenders.join(', '));
   });
 });

@@ -105,8 +105,16 @@ test('an empty journal with actions recorded after the snapshot (cleared or trun
   const snap = { t: T0 + 500, journalSeq: 1 };
   Instructor.resetRun(I);                       // clears the journal; I.seq stays 3
   const plan = Instructor.replayPlan(I, snap, T0 + 10_000);
-  assert.equal(plan.refused, 'JOURNAL_EMPTY_AFTER_SNAPSHOT');
+  // A reset names itself (initial condition loaded / canonical drill started) -- it is the
+  // common way a gap appears on the trainee's own path and it is not the journal cap.
+  assert.equal(plan.refused, 'RUN_RESET_AFTER_SNAPSHOT');
+  assert.match(plan.reason, /run was reset/); assert.doesNotMatch(plan.reason, /cap/);
   assert.equal(plan.lostFromSeq, 2); assert.equal(plan.lostToSeq, 3);
+  // A journal emptied by anything OTHER than a run reset keeps the generic refusal.
+  const J = filled(3); J.journal = [];
+  const plain = Instructor.replayPlan(J, snap, T0 + 10_000);
+  assert.equal(plain.refused, 'JOURNAL_EMPTY_AFTER_SNAPSHOT');
+  assert.equal(plain.lostFromSeq, 2); assert.equal(plain.lostToSeq, 3);
   // but a snapshot at the current sequence (nothing recorded after it) is simply an empty, unrefused plan
   assert.equal(Instructor.replayPlan(I, { t: T0 + 500, journalSeq: 3 }, T0 + 10_000).refused, undefined);
 });

@@ -200,7 +200,7 @@
   }
 
   // Instructor variables (plant conditions the trainee cannot see) and upset magnitudes; both live in P so
-  // they travel with snapshots and initial conditions (cstr-ots architecture notes, RESOURCES 4).
+  // they travel with snapshots and initial conditions (cstr-ots architecture notes, RESOURCES 4.9).
   function envDefaults() { return { feedConc: 1, Tamb: 25, foulRate: 1, catAct: 1, monoPurity: 1 }; }
   function magDefaults() { return { surge: 50, coolLoss: 1, bedact: 1.35, drift: 1 }; }
   const envOf = (P) => P.env || (P.env = envDefaults());
@@ -248,20 +248,38 @@
     return qin;
   }
 
+  // Which loop output (or protective trip) each valve follows. One entry per valve the
+  // process equations read. The key list is exported as MODEL_VALVES so the app's V,
+  // Topology.VALVE_OF and this table are pinned equal by test (tests/models-valves.test.js)
+  // instead of drifting apart silently: a valve present in V with no entry here used to
+  // integrate `undefined` into NaN, after which makeSnapshot refused every snapshot,
+  // backtrack and replay. Such a valve now HOLDS its position (or goes to its fail
+  // position on air loss) and the test names it.
+  const VALVE_TARGET = {
+    FV102: (P, L) => P.trips.rx ? 0 : L.FIC102.op / 100,
+    TV202: (P, L) => L.TIC202.op / 100,
+    TV301: (P, L) => L.TIC301.op / 100,
+    PV401: (P, L) => L.PIC401.op / 100,
+    LV401: (P, L) => L.LIC401.op / 100,
+    MV211: (P, L) => P.trips.batch ? 0 : L.FIC211.op / 100,
+    JV213: (P, L) => P.trips.batch ? 0 : L.TIC213.op / 100,
+    FV310: (P, L) => L.FIC310.op / 100,
+    FV311: (P, L) => (P.trips.bed || P.trips.skin) ? 0 : L.TIC311.op / 100,
+    QV313: (P, L) => L.FIC313.op / 100,
+  };
+  const MODEL_VALVES = Object.freeze(Object.keys(VALVE_TARGET));
+
   function moveValves(P, L, V, dt) {
     const F = P.faults;
-    const tgt = {
-      FV102: P.trips.rx ? 0 : L.FIC102.op / 100, TV202: L.TIC202.op / 100, TV301: L.TIC301.op / 100,
-      PV401: L.PIC401.op / 100, LV401: L.LIC401.op / 100,
-      MV211: P.trips.batch ? 0 : L.FIC211.op / 100, JV213: P.trips.batch ? 0 : L.TIC213.op / 100,
-      FV310: L.FIC310.op / 100, FV311: (P.trips.bed || P.trips.skin) ? 0 : L.TIC311.op / 100, QV313: L.FIC313.op / 100,
-    };
     for (const k in V) {
-      const v = V[k]; let g = F.air ? v.fail : tgt[k]; if (v.stuck) g = v.pos;
+      const v = V[k], target = VALVE_TARGET[k];
+      let g = F.air ? v.fail : (target ? target(P, L) : v.pos); if (v.stuck) g = v.pos;
       v.pos = clamp(v.pos + (g - v.pos) * dt / 3, 0, 1);
     }
   }
 
+  // Feed tank, pump and valve: the sqrt-of-head discharge form of the gravity-drained tank
+  // (Kantor CBE30338, RESOURCES 4.6) applied as a gain on a pumped, valve-throttled line.
   function feedTank(P, L, V, dt, ctx, qin) {
     const pumpF = L.P101.run ? 1 : 0;
     const flowSS = 120 * V.FV102.pos * pumpF * Math.sqrt(Math.max(P.tankL, 0) / 50);
@@ -272,7 +290,7 @@
     if (P.tankL < 2 && L.P101.run) ctx.tripMotor('P101', 'CAVITATION — LOW SUCTION LEVEL');
   }
 
-  // Henson/Seborg CSTR (RESOURCES 4): dCa/dt = (Caf - Ca)/tau - k(T) Ca;
+  // Henson/Seborg CSTR (RESOURCES 4.4): dCa/dt = (Caf - Ca)/tau - k(T) Ca;
   // dT/dt = feed + reaction - jacket - loss, k(T) = kRef exp(-E/R (1/T - 1/Tref)).
   function cstr(P, L, V, dt, ctx) {
     const c = PARAMS.U1, F = P.faults, env = envOf(P);
@@ -307,7 +325,7 @@
     P.foulBase = Math.max(0.6, (P.foulBase == null ? 1 : P.foulBase) - dt / 3600 * PARAMS.U1.foulBaseRate * fr);
     P.foulF = F.foul ? Math.max(0.6, P.foulF - dt / 600 * 0.4 * fr) : Math.max(0.6, Math.min(P.foulBase, P.foulF + dt / 300));
     P.hxT = lag(P.hxT, P.rT + 60 * V.TV301.pos * P.foulF, 90, dt);
-    // flash drum: vapour fraction rises with feed temperature (LearnChemE flash, RESOURCES 4)
+    // flash drum: vapour fraction rises with feed temperature (LearnChemE flash, RESOURCES 4.3)
     const vapf = clamp(0.02 + (P.hxT - 165) * 0.004, 0, 0.3);
     const Ql = P.flow * (1 - vapf);
     const Qo = 80 * V.LV401.pos * Math.sqrt(Math.max(P.drumL, 1) / 50);
@@ -389,7 +407,7 @@
     b._last = b.phase;
   }
 
-  // Lucia/Finkler/Engell 2013 semi-batch structure (RESOURCES 4): monomer,
+  // Lucia/Finkler/Engell 2013 semi-batch structure (RESOURCES 4.1): monomer,
   // polymer, water masses; Arrhenius rate with polymer-fraction (gel) factor;
   // reactor / steel / jacket / external HX energy balances; T_adiab and
   // accumulated monomer as safety variables.
@@ -455,7 +473,7 @@
   }
 
   // ---------------------------------------------------------------- unit 3
-  // Badgwell fired heater (RESOURCES 4): fuel gas -> firebox -> two tube passes,
+  // Badgwell fired heater (RESOURCES 4.2): fuel gas -> firebox -> two tube passes,
   // each with an outlet and a tube-skin temperature; combined outlet feeds the bed.
   function firedHeater(P, V, dt) {
     const c = PARAMS.U3, h = P.h;
@@ -479,7 +497,7 @@
   }
 
   // fixed bed: exponential hot-spot growth with bed temperature (LearnChemE PFR
-  // parametric sensitivity, RESOURCES 4) plus a quench loop.
+  // parametric sensitivity, RESOURCES 4.3) plus a quench loop.
   // Two physical bounds keep the exponential from running away: the heat release cannot exceed full conversion of the
   // feed (a smooth cap at bedRelMax, linear up to bedRelKnee so the nominal and trip trajectories are untouched), and a
   // feed entering far below the light-off temperature does not react, so a fuel trip that drops the preheat quenches
@@ -529,5 +547,5 @@
     stepU3(P, L, V, dt, ctx);
   }
 
-  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, step, PARAMS };
+  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, step, PARAMS, MODEL_VALVES };
 });

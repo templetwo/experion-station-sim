@@ -115,7 +115,7 @@
       'Verify the TIC201 setpoint and mode, and trim the jacket setpoint through the cascade.'),
     'TIC201.PVHI': e(RT.short,
       'The exotherm accelerates with temperature; without action the reactor reaches the 185 DEG C trip.',
-      'Cooling water loss, TV-202 stiction, reaction rate step, or E-301 fouling raising the feed temperature.',
+      'Cooling water loss, TV-202 stiction, or a reaction rate step.',
       'Confirm TIC202 output is opening TV-202, raise feed flow FIC102 for extra cooling, and prepare to cut feed.'),
     'TIC201.PVHH': e(RT.now,
       'Runaway imminent; the trip will close the feed valve and the reactor contents will still need to be cooled.',
@@ -151,23 +151,30 @@
       'Keep maximum jacket cooling, confirm feed is isolated, acknowledge the trip, and restart only after the temperature has recovered.',
       '185 DEG C reactor temperature'),
 
-    // ---- Unit 01: product cooler E-301 and flash drum V-401 --------------------
+    // ---- Unit 01: flash preheater E-301 and flash drum V-401 -------------------
+    // E-301 HEATS reactor effluent on hot oil up to flash temperature (src/models.js
+    // exchangerAndDrum: hxT rises with TV-301 opening; TIC301 is REV-acting, i.e. heating).
+    // Opening TV-301 makes the drum hotter and more vapour. Fouling UNDER-heats: its tell is
+    // TIC301 output climbing across a shift to hold the same outlet (about 47 to 84 % at the
+    // modelled floor, foulF 0.6), and at that floor it reaches no TIC301 alarm on its own
+    // (tests/golden-upsets.test.js records zero alarms for the foul upset). It never causes
+    // a HIGH, and it belongs in no HIGH entry on this unit.
     'TIC301.PVLL': e(RT.long,
-      'Journal only: product too cold for the flash; the drum makes little vapour and level rises.',
-      'TV-301 open too far or reactor outlet cold.',
-      'No immediate action; review the TIC301 setpoint.'),
+      'Journal only: the flash feed is too cold, V-401 makes little vapour, LIC401 works harder and drum pressure sags.',
+      'TV-301 closed or the hot-oil supply cold; reactor outlet cold; TIC301 in MAN with the output low.',
+      'No immediate action; check TIC301 output and mode, then review the setpoint. Fouling does not reach this alarm on its own; its tell is TIC301 output climbing across a shift.'),
     'TIC301.PVLO': e(RT.medium,
-      'Flash duty drops; LIC401 will have to open LV-401 further.',
-      'Reactor temperature low; TIC301 in MAN.',
-      'Check TIC301 mode and the reactor temperature.'),
+      'Flash duty drops; LIC401 will have to open LV-401 further and PIC401 output falls toward its low limit.',
+      'Reactor temperature low; TIC301 in MAN with too little output.',
+      'Check TIC301 mode and output, then the reactor temperature. Fouling does not reach this alarm on its own: its tell is TIC301 output climbing across a shift to hold the same outlet.'),
     'TIC301.PVHI': e(RT.short,
-      'More vapour flashes in V-401 and drum pressure rises toward the PSV.',
-      'E-301 fouling reduces cooling; TV-301 stuck.',
-      'Open TV-301 further or drop the TIC301 setpoint; watch PIC401 output for saturation.'),
+      'More vapour flashes in V-401; PIC401 opens PV-401 to hold pressure, and if PIC401 is in MAN or already wide open the drum pressure rises toward the PSV.',
+      'TV-301 stuck open, or TIC301 in MAN with output too high; a reactor temperature excursion carried through the preheater.',
+      'Cut heat: close TV-301 down by taking TIC301 to MAN and lowering the output, or lower the setpoint; watch PIC401 output for saturation.'),
     'TIC301.PVHH': e(RT.now,
       'Drum pressure will exceed PIC401 capacity; PSV lift likely.',
-      'Severe fouling with a reactor temperature excursion.',
-      'Reduce reactor feed, take PIC401 to AUTO if it is not, and prepare for a relief event.'),
+      'A reactor temperature excursion arriving at the flash with TV-301 open; the preheater alone cannot reach this limit.',
+      'Cut heat first: close TV-301 (TIC301 to MAN, output down), reduce reactor feed, take PIC401 to AUTO if it is not, and prepare for a relief event.'),
     'LIC401.PVLL': e(RT.now,
       'Gas blow-by through LV-401 to the product line.',
       'LV-401 stuck open; liquid feed to the drum lost.',
@@ -194,7 +201,7 @@
       'Verify the setpoint and return PIC401 to AUTO.'),
     'PIC401.PVHI': e(RT.short,
       'Pressure approaching the PSV set pressure of 950 KPA.',
-      'Vapour surge from a hot feed; PV-401 failed closed on air loss; E-301 fouling.',
+      'Vapour surge from a hot feed; PV-401 failed closed on air loss; TIC301 driven high.',
       'Open PV-401 further in MAN, reduce TIC301 setpoint, and cut reactor feed if the pressure keeps rising.'),
     'PIC401.PVHH': e(RT.now,
       'PSV will lift to flare; flaring is an environmental event.',

@@ -232,8 +232,10 @@
 
   var DRILLS = Object.freeze([
     buildDrill({
-      // Provenance for THIS drill's concepts (release gate 5): open process models supply the real flow the frozen reading contradicts; standards for measurement quality.
-      sourceBasis: ['RESOURCES-4', 'RESOURCES-2.19'],
+      // Provenance for THIS drill's concepts (release gate 5): the CBE30338 gravity-drained
+      // tank model supplies the real FV102 discharge flow the frozen reading contradicts;
+      // standards for measurement quality.
+      sourceBasis: ['RESOURCES-4.6', 'RESOURCES-2.19'],
       id: 'A1', title: 'Frozen flow measurement',
       objectives: [
         'Distinguish a frozen/stuck measurement from a genuine loss of flow.',
@@ -269,8 +271,10 @@
       ]
     }),
     buildDrill({
-      // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 state and quality model -- GOOD quality is a channel claim, not a correctness proof; process models supply the correlated evidence.
-      sourceBasis: ['RESOURCES-2.5', 'RESOURCES-4'],
+      // Provenance for THIS drill's concepts (release gate 5): ISA-18.2 state and quality model
+      // -- GOOD quality is a channel claim, not a correctness proof; the CBE30338 gravity-drained
+      // tank model supplies the true TK-101 level that contradicts the biased LIC101 reading.
+      sourceBasis: ['RESOURCES-2.5', 'RESOURCES-4.6'],
       id: 'A3', title: 'Bias with GOOD quality',
       stabilizationPolicy: 'SAFE_RESTRAINT',
       objectives: [
@@ -445,8 +449,9 @@
     buildDrill({
       // Provenance for THIS drill's concepts (release gate 5): control-system
       // architecture for tracing a bad field measurement through a cascade, plus
-      // process models for the controller/process consequence.
-      sourceBasis: ['RESOURCES-2.7', 'RESOURCES-4'],
+      // the Henson/Seborg exothermic CSTR for the controller/process consequence
+      // -- R-201 really warms when the cascade answers the biased TIC201.
+      sourceBasis: ['RESOURCES-2.7', 'RESOURCES-4.4'],
       id: 'A12', title: 'Causal measurement bias',
       objectives: [
         'Trace a biased temperature measurement through the cascade controller to its process consequence.',

@@ -166,19 +166,84 @@ Rule for everything here: open it privately to check that a name, a mode semanti
 
 ## 4. Better process dynamics
 
-| Resource | URL | Licence | Unit upgraded | What it gives |
-|---|---|---|---|---|
-| do-mpc industrial polymerization reactor (Lucia, Finkler, Engell, J. Process Control 23(9) 2013, DOI 10.1016/j.jprocont.2013.08.008) | https://www.do-mpc.com/en/latest/example_gallery/industrial_poly.html (parameters in examples/industrial_poly/template_model.py of github.com/do-mpc/do-mpc) | Code LGPL-3.0; equations and parameters are published academic content, re-implement with citation, do not paste the file | U2 semi-batch polymer | 8 ODEs (water/monomer/polymer mass, reactor, steel, jacket-out, EHE, coolant temperatures) plus accumulated monomer and adiabatic temperature safety states, 3 inputs, Arrhenius kinetics, 90 C +/- 2 C quality window. The adiabatic-temperature variable is a natural Urgent alarm / SHEDHOLD trigger; dosing phases map onto the SCM. |
-| APMonitor Fired Heater case study (Badgwell) | https://apmonitor.com/dde/index.php/Main/FiredHeaterSimulation | Public page, no licence statement; re-derive with attribution, ask before verbatim code reuse | U3 fired preheater | Two-pass heater: MVs FC1, FC2, FG; DVs TI1, TI2; CVs TO, FO, DT, TS1, TS2 as transfer functions and a 36-state state-space model. Tube-skin temperatures become High/Urgent alarm candidates; feed TO into the existing fixed-bed model. |
-| LearnChemE ParametricSensitivityOfPFRWithHeatExchange and flash-drum demos | https://github.com/LearnChemE/LearnChemE.github.io (demos/ParametricSensitivityOfPFRWithHeatExchange, demos/AdiabaticFlashDrumWithBinaryLiquidFeed, demos/MultipleSteadyStatesInACSTR) | No top-level LICENSE (root package.json says MIT, learnchemejs/LICENSE is MIT, per-demo terms unclear); treat as reference, re-derive textbook models | U3 fixed-bed reactor and U1 flash drum | Validated numerics for hot-spot location vs coolant temperature (runaway in a cooled PFR) and an adiabatic binary flash with VLE. |
-| APMonitor PDC exothermic CSTR (Henson and Seborg parameters) | https://github.com/APMonitor/pdc and https://apmonitor.com/pdc/index.php/Main/StirredReactor | pdc repo has no LICENSE (ask before copying code); the model is textbook and may be re-implemented; GEKKO is MIT | U1 CSTR cascade | Canonical parameter set (E/R = 8750 K, k0 = 7.2e10, UA = 5e4, dH = 5e4) with a known runaway threshold above ~305 K jacket temperature; ideal for calibrating jacket-inner / reactor-outer cascade and deriving SPHILM/OPHILM limits. |
-| pc-gym model_classes.py (Imperial College, arXiv 2410.22093) | https://github.com/MaximilianB2/pc-gym | MIT | U1 CSTR train, plus extras | Same Henson/Seborg CSTR, four_tank, heat_exchanger, distillation_column, cstr_series_recycle, polymerisation_reactor, batch, hydraulic_tank; disturbance and constraint-violation definitions reusable for drill grading. |
-| CBE30338 (Kantor) notebooks | https://github.com/jckantor/CBE30338 | Code MIT; text licence file says CC BY-NC-ND 4.0 (README says BY-NC-SA); port code and equations only | U1 tank and CSTR, all faceplates | Anti-reset-windup PID and bumpless transfer (important for MAN/AUTO/CAS switching), gravity-drained and interacting tanks, exothermic CSTR with steady-state multiplicity. |
-| Virtual Labs IIT Kharagpur experiments | https://virtual-labs.github.io/exp-continuous-stirred-tank-reactor-iitkgp/ (repos exp-continuous-stirred-tank-reactor-iitkgp, exp-heat-exchanger-iitkgp, exp-flash-drum-iitkgp, exp-polymerization-reactor-iitkgp under github.com/virtual-labs) | AGPL-3.0 (copyleft; reference or re-implement, do not copy) | U1 whole train, U2 | Browser-native JS reference implementations of CSTR with separate jacket unit and PI auto/manual, heat exchanger, flash drum. |
-| Tennessee Eastman Process (Downs and Vogel 1993) | https://github.com/jkitchin/tennessee-eastman-profbraatz (pure-Python backend) and https://github.com/camaramm/tennessee-eastman-challenge (Ricker's C version and Simulink loop design, MIT wrapper with Ricker's permission) | UIUC/Braatz BSD-style permissive notice; MIT wrapper; cite Downs and Vogel and Ricker | Candidate fourth unit | 50 states, 41 measurements, 12 MVs, 20 IDV disturbances, canonical fault scenarios; the C version compiles to WASM with Emscripten. |
-| cstr-ots (Kurian George) | https://github.com/KURIANGEORGE57/cstr-ots (live: https://cstr-ots.vercel.app) | No licence (all rights reserved); read for architecture only | U1 CSTR, instructor features | Closest existing analogue: deliberately open-loop-unstable thermal design, 6 s cooling-water transport delay, 12 s thermowell lag, seeded determinism plus action-journal replay, snapshot/backtrack, headless acceptance harness. |
-| DWSIM (offline trajectory generator) | https://github.com/DanWBR/dwsim (tutorial part 3: https://dwsim.org/wiki/index.php?title=Dynamic_Simulation_Tutorial_with_DWSIM_and_Python,_Part_3:_Adding_a_PID_Controller) | GPL-3.0 (DTL LGPL-3); desktop only | U1 whole train | Build the real tank/CSTR/HX/flash flowsheet with property packages, run upsets, export time series to calibrate the JS ODE coefficients or precompute drill trajectories. |
-| Bodylight.js FMU Compiler with OMChemSim / ThermoSysPro / ThermoPower | https://github.com/creative-connections/Bodylight.js-FMU-Compiler ; https://github.com/FOSSEE/OMChemSim (BSD-3) ; https://github.com/modelica-3rdparty/ThermoSysPro (Modelica License 2 mirror) | Compiler GPL-3.0 (check shim licence before shipping); model libraries permissive | U1 flash and HX, U3 furnace gas side | Only route found to run rigorous Modelica unit models in a static page via WASM; the result is an opaque compiled engine, not a readable reference. |
+Eleven sources, each now its own subsection so each carries its own id. Code cites the specific model it implements — `RESOURCES 4.4` for the Henson/Seborg CSTR, `RESOURCES 4.2` for the Badgwell fired heater — not the section as a whole. A bare `RESOURCES-4` no longer discharges release gate 5 for a model: §4 is a registry of eleven distinct sources and a citation must name the subsection whose model it actually uses. Order and content are unchanged from the flat table this replaces; only the ids are new.
+
+### 4.1 do-mpc industrial polymerization reactor (Lucia, Finkler, Engell)
+- Resource: do-mpc industrial polymerization reactor (Lucia, Finkler, Engell, J. Process Control 23(9) 2013, DOI 10.1016/j.jprocont.2013.08.008)
+- URL: https://www.do-mpc.com/en/latest/example_gallery/industrial_poly.html (parameters in examples/industrial_poly/template_model.py of github.com/do-mpc/do-mpc)
+- Licence: Code LGPL-3.0; equations and parameters are published academic content, re-implement with citation, do not paste the file
+- Unit upgraded: U2 semi-batch polymer
+- What it gives: 8 ODEs (water/monomer/polymer mass, reactor, steel, jacket-out, EHE, coolant temperatures) plus accumulated monomer and adiabatic temperature safety states, 3 inputs, Arrhenius kinetics, 90 C +/- 2 C quality window. The adiabatic-temperature variable is a natural Urgent alarm / SHEDHOLD trigger; dosing phases map onto the SCM.
+
+### 4.2 APMonitor Fired Heater case study (Badgwell)
+- Resource: APMonitor Fired Heater case study (Badgwell)
+- URL: https://apmonitor.com/dde/index.php/Main/FiredHeaterSimulation
+- Licence: Public page, no licence statement; re-derive with attribution, ask before verbatim code reuse
+- Unit upgraded: U3 fired preheater
+- What it gives: Two-pass heater: MVs FC1, FC2, FG; DVs TI1, TI2; CVs TO, FO, DT, TS1, TS2 as transfer functions and a 36-state state-space model. Tube-skin temperatures become High/Urgent alarm candidates; feed TO into the existing fixed-bed model.
+
+### 4.3 LearnChemE PFR and flash-drum demos
+- Resource: LearnChemE ParametricSensitivityOfPFRWithHeatExchange and flash-drum demos
+- URL: https://github.com/LearnChemE/LearnChemE.github.io (demos/ParametricSensitivityOfPFRWithHeatExchange, demos/AdiabaticFlashDrumWithBinaryLiquidFeed, demos/MultipleSteadyStatesInACSTR)
+- Licence: No top-level LICENSE (root package.json says MIT, learnchemejs/LICENSE is MIT, per-demo terms unclear); treat as reference, re-derive textbook models
+- Unit upgraded: U3 fixed-bed reactor and U1 flash drum
+- What it gives: Validated numerics for hot-spot location vs coolant temperature (runaway in a cooled PFR) and an adiabatic binary flash with VLE.
+
+### 4.4 APMonitor PDC exothermic CSTR (Henson and Seborg)
+- Resource: APMonitor PDC exothermic CSTR (Henson and Seborg parameters)
+- URL: https://github.com/APMonitor/pdc and https://apmonitor.com/pdc/index.php/Main/StirredReactor
+- Licence: pdc repo has no LICENSE (ask before copying code); the model is textbook and may be re-implemented; GEKKO is MIT
+- Unit upgraded: U1 CSTR cascade
+- What it gives: Canonical parameter set (E/R = 8750 K, k0 = 7.2e10, UA = 5e4, dH = 5e4) with a known runaway threshold above ~305 K jacket temperature; ideal for calibrating jacket-inner / reactor-outer cascade and deriving SPHILM/OPHILM limits.
+
+### 4.5 pc-gym model_classes.py
+- Resource: pc-gym model_classes.py (Imperial College, arXiv 2410.22093)
+- URL: https://github.com/MaximilianB2/pc-gym
+- Licence: MIT
+- Unit upgraded: U1 CSTR train, plus extras
+- What it gives: Same Henson/Seborg CSTR, four_tank, heat_exchanger, distillation_column, cstr_series_recycle, polymerisation_reactor, batch, hydraulic_tank; disturbance and constraint-violation definitions reusable for drill grading.
+
+### 4.6 CBE30338 (Kantor) notebooks
+- Resource: CBE30338 (Kantor) notebooks
+- URL: https://github.com/jckantor/CBE30338
+- Licence: Code MIT; text licence file says CC BY-NC-ND 4.0 (README says BY-NC-SA); port code and equations only
+- Unit upgraded: U1 tank and CSTR, all faceplates
+- What it gives: Anti-reset-windup PID and bumpless transfer (important for MAN/AUTO/CAS switching), gravity-drained and interacting tanks, exothermic CSTR with steady-state multiplicity.
+
+### 4.7 Virtual Labs IIT Kharagpur experiments
+- Resource: Virtual Labs IIT Kharagpur experiments
+- URL: https://virtual-labs.github.io/exp-continuous-stirred-tank-reactor-iitkgp/ (repos exp-continuous-stirred-tank-reactor-iitkgp, exp-heat-exchanger-iitkgp, exp-flash-drum-iitkgp, exp-polymerization-reactor-iitkgp under github.com/virtual-labs)
+- Licence: AGPL-3.0 (copyleft; reference or re-implement, do not copy)
+- Unit upgraded: U1 whole train, U2
+- What it gives: Browser-native JS reference implementations of CSTR with separate jacket unit and PI auto/manual, heat exchanger, flash drum.
+
+### 4.8 Tennessee Eastman Process (Downs and Vogel 1993)
+- Resource: Tennessee Eastman Process (Downs and Vogel 1993)
+- URL: https://github.com/jkitchin/tennessee-eastman-profbraatz (pure-Python backend) and https://github.com/camaramm/tennessee-eastman-challenge (Ricker's C version and Simulink loop design, MIT wrapper with Ricker's permission)
+- Licence: UIUC/Braatz BSD-style permissive notice; MIT wrapper; cite Downs and Vogel and Ricker
+- Unit upgraded: Candidate fourth unit
+- What it gives: 50 states, 41 measurements, 12 MVs, 20 IDV disturbances, canonical fault scenarios; the C version compiles to WASM with Emscripten.
+
+### 4.9 cstr-ots (Kurian George)
+- Resource: cstr-ots (Kurian George)
+- URL: https://github.com/KURIANGEORGE57/cstr-ots (live: https://cstr-ots.vercel.app)
+- Licence: No licence (all rights reserved); read for architecture only
+- Unit upgraded: U1 CSTR, instructor features
+- What it gives: Closest existing analogue: deliberately open-loop-unstable thermal design, 6 s cooling-water transport delay, 12 s thermowell lag, seeded determinism plus action-journal replay, snapshot/backtrack, headless acceptance harness.
+
+### 4.10 DWSIM (offline trajectory generator)
+- Resource: DWSIM (offline trajectory generator)
+- URL: https://github.com/DanWBR/dwsim (tutorial part 3: https://dwsim.org/wiki/index.php?title=Dynamic_Simulation_Tutorial_with_DWSIM_and_Python,_Part_3:_Adding_a_PID_Controller)
+- Licence: GPL-3.0 (DTL LGPL-3); desktop only
+- Unit upgraded: U1 whole train
+- What it gives: Build the real tank/CSTR/HX/flash flowsheet with property packages, run upsets, export time series to calibrate the JS ODE coefficients or precompute drill trajectories.
+
+### 4.11 Bodylight.js FMU Compiler with OMChemSim / ThermoSysPro / ThermoPower
+- Resource: Bodylight.js FMU Compiler with OMChemSim / ThermoSysPro / ThermoPower
+- URL: https://github.com/creative-connections/Bodylight.js-FMU-Compiler ; https://github.com/FOSSEE/OMChemSim (BSD-3) ; https://github.com/modelica-3rdparty/ThermoSysPro (Modelica License 2 mirror)
+- Licence: Compiler GPL-3.0 (check shim licence before shipping); model libraries permissive
+- Unit upgraded: U1 flash and HX, U3 furnace gas side
+- What it gives: Only route found to run rigorous Modelica unit models in a static page via WASM; the result is an opaque compiled engine, not a readable reference.
 
 ## 5. Suggested next five changes to the simulator
 

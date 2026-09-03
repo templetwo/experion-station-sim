@@ -87,3 +87,25 @@ test('a refused replay leaves the simulation untouched -- it does not half-resto
   assert.equal(c.P.t, tBefore, 'a refused replay must not restore the snapshot');
   assert.equal(JSON.stringify(c.P.faults), faultsBefore, 'nor mutate process state');
 });
+
+test('a gap created by a RUN RESET is reported as a reset, never blamed on the journal cap', () => {
+  // Every applyPreset() -- an instructor initial condition, or a canonical drill start
+  // from the trainee menu -- clears the journal through resetRun() while the sequence
+  // counter keeps counting. The refusal used to read "dropped by the 2000-entry cap" for
+  // a gap nothing capped. Found by the verify pass on the Stage 1 gate-3 work.
+  const Instructor = require('../src/instructor.js');
+  const c = boot();
+  c.setMode('TIC202', 'MAN');                       // seq 1, before the snapshot
+  c.saveSlot(0, 'before the reset');
+  c.setMode('TIC202', 'CAS');                       // seq 2, after the snapshot, lost by the reset below
+  c.renderVals();                                   // keep the render path exercised
+  c.setState({ dlg: { type: 'drills' } });
+  c.renderVals().dg.drills.find((x) => x.id === 'D1').canonicalCb();   // applyPreset -> resetRun
+  const plan = Instructor.replayPlan(c.instr, c.instr.snapshots[0], c.P.t);
+  assert.equal(plan.refused, 'RUN_RESET_AFTER_SNAPSHOT');
+  assert.match(plan.reason, /run was reset/);
+  assert.doesNotMatch(plan.reason, /cap/, 'nothing was capped');
+  c.startReplay(0);
+  assert.equal(c.instr.replay, null, 'still refused: the lost action cannot be reproduced');
+  assert.match(c.state.msg, /REPLAY REFUSED/);
+});

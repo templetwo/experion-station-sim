@@ -12,6 +12,7 @@
 <script src="./src/models.js"></script>
 <script src="./src/alarm-help.js"></script>
 <script src="./src/philosophy.js"></script>
+<script src="./src/process.js"></script>
 <script src="./src/instructor.js"></script>
 <script src="./src/training.js"></script>
 <script src="./src/dispatch.js"></script>
@@ -1504,6 +1505,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           <b>Alarm response</b><br />Silence → Acknowledge → read condition → check trend → check related points → act → verify. Triage floods by priority; shelve only known nuisance alarms.<br /><br />
           <b>Alarm states (ISA-18.2)</b><br />UNACK flashes with horn · ACKED steady · RTNUN inverse flash (returned to normal, not yet acknowledged) · SHLVD / DSUPR / OOSRV never annunciate.<br /><br />
           <b>Alarm Summary</b><br />Location pane filters by unit or equipment (counts are active / unacknowledged) · ACK PAGE acts on the visible rows only · Cnt is the repeat count within 10 min · C marks a stored comment (COMMENT… button) · ALARM HELP opens the rationalisation pane · command <b>KPI</b> opens the alarm performance display · Help → Alarm and display philosophy (command <b>PHILOSOPHY</b>) explains the colours, states and the limit ladder; switching the colour philosophy (Station menu) needs SUPV and is journaled as a CONFIG change.<br /><br />
+          <b>Plant orientation</b><br />Help → Plant orientation — what the units make… (command <b>PROCESS</b>, also <b>OVERVIEW</b> / <b>PLANT</b>) says what this plant makes, the route through it, each unit's hazards and how good the numbers are. PIP reads the same text. Our own prose about a plant that does not exist.<br /><br />
+          <b>PIP cloud credential</b><br />Help → PIP cloud credential… (command <b>CLOUDKEY</b>, or the KEY button on the Ops Assistant) enters an API key for the cloud coach through a masked field. The key goes only to the local sidecar, is held in its memory for this session, and is never journaled, snapshotted, logged or shown to the model. FORGET KEY returns PIP to the local model. SUPV or above.<br /><br />
           <b>Instructor station</b><br />Command <b>INSTR</b>, Drills → Instructor Station…, or the SIM link in the status bar. Needs the instructor or manager password: run control (freeze / step / fast time), snapshots, initial conditions, backtrack, upsets (optionally hidden), plant variables, action journal with replay, live drill assessment.<br /><br />
           <b>Training and audit</b><br />Logon takes an operator name; it goes on every journal entry. Messages flagged CONFIRM count in the status bar (blinking MSG) until confirmed in the Message Summary. Critical changes (trip point, priority, out of service, PID tuning, disabling an asset's alarms, snapshot restore during a drill) need an electronic signature — password and reason. Every configuration change is a CONFIG event: command <b>MOC</b> opens the change log. Drills are scored against the 80 % mark ({{ dg.dbPassT }}); commands <b>RECORD</b> and <b>COVERAGE</b> open the training record and the operator task coverage matrix.
         </div>
@@ -1533,6 +1536,39 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
             </sc-for>
           </div>
           <div style="margin-top:4px;font-size:10.5px;color:#55524c">Switching the colour philosophy is a station-wide display configuration: SUPV or above, recorded as a CONFIG (MOC) change.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isCloudKey }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#3c3c3c;margin-bottom:8px;line-height:1.5">{{ dg.ck.status }}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;width:80px">API key:</div>
+          <input type="password" autocomplete="new-password" value="{{ dg.ck.key }}" onChange="{{ dg.ck.keyChange }}" onKeyDown="{{ dg.ck.keyKey }}" placeholder="paste the key — it is never shown" style="flex:1;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;width:80px">Model:</div>
+          <input value="{{ dg.ck.model }}" onChange="{{ dg.ck.modelChange }}" placeholder="claude-opus-5 (default)" style="width:220px;padding:3px 6px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="padding:5px 14px;font-weight:700;cursor:pointer;background:#B8C4D4;border:2px solid;border-color:#31548F" onClick="{{ dg.ck.save }}">SAVE KEY · USE CLOUD</div>
+          <div style="padding:5px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ dg.ck.useLocal }}">USE LOCAL MODEL</div>
+          <div style="padding:5px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ dg.ck.forget }}">FORGET KEY</div>
+          <div style="padding:5px 14px;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" onClick="{{ dg.close }}">CANCEL</div>
+        </div>
+        <div style="font-size:11px;color:#55524c;line-height:1.5">{{ dg.ck.note }}</div>
+      </sc-if>
+
+      <sc-if value="{{ dg.isProcess }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;line-height:1.55">
+          <div style="font-size:10.5px;color:#55524c;margin-bottom:6px">{{ dg.proc.lede }}</div>
+          <sc-for list="{{ dg.proc.sections }}" as="sec" hint-placeholder-count="14">
+            <div style="font-weight:700;margin-top:10px;margin-bottom:2px">{{ sec.title }}</div>
+            <div style="white-space:pre-wrap">{{ sec.body }}</div>
+          </sc-for>
+          <div style="font-weight:700;margin-top:12px;margin-bottom:4px">Published models this plant rests on (cited by name; no text is reproduced)</div>
+          <sc-for list="{{ dg.proc.sources }}" as="src" hint-placeholder-count="6">
+            <div style="display:flex;font-size:11.5px;padding:2px 0"><div style="width:230px;font-weight:700">{{ src.name }}</div><div style="flex:1;color:#3c3c3c">{{ src.use }}</div></div>
+          </sc-for>
         </div>
       </sc-if>
 
@@ -1572,6 +1608,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#41608A;color:#FFFFFF">
     <div style="font-weight:700;font-size:12px;flex:1">OPS ASSISTANT</div>
     <div style="font-size:9px;border:1px solid #FFFFFF;padding:1px 5px">{{ asst.coachBadge }}</div>
+    <div style="font-size:9px;padding:1px 6px;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" title="PIP cloud credential (SUPV)" onClick="{{ asst.cloudKey }}">KEY</div>
     <div style="padding:1px 7px;font-weight:700;cursor:pointer;background:#D4D0C8;color:#000;border:1px solid #FFFFFF" onClick="{{ asst.close }}">✕</div>
   </div>
   <div style="flex:1;overflow-y:auto;min-height:0">
@@ -1689,13 +1726,13 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
-  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
+  state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgKey:'', dlgKeyModel:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
     // ARCH view state (V3-PLAN S1) -- view-only, never process/control/alarm/topology state.
     archMode:'learn', archProfile:'console', archTag:null, archSel:null, archBeginner:true,
     // S3 pin-compare staging (V3-PLAN section 6) -- view-only, like archSel; the pinned
     // targets themselves are only committed to P.training once COMPARE dispatches
     // TRAINING.PIN_COMPARE. Cleared on a successful compare.
-    coachLive:false, coachText:'LIVE DIAGNOSIS below always works. Launch Station.command wakes PIP on this board.', coachStatus:'OFFLINE', coachModel:'',
+    coachLive:false, coachText:'LIVE DIAGNOSIS below always works. Launch Station.command wakes PIP on this board.', coachStatus:'OFFLINE', coachModel:'', coachProvider:'', coachCred:'',
     coachFeed:[{id:0,who:'PIP',text:'LIVE DIAGNOSIS below always works. Launch Station.command wakes PIP on this board.',kind:'hello'}], coachThink:'', coachMood:'off',
     archPinTray:[],
     // Instructor Architecture panel state (V3-PLAN S2, DO item 1) -- view-only staging for
@@ -1727,7 +1764,7 @@ class Component extends DCLogic {
       TIC201:P({tag:'TIC201',desc:'REACTOR R-201 TEMPERATURE',eu:'DEG C',lo:0,hi:200,pv:150,sp:150,op:50,K:2,T1:8,T2:0.5,act:'REV',sphilm:170,splolm:100,slave:'TIC202',cm:'CM3_TIC201',alm:{PVLL:[130,'Urgent'],PVLO:[140,'Low'],PVHI:[165,'High'],PVHH:[175,'Urgent'],DEVHI:[15,'High']}}),
       AI205: {kind:'ind',tag:'AI205',desc:'R-201 REACTOR CONVERSION',eu:'%',lo:0,hi:100,dec:1,pv:85,cm:'CM3A_AI205',alm:{},tgtLo:75,tgtHi:95,_as:{}},
       TIC202:P({tag:'TIC202',desc:'R-201 JACKET COOLANT TEMP',eu:'DEG C',lo:0,hi:100,pv:40,sp:40,op:74,K:1.2,T1:1.5,act:'DIR',mode:'CAS',master:'TIC201',pvtrack:true,sphilm:80,splolm:5,cm:'CM4_TIC202',alm:{PVLL:[10,'Journal'],PVLO:[20,'Low'],PVHI:[70,'High'],PVHH:[85,'Urgent'],DEVHI:[12,'High']}}),
-      TIC301:P({tag:'TIC301',desc:'E-301 PRODUCT OUTLET TEMP',eu:'DEG C',lo:0,hi:250,pv:180,sp:180,op:50,K:1.8,T1:4,T2:0.3,act:'REV',sphilm:210,splolm:120,cm:'CM5_TIC301',alm:{PVLL:[150,'Journal'],PVLO:[165,'Low'],PVHI:[200,'High'],PVHH:[215,'Urgent']}}),
+      TIC301:P({tag:'TIC301',desc:'E-301 FLASH PREHEAT OUTLET TEMP',eu:'DEG C',lo:0,hi:250,pv:180,sp:180,op:50,K:1.8,T1:4,T2:0.3,act:'REV',sphilm:210,splolm:120,cm:'CM5_TIC301',alm:{PVLL:[150,'Journal'],PVLO:[165,'Low'],PVHI:[200,'High'],PVHH:[215,'Urgent']}}),
       LIC401:P({tag:'LIC401',desc:'FLASH DRUM V-401 LEVEL',eu:'%',lo:0,hi:100,pv:45,sp:45,op:73,K:1.2,T1:2.5,act:'DIR',sphilm:90,splolm:10,cm:'CM6_LIC401',alm:{PVLL:[10,'Urgent'],PVLO:[20,'Low'],PVHI:[75,'High'],PVHH:[90,'Urgent']}}),
       PIC401:P({tag:'PIC401',desc:'V-401 OVERHEAD PRESSURE',eu:'KPA',lo:0,hi:1000,dec:0,pv:600,sp:600,op:40,K:0.8,T1:0.8,act:'DIR',sphilm:850,splolm:200,cm:'CM7_PIC401',alm:{PVLL:[350,'Urgent'],PVLO:[450,'Low'],PVHI:[800,'High'],PVHH:[900,'Urgent']}}),
       FIC211:P({tag:'FIC211',desc:'R-202 MONOMER FEED FLOW',eu:'M3/H',lo:0,hi:40,pv:0,sp:0,op:0,K:0.4,T1:0.15,act:'REV',sphilm:30,splolm:0,cm:'CM10_FIC211',almDelay:30,alm:{PVHI:[28,'High']}}),
@@ -1747,7 +1784,7 @@ class Component extends DCLogic {
     };
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
-    // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4)
+    // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
     // Architecture fault-engine state (V3-PLAN S2): instructor-scheduled engine faults
     // that carry no legacy P.faults flag of their own (none yet -- the twelve legacy
@@ -1790,7 +1827,7 @@ class Component extends DCLogic {
     this._lastADrill = null;
     // Instructor station state survives a process reset (snapshots, password, hidden flag, seed); the run-bound parts
     // (backtrack ring, action journal, replay) start fresh. Every random draw goes through the seeded generator so a
-    // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4).
+    // run, a snapshot and a replay are reproducible (cstr-ots seeded determinism, RESOURCES 4.9).
     if(!this.instr) this.instr = ESS.Instructor.create();
     ESS.Instructor.resetRun(this.instr);
     // The v3 command/event boundary (V3-PLAN section 4): survives a process reset the same
@@ -1823,6 +1860,12 @@ class Component extends DCLogic {
     // just 2 Hz) — see CODE-MAP / advisory Q2. Re-cached at restoreSnapshot() too, which
     // replaces L/V wholesale.
     this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
+    // The graph contract (src/topology.js validate) was a genuine check that nothing called
+    // at runtime. A violation is a build defect -- a new tag with no unit, a valve with no
+    // command path -- not a runtime condition, so it fails loudly here, where every app-level
+    // test passes through, rather than filing itself under U1 and teaching that to a trainee.
+    const topoProblems=ESS.Topology.validate(this.topo);
+    if(topoProblems.length) throw new Error('TOPOLOGY CONTRACT VIOLATED — '+topoProblems.join('; '));
     this.publishCoach();
   }
 
@@ -1958,6 +2001,7 @@ class Component extends DCLogic {
         ? current
         : [{id:1, who:'PIP', text:'Watching this board on '+m+'. Click me, EXPLAIN ALARM, or just talk.', kind:'hello'}];
       this.setState({coachLive:true, coachModel:m, coachStatus:m, assist:true, coachMood:'idle',
+        coachProvider:(j&&j.provider)||'', coachCred:(j&&j.credential)||'',
         coachFeed:hello, coachText:hello[0]&&hello[0].text});
     }).catch(()=>{
       if(gen!==(this._coachGen||0)||this.coachUnavailable()) return;
@@ -1977,6 +2021,42 @@ class Component extends DCLogic {
     if(this._coachPalAt&&now-this._coachPalAt<12000) return;
     this._coachPalAt=now;
     this.coachAsk('ask','Check in. What should I be looking at on this board right now?');
+  }
+  // ---------- PIP cloud credential (Anthony, 2026-09-03): the key is entered through a masked
+  // station dialog and handed to the LOCAL sidecar only. It lives in React state while it is being
+  // typed and nowhere else: not in an event, the journal, a snapshot, the MOC log, a message or the
+  // model context. The sidecar holds it in memory for this session and never echoes it. SUPV or
+  // above, like the colour philosophy: a coach credential is a station configuration.
+  openCloudKey(){
+    if(!this.can('SUPV')) return;
+    this.setState({dlg:{type:'cloudkey'},dlgKey:'',dlgKeyModel:'',menu:null});
+  }
+  coachCredential(payload,label){
+    const what=label||'credential change';
+    if(!this.coachOnHttp()||typeof fetch!=='function'){ this.setState({dlgKey:''}); this.msgZone('PIP SIDECAR OFFLINE — LAUNCH WITH LAUNCH STATION.COMMAND'); return Promise.resolve(false); }
+    const before=(this.state.coachProvider||'local').toUpperCase();
+    this.setState({dlgKey:''});                    // the key leaves React state the moment it is sent
+    return fetch('/api/coach/credential',{method:'POST',headers:{'Content-Type':'application/json','X-Coach-Station':'1'},body:JSON.stringify(payload)})
+      .then(r=>{ if(r&&r.ok) return r.json(); const j=(r&&typeof r.json==='function')?r.json().catch(()=>({})):Promise.resolve({}); return j.then(e=>Promise.reject(new Error((e&&e.error)||('HTTP '+(r&&r.status))))); })
+      .then(j=>{
+        if(!j||!j.ok) throw new Error('refused');
+        const after=String(j.provider||'').toUpperCase();
+        if(after!==before) this.configChange('STN01','PIP COACH PROVIDER CHANGE',before,after,what);
+        this.addEvent('SYSTEM','STN01','PIP COACH — '+what.toUpperCase()+' — '+after+' · '+(j.model||''),'','');
+        this.setState({dlg:null,dlgKey:'',dlgKeyModel:'',coachProvider:j.provider||'',coachModel:j.model||this.state.coachModel,coachCred:j.credential||''});
+        this.msgZone('PIP COACH: '+after+' · '+(j.model||''));
+        this.coachWatch();
+        return true;
+      })
+      .catch((e)=>{ this.setState({dlgKey:''}); const why=String(e&&e.message||''); this.msgZone(why==='no credential'?'PIP COACH: NO CLOUD CREDENTIAL — ENTER A KEY FIRST':(why==='key format'?'PIP COACH: KEY REJECTED — CHECK IT AND RE-ENTER':'PIP COACH: CREDENTIAL REQUEST FAILED')); return false; });
+  }
+  saveCloudKey(){
+    // ASCII whitespace only is trimmed: a zero-width space or byte-order mark must be SEEN and refused,
+    // exactly as the sidecar refuses it, not silently dropped by String.prototype.trim.
+    const key=String(this.state.dlgKey||'').replace(/^[ \t\r\n]+|[ \t\r\n]+$/g,''), model=String(this.state.dlgKeyModel||'').trim();
+    if(key.length<20||key.length>400||/[^\x21-\x7e]/.test(key)){ this.msgZone('ENTER THE FULL API KEY (PRINTABLE CHARACTERS ONLY, NO SPACES)'); return Promise.resolve(false); }
+    const payload={key}; if(model) payload.model=model;
+    return this.coachCredential(payload,'cloud key entered');
   }
   coachAsk(kind, question){
     if(this.coachUnavailable()){
@@ -2014,7 +2094,7 @@ class Component extends DCLogic {
     this._coachAc=(typeof AbortController==='function')?new AbortController():null;
     this._coachFinished=false;
     this._coachUsingStream=false;
-    const opts={method:'POST', headers:{'Content-Type':'application/json'}, body:body};
+    const opts={method:'POST', headers:{'Content-Type':'application/json','X-Coach-Station':'1'}, body:body};
     if(this._coachAc) opts.signal=this._coachAc.signal;
     fetch('/api/coach/stream', opts).then(r=>{
       if(gen!==this._coachGen) return;
@@ -2024,7 +2104,7 @@ class Component extends DCLogic {
     }).catch(err=>{
       if(gen!==this._coachGen||this._coachFinished||this._coachUsingStream) return;
       if(err&&err.name==='AbortError'){ this.coachFinish(false, gen); return; }
-      fetch('/api/coach/advise',{method:'POST', headers:{'Content-Type':'application/json'}, body:body}).then(r=>r.json()).then(j=>{
+      fetch('/api/coach/advise',{method:'POST', headers:{'Content-Type':'application/json','X-Coach-Station':'1'}, body:body}).then(r=>r.json()).then(j=>{
         if(gen!==this._coachGen) return;
         const valid=!!(j&&typeof j==='object'&&j.ok===true&&typeof j.text==='string'&&j.text.trim());
         this._coachDraft=valid?this.coachScrub(j.text):'';
@@ -2567,8 +2647,14 @@ class Component extends DCLogic {
   noise(k){ return (this.modelCtx().rand()-0.5)*k; }
 
   step(dt){
-    const P=this.P, L=this.L;
+    // Due replay entries are applied BEFORE P and L are captured. A replayed DRILL / ADRILL
+    // entry rebuilds the plant (applyPreset -> initSim -> restoreSnapshot replaces this.P,
+    // this.L and this.V wholesale); capturing first ran the rest of this step against the
+    // orphaned objects and advanced the seeded generator one step out of phase, so the
+    // replay completed, matched the clock, and reproduced a different trajectory
+    // (22 of 24 points). Found by the verify pass; release gate 3.
     this.applyReplayDue();
+    const P=this.P, L=this.L;
     ESS.Models.advanceClock(P,dt);
     ESS.Models.stepU1(P,L,this.V,dt,this.modelCtx());
     L.AI205.pv=P.x*100+this.noise(0.2);          // reactor conversion from the CSTR balance (indication)
@@ -2725,7 +2811,10 @@ class Component extends DCLogic {
   unitOf(tag){
     if(['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202'].includes(tag)) return 'U2';
     if(['FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','R-310','H-310'].includes(tag)) return 'U3';
-    if(this.L[tag]||['TK-101','R-201','V-401'].includes(tag)) return 'U1';
+    // U1 is listed like the others, not caught by "anything else in L": a tag added to the
+    // database and to no unit list now returns null, Topology.build() records it as
+    // unplaced, validate() reports it and initSim() refuses to start (Stage 1 foundation).
+    if(['FI100','LIC101','FIC102','P101','TIC201','AI205','TIC202','TIC301','LIC401','PIC401','TK-101','R-201','V-401'].includes(tag)) return 'U1';
     return null;
   }
   peakOf(k){ const P=this.P; return ({tankL:P.tankL,rT:P.rT,drumP:P.drumP,T212:P.b.T,bed:P.h.bed})[k]??0; }
@@ -2769,6 +2858,11 @@ class Component extends DCLogic {
     return out.slice(0,8);
   }
   topics(){ return [
+    // Orientation (P2L-EXPANSION-SPEC section 2.2): the first three chips used to match no
+    // keyword and fell straight through to the model, which had nothing to say either.
+    {k:['looking at','what am i looking','this screen','what is this screen','which screen','what display','what screen'],t:'What am I looking at?',a:'The title bar names the display and the unit tabs say which unit you are on. UNIT 01 is receipt and conversion: TK-101 feed tank, R-201 stirred reactor, E-301 flash preheater and V-401 flash drum. UNIT 02 is the R-202 batch reactor under SCM202 sequence control. UNIT 03 is the H-310 fired heater and the R-310 fixed catalyst bed. A faceplate shows PV, SP and OP for one loop; the Alarm Summary lists what is abnormal. Help → Plant orientation (command PROCESS) explains what each unit makes and why its trip points are where they are.'},
+    {k:['plant make','does the plant','does this plant','what is made','the product','feedstock','what the plant','process description','orientation','overview'],t:'What does this plant make?',a:'A finished liquid hydrocarbon blendstock, from a crude oxygenate intermediate and hydrogen that arrive at the battery limit. Unit 01 condenses and dehydrates the intermediate over a catalyst and flashes light ends and reaction water overhead in V-401. Unit 03 finishes the crude liquid over a second catalyst with hydrogen. Unit 02 is a batch campaign reactor that shares the board but is not in that path. Water is a co-product of both reactions. The full orientation document is under Help → Plant orientation, command PROCESS.'},
+    {k:['drive this station','how do i drive','navigate','get around','command zone','command line','commands','which command','station'],t:'How do I drive this station?',a:'Type a display name or a tag in the command zone and press Enter: U1, U2, U3 for the unit graphics, ALM for the Alarm Summary, EVT for events, TRN for trends, KPI for alarm performance, ARCH for the signal path, PROCESS for the plant orientation, HELP for the keys. Typing a tag opens its Point Detail; clicking a tag on a graphic opens its faceplate. F1 silences, F2 acknowledges. The View menu and the display buttons do the same by mouse.'},
     {k:['op','output','invalid mode','man','change op'],t:'Why can I not change OP?',a:'OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'},
     {k:['sp','setpoint','rejected','limit','entry'],t:'SP entry rejected',a:'SP must be inside SPLOLM…SPHILM and the loop must be in AUTO (CAS setpoints are primary- or program-driven). Out-of-range entries are rejected with the limits shown in the Message Zone. Limits live on Point Detail → Loop Tune (ENGR to change).'},
     {k:['initman','init','cascade','track','bkcal'],t:'What is INITMAN?',a:'When a cascade secondary leaves CAS, the primary initializes (INITMAN) and its output tracks the secondary SP via back-calculation, so the return to CAS is bumpless. Fix: put the secondary back in CAS.'},
@@ -2796,7 +2890,7 @@ class Component extends DCLogic {
     return this._pidCtx;
   }
   pidOrder(){ return ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313']; }
-  // ESS.Pid: anti-windup with integral back-calculation, INITMAN, PV tracking (Kantor CBE30338 PID notes, RESOURCES 4).
+  // ESS.Pid: anti-windup with integral back-calculation, INITMAN, PV tracking (Kantor CBE30338 PID notes, RESOURCES 4.6).
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
 
   applyShed(l){
@@ -2888,7 +2982,12 @@ class Component extends DCLogic {
     if(mode==='live'){ this.startDrill(d,{startMode:'LIVE STATE'}); return; }
     const preset=d&&d.basePreset;
     if(!preset||!ESS.Instructor.presets().some(p=>p.id===preset)){ this.msgZone('NO CANONICAL INITIAL CONDITION FOR '+(d&&d.id||'DRILL')); return; }
-    const presetBaseT=Date.now();
+    // The preset is seeded from the SIMULATION clock, never Date.now(). A wall-clock seed
+    // re-based P.t mid-exercise, so a snapshot taken before this start and the journal
+    // entry written after it sat on opposite sides of a gap the replay could not step
+    // across (release gate 3, tests/release-gates.test.js). presetBaseT is the receipt the
+    // DRILL journal entry carries so a replay rebuilds the identical plant at the identical t.
+    const presetBaseT=this.P.t;
     this.applyPreset(preset,{baseTime:presetBaseT});
     this.startDrill(d,{startMode:'CANONICAL',preset,presetBaseT,applySetup:true});
   }
@@ -2986,7 +3085,7 @@ class Component extends DCLogic {
     return sc;
   }
 
-  // ---------- instructor station (Forge PTS instructor features, RESOURCES 2.14; seeded replay / snapshot / backtrack per the cstr-ots notes, RESOURCES 4) ----------
+  // ---------- instructor station (Forge PTS instructor features, RESOURCES 2.14; seeded replay / snapshot / backtrack per the cstr-ots notes, RESOURCES 4.9) ----------
   // Instructor state lives in this.instr, never in a trainee display. Entry needs the instructor password ('instr') or
   // the MNGR level; a trainee at OPER / SUPV is sent to the logon dialog and the display falls back to the graphic.
   instructorAllowed(){ return this.state.sec==='MNGR' || !!(this.instr&&this.instr.auth); }
@@ -3024,10 +3123,13 @@ class Component extends DCLogic {
   // --- snapshots: the full process state (P, L, V, alarm records, interlock flags, seed and generator cursor)
   // Returns null (and tells the instructor) when the process state holds a non-finite number; such a snapshot could
   // not be restored faithfully.
-  snapshotData(name){
+  // `wall` is display metadata an instructor-initiated save may stamp; it is never read back.
+  // The ring (backtrackTick, inside step()) and the preset IC snapshot pass none, so no
+  // exercise path reads the wall clock (release gate 3).
+  snapshotData(name,wall){
     const r=this.rand;
     try{
-      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:Date.now(),P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
+      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
         eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,disabledAssets:[...this.disabledAssets],
         seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,drill:this.drillData()},name);
     }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
@@ -3080,7 +3182,7 @@ class Component extends DCLogic {
   }
   saveSlot(i,name){
     const nm=(name||'').trim()||('SNAP '+(i+1)+' '+this.fT(this.P.t));
-    const snap=this.snapshotData(nm); if(!snap) return;
+    const snap=this.snapshotData(nm,Date.now()); if(!snap) return;
     this.instr.snapshots[i]=snap;
     this.instrLog('SNAPSHOT SAVED: '+nm);
     this.setState({instrSnapName:''});
@@ -3634,7 +3736,7 @@ class Component extends DCLogic {
     if(!def){ this.msgZone('UNKNOWN ARCHITECTURE DRILL '+id); return; }
     if(this.state.drill){ this.msgZone('A DRILL IS ALREADY ACTIVE — END IT FIRST'); return; }
     if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ALREADY ACTIVE'); return; }
-    const presetBaseT=Date.now();
+    const presetBaseT=this.P.t;   // simulation clock, not Date.now() -- see startDrillFromMenu
     this.applyPreset(def.basePreset,{baseTime:presetBaseT});
     this.startADrill(id,{preset:def.basePreset,presetBaseT});
     // applyPreset() reset P.archInspected/training but view state intentionally survives
@@ -4109,6 +4211,8 @@ class Component extends DCLogic {
     if(c==='RECORD'||c==='TRAINING'||c==='TRAINING RECORD'){ this.setState({dlg:{type:'record'},menu:null}); return true; }
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return true; }
     if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return true; }
+    if(c==='PROCESS'||c==='OVERVIEW'||c==='PLANT'||c==='ORIENTATION'){ this.setState({dlg:{type:'process'},menu:null}); return true; }
+    if(c==='CLOUDKEY'||c==='CLOUD KEY'||c==='APIKEY'||c==='API KEY'||c==='PIP KEY'){ this.openCloudKey(); return true; }
     if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return true; }
     if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return true; }
     return false;
@@ -4359,7 +4463,7 @@ class Component extends DCLogic {
       {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{l:'Architecture',f:()=>this.nav('arch',S.archTag)},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()},{sep:true},{l:'Disable / Enable Alarms for Asset… (MNGR)',f:()=>this.toggleAssetAlarms(S.almAsset)}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>{ if(this.P.aDrill) this.endADrill('ENDED BY INSTRUCTOR'); else this.endDrill('ENDED BY INSTRUCTOR'); }},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
-      {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
+      {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Plant orientation — what the units make…',f:()=>this.setState({dlg:{type:'process'}})},{l:'PIP cloud credential…',f:()=>this.openCloudKey()},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
     ];
     const menus=menusDef.map(m=>({name:m.name,open:S.menu===m.name,bg:S.menu===m.name?'#31548F':'transparent',fg:S.menu===m.name?'#FFFFFF':'#000000',toggle:()=>this.setState({menu:S.menu===m.name?null:m.name}),items:mkItems(m.items)}));
     // toolbar
@@ -4670,10 +4774,10 @@ class Component extends DCLogic {
       steps:it.steps.map((st3,j)=>({n:(j+1)+'.',txt:st3.t,hasGo:!!st3.go,go:st3.go?()=>{this.taskDone('abn.assist');st3.go();}:(()=>{})}))}));
     const qq=S.assistQ.trim().toLowerCase();
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
-    const asst={on:S.assist, close:setS({assist:false}), issues, q:S.assistQ,
+    const asst={on:S.assist, close:setS({assist:false}), cloudKey:()=>this.openCloudKey(), issues, q:S.assistQ,
       qChange:(e)=>this.setState({assistQ:e.target.value}),
       qKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.coachAsk('ask', this.state.assistQ); } },
-      chips:["What am I looking at?","What is this screen?","How do I drive this station?","Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),
+      chips:["What am I looking at?","What does this plant make?","How do I drive this station?","Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),
       hits, hitsNone:qq.length>2&&hits.length===0,
       coachLive:!!S.coachLive, coachOff:!S.coachLive,
       coachBadge:S.coachLive?(S.coachModel||'PIP'):'TRAINING AID',
@@ -4700,15 +4804,15 @@ class Component extends DCLogic {
     };
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
-    const widths={logon:460,shelve:460,comment:520,drills:620,debrief:620,help:520,philosophy:680,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
+    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',process:'HELP — PLANT ORIENTATION',cloudkey:'PIP — CLOUD COACH CREDENTIAL',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
+    const widths={logon:460,shelve:460,comment:520,drills:620,debrief:620,help:520,philosophy:680,process:720,cloudkey:560,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
     const cov=ESS.Training.coverage(this.tasksDone), covSum=ESS.Training.coverageSummary(this.tasksDone);
     const recs=this.trainingRecords.map(r=>({t:this.fD(r.t)+' '+this.fT(r.t),oper:r.oper,drill:r.drill+' — '+r.name,score:r.score+'/100',res:r.pass?'PASS':'NOT PASSED',fg:r.pass?'#0a3a12':'#A00000',
       detail:r.breakdown.map(b=>b.label+' '+b.earned+'/'+b.max).join(' · ')}));
     const byOper={}; this.trainingRecords.forEach(r=>{ const o=byOper[r.oper]||(byOper[r.oper]={n:0,pass:0,sum:0}); o.n++; o.sum+=r.score; if(r.pass)o.pass++; });
     const recOpers=Object.keys(byOper).map(k=>({oper:k,txt:byOper[k].n+' drill'+(byOper[k].n===1?'':'s')+', '+byOper[k].pass+' passed, average '+Math.round(byOper[k].sum/byOper[k].n)}));
-    let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:()=>{ if(dgT==='esig') this.cancelSignature(); else this.setState({dlg:null}); },
-      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+    let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:()=>{ if(dgT==='esig') this.cancelSignature(); else this.setState({dlg:null,dlgKey:'',dlgKeyModel:''}); },
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isProcess:dgT==='process',proc:this.processView(dgT==='process'),isCloudKey:dgT==='cloudkey',ck:this.cloudKeyView(dgT==='cloudkey'),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
       isEsig:dgT==='esig',isRecord:dgT==='record',isCoverage:dgT==='coverage',
       logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'Enter your name and the level password. The name goes on every journal entry, message confirmation, signature and training record.',
       logonIsOper:!(S.dlg&&S.dlg.instr),operCur:this.operName(),name:S.dlgName,nameChange:(e)=>this.setState({dlgName:e.target.value}),
@@ -5079,6 +5183,31 @@ class Component extends DCLogic {
     };
   }
   // Alarm and display philosophy page (ESS.Philosophy; sources ISA-18.2, EEMUA 191, ASM gray-background paper, Rockwell style guide — RESOURCES 2.4, 2.11, 2.19)
+  // The PROC dialog (P2L-EXPANSION-SPEC section 2.2): ESS.Process is the single copy of the
+  // orientation document the operator reads here and PIP reads through tools/coach/serve.py.
+  // Built only while the dialog is open: renderVals() runs at every setState, not just 2 Hz.
+  cloudKeyView(open){
+    if(!open) return {key:'',model:'',status:'',note:'',live:false,keyChange:null,keyKey:null,modelChange:null,save:null,useLocal:null,forget:null};
+    const S=this.state, live=!!S.coachLive;
+    const status=live
+      ?('Sidecar: '+(S.coachProvider||'local').toUpperCase()+' · model '+(S.coachModel||'?')+' · credential: '+({session:'a key entered at a station',env:"the sidecar's environment",profile:"this machine's ant auth login sign-in",none:'none'}[S.coachCred]||(S.coachCred||'none')))
+      :'Sidecar OFFLINE — this page was not launched with Launch Station.command, so there is nowhere to hold a key.';
+    return {key:S.dlgKey,model:S.dlgKeyModel,status,live,
+      note:'The key goes only to the local coach sidecar on this machine and is held in its memory for this session. It is never written to disk, never journaled, never snapshotted, never logged and never shown to the model. Restarting the sidecar forgets it. FORGET KEY also returns PIP to the local model. One sidecar holds one key: the last key entered wins for every station it serves. Without a key, PIP can use the cloud only if the sidecar\'s environment or this machine\'s ant auth login sign-in supplies a credential, and the status line above says which one is in use.',
+      keyChange:(e)=>this.setState({dlgKey:e.target.value}),keyKey:(e)=>{if(e.key==='Enter')this.saveCloudKey();},
+      modelChange:(e)=>this.setState({dlgKeyModel:e.target.value}),
+      save:()=>this.saveCloudKey(),useLocal:()=>this.coachCredential({provider:'ollama'},'local model selected'),
+      forget:()=>this.coachCredential({clear:true,provider:'ollama'},'cloud key forgotten')};
+  }
+  processView(open){
+    if(!open) return {lede:'',sections:[],sources:[]};
+    // The document is hard-wrapped at ~70 columns for its plain-text reader (PIP). For the
+    // dialog, running lines of a paragraph are re-joined; a paragraph whose lines are
+    // indented (the route diagram, the numbered list) is kept verbatim under pre-wrap.
+    const reflow=(body)=>body.split('\n\n').map(par=>{ const lines=par.split('\n'); return lines.some(l=>/^\s{2,}\S/.test(l))?par:lines.map(l=>l.trim()).join(' '); }).join('\n\n');
+    return {lede:'Our own prose about our own plant. The plant does not exist and nothing here derives from any real facility. Command PROCESS opens this page; PIP reads the same text.',
+      sections:ESS.Process.sections().map(sec=>({title:sec.title,body:reflow(sec.body)})),sources:ESS.Process.sources()};
+  }
   philosophyView(){
     const name=this.paletteName(), C=this.colours();
     const ctx={paletteName:this.paletteLabel(name),urgentPct:5,highPct:10,lowPct:85,isaLow:80,isaHigh:15,isaUrgent:5,shelveMaxMin:60,defaultDeadbandPct:1};

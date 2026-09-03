@@ -30,6 +30,68 @@ PORT = int(os.environ.get("COACH_PORT", "8766"))
 MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 HOST = "127.0.0.1"
+# Optional CLOUD provider for PIP's judgment (Anthony, 2026-09-03: the local model
+# read the board correctly and still misdiagnosed a bad-quality PV as a process
+# effect). The default stays local: set COACH_PROVIDER=anthropic to route PIP through
+# the Anthropic API. Gate 4 is untouched either way: the station page only ever talks
+# to this sidecar's relative /api/coach/ endpoints, the deterministic core never waits
+# on it, and file:// stays offline. The context sent is the same trainee-safe board
+# projection in both cases; no employer or real-site material exists in this product.
+PROVIDER = os.environ.get("COACH_PROVIDER", "ollama").strip().lower() or "ollama"
+if PROVIDER not in ("ollama", "anthropic"):
+    raise SystemExit("COACH_PROVIDER must be 'ollama' or 'anthropic', not %r" % PROVIDER)
+CLOUD_MODEL = os.environ.get("COACH_CLOUD_MODEL", "claude-opus-5")
+CLOUD_EFFORT = os.environ.get("COACH_CLOUD_EFFORT", "medium").strip().lower() or "medium"
+if PROVIDER == "anthropic":
+    MODEL = CLOUD_MODEL   # health, the done frame and the page badge report the model actually served
+LOCAL_MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
+
+# Runtime provider and credential, settable from the station's CLOUD KEY dialog (a masked
+# input, SUPV or above). MEMORY ONLY: never written to disk, never logged (the request log
+# carries the request line, not the body), never echoed by any endpoint, never part of the
+# model context. Restarting the sidecar forgets it. A key entered at the station outranks
+# whatever the environment or an `ant auth login` profile would have supplied.
+RUNTIME = {"provider": PROVIDER, "key": None, "model": None}
+
+
+def _provider() -> str:
+    return RUNTIME["provider"]
+
+
+def _model() -> str:
+    if _provider() == "anthropic":
+        return RUNTIME["model"] or CLOUD_MODEL
+    return LOCAL_MODEL
+
+
+def _fallback_credential_state() -> str:
+    """What the cloud would authenticate with if no key were entered at the station.
+
+    "env" is ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN; "profile" is the machine's own
+    `ant auth login` sign-in, which the SDK resolves on its own and which bills THAT
+    account -- so it is named, never hidden behind "unknown". "none" means a switch to
+    the cloud provider is refused until a key is entered.
+    """
+    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+        return "env"
+    try:
+        from anthropic.lib.credentials import default_credentials
+        if default_credentials() is not None:
+            return "profile"
+    except Exception:
+        pass
+    return "none"
+
+
+def _credential_state() -> str:
+    return "session" if RUNTIME["key"] else _fallback_credential_state()
+
+
+def _redact(text) -> str:
+    """The station key must never appear in any string that leaves this process."""
+    text = "" if text is None else str(text)
+    key = RUNTIME.get("key")
+    return text.replace(key, "[key]") if key else text
 _THINK_RAW = os.environ.get("COACH_THINK", "false").strip().lower()
 if _THINK_RAW in ("0", "false", "off", "no"):
     THINK = False
@@ -37,8 +99,8 @@ elif _THINK_RAW in ("1", "true", "on", "yes"):
     THINK = "low"
 else:
     THINK = _THINK_RAW
-TIP_WORDS = 42
-ASK_WORDS = 76
+TIP_WORDS = 70
+ASK_WORDS = 120
 
 BANNED = [
     "FROZEN_MEASUREMENT", "BIASED_MEASUREMENT", "NOISY_MEASUREMENT",
@@ -57,6 +119,126 @@ if PROMPT_FILE.exists():
     ).strip()
 else:
     SYSTEM = "You are PIP, a board-operator coach on a training simulator. Advisory only."
+
+# ---------------------------------------------------------------------------
+# The plant orientation document.
+#
+# src/process.js carries the operator-facing process description between
+# PROCESS-TEXT sentinels precisely so this file can read it as plain text
+# without executing JavaScript. One copy of the prose, shared by the PROC
+# dialog the operator opens and the context PIP is given. If they were two
+# copies they would drift, and the operator would be the one to find out.
+PROCESS_FILE = COACH.parent.parent / "src" / "process.js"
+PROCESS_TEXT = ""
+PROCESS_SECTIONS: dict[str, str] = {}
+PROCESS_ORDER: list[str] = []
+
+
+def _load_process_text() -> None:
+    """Read the sentinel-delimited document and split it on its own headings.
+
+    Uses the SAME heading rule as _guide_section below, so the operator's
+    dialog and PIP can never disagree about where a section begins.
+    """
+    global PROCESS_TEXT
+    if not PROCESS_FILE.exists():
+        return
+    raw = PROCESS_FILE.read_text(encoding="utf-8")
+    m = re.search(r"/\* PROCESS-TEXT-BEGIN \*/(.*?)/\* PROCESS-TEXT-END \*/", raw, re.S)
+    if not m:
+        return
+    # The block is a JS array of single-quoted lines joined by newlines. Pull the
+    # string literals out rather than eval anything.
+    lines = []
+    for lit in re.finditer(r"^\s*'((?:[^'\\]|\\.)*)',?\s*$", m.group(1), re.M):
+        lines.append(lit.group(1).replace("\\'", "'").replace('\\"', '"').replace("\\\\", "\\"))
+    PROCESS_TEXT = "\n".join(lines).strip()
+    cur = None
+    for line in PROCESS_TEXT.splitlines():
+        t = line.strip()
+        if t and len(t) < 40 and t.isupper() and t.replace(" ", "").isalpha():
+            cur = t
+            PROCESS_ORDER.append(cur)
+            PROCESS_SECTIONS[cur] = ""
+        elif cur:
+            PROCESS_SECTIONS[cur] += line + "\n"
+    for k in PROCESS_SECTIONS:
+        PROCESS_SECTIONS[k] = PROCESS_SECTIONS[k].strip()
+
+
+_load_process_text()
+
+# Which orientation section belongs to which unit the operator is looking at.
+# Routed by the unit the station reports, NOT by keyword matching on the
+# question -- the autonomous tip and the EXPLAIN ALARM button both send an
+# empty ask, and keyword routing hands those paths nothing. Those are exactly
+# the two paths that failed in front of operators.
+_UNIT_SECTION = {
+    "U1": "UNIT ONE RECEIPT AND CONVERSION",
+    "U2": "UNIT TWO BATCH CAMPAIGN REACTOR",
+    "U3": "UNIT THREE HYDROFINISHING",
+}
+
+
+def _process_section(unit: str, focus_tags=None) -> str:
+    """The orientation text for the unit on screen, plus what the plant makes.
+
+    focus_tags: point tags the request is actually about (named in the ask, the
+    selected point, the tags in alarm). Paragraphs of the unit section that
+    name one of them are moved to the front, in document order, so the part
+    that matters survives the caller's character cap. The Unit One section is
+    ~3 000 characters and the cap is 900: without this, the E-301 paragraph
+    (offset ~1 900) never reached the model even with TIC301 in alarm. Routed
+    by hard facts the station sends, never by free-text keywords.
+    """
+    if not PROCESS_SECTIONS:
+        return ""
+    # Unit-specific ONLY. What the plant makes is already unconditional in the
+    # SYSTEM prompt, so repeating it here would spend most of the per-request
+    # budget restating something the model already has, and the unit detail --
+    # the part that changes with the screen -- would be the bit truncated away.
+    key = _UNIT_SECTION.get(str(unit or "").strip().upper())
+    if key and PROCESS_SECTIONS.get(key):
+        body = PROCESS_SECTIONS[key]
+        tags = [str(t) for t in (focus_tags or []) if t]
+        if tags:
+            paras = [p for p in body.split("\n\n") if p.strip()]
+            hit = [p for p in paras if any(t in p for t in tags)]
+            rest = [p for p in paras if p not in hit]
+            body = "\n\n".join(hit + rest)
+        return key + "\n" + body
+    # No unit on screen (plant overview, alarm summary): fall back to the route,
+    # which is short and orients without duplicating SYSTEM.
+    route = PROCESS_SECTIONS.get("THE ROUTE THROUGH THE PLANT", "")
+    return ("THE ROUTE THROUGH THE PLANT\n" + route).strip() if route else ""
+
+
+def _plant_identity() -> str:
+    """A short, ALWAYS-PRESENT statement of what plant PIP is standing in.
+
+    This goes in the SYSTEM prompt rather than the per-request context because
+    it must survive the paths that send no question at all.
+    """
+    if not PROCESS_SECTIONS:
+        return ""
+    makes = PROCESS_SECTIONS.get("WHAT THE PLANT MAKES", "")
+    route = PROCESS_SECTIONS.get("THE ROUTE THROUGH THE PLANT", "")
+    body = (makes + "\n\n" + route).strip()
+    words = body.split()
+    if len(words) > 230:
+        body = " ".join(words[:230]) + " ..."
+    return (
+        "\n\nTHE PLANT YOU ARE STANDING IN (authoritative; the operator can read "
+        "the same document from the PROC display):\n" + body +
+        "\n\nThis plant is simulated and generic. Never present it as a real "
+        "company's plant, and never invent equipment that is not on the board."
+    )
+
+
+# Appended, never merged into prompt.txt -- tests/coach-stream.test.js pins six
+# phrases in that file verbatim.
+SYSTEM = SYSTEM + _plant_identity()
+
 
 GUIDE_FILE = COACH / "guide.txt"
 GUIDE = ""
@@ -194,6 +376,32 @@ def context_pack(ask: str, projection: dict) -> dict:
 
     topic = _question_topic(ask, projection)
     guide = _guide_section(topic)
+
+    # What this request is ABOUT, as hard facts: tags named in the ask, the
+    # selected point, and the tags in alarm -- not the whole unit's point list,
+    # which would make every paragraph a "hit" and restore document order.
+    focus = list(_named_tags(ask))
+    if selected:
+        focus.append(str(selected))
+    for alarm in alarms[:6]:
+        if isinstance(alarm, dict) and alarm.get("tag"):
+            focus.append(str(alarm.get("tag")))
+
+    # The station already sends a catalog of every configured point with its
+    # description on EVERY request; context_pack used it only as a lookup table
+    # inside _find_point and never showed it to the model. Render it as a
+    # one-line-per-tag nameplate so PIP knows what the tags on this unit ARE.
+    # Zero new authoring: this content was already crossing the wire.
+    unit = str(projection.get("unit") or (projection.get("screen") or {}).get("unit") or "")
+    nameplate = []
+    for row in (projection.get("catalog") or [])[:60]:
+        if not isinstance(row, dict):
+            continue
+        tag = str(row.get("tag") or "")
+        desc = str(row.get("desc") or "")
+        if tag and desc:
+            nameplate.append(tag + " = " + desc)
+    nameplate = "; ".join(nameplate)[:900]
     return {
         "lookingAt": screen_line(projection),
         "screen": projection.get("screen"),
@@ -203,6 +411,8 @@ def context_pack(ask: str, projection: dict) -> dict:
         "selectedAlarmHelp": projection.get("help"),
         "drill": projection.get("drill"),
         "arch": projection.get("arch"),
+        "process": _process_section(unit, focus)[:900],
+        "nameplate": nameplate,
         "guide": guide[:1000],
     }
 
@@ -327,9 +537,74 @@ def _guide_section(topic: str) -> str:
     return chunks[0][0] + "\n" + chunks[0][1] if chunks else GUIDE[:800]
 
 
+class CapExceeded(RuntimeError):
+    """The model answered correctly but ran past the local spoken-word cap.
+
+    Kept as a hard failure on purpose: a truncated coaching answer that looks
+    complete is worse than no answer, and tests/coach-sidecar.test.js pins that
+    a capped stream must fail visibly rather than return partial text as
+    success. What was WRONG was the reporting. Every exception -- cap over-run,
+    malformed NDJSON, a genuine connection failure -- was collapsed into
+    "PIP cannot reach the local model", so an operator watched a correct answer
+    stream in, get discarded, and be blamed on the network. Six distinct
+    failures wore one lie. This class exists so the message can tell the truth.
+    """
+
+
+class CloudRefused(RuntimeError):
+    """The cloud model declined on policy (stop_reason 'refusal'): not an outage, not a cap."""
+
+
+class CloudIncomplete(RuntimeError):
+    """The cloud stream ended before a complete answer (max_tokens or a foreign stop reason)."""
+
+
+def _failure_message(err: Exception) -> str:
+    if isinstance(err, CapExceeded):
+        return ("PIP had more to say than it is allowed to say here and stopped "
+                "rather than cut a sentence in half. Ask again more narrowly. "
+                "The model is fine; LIVE DIAGNOSIS is unaffected.")
+    if isinstance(err, CloudRefused):
+        return ("PIP declined to answer that one (safety policy on the cloud model). "
+                "Ask about the board instead. LIVE DIAGNOSIS still works.")
+    if isinstance(err, CloudIncomplete):
+        return ("PIP's cloud answer was cut off before it finished (%s). Ask again. "
+                "LIVE DIAGNOSIS still works." % _redact(err))
+    name = err.__class__.__name__
+    if _provider() == "anthropic":
+        if name == "AuthenticationError":
+            state = _credential_state()
+            if state == "session":
+                return ("The cloud key entered at this station was rejected by the API. Re-enter it "
+                        "(Help -> PIP cloud credential). LIVE DIAGNOSIS still works.")
+            if state == "env":
+                return ("The cloud credential in the sidecar's environment (ANTHROPIC_API_KEY / "
+                        "ANTHROPIC_AUTH_TOKEN) was rejected by the API. LIVE DIAGNOSIS still works.")
+            if state == "profile":
+                return ("This machine's `ant auth login` sign-in was rejected by the API: run "
+                        "`ant auth login` again, or enter a key at the station. LIVE DIAGNOSIS still works.")
+            return ("PIP has no cloud credentials: enter a key at the station (Help -> PIP cloud "
+                    "credential), run `ant auth login`, or set ANTHROPIC_API_KEY. LIVE DIAGNOSIS still works.")
+        if name in ("BadRequestError", "PermissionDeniedError", "NotFoundError"):
+            # A rejected request is a configuration problem (model id, a parameter the
+            # account cannot use), not an outage: say what the API said, so it can be fixed.
+            detail = _redact(getattr(err, "message", "") or err)[:200]
+            return ("PIP's cloud request was rejected (%s: %s). Check COACH_CLOUD_MODEL and the "
+                    "sidecar log. LIVE DIAGNOSIS still works." % (name, detail))
+        return "PIP cannot reach the cloud model (%s). LIVE DIAGNOSIS still works." % name
+    return "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % name
+
+def _failure_reason(err: Exception) -> str:
+    if isinstance(err, CapExceeded):
+        return "cap"
+    if isinstance(err, CloudRefused):
+        return "refusal"
+    return "model"
+
+
 def ollama_post(messages: list, stream: bool, think, timeout: float, num_predict: int):
     body = {
-        "model": MODEL,
+        "model": LOCAL_MODEL,
         "stream": stream,
         "think": think,
         "messages": messages,
@@ -434,7 +709,7 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     if done_reason and done_reason != "stop":
         raise RuntimeError("Ollama stream ended before completion: " + done_reason)
     if locally_truncated:
-        raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+        raise CapExceeded("answer exceeded the local spoken-word cap")
     if not spoken_out.strip():
         raise RuntimeError("Ollama stream completed without an answer")
     final_think = think_scrubber.push("", final=True)
@@ -443,7 +718,7 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     final_text = text_scrubber.push("", final=True)
     if final_text:
         emit({"t": "text", "d": final_text})
-    emit({"t": "done", "ok": True, "model": MODEL, "reason": done_reason})
+    emit({"t": "done", "ok": True, "model": _model(), "reason": done_reason})
 
 
 def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
@@ -460,7 +735,7 @@ def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bo
         if done_reason and done_reason != "stop":
             raise RuntimeError("Ollama response ended before completion: " + done_reason)
         if word_count(raw_text) > cap:
-            raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+            raise CapExceeded("answer exceeded the local spoken-word cap")
         text = clip_spoken(raw_text, cap)
         thinking = scrub(msg.get("thinking") or "").strip()
         if not text:
@@ -470,13 +745,123 @@ def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bo
         return False, "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__, ""
 
 
+# ---------------------------------------------------------------------------
+# Cloud provider: the Anthropic API through the official SDK (imported lazily, so the
+# default Ollama path stays stdlib-only). Same frames, same spoken-word cap, same
+# trainee-safe scrubbing as the local path; only the model behind them changes.
+_ANTHROPIC_CLIENT = None
+_ANTHROPIC_CLIENT_KEY = None
+
+
+def _anthropic_client():
+    """One client per credential: rebuilt when the station enters or forgets a key."""
+    global _ANTHROPIC_CLIENT, _ANTHROPIC_CLIENT_KEY
+    key = RUNTIME["key"]
+    if _ANTHROPIC_CLIENT is None or _ANTHROPIC_CLIENT_KEY != key:
+        import anthropic  # without a station key: ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile
+        kwargs = {"timeout": 90.0, "max_retries": 1}
+        if key:
+            kwargs["api_key"] = key
+        _ANTHROPIC_CLIENT = anthropic.Anthropic(**kwargs)
+        _ANTHROPIC_CLIENT_KEY = key
+    return _ANTHROPIC_CLIENT
+
+
+def anthropic_turns(messages: list) -> tuple[list, list]:
+    """The Ollama-shaped message list in the Anthropic shape.
+
+    The system prompt travels separately as a cacheable block (it is the large, stable
+    part of every request), and the conversation must open with a user turn.
+    """
+    system = "\n\n".join(str(m.get("content") or "") for m in messages if m.get("role") == "system")
+    turns = [{"role": m["role"], "content": m["content"]}
+             for m in messages if m.get("role") in ("user", "assistant") and m.get("content")]
+    while turns and turns[0]["role"] != "user":
+        turns.pop(0)
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}], turns
+
+
+def anthropic_stream_reply(messages: list, cap: int, emit) -> None:
+    system, turns = anthropic_turns(messages)
+    think_scrubber = StreamScrubber()
+    text_scrubber = StreamScrubber()
+    spoken_out = ""
+    locally_truncated = False
+    client = _anthropic_client()
+    with client.beta.messages.stream(
+        model=_model(),
+        max_tokens=4096,              # thinking counts against this; the spoken cap is enforced below
+        system=system,
+        messages=turns,
+        thinking={"type": "adaptive", "display": "summarized"},
+        output_config={"effort": CLOUD_EFFORT},
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",          # a policy decline re-runs on a fallback model inside the same call
+    ) as stream:
+        for event in stream:
+            if event.type != "content_block_delta":
+                continue
+            delta = event.delta
+            if delta.type == "thinking_delta" and delta.thinking:
+                safe_think = think_scrubber.push(delta.thinking)
+                if safe_think:
+                    emit({"t": "think", "d": safe_think})
+                continue
+            if delta.type != "text_delta" or not delta.text:
+                continue
+            candidate = spoken_out + delta.text
+            if word_count(candidate) > cap:
+                locally_truncated = True
+                break                 # stop the generation too: nothing past the cap is ever spoken
+            spoken_out = candidate
+            safe_text = text_scrubber.push(delta.text)
+            if safe_text:
+                emit({"t": "text", "d": safe_text})
+        final = None if locally_truncated else stream.get_final_message()
+    if locally_truncated:
+        raise CapExceeded("answer exceeded the spoken-word cap")
+    if final.stop_reason == "refusal":
+        raise CloudRefused("the cloud model declined on policy")
+    if final.stop_reason not in ("end_turn", "stop_sequence"):
+        raise CloudIncomplete(str(final.stop_reason))
+    if not spoken_out.strip():
+        raise RuntimeError("cloud stream completed without an answer")
+    final_think = think_scrubber.push("", final=True)
+    if final_think:
+        emit({"t": "think", "d": final_think})
+    final_text = text_scrubber.push("", final=True)
+    if final_text:
+        emit({"t": "text", "d": final_text})
+    emit({"t": "done", "ok": True, "model": _model(), "reason": "stop"})
+
+
+def anthropic_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
+    """The non-streaming /api/advise shape, from the same streamed request."""
+    cap = spoken_cap(kind)
+    text_parts, think_parts = [], []
+
+    def collect(frame):
+        if frame.get("t") == "text":
+            text_parts.append(frame.get("d", ""))
+        elif frame.get("t") == "think":
+            think_parts.append(frame.get("d", ""))
+
+    try:
+        anthropic_stream_reply(seed_messages(kind, ask, projection, history), cap, collect)
+        return True, clip_spoken("".join(text_parts), cap), "".join(think_parts).strip()
+    except Exception as err:
+        return False, _failure_message(err), ""
+
+
 def injected_html() -> bytes:
     return DIST.read_bytes()
 
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
-        sys.stderr.write("coach: " + (fmt % args) + "\n")
+        # the request line only, with any query string dropped: a URL is never a place
+        # for a credential, and the log must not become one either
+        sys.stderr.write("coach: " + re.sub(r"\?[^\s\"]*", "", fmt % args) + "\n")
 
     def _send(self, code: int, body: bytes, ctype: str) -> None:
         self.send_response(code)
@@ -486,9 +871,22 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _content_length(self):
+        try:
+            n = int(self.headers.get("Content-Length") or "0")
+        except ValueError:
+            return None
+        return n if n >= 0 else None
+
+    def _host_ok(self) -> bool:
+        """The sidecar answers only to its own loopback name: a DNS-rebinding page that
+        reaches 127.0.0.1 through some other hostname is refused on every endpoint."""
+        host = (self.headers.get("Host") or "").strip().lower()
+        return host in ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT)
+
     def _read_msg(self):
-        n = int(self.headers.get("Content-Length") or "0")
-        if n > 80000:
+        n = self._content_length()
+        if n is None or n > 80000:
             return None
         raw = self.rfile.read(n) if n else b"{}"
         try:
@@ -508,8 +906,83 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(line)
         self.wfile.flush()
 
+    def _same_station(self) -> bool:
+        """Only the station page this sidecar serves may spend or set the credential.
+
+        A custom header: a cross-origin page cannot send one without a CORS preflight,
+        which this server never answers (OPTIONS is unsupported). And when the browser
+        sends an Origin, it must be this sidecar's own loopback origin. A non-browser
+        process on this machine can forge both; on a single-user loopback sidecar that
+        is the accepted trust boundary, stated here rather than implied.
+        """
+        if self.headers.get("X-Coach-Station") != "1":
+            return False
+        origin = (self.headers.get("Origin") or "").rstrip("/")
+        if origin and origin not in ("http://127.0.0.1:%d" % PORT, "http://localhost:%d" % PORT):
+            return False
+        return True
+
+    def _credential(self) -> None:
+        if not self._same_station():
+            self._send(403, b'{"ok":false,"error":"station only"}', "application/json")
+            return
+        n = self._content_length()
+        if n is None or n > 4000:
+            self._send(400, b'{"ok":false,"error":"bad length"}', "application/json")
+            return
+        try:
+            msg = json.loads((self.rfile.read(n) if n else b"{}").decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            msg = None
+        if not isinstance(msg, dict):
+            self._send(400, b'{"ok":false,"error":"bad json"}', "application/json")
+            return
+        new = dict(RUNTIME)     # committed only if every field is acceptable
+        key = msg.get("key")
+        if key is not None:
+            key = str(key).strip()
+            # printable ASCII only: a zero-width space or BOM pasted from a web page is
+            # invisible to the operator and would turn a good key into a rejected one
+            if len(key) < 20 or len(key) > 400 or not key.isascii() or not key.isprintable() or " " in key:
+                self._send(400, b'{"ok":false,"error":"key format"}', "application/json")
+                return
+            new["key"] = key
+            new["provider"] = "anthropic"
+        if msg.get("clear"):
+            new["key"] = None
+            new["model"] = None
+        provider = msg.get("provider")
+        if provider is not None:
+            provider = str(provider).strip().lower()
+            if provider not in ("ollama", "anthropic"):
+                self._send(400, b'{"ok":false,"error":"provider"}', "application/json")
+                return
+            new["provider"] = provider
+        model = msg.get("model")
+        if model is not None:
+            model = str(model).strip()
+            if model and (len(model) > 80 or not model.isascii() or not model.isprintable() or " " in model):
+                self._send(400, b'{"ok":false,"error":"model format"}', "application/json")
+                return
+            new["model"] = model or None
+        if new["provider"] == "anthropic" and not new["key"] and _fallback_credential_state() == "none":
+            if msg.get("clear") and provider is None:
+                new["provider"] = "ollama"      # forgetting the only credential leaves the cloud
+            else:
+                # Never switch PIP to a provider it cannot authenticate with, and never let
+                # an "unknown" credential quietly bill somebody: refuse until a key exists.
+                self._send(409, b'{"ok":false,"error":"no credential"}', "application/json")
+                return
+        RUNTIME.update(new)
+        payload = json.dumps({"ok": True, "provider": _provider(), "model": _model(),
+                              "credential": _credential_state()}).encode("utf-8")
+        self._send(200, payload, "application/json")
+
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
+        if not self._host_ok():
+            self._send(403, b"wrong host", "text/plain")
+            return
         if path in ("/", "/index.html", "/sim"):
             if not DIST.exists():
                 self._send(500, b"dist missing; run python3 tools/build-dist.py", "text/plain")
@@ -525,7 +998,9 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/api/health", "/api/coach/health"):
             payload = json.dumps({
                 "ok": True,
-                "model": MODEL,
+                "provider": _provider(),
+                "model": _model(),
+                "credential": _credential_state(),
                 "bind": "%s:%s" % (HOST, PORT),
                 "think": THINK,
                 "stream": True,
@@ -538,18 +1013,31 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = self.path.split("?", 1)[0]
+        if not self._host_ok():
+            self._send(403, b'{"ok":false,"error":"wrong host"}', "application/json")
+            return
+        if path in ("/api/credential", "/api/coach/credential"):
+            self._credential()
+            return
+        # The endpoints that SPEND the credential get the same caller check as the one
+        # that sets it: a simple cross-origin POST from any page open on this machine
+        # must not be able to run up the operator's cloud account.
+        if not self._same_station():
+            self._send(403, b'{"ok":false,"error":"station only"}', "application/json")
+            return
         parsed = self._read_msg()
         if parsed is None:
             self._send(400, b'{"ok":false,"error":"bad json"}', "application/json")
             return
         kind, ask, proj, hist = parsed
         if path in ("/api/advise", "/api/coach/advise"):
-            ok, text, thinking = ollama_chat(kind, ask, proj, hist)
+            chat = anthropic_chat if _provider() == "anthropic" else ollama_chat
+            ok, text, thinking = chat(kind, ask, proj, hist)
             payload = json.dumps({
                 "ok": ok,
                 "text": text,
                 "thinking": thinking,
-                "model": MODEL if ok else None,
+                "model": _model() if ok else None,
             }).encode("utf-8")
             self._send(200 if ok else 503, payload, "application/json")
             return
@@ -564,14 +1052,20 @@ class Handler(BaseHTTPRequestHandler):
         cap = spoken_cap(kind)
         try:
             messages = seed_messages(kind, ask, proj, hist)
-            stream_reply(messages, cap, self._emit)
+            if _provider() == "anthropic":
+                anthropic_stream_reply(messages, cap, self._emit)
+            else:
+                stream_reply(messages, cap, self._emit)
         except (BrokenPipeError, ConnectionResetError):
             return
         except Exception as err:
+            if _provider() == "anthropic" and not isinstance(err, (CapExceeded, CloudRefused)):
+                sys.stderr.write("coach: cloud error %s: %s\n" % (err.__class__.__name__, _redact(err)[:300]))
             try:
                 self._emit({
                     "t": "err",
-                    "d": "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__,
+                    "d": _failure_message(err),
+                    "reason": _failure_reason(err),
                 })
             except (BrokenPipeError, ConnectionResetError):
                 return
@@ -579,7 +1073,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("AI coach sidecar on http://%s:%s/  model=%s think=%s stream=on" % (HOST, PORT, MODEL, THINK))
+    print("AI coach sidecar on http://%s:%s/  provider=%s model=%s think=%s stream=on" % (HOST, PORT, PROVIDER, MODEL, THINK))
     print("Open that URL (not the file:// dist). PIP gets one compact, trainee-safe board context per turn.")
     try:
         httpd.serve_forever()
