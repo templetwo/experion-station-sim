@@ -1,0 +1,30 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-air",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 300,
+  "endStateDigest": "1636ab4188ce31ca9c4f9574769de755b409e76f36732292da261d348773ceb0",
+  "alarmSequenceDigest": "f9b648de037421cf844859e358017bb19c18756f773a9c4976663af0f38a9cf1",
+  "alarmSeq": [
+    "FIC310:PVLO:Low",
+    "TIC311:PVLO:Low",
+    "FIC102:PVLO:Low",
+    "FIC102:PVLL:Urgent",
+    "TIC301:PVLO:Low",
+    "TIC201:PVLO:Low",
+    "PIC401:PVLO:Low",
+    "TIC201:PVLL:Urgent",
+    "TIC202:PVLO:Low",
+    "PIC401:PVLL:Urgent",
+    "LIC101:PVHI:High"
+  ],
+  "trips": {},
+  "faults": {
+    "air": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 11,
+  "countsEvents": 14
+}

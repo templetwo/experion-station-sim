@@ -1,0 +1,18 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-drift",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 600,
+  "endStateDigest": "3a204d91c59d32780159101396e7d6d575f633dc9a96f75e154ec1fadd5fcb22",
+  "alarmSequenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "alarmSeq": [],
+  "trips": {},
+  "faults": {
+    "drift": true
+  },
+  "phase": "IDLE",
+  "driftOff": 10,
+  "countsAlarms": 0,
+  "countsEvents": 2
+}

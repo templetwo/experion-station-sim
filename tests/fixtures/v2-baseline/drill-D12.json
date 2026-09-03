@@ -1,0 +1,95 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
+  "fixture": "drill-D12",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 720.5,
+  "endStateDigest": "4cd7a375ab1346db177c822272cbef68a71fb81fd5983a5eeb2efe5c6a7f05f6",
+  "alarmSequenceDigest": "56050f3883f6880ca918dfd25fd2e7c00c793b365305838e58e70de51667e91c",
+  "drillId": "D12",
+  "stepCap": 12000,
+  "steps": 1441,
+  "endReason": "TIME LIMIT REACHED",
+  "injected": true,
+  "alarmSequenceRaw": [
+    "TI312:PVHI:High",
+    "R-310:HI TEMP TRIP:Urgent",
+    "TI312:PVHH:Urgent",
+    "TIC311:PVLO:Low",
+    "AI316:PVLO:Low",
+    "TIC311:PVHI:High"
+  ],
+  "trips": {
+    "bed": false
+  },
+  "faults": {
+    "bedact": false,
+    "rxn": false,
+    "xmtr": false,
+    "surge": false,
+    "pump": false,
+    "cool": false,
+    "stick": false,
+    "vap": false,
+    "agit": false
+  },
+  "batchPhase": "IDLE",
+  "driftOff": 0,
+  "eventsCount": 45,
+  "score": {
+    "score": 10,
+    "pass": false,
+    "passMark": 80,
+    "breakdown": [
+      {
+        "id": "ack",
+        "label": "Time to acknowledge",
+        "earned": 0,
+        "max": 20,
+        "note": "not acknowledged"
+      },
+      {
+        "id": "action",
+        "label": "Correct action and latency",
+        "earned": 0,
+        "max": 25,
+        "note": "correct action not taken"
+      },
+      {
+        "id": "trip",
+        "label": "Trip avoided",
+        "earned": 0,
+        "max": 20,
+        "note": "unit tripped"
+      },
+      {
+        "id": "stable",
+        "label": "Process stabilised",
+        "earned": 0,
+        "max": 15,
+        "note": "not stabilised"
+      },
+      {
+        "id": "load",
+        "label": "Alarm load during drill",
+        "earned": 0,
+        "max": 10,
+        "note": "14.2 per 10 min"
+      },
+      {
+        "id": "quiz",
+        "label": "Debrief question",
+        "earned": 10,
+        "max": 10,
+        "note": "correct"
+      },
+      {
+        "id": "othertrips",
+        "label": "Other equipment trips",
+        "earned": 0,
+        "max": 0,
+        "note": "none"
+      }
+    ]
+  }
+}
