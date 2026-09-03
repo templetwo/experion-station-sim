@@ -169,13 +169,27 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
   await t.test('the core takes no wall-clock or uncontrolled-random dependency', () => {
     // The invariant's own prohibition, asserted rather than trusted.
     //
-    // ONE ALLOWANCE, BY NAME, AND IT IS THE ONLY ONE. src/models.js createState(now) reads
-    // Date.now() ONLY when the caller supplies no `now`: `t: now === undefined ? Date.now()
-    // : now`. That is the simulation's start-time SEED, and the invariant is stated over a
-    // fixed initial snapshot -- a restored snapshot carries its own `t`, so no deterministic
-    // path reaches this branch. Allowing it by exact location rather than by pattern means
-    // a SECOND wall-clock read anywhere in the core still goes red, which is the property
-    // worth having. If this line moves, update the allowance deliberately; do not widen it.
+    // ONE ALLOWANCE, BY NAME. src/models.js createState(now) reads Date.now() only when the
+    // caller supplies no `now`: `t: now === undefined ? Date.now() : now`.
+    //
+    // THE JUSTIFICATION THAT USED TO SIT HERE WAS FALSE, AND IT WAS MINE. It read: "the
+    // invariant is stated over a fixed initial snapshot -- a restored snapshot carries its
+    // own `t`, so no deterministic path reaches this branch." A deterministic path DOES
+    // reach it. startADrillFromMenu -> applyPreset -> initSim() calls createState with no
+    // `now` (seat 3/3 measured SIX Date.now calls on that one path), re-seeding P.t from
+    // the wall clock MID-EXERCISE. A snapshot taken before that reset and a plan.toT read
+    // after it are then separated by a discontinuity the replay can never cross, so
+    // applyJournalEntry never fires and the exercise replays to a score of zero. That is
+    // release gate 3, falsified, by the branch this comment declared unreachable.
+    //
+    // THE LESSON, kept here because the next person will be tempted to grant an exception
+    // the same way: PINNING AN EXCEPTION'S LOCATION IS NOT TESTING ITS CONDITION. Pinning
+    // the line stops a SECOND offender and says nothing about whether the first one is
+    // safe. The condition is asserted directly below. It was red when first written: six
+    // reads on one drill start -- the wall-clock preset seed itself, plus five snapshot
+    // `wall` stamps (one for the preset's own IC snapshot, four ring pushes during its
+    // run-forward). It went green when both lanes seed the preset from P.t and `wall`
+    // became something only an instructor's slot save supplies.
     const ALLOWED = { 'src/models.js': /now === undefined \? Date\.now\(\) : now/ };
     const offenders = [];
     for (const f of fs.readdirSync(path.join(ROOT, 'src')).filter((f) => f.endsWith('.js'))) {
@@ -196,6 +210,49 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
     assert.match(rd(path.join(ROOT, 'src', 'models.js')),
       /t: now === undefined \? Date\.now\(\) : now/,
       'the allowed seed line changed shape — re-derive the allowance rather than widening it');
+  });
+
+  await t.test('THE CONDITION the allowance rests on: no exercise path re-seeds P.t', () => {
+    // THIS IS THE ASSERTION THE ALLOWANCE ALWAYS NEEDED AND NEVER HAD. The seed is only
+    // harmless if nothing a snapshot must reproduce calls createState() without an explicit
+    // `now`. Measured, not asserted: count real Date.now calls across BOTH trainee drill-start
+    // lanes (D-series canonical, A-series) and require P.t to move across each start by
+    // exactly the preset's declared run-forward -- the sim clock, and nothing else.
+    const { Component } = load();
+    const Instructor = require('../src/instructor.js');
+    const lanes = [
+      { name: 'A-series startADrillFromMenu(A1)', preset: () => ESS_drillArch().drillById('A1').basePreset,
+        go: (c) => c.startADrillFromMenu('A1') },
+      { name: 'D-series startDrillFromMenu(D1, canonical)', preset: (c) => c.drillDefs().find((d) => d.id === 'D1').basePreset,
+        go: (c) => c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D1'), 'canonical') },
+    ];
+    function ESS_drillArch() { return require('../src/drill-arch.js'); }
+    for (const lane of lanes) {
+      const c = new Component({});
+      assert.equal(typeof c.startADrillFromMenu, 'function');
+      assert.equal(typeof c.startDrillFromMenu, 'function');
+      c.initSim(1700000000000);            // explicit seed, the deterministic entry point
+      const before = c.P.t;
+      const presetId = lane.preset(c);
+      const preset = Instructor.presets().find((p) => p.id === presetId);
+      assert.ok(preset && !preset.batch && typeof preset.run === 'number',
+        `${lane.name}: expected a non-batch preset with a declared run-forward, got ${presetId}`);
+      const realNow = Date.now;
+      let calls = 0;
+      Date.now = function () { calls++; return realNow.call(Date); };
+      try { lane.go(c); }
+      finally { Date.now = realNow; }
+      const jump = c.P.t - before;
+      assert.equal(calls, 0,
+        `${lane.name} made ${calls} wall-clock reads. The allowance above is only sound while ` +
+        'this is zero: a mid-exercise re-seed of P.t puts the snapshot and plan.toT on opposite ' +
+        'sides of a discontinuity the replay cannot cross, which is release gate 3 falsified. ' +
+        'Fix by seeding the preset from P.t and keeping Date.now out of snapshotData, not by ' +
+        'widening the allowance.');
+      assert.equal(jump, preset.run * 1000,
+        `${lane.name}: P.t moved ${jump} ms across the start; the preset ${presetId} runs forward ` +
+        `${preset.run} s and that must be the ONLY clock movement`);
+    }
   });
 
   await t.test('scoring is a pure function of drill + journal', () => {
@@ -331,7 +388,17 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
     const spec = rd(path.join(ROOT, 'docs', 'dev', 'V3-PLAN.md'));
     const page = rd(APP_PAGE);
     const coreHasCoach = /fetch\s*\(\s*['`]\/api\/coach\//.test(page);
-    const specNamesCoach = /coach/i.test(spec);
+    // NOT merely /coach/i on the whole document — that would pass on any stray mention,
+    // including the case where section 11.4 is reverted and only the section 12 prose
+    // survives. The exception has to be named IN THE GATE CLAUSE ITSELF, with the
+    // constraints that make it safe, because that clause is what a release reader reads.
+    // (Tightened after the spec was amended: a check satisfied by the fix it demanded is
+    // no longer guarding anything.)
+    const sepLine = (spec.split('\n').find((l) => /^\s*4\.\s+\*\*Separation/.test(l)) || '');
+    const specNamesCoach = /coach/i.test(sepLine) &&
+      /\/api\/coach\//.test(sepLine) &&
+      /src\/\*\.js/.test(sepLine);
+    assert.ok(sepLine, 'V3-PLAN section 11 gate 4 (Separation) clause not found — re-derive this test');
     assert.equal(coreHasCoach && !specNamesCoach, false,
       'GATE 4 SPEC/TEST DIVERGENCE: the core calls fetch(\'/api/coach/...\') and this suite ' +
       'permits it, but docs/dev/V3-PLAN.md never mentions the coach. Resolve by amending the ' +

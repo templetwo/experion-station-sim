@@ -195,3 +195,37 @@ test('a running D-drill blocks the A-series START button, and the reverse still 
   assert.equal(c.P.aDrill, null, 'startADrillFromMenu must refuse while a D-drill is running');
   assert.ok(c.state.drill, 'the running D-drill must be untouched');
 });
+
+// The trajectory, not just the clock: every point's PV/SP/OP/mode, every valve position,
+// the process states the drills score on, and the seeded generator's cursor. A replay that
+// completes and matches P.t while any of these differ is release gate 3 falsified.
+function trajectory(c) {
+  const L = {}; for (const t in c.L) L[t] = [c.L[t].pv, c.L[t].sp, c.L[t].op, c.L[t].mode];
+  const V = {}; for (const k in c.V) V[k] = c.V[k].pos;
+  return { L, V, P: { t: c.P.t, rT: c.P.rT, tankL: c.P.tankL, drumP: c.P.drumP, hxT: c.P.hxT, bed: c.P.h.bed }, rand: c.rand.getState() };
+}
+
+test('a canonical A start replays when the sim clock is nowhere near the wall clock', () => {
+  // The canonical preset used to be seeded from Date.now(). With the sim clock seeded
+  // explicitly -- a restored snapshot, a golden fixture, a long run at x5 -- that put the
+  // ADRILL journal entry years away from the snapshot it followed, and the replay stepped
+  // to its guard without ever reaching it: no drill re-armed, exercise scored zero.
+  // Release gate 3 (tests/release-gates.test.js) falsified by the trainee's own menu.
+  const c = new Component({});
+  c.initSim(1700000000000);
+  c.saveSlot(0, 'before A6, sim clock seeded in 2023');
+  c.setState({ dlg: { type: 'drills' } });
+  c.renderVals().dg.archDrills.find((x) => x.id === 'A6').cb();
+  const live = { t: c.P.t, id: c.P.aDrill.id };
+  assert.equal(live.t - 1700000000000, 120000, 'U1_SS runs forward 120 s and that is the only clock movement');
+  c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 60);   // two JOURNALED trainee actions after the start
+  for (let i = 0; i < 20; i++) c.step(0.5);
+  const liveTraj = trajectory(c);
+
+  c.startReplay(0);
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null, 'the replay must run to completion');
+  assert.equal(c.P.aDrill && c.P.aDrill.id, live.id, 'the replay must re-arm the drill it recorded');
+  assert.equal(c.P.t, live.t + 10000);
+  assert.deepEqual(trajectory(c), liveTraj, 'the replay reproduced a different trajectory (step() must apply due replay entries BEFORE capturing P/L)');
+});

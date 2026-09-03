@@ -63,7 +63,7 @@
   // public source, while every word of prose here is our own. These are concept
   // citations, not quotations -- nothing is reproduced from any of them.
   var BASIS = {
-    FIELD_MEAS:  ['RESOURCES-4'],          // open process models the measurements come from
+    FIELD_MEAS:  ['RESOURCES-4.4', 'RESOURCES-4.1', 'RESOURCES-4.2', 'RESOURCES-4.3'],  // the specific open process models the measurements come from: U1 CSTR, U2 batch, U3 heater, U3 bed / U1 flash
     IO:          ['RESOURCES-2.19'],       // standards, cited by clause only
     CONTROL:     ['RESOURCES-2.16'],       // controller / control-execution concepts
     NETWORK:     ['RESOURCES-2.16'],       // redundant path concepts
@@ -128,6 +128,10 @@
     };
 
     var nodes = {}, edges = [], pointPaths = {};
+    var unplaced = [];   // tags unitOf could not place; filed under U1 so the graph stays well-formed, reported by validate()
+    var strayValves = Object.keys(V).filter(function (k) {   // valves in V that no control module strokes (VALVE_OF)
+      return Object.keys(VALVE_OF).every(function (tag) { return VALVE_OF[tag] !== k; });
+    });
     var add = function (n) {
       var m = mkNode(n);
       var prev = nodes[m.id];
@@ -217,7 +221,8 @@
     // ---------------------------------------------------------------- derived per point
     Object.keys(L).sort().forEach(function (tag) {
       var l = L[tag];
-      var u = unitOf(tag) || 'U1';
+      var u = unitOf(tag);
+      if (!u) { unplaced.push(tag); u = 'U1'; }
       var asset = assetOf(tag);
       var cmId = id('CM', l.cm || tag);
       var isMotor = l.kind === 'motor';
@@ -310,6 +315,8 @@
       nodes: nodes,
       edges: edges,
       pointPaths: pointPaths,
+      unplaced: unplaced,
+      strayValves: strayValves,
       units: UNITS.slice(),
       profiles: PROFILES.slice()
     };
@@ -322,9 +329,24 @@
     if (!graph || !graph.nodes) return ['graph is empty'];
     var ids = graph.nodes;
 
+    // A point the app could not place in a unit was filed under U1 so the graph stayed
+    // well-formed. That is a build defect (a tag missing from the app's unitOf() and from
+    // UNITS), and teaching it as U1 would tell a trainee that losing U1's controller takes
+    // it down. Reported here; the app refuses to start on it (initSim).
+    (graph.unplaced || []).forEach(function (tag) {
+      problems.push(tag + ': resolves no unit -- filed under U1 by default; add it to the app\'s unitOf() and to Topology.UNITS');
+    });
+    // A valve present in V that no control module strokes has no command path and no
+    // graph node at all: the fault engine cannot target it and the trainee cannot trace
+    // it. Declare it in VALVE_OF (and in src/models.js VALVE_TARGET) or leave it out of V.
+    (graph.strayValves || []).forEach(function (k) {
+      problems.push('valve ' + k + ' is in V but no control module strokes it (Topology.VALVE_OF) -- it has no command path');
+    });
+
     Object.keys(ids).forEach(function (k) {
       var n = ids[k];
       if (n.id !== k) problems.push('node key ' + k + ' does not match its id ' + n.id);
+      if (n.unit != null && UNITS.indexOf(n.unit) < 0) problems.push(n.id + ': unknown unit ' + n.unit);
       if (LAYERS.indexOf(n.layer) < 0) problems.push(n.id + ': unknown layer ' + n.layer);
       if (KINDS.indexOf(n.kind) < 0) problems.push(n.id + ': unknown kind ' + n.kind);
       if (!n.label) problems.push(n.id + ': missing label');

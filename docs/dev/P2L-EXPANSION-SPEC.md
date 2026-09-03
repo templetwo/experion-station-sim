@@ -724,6 +724,20 @@ Eight. For each, why the current three units cannot produce it.
 
 Effort in focused engineer-days. Every stage leaves the sim shippable.
 
+> **Status, 2026-09-02 (MacBook seat, claude-fable-5-1), branch `feat/stage0-process-description`.**
+> Stage 0 has landed: §2.1, §2.3–2.6 and §2.9 in commits `f6c8c69` / `3cd6aaf`; §2.2 (PROC dialog,
+> command `PROCESS`, the three orientation chips and their `topics()`), §2.7 (E-301 sign, both prose
+> surfaces) and §2.8 (derived alarm-help coverage gate) in the tree with this note. Stage 1 has
+> landed except the decision that is Anthony's: GATE 3 fixed and proven both ways -- the start
+> (`presetBaseT` is `P.t`; snapshot `wall` is caller-supplied) and the replay (the verify pass
+> found `step()` capturing `P`/`L` before applying a replayed drill start, a one-step generator
+> phase slip; fixed, and the regressions now compare the full trajectory), the `moveValves`
+> guard with `MODEL_VALVES`,
+> `Topology.validate()` wired into `initSim()` with the `unitOf` catch-all removed, and RESOURCES
+> §4 split into 4.1–4.11 with every citation made specific and a gate-5 test refusing the bare id.
+> **Not done, by design:** the golden-baseline archive (§10 Q2) -- nothing in Stage 1 re-captured a
+> fixture, so the decision is still open and still Anthony's. Details in `CHANGELOG.md` 3.1.0.
+
 ### STAGE 0 · SHIP NOW — 4-6 days
 
 §2 in full. Zero new tags, zero goldens moved. Fixes both demo complaints. **Do this first regardless of every decision below.**

@@ -25,6 +25,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 PORT = int(os.environ.get("COACH_PORT", "8766"))
 MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
+PROVIDER = os.environ.get("COACH_PROVIDER", "ollama").strip().lower() or "ollama"
+CLOUD_MODEL = os.environ.get("COACH_CLOUD_MODEL", "claude-opus-5")
 HOST = "127.0.0.1"
 BASE = "http://%s:%s" % (HOST, PORT)
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
@@ -44,20 +46,32 @@ def coach_health():
 
 def main() -> int:
     print("Operator station + AI coach")
-    print("  model  %s" % MODEL)
-    print("  url    %s/" % BASE)
-
-    tags = get(OLLAMA.rstrip("/") + "/api/tags", timeout=2)
-    if not tags:
-        print("Ollama is not running. Start it, then:")
-        print("  ollama pull %s" % MODEL)
-        print("  python3 tools/coach/launch.py")
-        return 1
-    names = [m.get("name", "") for m in tags.get("models", [])]
-    if MODEL not in names and not any(n.startswith(MODEL) for n in names):
-        print("Model %s is not pulled. Run:" % MODEL)
-        print("  ollama pull %s" % MODEL)
-        return 1
+    if PROVIDER == "anthropic":
+        print("  provider  Anthropic API (cloud)")
+        print("  model     %s" % CLOUD_MODEL)
+        print("  url       %s/" % BASE)
+        try:
+            import anthropic  # noqa: F401  (the sidecar imports it lazily; fail here, not on the first question)
+        except ImportError:
+            print("The Anthropic SDK is not installed. Run:")
+            print("  python3 -m pip install anthropic")
+            return 1
+        print("  credentials: ANTHROPIC_API_KEY, or an `ant auth login` profile (used on the first question)")
+    else:
+        print("  model  %s" % MODEL)
+        print("  url    %s/" % BASE)
+        tags = get(OLLAMA.rstrip("/") + "/api/tags", timeout=2)
+        if not tags:
+            print("Ollama is not running. Start it, then:")
+            print("  ollama pull %s" % MODEL)
+            print("  python3 tools/coach/launch.py")
+            print("(or set COACH_PROVIDER=anthropic to use the cloud model instead)")
+            return 1
+        names = [m.get("name", "") for m in tags.get("models", [])]
+        if MODEL not in names and not any(n.startswith(MODEL) for n in names):
+            print("Model %s is not pulled. Run:" % MODEL)
+            print("  ollama pull %s" % MODEL)
+            return 1
 
     child = None
     health = coach_health()
@@ -65,6 +79,8 @@ def main() -> int:
         env = os.environ.copy()
         env["COACH_MODEL"] = MODEL
         env["COACH_PORT"] = str(PORT)
+        env["COACH_PROVIDER"] = PROVIDER
+        env["COACH_CLOUD_MODEL"] = CLOUD_MODEL
         child = subprocess.Popen(
             [sys.executable, str(ROOT / "tools" / "coach" / "serve.py")],
             cwd=str(ROOT),

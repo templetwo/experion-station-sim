@@ -7,7 +7,7 @@
 // variables, an action journal that can be replayed, and live assessment
 // (Forge PTS instructor feature list, RESOURCES 2.14; seeded determinism plus
 // action-journal replay and snapshot / backtrack as in the cstr-ots architecture
-// notes, RESOURCES 4). Pure logic: no DOM, no timers, no Component access; the
+// notes, RESOURCES 4.9). Pure logic: no DOM, no timers, no Component access; the
 // app owns the process state and calls these helpers with plain data.
 //
 // API
@@ -62,8 +62,13 @@
     return I;
   }
 
+  // A run reset (initSim: a fresh plant, an initial condition, a canonical drill start)
+  // clears the journal but not the sequence counter, so entries up to I.seq are gone for
+  // good. runResetSeq remembers where, so replayRefusal can say WHY a gap exists rather
+  // than blaming the journal cap for a reset the instructor or trainee performed.
   function resetRun(I) {
     I.ring = []; I.journal = []; I.replay = null; I.lastRingT = -Infinity;
+    I.runResetSeq = I.seq;
   }
 
   function nonFinitePath(o, prefix) {
@@ -167,10 +172,19 @@
     if (!snap) return { code: 'NO_SNAPSHOT', reason: 'no snapshot to replay from' };
     if (snap.journalSeq != null) {
       var oldest = I.journal.length ? I.journal[0].seq : null;
+      // A run reset after the snapshot (initial condition loaded, canonical drill started)
+      // is the common way a gap appears on the trainee's own path; name it, never the cap.
+      var resetAfter = I.runResetSeq != null && I.runResetSeq > snap.journalSeq;
       if (oldest != null && oldest > snap.journalSeq + 1) {
+        if (resetAfter) {
+          return { code: 'RUN_RESET_AFTER_SNAPSHOT', reason: 'the run was reset after this snapshot (an initial condition was loaded or a canonical drill was started, which clears the action journal): actions seq ' + (snap.journalSeq + 1) + '-' + (oldest - 1) + ' are gone and a replay would omit them; replay from a snapshot taken after the reset', lostFromSeq: snap.journalSeq + 1, lostToSeq: oldest - 1 };
+        }
         return { code: 'JOURNAL_TRUNCATED', reason: 'journal truncated across the snapshot: actions seq ' + (snap.journalSeq + 1) + '-' + (oldest - 1) + ' were dropped by the ' + JOURNAL_CAP + '-entry cap; a replay would silently omit them', lostFromSeq: snap.journalSeq + 1, lostToSeq: oldest - 1 };
       }
       if (oldest == null && I.seq > snap.journalSeq) {
+        if (resetAfter) {
+          return { code: 'RUN_RESET_AFTER_SNAPSHOT', reason: 'the run was reset after this snapshot (an initial condition was loaded or a canonical drill was started, which clears the action journal): the ' + (I.seq - snap.journalSeq) + ' actions recorded after it are gone; replay from a snapshot taken after the reset', lostFromSeq: snap.journalSeq + 1, lostToSeq: I.seq };
+        }
         return { code: 'JOURNAL_EMPTY_AFTER_SNAPSHOT', reason: 'the journal holds none of the ' + (I.seq - snap.journalSeq) + ' actions recorded after the snapshot (cleared or truncated); a replay would reproduce a different exercise', lostFromSeq: snap.journalSeq + 1, lostToSeq: I.seq };
       }
       return null;

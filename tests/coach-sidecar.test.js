@@ -182,7 +182,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
 
   const streamRes = await fetch(base + '/api/coach/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify(request)
   });
   assert.equal(streamRes.status, 200);
@@ -198,7 +198,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
   assert.equal((visibleText.match(/\[hidden\]/g) || []).length, 2, visibleText);
 
   const emptyStreamRes = await fetch(base + '/api/coach/stream', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify({ ...request, ask: 'EMPTY_STREAM_TEST' })
   });
   const emptyEvents = (await emptyStreamRes.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -206,7 +206,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
   assert.ok(!emptyEvents.some(event => event.t === 'done' && event.ok), 'empty EOF cannot be a successful answer');
 
   const malformedRes = await fetch(base + '/api/coach/stream', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify({ ...request, ask: 'MALFORMED_MIDSTREAM_TEST' })
   });
   const malformedEvents = (await malformedRes.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -215,7 +215,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
 
   const fallbackRes = await fetch(base + '/api/coach/advise', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify(request)
   });
   assert.equal(fallbackRes.status, 200);
@@ -224,7 +224,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
   assert.match(fallback.text, /TIC201 is high/);
 
   const emptyFallbackRes = await fetch(base + '/api/coach/advise', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify({ ...request, ask: 'EMPTY_FALLBACK_TEST' })
   });
   assert.equal(emptyFallbackRes.status, 503);
@@ -233,7 +233,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
 
   for (const ask of ['TRUNCATED_STREAM_TEST', 'CAPPED_STREAM_TEST']) {
     const res = await fetch(base + '/api/coach/stream', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
       body: JSON.stringify({ ...request, ask })
     });
     const streamEvents = (await res.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -243,7 +243,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
 
   for (const ask of ['TRUNCATED_FALLBACK_TEST', 'CAPPED_FALLBACK_TEST']) {
     const res = await fetch(base + '/api/coach/advise', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
       body: JSON.stringify({ ...request, ask })
     });
     assert.equal(res.status, 503, `${ask}: truncation must not be a healthy fallback response`);
@@ -251,7 +251,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
   }
 
   const prefixRes = await fetch(base + '/api/coach/stream', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify({ ...request, ask: 'PREFIX_STREAM_TEST' })
   });
   const prefixEvents = (await prefixRes.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -260,7 +260,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
   assert.ok(prefixEvents.some(event => event.t === 'done' && event.ok));
 
   const splitCapRes = await fetch(base + '/api/coach/stream', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: JSON.stringify({ ...request, ask: 'SPLIT_CAP_STREAM_TEST' })
   });
   const splitCapEvents = (await splitCapRes.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -283,7 +283,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
 
   const bad = await fetch(base + '/api/coach/advise', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' },
     body: '{bad json'
   });
   assert.equal(bad.status, 400);
