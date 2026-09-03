@@ -11,7 +11,10 @@ browser against the sidecar on this MacBook; the numbers are measured, not guess
    `tools/smoke.sh`. The sidecar serves `dist/`, so the build is what the room sees.
 2. **Kill any sidecar already running** (`lsof -ti:8766 -sTCP:LISTEN | xargs kill`). A
    sidecar started before today's code serves yesterday's coach.
-3. **Decide the coach model.**
+3. **Decide the coach model.** The default (`COACH_PROVIDER=auto`) is the cloud whenever a
+   credential exists and the local model otherwise; a question the cloud refuses before
+   answering (no credits, no network) is answered by the local model and logged. The
+   launcher prints which it resolved to.
    - Local, no network: `COACH_MODEL=granite4.2:8b python3 tools/coach/launch.py`
      (the 1B default answers in ~6 s and gets the physics right; the 8B is measurably
      better on judgment and answers in 9–15 s once warm). The sidecar loads the model at

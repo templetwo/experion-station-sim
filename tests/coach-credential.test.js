@@ -104,7 +104,8 @@ test('the station can hand the sidecar a cloud key for the session, and only the
     projection: { screen: { display: 'graphic', unit: 'U1' }, alarms: [{ tag: 'FIC102', cond: 'BADPV', priority: 'High', state: 'ACKED' }], points: [], catalog: [] } };
 
   const h0 = await waitForHealth(base + '/api/coach/health', child, () => childErr);
-  assert.equal(h0.provider, 'ollama');
+  assert.equal(h0.provider, 'auto');
+  assert.equal(h0.active, 'ollama', 'auto with no credential is the local model');
   assert.equal(h0.model, 'test-coach:1b');
   assert.equal(h0.credential, 'none', 'no key, no env, no profile: say none, never unknown');
 
@@ -112,7 +113,7 @@ test('the station can hand the sidecar a cloud key for the session, and only the
   const noCred = await post('/api/coach/credential', { provider: 'anthropic' });
   assert.equal(noCred.status, 409);
   assert.deepEqual(await noCred.json(), { ok: false, error: 'no credential' });
-  assert.equal((await health()).provider, 'ollama', 'the refused switch left the provider alone');
+  assert.equal((await health()).active, 'ollama', 'the refused switch left the provider alone');
 
   // ---- who may call it
   assert.equal((await fetch(base + '/api/coach/credential')).status, 404, 'the credential is never readable');
@@ -139,10 +140,10 @@ test('the station can hand the sidecar a cloud key for the session, and only the
 
   // ---- a key switches PIP to the cloud, and the cloud receives THAT key
   const set = await (await post('/api/coach/credential', { key: KEY })).json();
-  assert.deepEqual(set, { ok: true, provider: 'anthropic', model: 'claude-opus-5', credential: 'session' });
+  assert.deepEqual(set, { ok: true, provider: 'anthropic', active: 'anthropic', model: 'claude-opus-5', credential: 'session' });
   assert.ok(!JSON.stringify(set).includes(KEY), 'the response never echoes the key');
   const h1 = await health();
-  assert.equal(h1.provider, 'anthropic');
+  assert.equal(h1.active, 'anthropic');
   assert.equal(h1.credential, 'session');
   assert.ok(!JSON.stringify(h1).includes(KEY));
   const s1 = (await (await post('/api/coach/stream', request)).text()).trim().split('\n').map((l) => JSON.parse(l));
@@ -153,14 +154,14 @@ test('the station can hand the sidecar a cloud key for the session, and only the
   assert.equal(ollamaCalls.length, 0);
 
   // ---- a model override
-  assert.deepEqual(await (await post('/api/coach/credential', { model: 'claude-sonnet-5' })).json(), { ok: true, provider: 'anthropic', model: 'claude-sonnet-5', credential: 'session' });
+  assert.deepEqual(await (await post('/api/coach/credential', { model: 'claude-sonnet-5' })).json(), { ok: true, provider: 'anthropic', active: 'anthropic', model: 'claude-sonnet-5', credential: 'session' });
   const s2 = (await (await post('/api/coach/stream', request)).text()).trim().split('\n').map((l) => JSON.parse(l));
   assert.ok(s2.some((f) => f.t === 'done' && f.ok && f.model === 'claude-sonnet-5'));
   assert.equal(cloudCalls[1].body.model, 'claude-sonnet-5');
   assert.equal(cloudCalls[1].headers['x-api-key'], KEY);
 
   // ---- back to the local model: the key stays for the session, Ollama serves, its own model name
-  assert.deepEqual(await (await post('/api/coach/credential', { provider: 'ollama' })).json(), { ok: true, provider: 'ollama', model: 'test-coach:1b', credential: 'session' });
+  assert.deepEqual(await (await post('/api/coach/credential', { provider: 'ollama' })).json(), { ok: true, provider: 'ollama', active: 'ollama', model: 'test-coach:1b', credential: 'session' });
   const s3 = (await (await post('/api/coach/stream', request)).text()).trim().split('\n').map((l) => JSON.parse(l));
   assert.ok(s3.some((f) => f.t === 'done' && f.ok && f.model === 'test-coach:1b'), JSON.stringify(s3));
   assert.equal(ollamaCalls.length, 1);
@@ -179,7 +180,7 @@ test('the station can hand the sidecar a cloud key for the session, and only the
   assert.ok(!JSON.stringify(advisedEcho).includes(KEY));
 
   // ---- forget: the key goes, the model override goes, and with no other credential the cloud goes too
-  assert.deepEqual(await (await post('/api/coach/credential', { clear: true })).json(), { ok: true, provider: 'ollama', model: 'test-coach:1b', credential: 'none' });
+  assert.deepEqual(await (await post('/api/coach/credential', { clear: true })).json(), { ok: true, provider: 'ollama', active: 'ollama', model: 'test-coach:1b', credential: 'none' });
   assert.equal((await health()).credential, 'none');
   assert.equal((await post('/api/coach/credential', { provider: 'anthropic' })).status, 409, 'and the cloud cannot be re-selected without one');
 

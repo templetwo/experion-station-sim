@@ -39,9 +39,14 @@ HOST = "127.0.0.1"
 # to this sidecar's relative /api/coach/ endpoints, the deterministic core never waits
 # on it, and file:// stays offline. The context sent is the same trainee-safe board
 # projection in both cases; no employer or real-site material exists in this product.
-PROVIDER = os.environ.get("COACH_PROVIDER", "ollama").strip().lower() or "ollama"
-if PROVIDER not in ("ollama", "anthropic"):
-    raise SystemExit("COACH_PROVIDER must be 'ollama' or 'anthropic', not %r" % PROVIDER)
+# COACH_PROVIDER: "auto" (default: the cloud whenever a credential exists -- a station key, the
+# environment, or the machine's `ant auth login` profile -- else the local model; and a cloud
+# refusal BEFORE the first frame, such as credentials, billing or network, is answered by the
+# local model for that question and logged), "anthropic" (cloud only), "ollama" (local only).
+# Anthony, 2026-09-03: "we swapped to api" -- the cloud is the default, local is the fallback.
+PROVIDER = os.environ.get("COACH_PROVIDER", "auto").strip().lower() or "auto"
+if PROVIDER not in ("auto", "ollama", "anthropic"):
+    raise SystemExit("COACH_PROVIDER must be 'auto', 'ollama' or 'anthropic', not %r" % PROVIDER)
 CLOUD_MODEL = os.environ.get("COACH_CLOUD_MODEL", "claude-opus-5")
 CLOUD_EFFORT = os.environ.get("COACH_CLOUD_EFFORT", "medium").strip().lower() or "medium"
 if PROVIDER == "anthropic":
@@ -63,7 +68,12 @@ RUNTIME = {"provider": PROVIDER, "key": None, "model": None}
 
 
 def _provider() -> str:
-    return RUNTIME["provider"]
+    """The provider that will actually answer. 'auto' resolves to the cloud when any credential
+    exists (a station key, the environment, the machine's `ant auth login` profile), else local."""
+    p = RUNTIME["provider"]
+    if p != "auto":
+        return p
+    return "anthropic" if (RUNTIME["key"] or _fallback_credential_state() != "none") else "ollama"
 
 
 def _model() -> str:
@@ -754,7 +764,7 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     final_text = text_scrubber.push("", final=True)
     if final_text:
         emit({"t": "text", "d": final_text})
-    emit({"t": "done", "ok": True, "model": _model(), "reason": done_reason})
+    emit({"t": "done", "ok": True, "model": LOCAL_MODEL, "reason": done_reason})
 
 
 def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
@@ -873,10 +883,14 @@ def anthropic_stream_reply(messages: list, cap: int, emit) -> None:
     emit({"t": "done", "ok": True, "model": _model(), "reason": "stop"})
 
 
+LAST_CLOUD_FAILURE = {"before_answer": False, "name": ""}
+
+
 def anthropic_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bool, str, str]:
     """The non-streaming /api/advise shape, from the same streamed request."""
     cap = spoken_cap(kind)
     text_parts, think_parts = [], []
+    LAST_CLOUD_FAILURE.update(before_answer=False, name="")
 
     def collect(frame):
         if frame.get("t") == "text":
@@ -888,6 +902,8 @@ def anthropic_chat(kind: str, ask: str, projection: dict, history=None) -> tuple
         anthropic_stream_reply(seed_messages(kind, ask, projection, history), cap, collect)
         return True, scrub("".join(text_parts)).strip(), "".join(think_parts).strip()
     except Exception as err:
+        LAST_CLOUD_FAILURE.update(before_answer=(not text_parts and not isinstance(err, (CapExceeded, CloudRefused))),
+                                  name=err.__class__.__name__)
         return False, _failure_message(err), ""
 
 
@@ -992,7 +1008,7 @@ class Handler(BaseHTTPRequestHandler):
         provider = msg.get("provider")
         if provider is not None:
             provider = str(provider).strip().lower()
-            if provider not in ("ollama", "anthropic"):
+            if provider not in ("auto", "ollama", "anthropic"):
                 self._send(400, b'{"ok":false,"error":"provider"}', "application/json")
                 return
             new["provider"] = provider
@@ -1012,7 +1028,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(409, b'{"ok":false,"error":"no credential"}', "application/json")
                 return
         RUNTIME.update(new)
-        payload = json.dumps({"ok": True, "provider": _provider(), "model": _model(),
+        payload = json.dumps({"ok": True, "provider": RUNTIME["provider"], "active": _provider(), "model": _model(),
                               "credential": _credential_state()}).encode("utf-8")
         self._send(200, payload, "application/json")
 
@@ -1036,7 +1052,8 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/api/health", "/api/coach/health"):
             payload = json.dumps({
                 "ok": True,
-                "provider": _provider(),
+                "provider": RUNTIME["provider"],
+                "active": _provider(),
                 "model": _model(),
                 "credential": _credential_state(),
                 "warm": True if _provider() == "anthropic" else WARM_STATE["ready"],
@@ -1070,13 +1087,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         kind, ask, proj, hist = parsed
         if path in ("/api/advise", "/api/coach/advise"):
-            chat = anthropic_chat if _provider() == "anthropic" else ollama_chat
-            ok, text, thinking = chat(kind, ask, proj, hist)
+            served = _model()
+            if _provider() == "anthropic":
+                ok, text, thinking = anthropic_chat(kind, ask, proj, hist)
+                if not ok and RUNTIME["provider"] == "auto" and LAST_CLOUD_FAILURE["before_answer"]:
+                    sys.stderr.write("coach: cloud %s before answering; local model answers this one\n" % LAST_CLOUD_FAILURE["name"])
+                    ok, text, thinking = ollama_chat(kind, ask, proj, hist)
+                    served = LOCAL_MODEL
+            else:
+                ok, text, thinking = ollama_chat(kind, ask, proj, hist)
             payload = json.dumps({
                 "ok": ok,
                 "text": text,
                 "thinking": thinking,
-                "model": _model() if ok else None,
+                "model": served if ok else None,
             }).encode("utf-8")
             self._send(200 if ok else 503, payload, "application/json")
             return
@@ -1092,7 +1116,22 @@ class Handler(BaseHTTPRequestHandler):
         try:
             messages = seed_messages(kind, ask, proj, hist)
             if _provider() == "anthropic":
-                anthropic_stream_reply(messages, cap, self._emit)
+                emitted = {"n": 0}
+
+                def counting_emit(frame):
+                    emitted["n"] += 1
+                    self._emit(frame)
+                try:
+                    anthropic_stream_reply(messages, cap, counting_emit)
+                except Exception as err:
+                    if RUNTIME["provider"] == "auto" and emitted["n"] == 0 and not isinstance(err, (CapExceeded, CloudRefused)):
+                        # The cloud refused before answering (credentials, billing, network): the
+                        # operator still gets an answer, from the local model, and the log says so.
+                        sys.stderr.write("coach: cloud %s before answering (%s); local model answers this one\n"
+                                         % (err.__class__.__name__, _redact(err)[:200]))
+                        stream_reply(messages, cap, self._emit)
+                    else:
+                        raise
             else:
                 stream_reply(messages, cap, self._emit)
         except (BrokenPipeError, ConnectionResetError):

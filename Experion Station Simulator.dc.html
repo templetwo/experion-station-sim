@@ -2009,7 +2009,7 @@ class Component extends DCLogic {
         ? current
         : [{id:1, who:'PIP', text:'Watching this board on '+m+'. Click me, EXPLAIN ALARM, or just talk.', kind:'hello'}];
       this.setState({coachLive:true, coachModel:m, coachStatus:loading?('LOADING '+m+'…'):m, assist:true, coachMood:'idle',
-        coachProvider:(j&&j.provider)||'', coachCred:(j&&j.credential)||'',
+        coachProvider:(j&&(j.active||j.provider))||'', coachCred:(j&&j.credential)||'',
         coachFeed:hello, coachText:hello[0]&&hello[0].text});
     }).catch(()=>{
       if(gen!==(this._coachGen||0)||this.coachUnavailable()) return;
@@ -2048,10 +2048,10 @@ class Component extends DCLogic {
       .then(r=>{ if(r&&r.ok) return r.json(); const j=(r&&typeof r.json==='function')?r.json().catch(()=>({})):Promise.resolve({}); return j.then(e=>Promise.reject(new Error((e&&e.error)||('HTTP '+(r&&r.status))))); })
       .then(j=>{
         if(!j||!j.ok) throw new Error('refused');
-        const after=String(j.provider||'').toUpperCase();
+        const after=String(j.active||j.provider||'').toUpperCase();
         if(after!==before) this.configChange('STN01','PIP COACH PROVIDER CHANGE',before,after,what);
         this.addEvent('SYSTEM','STN01','PIP COACH — '+what.toUpperCase()+' — '+after+' · '+(j.model||''),'','');
-        this.setState({dlg:null,dlgKey:'',dlgKeyModel:'',coachProvider:j.provider||'',coachModel:j.model||this.state.coachModel,coachCred:j.credential||''});
+        this.setState({dlg:null,dlgKey:'',dlgKeyModel:'',coachProvider:(j.active||j.provider)||'',coachModel:j.model||this.state.coachModel,coachCred:j.credential||''});
         this.msgZone('PIP COACH: '+after+' · '+(j.model||''));
         this.coachPing();                          // refresh provider, credential and warm state from health
         return true;

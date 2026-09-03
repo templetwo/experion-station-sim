@@ -32,7 +32,7 @@ async function waitFor(fn, ms = 4000) { const t0 = Date.now(); while (Date.now()
 async function spawnCoach(t, env, ollamaPort) {
   const coachPort = await freePort();
   let childErr = '';
-  const child = spawn('python3', [SERVE], { cwd: ROOT, env: { ...process.env, COACH_PORT: String(coachPort), COACH_MODEL: 'test-coach:1b', OLLAMA_HOST: `http://127.0.0.1:${ollamaPort}`, ...env }, stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn('python3', [SERVE], { cwd: ROOT, env: { ...process.env, COACH_PORT: String(coachPort), COACH_MODEL: 'test-coach:1b', COACH_PROVIDER: 'ollama', OLLAMA_HOST: `http://127.0.0.1:${ollamaPort}`, ...env }, stdio: ['ignore', 'ignore', 'pipe'] });
   child.stderr.on('data', (c) => { childErr += c.toString('utf8'); });
   t.after(async () => { if (child.exitCode == null) child.kill('SIGTERM'); if (child.exitCode == null) await new Promise((r) => child.once('exit', r)); });
   const base = `http://127.0.0.1:${coachPort}`;

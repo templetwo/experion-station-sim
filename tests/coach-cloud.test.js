@@ -205,12 +205,69 @@ test('PIP sidecar on the cloud provider: same contract with the page, honest rea
   assert.doesNotMatch(cloudCalls[0].body.messages.at(-1).content, /^LIMIT:/m);
 });
 
-test('the cloud provider is opt-in: the default provider is ollama and an unknown provider refuses to start', async () => {
-  assert.match(SERVE_SRC, /COACH_PROVIDER["'], ["']ollama["']/, 'the default must stay local');
+test('the default provider is auto (cloud first, local fallback) and an unknown provider refuses to start', async () => {
+  assert.match(SERVE_SRC, /COACH_PROVIDER["'], ["']auto["']/, 'the default is cloud-first with a local fallback');
   const child = spawn('python3', [SERVE], { cwd: ROOT, env: { ...process.env, COACH_PORT: String(await freePort()), COACH_PROVIDER: 'openai' }, stdio: ['ignore', 'ignore', 'pipe'] });
   let err = '';
   child.stderr.on('data', (c) => { err += c.toString('utf8'); });
   const code = await new Promise((r) => child.once('exit', r));
   assert.notEqual(code, 0, 'an unknown provider must not start silently on the local path');
   assert.match(err, /COACH_PROVIDER must be/);
+});
+
+test('auto: the cloud answers when it can; when it refuses before answering, the local model answers that question', { timeout: 30000 }, async (t) => {
+  let cloudCalls = 0;
+  const fakeAnthropic = http.createServer(async (req, res) => {
+    await readBody(req); cloudCalls++;
+    if (cloudCalls === 1) {   // billing refusal, the exact shape seen live on 2026-09-03
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }));
+      return;
+    }
+    sse(res, answer(['Cloud answer: the PV is bad, act on FI100 and the tank level.']));
+  });
+  const cloudPort = await listen(fakeAnthropic);
+  t.after(() => new Promise((r) => fakeAnthropic.close(() => r())));
+  const fakeOllama = http.createServer(async (req, res) => {
+    await readBody(req);
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.write(JSON.stringify({ message: { content: 'Local answer instead.' }, done: false }) + '\n');
+    res.end(JSON.stringify({ message: {}, done: true, done_reason: 'stop' }) + '\n');
+  });
+  const ollamaPort = await listen(fakeOllama);
+  t.after(() => new Promise((r) => fakeOllama.close(() => r())));
+
+  const coachPort = await freePort();
+  let childErr = '';
+  const env = { ...process.env, COACH_PORT: String(coachPort), COACH_MODEL: 'test-coach:1b', COACH_WARM: '0', COACH_CLOUD_MODEL: 'claude-test',
+    OLLAMA_HOST: `http://127.0.0.1:${ollamaPort}`, ANTHROPIC_BASE_URL: `http://127.0.0.1:${cloudPort}`, ANTHROPIC_API_KEY: 'test-key' };
+  delete env.COACH_PROVIDER; delete env.ANTHROPIC_AUTH_TOKEN;
+  const child = spawn('python3', [SERVE], { cwd: ROOT, env, stdio: ['ignore', 'ignore', 'pipe'] });
+  child.stderr.on('data', (c) => { childErr += c.toString('utf8'); });
+  t.after(async () => { if (child.exitCode == null) child.kill('SIGTERM'); if (child.exitCode == null) await new Promise((r) => child.once('exit', r)); });
+
+  const base = `http://127.0.0.1:${coachPort}`;
+  const health = await waitForHealth(base + '/api/coach/health', child, () => childErr);
+  assert.equal(health.provider, 'auto');
+  assert.equal(health.active, 'anthropic', 'a credential exists, so the cloud is first');
+  assert.equal(health.model, 'claude-test');
+  const post = (p, body) => fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Coach-Station': '1' }, body: JSON.stringify(body) });
+  const request = { kind: 'ask', ask: 'Is the feed really low?', projection: { screen: { unit: 'U1' }, alarms: [], points: [], catalog: [] } };
+
+  const first = await frames(await post('/api/coach/stream', request));
+  assert.equal(first.filter((f) => f.t === 'text').map((f) => f.d).join(''), 'Local answer instead.', 'the local model answered the question the cloud refused');
+  const d1 = first.find((f) => f.t === 'done');
+  assert.ok(d1 && d1.ok && d1.model === 'test-coach:1b', JSON.stringify(d1));
+  assert.ok(!first.some((f) => f.t === 'err'), 'the operator sees an answer, not an error');
+  assert.match(childErr, /cloud BadRequestError before answering .*local model answers this one/);
+
+  const second = await frames(await post('/api/coach/stream', request));
+  assert.equal(second.filter((f) => f.t === 'text').map((f) => f.d).join(''), 'Cloud answer: the PV is bad, act on FI100 and the tank level.');
+  assert.ok(second.some((f) => f.t === 'done' && f.ok && f.model === 'claude-test'));
+  assert.equal(cloudCalls, 2);
+
+  // and the non-streaming advise shape falls back the same way (cloud call 3 answers; make it refuse by asking again after a refusal is not scriptable here, so check the happy path)
+  const advised = await (await post('/api/coach/advise', request)).json();
+  assert.equal(advised.ok, true);
+  assert.equal(advised.model, 'claude-test');
 });

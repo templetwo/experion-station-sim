@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 PORT = int(os.environ.get("COACH_PORT", "8766"))
 MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
-PROVIDER = os.environ.get("COACH_PROVIDER", "ollama").strip().lower() or "ollama"
+PROVIDER = os.environ.get("COACH_PROVIDER", "auto").strip().lower() or "auto"
 CLOUD_MODEL = os.environ.get("COACH_CLOUD_MODEL", "claude-opus-5")
 HOST = "127.0.0.1"
 BASE = "http://%s:%s" % (HOST, PORT)
@@ -46,8 +46,26 @@ def coach_health():
 
 def main() -> int:
     print("Operator station + AI coach")
-    if PROVIDER == "anthropic":
-        print("  provider  Anthropic API (cloud)")
+    cloud = PROVIDER == "anthropic"
+    if PROVIDER == "auto":
+        # cloud first when any credential exists; the sidecar falls back to the local model for a
+        # question the cloud refuses before answering, and the station can enter a key later
+        cred = "none"
+        try:
+            import anthropic  # noqa: F401
+            from anthropic.lib.credentials import default_credentials
+            if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+                cred = "env"
+            elif default_credentials() is not None:
+                cred = "profile"
+        except Exception:
+            cred = "none"
+        cloud = cred != "none"
+        print("  provider  auto -> %s" % ("Anthropic API (credential: %s), local model as fallback" % cred if cloud
+                                         else "local model (no cloud credential; enter one at the station with CLOUDKEY, or set ANTHROPIC_API_KEY / run `ant auth login`)"))
+    if cloud:
+        if PROVIDER == "anthropic":
+            print("  provider  Anthropic API (cloud)")
         print("  model     %s" % CLOUD_MODEL)
         print("  url       %s/" % BASE)
         try:
