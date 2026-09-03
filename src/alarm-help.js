@@ -39,7 +39,8 @@
     'V-401.PSV LIFT': { value: 950, eu: 'KPA', prio: 'Urgent' },
     'R-202.HI TEMP TRIP': { value: 110, eu: 'DEG C', prio: 'Urgent' },
     'R-310.HI TEMP TRIP': { value: 480, eu: 'DEG C', prio: 'Urgent' },
-    'H-310.TUBE SKIN TRIP': { value: 500, eu: 'DEG C', prio: 'Urgent' }
+    'H-310.TUBE SKIN TRIP': { value: 500, eu: 'DEG C', prio: 'Urgent' },
+    'V-502.PSV LIFT': { value: 1100, eu: 'KPA', prio: 'Urgent' }
   };
 
   // Response time bands used across the table. Urgent conditions get minutes,
@@ -334,7 +335,106 @@
       'Fuel gas is shut off; the preheater cools and the bed reaction dies out; restart only after the bed is below 400 DEG C.',
       'Bed hotspot reached 480 DEG C.',
       'Keep quench at maximum, confirm firing is off, acknowledge, and plan the restart.',
-      '480 DEG C bed hotspot')
+      '480 DEG C bed hotspot'),
+
+    // ---- Unit 04: two-chamber weir separator V-502 ---------------------------
+    // The unit is a horizontal three-phase separator split by a weir plate
+    // (src/models.js stepU4, RESOURCES 4.12). Unit 03 effluent is trimmed to
+    // 45 DEG C in E-502 (TIC502 -> TV-502; MORE output is MORE cooling water),
+    // then water settles under the oil in chamber 1 and is drawn from the bottom
+    // on interface control (LIC504 -> WV-504) while the oil overflows the weir
+    // into chamber 2, whose level goes to the product draw (LIC503 -> LV-503).
+    // Gas leaves overhead on pressure control (PIC505 -> PV-505).
+    // Two failure modes, and they are mirror images of each other:
+    //   interface HIGH, within carryBand of the crest -> water over the weir
+    //     -> AI509 rises -> product off-spec (quiet here, loud downstream);
+    //   interface LOW, thinner than thinBand -> the water draw pulls oil
+    //     -> AI510 rises -> a process-water excursion.
+    // The weir height is an instructor variable, not an operator handle, and it
+    // is the first thing to read when chamber 2 starves: raising the weir stops
+    // the overflow until chamber 1 fills to the new crest, and LIC503 closes
+    // LV-503 on a level fall no operator caused with a valve.
+    // Fail-safe: TV-502 and PV-505 fail OPEN (cooling and venting on air loss);
+    // LV-503 and WV-504 fail CLOSED (both liquid draws shut).
+    // The analysers AI509 and AI510 are lagged about 30 s behind the interface
+    // that makes them, so the interface is the recovery to watch, not the reading.
+    'TIC502.PVLO': e(RT.medium,
+      'The separator runs cold. Below the 45 DEG C design nothing downstream changes in this model: the gas make does not fall, so PIC505 and PV-505 hold, and the interface and both levels are untouched. What the alarm tells you is that TV-502 is putting on more cooling than the feed needs, which is a TIC502 control problem and cooling-water duty wasted, not a separation problem.',
+      'TV-502 driven wide open (it fails open, so an air loss or a MAN output at 100 % puts full cooling on); cooling water colder than design; Unit 03 running cool so the feed arrives cold.',
+      'Compare the TIC502 output with the TV-502 position, return TIC502 to AUTO at 45 DEG C, and check the Unit 03 outlet before blaming the trim cooler.'),
+    'TIC502.PVHI': e(RT.short,
+      'Hot feed to V-502: more light gas flashes off, so PIC505 climbs and PV-505 opens toward its limit; the liquid split is unchanged, so the interface holds while the vent margin shrinks.',
+      'TV-502 closed or stuck; cooling water lost; TIC502 in MAN with too little output; a Unit 03 temperature excursion carried through to the separator inlet.',
+      'Open TV-502 (TIC502 to AUTO at 45 DEG C, or MAN with the output up), confirm cooling water is available, and watch PIC505 output for saturation.'),
+    'TIC502.PVHH': e(RT.now,
+      'Pressure climbs toward the PSV-502 lift at 1100 KPA: the gas make doubles at 40 DEG C above design and keeps rising with it, and once PV-505 is wide open nothing but the relief valve holds the vessel.',
+      'Cooling water lost with TV-502 unable to help, or a Unit 03 temperature excursion arriving at the separator.',
+      'Full cooling on TV-502 (TIC502 to MAN, output 100), cut the Unit 03 feed FIC310 to reduce the heat arriving, and confirm PIC505 is in AUTO with PV-505 opening before the relief lifts.'),
+    'LIC503.PVLL': e(RT.now,
+      'Chamber 2 is nearly empty: the product draw loses its liquid seal and LIC503 closes LV-503 to protect it, interrupting product to storage.',
+      'Read the weir first. If the weir has been raised, chamber 1 is below the new crest and nothing is overflowing into chamber 2; the alternatives are LV-503 stuck open and feed to the separator lost upstream.',
+      'Check the weir height and the chamber 1 level before blaming LV-503: after a weir raise the level returns on its own once chamber 1 fills to the new crest. Otherwise close LV-503 in MAN until the level recovers, then confirm the Unit 03 feed.'),
+    'LIC503.PVLO': e(RT.medium,
+      'Reduced seal on the product draw; a further fall reaches the low-low limit and the draw is interrupted.',
+      'Weir raised, so less oil overflows into chamber 2 until chamber 1 fills to the new crest; LV-503 drawing faster than the overflow feeds it; feed reduced upstream.',
+      'Check the weir height and chamber 1 first, then compare LV-503 position with the LIC503 output, and reduce the draw or lower the setpoint until the overflow re-establishes.'),
+    'LIC503.PVHI': e(RT.short,
+      'Chamber 2 is filling faster than the product draw removes it. The overflow is one way, so chamber 1 and the interface are untouched; what is at risk is product to storage, which is not keeping up with what the weir delivers.',
+      'LV-503 stiction or failed closed on instrument air loss (it is a fail-closed valve, so an air loss shuts the product draw); LIC503 in MAN with too little output; the weir lowered, dumping the oil layer over.',
+      'Open LV-503 in MAN and verify the stroke, then return LIC503 to AUTO. If the weir was just lowered, expect one swing and let the loop settle rather than chasing it.'),
+    'LIC503.PVHH': e(RT.now,
+      'Chamber 2 floods: the level pins at the top of the vessel and the overflow the weir delivers has nowhere to go, so product is lost. Chamber 1, the interface and the pressure are not disturbed in this model; the failure is the product draw.',
+      'LV-503 stuck closed or shut on an air loss with feed still arriving; LIC503 left in MAN with the output low.',
+      'Open LV-503 by hand, cut the Unit 03 feed FIC310 if it does not respond, and watch LIC503 for the recovery.'),
+    'LIC504.PVLL': e(RT.now,
+      'The water layer is too thin to seal the water draw: WV-504 pulls oil under the interface, AI510 climbs and hydrocarbon leaves in the process water. Environmental, not a process upset on the separator.',
+      'WV-504 open too far (LIC504 in MAN with a high output); lower water make from Unit 03 (the water is made by the hydrofinishing reaction, so a feed cut or a deactivated bed shows here first).',
+      'Close WV-504 down (LIC504 to AUTO at 25 %, or MAN with a lower output), watch LIC504 recover and AI510 fall about half a minute behind it, and check the Unit 03 feed and bed if the layer keeps thinning.'),
+    'LIC504.PVLO': e(RT.medium,
+      'The interface is approaching the thin-layer band where the water draw starts to pull oil; AI510 begins to rise before the low-low limit is reached.',
+      'WV-504 over-open; less water being made upstream (a deactivated R-310 bed, since the reaction makes the water, or a Unit 03 feed cut).',
+      'Reduce the LIC504 output or return it to AUTO at 25 %, and read AI510 with it rather than on its own.'),
+    'LIC504.PVHI': e(RT.short,
+      'The interface is climbing toward the weir crest; inside the last 10 % of height below the crest, water starts going over the weir with the oil, AI509 rises and the product goes off-spec. Quiet here, loud downstream.',
+      'WV-504 stuck or shut (it fails closed on instrument air loss, so an air loss stops the water draw); LIC504 in MAN with too little output; more water arriving after a Unit 03 activity step.',
+      'Open WV-504 in MAN and verify the stroke, return LIC504 to AUTO at 25 %, and read AI509 as the consequence: the interface is the cause and it is what you fix.'),
+    'LIC504.PVHH': e(RT.now,
+      'Water is going over the weir into the product chamber: AI509 rises, the liquid to storage carries free water, and the separator itself still looks normal on the graphic.',
+      'Same causes as PVHI left unattended; WV-504 failed closed; the weir lowered toward the interface so the crest is nearer than it was.',
+      'Open WV-504 fully in MAN, and cut the Unit 03 feed FIC310 if the interface is still rising. The weir is the slow handle, not the fast one: raising it moves the crest away from the interface but starves chamber 2 until chamber 1 refills. Confirm LIC504 is falling before returning it to AUTO.'),
+    'PIC505.PVLL': e(RT.now,
+      'The separator has vented more gas than the process makes and the gas blanket is lost. The liquid draws do not depend on the vessel pressure in this model, so the levels hold; what is gone is the margin over the 100 KPA off-gas header, and at the header pressure the vent passes nothing at all, so PIC505 has nothing left to hold with.',
+      'PV-505 stuck open or driven open in MAN (it fails open, so an instrument air loss vents the separator); feed to the unit lost, so no gas is made.',
+      'Close PV-505 in MAN, confirm the Unit 03 feed FIC310 is arriving, then return PIC505 to AUTO at 800 KPA.'),
+    'PIC505.PVLO': e(RT.medium,
+      'Separation runs at reduced pressure: less margin over the 100 KPA off-gas header, so PV-505 has to open further for the same gas make. The liquid draws are unaffected in this model.',
+      'PIC505 setpoint lowered; PV-505 over-open; a Unit 03 feed cut reducing the gas make.',
+      'Verify the PIC505 setpoint and mode, and check the Unit 03 feed FIC310 before adjusting the vent.'),
+    'PIC505.PVHI': e(RT.short,
+      'Pressure is approaching the PSV-502 set pressure of 1100 KPA; the vent is not keeping up with the gas the separator is making.',
+      'PV-505 stuck or closed; PIC505 in MAN with too little output; a warm inlet (TIC502 high) breaking out more light gas than design.',
+      'Open PV-505 further in MAN, restore cooling to bring TIC502 back to 45 DEG C, and cut the Unit 03 feed if the pressure keeps rising. Watch the PIC505 output for saturation.'),
+    'PIC505.PVHH': e(RT.now,
+      'PSV-502 lifts at 1100 KPA and relieves to flare; flaring is a reportable event, not a control action.',
+      'Same causes as PVHI left unattended: PV-505 failed closed, or PIC505 left in MAN with a hot inlet.',
+      'Open PV-505 fully in MAN, put full cooling on TIC502, cut the Unit 03 feed FIC310, and expect V-502 PSV LIFT.'),
+    'AI509.PVHI': e(RT.short,
+      'Water is going over the weir with the oil, so the liquid leaving to storage carries free water and is off-spec. This is the consequence of a high interface, read about 30 s after the interface that made it.',
+      'The interface in chamber 1 has climbed within about 10 % of the weir crest (read LIC504 against the weir height); WV-504 shut or stuck; the weir lowered toward the interface.',
+      'Fix the interface, not the analyser: open WV-504 or return LIC504 to AUTO at 25 %, and expect LIC504 to fall first and AI509 to follow about half a minute later.'),
+    'AI509.PVHH': e(RT.now,
+      'The product to storage carries enough free water to be rejected downstream, and the water is no longer leaving through the draw it should.',
+      'The interface has reached the weir crest with the water draw shut or unable to keep up.',
+      'Open WV-504 fully in MAN, cut the Unit 03 feed FIC310 if the interface is still rising, and judge the recovery on LIC504 falling, because AI509 lags it by about 30 s.'),
+    'AI510.PVHI': e(RT.short,
+      'Hydrocarbon is leaving with the process water: an environmental excursion downstream of this board, not a process upset on the separator.',
+      'The water layer in chamber 1 is thin (LIC504 low), so the water draw is pulling oil under the interface; WV-504 open too far; less water arriving from Unit 03.',
+      'Raise the interface: close WV-504 down (LIC504 to AUTO at 25 %, or MAN with a lower output) and check the Unit 03 feed if the water make has fallen. AI510 lags the interface by about 30 s, so read LIC504 for the recovery.'),
+    'V-502.PSV LIFT': e(RT.now,
+      'Relief to flare until the pressure falls below 1000 KPA; separator gas is going to the flare header and the event must be reported.',
+      'Separator pressure reached 1100 KPA because PIC505 could not vent enough gas: PV-505 closed or stuck, PIC505 left in MAN, or a hot inlet making more gas than design.',
+      'Reduce the gas load — full cooling on TIC502, PV-505 open in MAN, Unit 03 feed FIC310 cut — then confirm the PSV reseats below 1000 KPA and acknowledge.',
+      '1100 KPA separator pressure')
   };
 
   function keyOf(tag, cond) { return tag + '.' + cond; }

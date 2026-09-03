@@ -136,7 +136,7 @@ test('every topology node id the drills name resolves in a really-built graph', 
 test('signal-path resolves every applicable path for every point, against the real graph', () => {
   const { g } = realGraph();
   const tags = Object.keys(g.pointPaths);
-  assert.equal(tags.length, 24, 'expected all 24 configured points');
+  assert.equal(tags.length, 30, 'expected all 30 configured points (24 v2 + 6 Unit 04)');
 
   let resolved = 0;
   for (const tag of tags) {
@@ -153,8 +153,8 @@ test('signal-path resolves every applicable path for every point, against the re
       }
     }
   }
-  // 24 measurement + 24 alarm + 24 history + 12 command = 84 applicable, x2 profiles.
-  assert.equal(resolved, 168, 'the applicable-path sweep did not cover what the plan requires');
+  // 30 measurement + 30 alarm + 30 history + 16 command = 106 applicable, x2 profiles.
+  assert.equal(resolved, 212  /* 2 profiles x 106 applicable paths (30 points; Unit 04 added 2026-09-03) */, 'the applicable-path sweep did not cover what the plan requires');
 });
 
 test('the console and flex profiles genuinely differ, or the whole A8 lesson is fiction', () => {

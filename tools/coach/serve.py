@@ -197,6 +197,7 @@ _UNIT_SECTION = {
     "U1": "UNIT ONE RECEIPT AND CONVERSION",
     "U2": "UNIT TWO BATCH CAMPAIGN REACTOR",
     "U3": "UNIT THREE HYDROFINISHING",
+    "U4": "UNIT FOUR SEPARATION",
 }
 
 
@@ -529,7 +530,7 @@ def _guide_section(topic: str) -> str:
         "unit": "UNITS",
         "u1": "UNITS",
         "u2": "UNITS",
-        "u3": "UNITS",
+        "u3": "UNITS", "u4": "UNITS",
         "alarm": "ALARMS",
         "alarms": "ALARMS",
         "ack": "ALARMS",

@@ -37,12 +37,15 @@ browser against the sidecar on this MacBook; the numbers are measured, not guess
   bad PV; EXPLAIN ALARM now carries that alarm's rationalised help to the coach, and the
   8B model says the measurement is bad and the feed is not necessarily low.
 - Ask PIP "Is E-301 a cooler or a heater?" — preheater on hot oil, every surface agrees.
+- `U4`: raise the weir from the instructor station and watch chamber 2 starve; close WV-504
+  in MAN and watch AI509 climb as water reaches the product draw.
 - Instructor (`INSTR`, password `instr`): snapshot, act, REPLAY — the replay reproduces
   the trajectory exactly, including a canonical drill start.
 
 ## Say this before they find it
 
-- Three units. Unit 04 (separation, recycle, purge) and the stabilizer are designed
+- Four units. Unit 04 is the two-chamber weir separator (interface, weir height,
+  the two analysers). The recycle compressor, purge and the stabilizer are designed
   (`docs/dev/P2L-EXPANSION-SPEC.md`) and not built. The document's last section lists
   what is not simulated; say it first.
 - PIP is advisory and reads only what is on the board. LIVE DIAGNOSIS is rule-based and

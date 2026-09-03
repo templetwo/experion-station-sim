@@ -1,7 +1,7 @@
 // @artifact dev
 // Adversarial test suite for src/fault-engine.js (V3-PLAN section 5, SA stage).
 //
-// Builds the real 114-node graph via the harness + src/topology.js (per the SA
+// Builds the real 144-node graph via the harness + src/topology.js (per the SA
 // advisory: there is no ESS.Topology global after load(), so both modules are
 // required directly), then exercises the fault engine against it.
 const test = require('node:test');
@@ -412,10 +412,10 @@ function leaks(text) {
 }
 
 test('leakage: the trainee projection never carries fault identity or instructor-only truth', async (t) => {
-  await t.test('non-triviality: the trainee projection covers every node (114) and shows at least one non-healthy symptom while a fault is active', () => {
+  await t.test('non-triviality: the trainee projection covers every node (144) and shows at least one non-healthy symptom while a fault is active', () => {
     const r = FaultEngine.activate(FaultEngine.createState(), graph, { faultId: 'CONTROLLER_LOSS', targetNodeId: 'CTRL-U2' });
     const proj = FaultEngine.healthProjection(r.state, graph);
-    assert.equal(proj.nodeCount, 114);
+    assert.equal(proj.nodeCount, 144);
     assert.equal(Object.keys(proj.nodes).length, Object.keys(graph.nodes).length);
     const nonHealthy = Object.values(proj.nodes).filter((n) => n.health !== 'HEALTHY');
     assert.ok(nonHealthy.length > 0, 'expected at least one degraded/failed node while CONTROLLER_LOSS is active');
@@ -480,7 +480,7 @@ test('leakage: the trainee projection never carries fault identity or instructor
     const proj = FaultEngine.healthProjection(s, graph);
     const projText = JSON.stringify(proj);
     assert.equal(leaks(projText), false, 'trainee projection leaked with every fault id active: ' + projText.slice(0, 500));
-    assert.equal(proj.nodeCount, 114);
+    assert.equal(proj.nodeCount, 144);
     assert.ok(Object.values(proj.nodes).some((n) => n.health === 'FAILED'));
     assert.ok(Object.values(proj.nodes).some((n) => n.health === 'DEGRADED'));
 

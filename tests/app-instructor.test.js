@@ -212,7 +212,7 @@ test('instructor display is refused at OPER without a password and opens with in
   assert.equal(v.isInstr, true);
   assert.equal(v.instr.on, true);
   assert.equal(v.instr.upsets.length, Instr.upsetDefs().length);
-  assert.equal(v.instr.vars.length, 6);
+  assert.equal(v.instr.vars.length, 7);   // six v2 variables + the V-502 weir height
   assert.equal(v.instr.presets.length, 5);
   assert.equal(v.instr.slots.length, 8);
   c.lockInstructor();

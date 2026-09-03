@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (A-drill fixture; see tests/drill-arch-fixtures.test.js)",
   "fixture": "ARCH_A9",
-  "model": "c21fb781298268b267aa549f284c7dae3b138492295e43f6ed021fd858c7f4d6",
+  "model": "c8440c43b8194bc82e98334d8e16aebab3a2686fcafeb1ecc36f3b36ae471bca",
   "seed": 20260829,
   "seconds": 65,
   "drillId": "A9",
@@ -13,7 +13,7 @@
   "domain": "HMI",
   "eventCount": 5,
   "physicsDigest": "fcc86542d11e2902f56b4364bc640e28b0c9c79bea06848bc9893e1c72ae2c4b",
-  "healthDigest": "978c4f3ce769016c25d50d914f0c1cd2ff82ffef2725c7e1fa4bc7d1e583842c",
+  "healthDigest": "644a82cb7ee156886ad9d14f5e59f722b245fc5e962d65bb29ceb1803ffd6032",
   "score": 70,
   "pass": false,
   "gated": false

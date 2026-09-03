@@ -400,6 +400,91 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </sc-if>
 
+<sc-if value="{{ isG4 }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Unit 04 Graphic" style="position:absolute;inset:0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:3px;padding:4px 8px;background:#C4C1BA;border-bottom:1px solid #9a968e;user-select:none">
+  <sc-for list="{{ utabs }}" as="u" hint-placeholder-count="4">
+    <div style="padding:3px 14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid;border-color:{{ u.bc }};background:{{ u.bg }}" onClick="{{ u.cb }}">{{ u.label }}</div>
+  </sc-for>
+  <div style="flex:1"></div>
+  <div style="font-size:10px;color:#6a665e">TRIM COOLER · TWO-CHAMBER WEIR SEPARATOR · GAS / OIL / WATER</div>
+</div>
+<svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id="hatch4" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+      <rect width="7" height="7" fill="#C4C4C4"></rect>
+      <line x1="0" y1="0" x2="0" y2="7" style="stroke:#A9A9A9;stroke-width:3.5"></line>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 04 — SEPARATION · TWO-CHAMBER WEIR SEPARATOR</text>
+  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">E-502 TRIM COOLER → V-502 WEIR SEPARATOR · WATER FROM THE FIRST CHAMBER, OIL OVER THE WEIR, GAS OVERHEAD · SIMULATION</text>
+  <path d="M20,300 H100 V300" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <text x="20" y="292" style="font:700 10px Tahoma;fill:#4a4a4a">FROM R-310</text>
+  <rect x="100" y="270" width="120" height="60" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <path d="M110,280 L210,320 M110,320 L210,280" style="stroke:#6a6a6a;stroke-width:1.5;fill:none"></path>
+  <text x="100" y="346" style="font:700 10px Tahoma;fill:#55524c">E-502 TRIM COOLER</text>
+  <path d="M60,250 H134" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <text x="26" y="244" style="font:700 10px Tahoma;fill:#4a6a8a">CWS</text>
+  <path d="M166,250 H190 V270" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <path d="M220,300 H380" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="374,295 384,300 374,305" fill="#4a4a4a"></polygon>
+  <rect x="380" y="240" width="700" height="320" rx="24" fill="#CDCDCD" stroke="#4a4a4a" stroke-width="2"></rect>
+  <rect x="384" y="{{ gfx4.wY }}" width="412" height="{{ gfx4.wH }}" fill="#5A7FA6" opacity="0.85"></rect>
+  <rect x="384" y="{{ gfx4.oY }}" width="412" height="{{ gfx4.oH }}" fill="#C9A24A" opacity="0.85"></rect>
+  <rect x="804" y="{{ gfx4.o2Y }}" width="272" height="{{ gfx4.o2H }}" fill="#C9A24A" opacity="0.85"></rect>
+  <rect x="796" y="{{ gfx4.weirY }}" width="8" height="{{ gfx4.weirH }}" fill="#4a4a4a"></rect>
+  <path d="M800,{{ gfx4.weirY }} q10,-14 20,0" style="stroke:#C9A24A;stroke-width:3;fill:none;opacity:{{ gfx4.overOp }}"></path>
+  <text x="700" y="232" style="font:700 10px Tahoma;fill:#4a4a4a">{{ gfx4.weirLabel }}</text>
+  <text x="392" y="232" style="font:700 10px Tahoma;fill:#55524c">V-502 WEIR SEPARATOR · CHAMBER 1</text>
+  <text x="870" y="232" style="font:700 10px Tahoma;fill:#55524c">CHAMBER 2</text>
+  <text x="392" y="580" style="font:9px Tahoma;fill:#55524c">WATER BELOW THE INTERFACE · OIL ABOVE IT UP TO THE WEIR CREST</text>
+  <path d="M780,240 V180 H844" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <path d="M876,180 H1000" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="994,175 1004,180 994,185" fill="#4a4a4a"></polygon>
+  <text x="1010" y="184" style="font:700 10px Tahoma;fill:#4a4a4a">OFF GAS</text>
+  <path d="M520,560 V640 H544" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <path d="M576,640 H660" style="stroke:#4a6a8a;stroke-width:2.5;fill:none"></path>
+  <polygon points="654,635 664,640 654,645" fill="#4a6a8a"></polygon>
+  <text x="670" y="644" style="font:700 10px Tahoma;fill:#4a6a8a">PROCESS WATER</text>
+  <path d="M1000,560 V620 H1164" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <path d="M1196,620 H1300" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="1294,615 1304,620 1294,625" fill="#4a4a4a"></polygon>
+  <text x="1310" y="624" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT</text>
+  <path d="M1060,240 V220 H1120" style="stroke:#55524c;stroke-width:1.5;fill:none;stroke-dasharray:3,3"></path>
+  <text x="1124" y="224" style="font:700 10px Tahoma;fill:#55524c">PSV-502 · 1100 KPA</text>
+  <text x="560" y="120" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx4.psvOp }}">{{ gfx4.psvT }}</text>
+  <sc-for list="{{ vl4 }}" as="v" hint-placeholder-count="4">
+    <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
+      <polygon points="-16,-11 -16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+      <polygon points="16,-11 16,11 0,0" fill="{{ v.fill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+    </g>
+    <text x="{{ v.tx }}" y="{{ v.ty }}" style="font:10px Tahoma;fill:#3a3a3a">{{ v.label }} {{ v.pos }}</text>
+  </sc-for>
+  <sc-for list="{{ gv4 }}" as="p" hint-placeholder-count="6">
+    <g style="cursor:pointer" onClick="{{ p.click }}" onDoubleClick="{{ p.dbl }}">
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="#D8D8D8" stroke="{{ p.bd }}" stroke-width="{{ p.bw }}"></rect>
+      <rect x="{{ p.x }}" y="{{ p.y }}" width="128" height="46" fill="url(#hatch4)" opacity="{{ p.hatchOp }}"></rect>
+      <sc-if value="{{ p.bandOn }}" hint-placeholder-val="{{ true }}">
+        <rect x="{{ p.bx }}" y="{{ p.y }}" width="5" height="46" fill="#D8D8D8" stroke="#8a8a86" stroke-width="0.6"></rect>
+        <sc-for list="{{ p.band }}" as="b" hint-placeholder-count="5">
+          <rect x="{{ p.bx }}" y="{{ b.y }}" width="5" height="{{ b.h }}" fill="{{ b.fill }}" opacity="0.6"></rect>
+        </sc-for>
+        <rect x="{{ p.bmx }}" y="{{ p.bmy }}" width="9" height="2" fill="{{ p.bmFill }}"></rect>
+      </sc-if>
+      <text x="{{ p.tagX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#44413c">{{ p.tag }}</text>
+      <text x="{{ p.pvX }}" y="{{ p.pvY }}" style="font:700 16px Tahoma;fill:#000000">{{ p.pvT }}</text>
+      <text x="{{ p.euX }}" y="{{ p.pvY }}" style="font:9px Tahoma;fill:#55524c">{{ p.euT }}</text>
+      <text x="{{ p.modeX }}" y="{{ p.tagY }}" style="font:700 10px Tahoma;fill:#31548F">{{ p.modeT }}</text>
+      <rect x="{{ p.aX }}" y="{{ p.aY }}" width="14" height="14" fill="{{ p.aBg }}" stroke="{{ p.aBd }}" stroke-width="1"></rect>
+      <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }}">{{ p.aTxt }}</text>
+    </g>
+  </sc-for>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">LIC504 holds the water interface in chamber 1; LIC503 holds the oil level in chamber 2; PIC505 vents overhead. The weir is set from the instructor station (V-502 weir height). AI509 water in the product draw, AI510 oil in the water draw. PSV-502 lifts at 1100 kPa.</text>
+</svg>
+</div>
+</sc-if>
+
 <sc-if value="{{ isAlarms }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Alarm Summary" style="position:absolute;inset:0;display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;background:#CCC8C0;border-bottom:1px solid #9a968e;user-select:none">
@@ -1780,10 +1865,17 @@ class Component extends DCLogic {
       TI314: {kind:'ind',tag:'TI314',desc:'H-310 PASS 1 TUBE SKIN TEMP',eu:'DEG C',lo:0,hi:700,dec:0,pv:364,cm:'CM17A_TI314',alm:{PVHI:[440,'High'],PVHH:[490,'Urgent']},tgtLo:330,tgtHi:400,_as:{}},
       TI315: {kind:'ind',tag:'TI315',desc:'H-310 PASS 2 TUBE SKIN TEMP',eu:'DEG C',lo:0,hi:700,dec:0,pv:378,cm:'CM17B_TI315',alm:{PVHI:[450,'High'],PVHH:[500,'Urgent']},tgtLo:340,tgtHi:410,_as:{}},
       AI316: {kind:'ind',tag:'AI316',desc:'H-310 FLUE GAS EXCESS O2',eu:'%',lo:0,hi:21,dec:1,pv:3,cm:'CM17C_AI316',almDelay:10,alm:{PVLO:[1.5,'Low']},tgtLo:2,tgtHi:5,_as:{}},
-      FIC313:P({tag:'FIC313',desc:'R-310 QUENCH FLOW',eu:'M3/H',lo:0,hi:40,pv:10,sp:10,op:25,K:0.5,T1:0.2,act:'REV',sphilm:38,splolm:0,cm:'CM19_FIC313',alm:{PVLO:[4,'Low'],PVLL:[2,'Urgent']}})
+      FIC313:P({tag:'FIC313',desc:'R-310 QUENCH FLOW',eu:'M3/H',lo:0,hi:40,pv:10,sp:10,op:25,K:0.5,T1:0.2,act:'REV',sphilm:38,splolm:0,cm:'CM19_FIC313',alm:{PVLO:[4,'Low'],PVLL:[2,'Urgent']}}),
+      // ---- Unit 04: two-chamber weir separator V-502 (docs/dev/U4-SEPARATOR-CONTRACT.md section 2) ----
+      TIC502:P({tag:'TIC502',desc:'E-502 SEPARATOR INLET TEMP',eu:'DEG C',lo:0,hi:200,pv:45,sp:45,op:60,K:1.2,T1:2.0,T2:0.2,act:'DIR',sphilm:90,splolm:25,cm:'CM20_TIC502',alm:{PVLO:[30,'Low'],PVHI:[60,'High'],PVHH:[80,'Urgent']}}),
+      LIC503:P({tag:'LIC503',desc:'V-502 OIL CHAMBER LEVEL',eu:'%',lo:0,hi:100,pv:50,sp:50,op:50,K:1.2,T1:2.5,act:'DIR',sphilm:85,splolm:15,cm:'CM21_LIC503',alm:{PVLL:[10,'Urgent'],PVLO:[25,'Low'],PVHI:[75,'High'],PVHH:[90,'Urgent']}}),
+      LIC504:P({tag:'LIC504',desc:'V-502 WATER INTERFACE LEVEL',eu:'%',lo:0,hi:100,pv:25,sp:25,op:45,K:1.5,T1:3.0,act:'DIR',sphilm:45,splolm:8,cm:'CM22_LIC504',alm:{PVLL:[5,'Urgent'],PVLO:[12,'Low'],PVHI:[40,'High'],PVHH:[48,'Urgent']}}),
+      PIC505:P({tag:'PIC505',desc:'V-502 SEPARATOR PRESSURE',eu:'KPA',lo:0,hi:1500,dec:0,pv:800,sp:800,op:40,K:0.8,T1:0.8,act:'DIR',sphilm:1000,splolm:500,cm:'CM23_PIC505',alm:{PVLL:[400,'Urgent'],PVLO:[600,'Low'],PVHI:[950,'High'],PVHH:[1050,'Urgent']}}),
+      AI509: {kind:'ind',tag:'AI509',desc:'V-502 WATER IN OIL DRAW',eu:'%',lo:0,hi:20,dec:2,pv:0.3,cm:'CM24_AI509',alm:{PVHI:[2,'High'],PVHH:[5,'Urgent']},tgtLo:0,tgtHi:1,_as:{}},
+      AI510: {kind:'ind',tag:'AI510',desc:'V-502 OIL IN WATER DRAW',eu:'%',lo:0,hi:20,dec:2,pv:0.2,cm:'CM25_AI510',alm:{PVHI:[2,'High']},tgtLo:0,tgtHi:1,_as:{}}
     };
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
-    this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1} };
+    this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
     // Architecture fault-engine state (V3-PLAN S2): instructor-scheduled engine faults
@@ -1837,6 +1929,9 @@ class Component extends DCLogic {
     if(!this.dispatcher){ this.dispatcher = ESS.Dispatch.create(); this.registerDispatchHandlers(); }
     this.seed = this.instr.seed;
     this.rand = ESS.Models.createRand(this.seed);
+    // Unit 04 draws its measurement noise from its OWN seeded stream so the v2 units' trajectories
+    // (and every v2 golden) are byte-identical with or without it (U4-SEPARATOR-CONTRACT rule 0.2).
+    this.rand4 = ESS.Models.createRand((this.seed ^ 0x5eed4) >>> 0);
     this.vLag = {};                // valve id -> seconds the valve has not followed its controller output (assistant symptom)
     this.callouts = {};            // tag -> {txt, until}: inline operator callouts (write rejections), shown ~5 s
     this.phaseSet = null;          // applied U2 state-based alarm limit set (phaseSetKey())
@@ -2465,7 +2560,10 @@ class Component extends DCLogic {
       {id:'R-202',label:'R-202 BATCH RX',depth:2,unit:'U2',tags:['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202']},
       {id:'U3',label:'UNIT 03 FIRED RX',depth:1,unit:'U3'},
       {id:'H-310',label:'H-310 PREHEATER',depth:2,unit:'U3',tags:['FIC310','TIC311','TI314','TI315','AI316','H-310']},
-      {id:'R-310',label:'R-310 FIXED BED',depth:2,unit:'U3',tags:['TI312','FIC313','R-310']}
+      {id:'R-310',label:'R-310 FIXED BED',depth:2,unit:'U3',tags:['TI312','FIC313','R-310']},
+      {id:'U4',label:'UNIT 04 SEPARATION',depth:1,unit:'U4'},
+      {id:'E-502',label:'E-502 TRIM COOLER',depth:2,unit:'U4',tags:['TIC502','E-502']},
+      {id:'V-502',label:'V-502 WEIR SEPARATOR',depth:2,unit:'U4',tags:['LIC503','LIC504','PIC505','AI509','AI510','V-502']}
     ];
   }
   assetOf(tag){ const n=this.assetTree().find(x=>x.tags&&x.tags.includes(tag)); return n?n.id:null; }
@@ -2494,7 +2592,7 @@ class Component extends DCLogic {
   }
   liveDec(a){ const l=this.L[a.tag]; return l?l.dec:(({'V-401':0,'R-310':0,'H-310':0})[a.tag]??1); }
   // ---------- saved views ----------
-  builtinViews(){ return ['U1','U2','U3'].map(u=>({name:u+' ALL',asset:u,view:'MAIN',builtin:true})); }
+  builtinViews(){ return ['U1','U2','U3','U4'].map(u=>({name:u+' ALL',asset:u,view:'MAIN',builtin:true})); }
   savedViewName(){ return (this.state.almAsset||'PLANT')+' '+(this.state.shelfView==='MAIN'?'ALL':this.state.shelfView); }
   saveView(){
     const v={name:this.savedViewName(),asset:this.state.almAsset||'PLANT',view:this.state.shelfView};
@@ -2534,7 +2632,7 @@ class Component extends DCLogic {
   }
   // Alarm Tracker (RESOURCES 2.2): raises per minute per unit over the last `mins` minutes
   trackerLanes(mins){
-    const t1=this.P.t, t0=t1-mins*60000, lanes={U1:[],U2:[],U3:[]};
+    const t1=this.P.t, t0=t1-mins*60000, lanes={U1:[],U2:[],U3:[],U4:[]};
     for(const u in lanes) lanes[u]=new Array(mins).fill(0);
     for(const e of this.alarmLog){ if(e.type!=='raise'||e.prio==='Journal'||e.t<t0||e.t>t1) continue; const u=this.unitOf(e.tag); if(!lanes[u]) continue; const i=Math.min(mins-1,Math.floor((e.t-t0)/60000)); lanes[u][i]++; }
     return lanes;
@@ -2553,7 +2651,9 @@ class Component extends DCLogic {
       'R-201.HI TEMP TRIP':['TIC201.DEVHI','TIC202.DEVHI','TIC202.PVHI','FIC102.PVLO','FIC102.PVLL'],
       'R-202.HI TEMP TRIP':['TIC212.PVHI','TIC212.PVHH'],
       'M202.TRIP':['TIC213.PVHI'],
-      'R-310.HI TEMP TRIP':['TIC311.PVLO']
+      'R-310.HI TEMP TRIP':['TIC311.PVLO'],
+      'V-502.PSV LIFT':['PIC505.PVHI','PIC505.PVHH'],
+      'LIC504.PVHH':['AI509.PVHI','AI509.PVHH']   // the interface at the crest is the cause; water in the product draw is its consequence (U4-SEPARATOR-CONTRACT section 5)
     };
   }
   // A source under a disabled asset is parked BEFORE the engine sees the raise: a condition with no record yet is created
@@ -2634,7 +2734,7 @@ class Component extends DCLogic {
   hornTop(){ const E=this.alarmEngine; return E.unacked().filter(a=>E.indication(a.state,a.prio).audible).sort(E.compare)[0]||null; }
 
   // Tags with history (trends, sparkline, assistant slope); one list so initSim and step cannot drift apart.
-  histTags(){ return ['FI100','LIC101','FIC102','AI205','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','TI216','FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316']; }
+  histTags(){ return ['FI100','LIC101','FIC102','AI205','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','TI216','FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','TIC502','LIC503','LIC504','PIC505','AI509','AI510']; }
   // Callback bundle for ESS.Models: the module never touches the Component, it reports through these.
   modelCtx(){
     if(this._ctx) return this._ctx;
@@ -2644,6 +2744,7 @@ class Component extends DCLogic {
       tripMotor:(tag,why)=>this.tripMotor(tag,why),
       addEvent:(type,src,desc,oldV,newV)=>this.addEvent(type,src,desc,oldV,newV),
       rand:()=>this.rand?this.rand():Math.random(),
+      rand4:()=>this.rand4?this.rand4():0,                 // Unit 04 only; zero, never Math.random, if absent
       shed:(l)=>this.applyShed(l),
       message:(t)=>this.msgZone(t),
       onTrip:(src,cond)=>this.dTrip(src,cond),
@@ -2668,6 +2769,7 @@ class Component extends DCLogic {
     L.AI205.pv=P.x*100+this.noise(0.2);          // reactor conversion from the CSTR balance (indication)
     this.stepU2(dt);
     this.stepU3(dt);
+    this.stepU4(dt);
     this.pids(dt);
     this.scan(dt);
     this.interlocks();
@@ -2686,7 +2788,7 @@ class Component extends DCLogic {
   }
   // Valve response watch for the assistant: seconds each valve has failed to follow the position its controller (or an
   // active trip) asks for. A stuck valve shows on one valve; an instrument-air loss shows on several at once.
-  valveMap(){ return {FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'}; }
+  valveMap(){ return {FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'}; }
   valveTarget(tag,id){ const P=this.P; if(id==='FV102'&&P.trips.rx) return 0; if((id==='MV211'||id==='JV213')&&P.trips.batch) return 0; if(id==='FV311'&&(P.trips.bed||P.trips.skin)) return 0; return this.L[tag].op/100; }
   valveWatch(dt){ const map=this.valveMap(); for(const tag in map){ const id=map[tag]; const miss=Math.abs(this.valveTarget(tag,id)-this.V[id].pos)>0.12; this.vLag[id]=miss?(this.vLag[id]||0)+dt:0; } }
   laggingValves(){ const out=[]; for(const id in this.vLag) if(this.vLag[id]>=10) out.push(id); return out; }
@@ -2708,6 +2810,9 @@ class Component extends DCLogic {
     this._lastPhase=ph;
   }
   // U3: Badgwell two-pass fired heater + fixed bed (ESS.Models), then the tube-skin and excess-O2 indications.
+  // Unit 04 (two-chamber weir separator): the whole unit lives in ESS.Models.stepU4, including its
+  // own measurements from ctx.rand4 and the PSV-502 trip; nothing here reads the shared stream.
+  stepU4(dt){ ESS.Models.stepU4(this.P,this.L,this.V,dt,this.modelCtx()); }
   stepU3(dt){
     const P=this.P, L=this.L;
     ESS.Models.stepU3(P,L,this.V,dt,this.modelCtx());
@@ -2819,13 +2924,14 @@ class Component extends DCLogic {
   unitOf(tag){
     if(['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202'].includes(tag)) return 'U2';
     if(['FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','R-310','H-310'].includes(tag)) return 'U3';
+    if(['TIC502','LIC503','LIC504','PIC505','AI509','AI510','V-502','E-502'].includes(tag)) return 'U4';
     // U1 is listed like the others, not caught by "anything else in L": a tag added to the
     // database and to no unit list now returns null, Topology.build() records it as
     // unplaced, validate() reports it and initSim() refuses to start (Stage 1 foundation).
     if(['FI100','LIC101','FIC102','P101','TIC201','AI205','TIC202','TIC301','LIC401','PIC401','TK-101','R-201','V-401'].includes(tag)) return 'U1';
     return null;
   }
-  peakOf(k){ const P=this.P; return ({tankL:P.tankL,rT:P.rT,drumP:P.drumP,T212:P.b.T,bed:P.h.bed})[k]??0; }
+  peakOf(k){ const P=this.P; return ({tankL:P.tankL,rT:P.rT,drumP:P.drumP,T212:P.b.T,bed:P.h.bed,hw:P.s?P.s.hw:0,h2:P.s?P.s.h2:0,pres:P.s?P.s.pres:0})[k]??0; }
   diagnose(){
     const P=this.P,L=this.L,V=this.V,S=this.state,out=[];
     const gFp=(tag)=>()=>{ this.setState({display:'graphic'}); this.openFp(tag); };
@@ -2850,7 +2956,7 @@ class Component extends DCLogic {
     if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
     if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned during FEED).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
     for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here once the signal is repaired.'}]}); }
-    const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313'};
+    const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
     for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!l.badPv&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=Object.keys(l.alm).some(c=>l._as[c]); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
@@ -2897,7 +3003,7 @@ class Component extends DCLogic {
     if(this._pidCtx.loops!==this.L) this._pidCtx.loops=this.L;
     return this._pidCtx;
   }
-  pidOrder(){ return ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313']; }
+  pidOrder(){ return ['LIC101','TIC201','TIC212','FIC102','TIC202','TIC213','TIC301','LIC401','PIC401','FIC211','FIC310','TIC311','FIC313','TIC502','LIC503','LIC504','PIC505']; }
   // ESS.Pid: anti-windup with integral back-calculation, INITMAN, PV tracking (Kantor CBE30338 PID notes, RESOURCES 4.6).
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
 
@@ -3123,7 +3229,7 @@ class Component extends DCLogic {
   stepOnce(){ if(this.state.speed!==0) this.setState({speed:0}); this.step(0.5); this.setState(s=>({tk:s.tk+1})); }
   setSeed(n){
     const seed=(Number(n)>>>0)||ESS.Instructor.DEFAULT_SEED;
-    this.instr.seed=seed; this.seed=seed; this.rand=ESS.Models.createRand(seed);
+    this.instr.seed=seed; this.seed=seed; this.rand=ESS.Models.createRand(seed); this.rand4=ESS.Models.createRand((seed ^ 0x5eed4) >>> 0);
     this.instrNote('RANDOM SEED SET '+seed);
     this.journal('SEED','',seed,{instr:true});
     this.setState({instrSeedTxt:''});
@@ -3139,7 +3245,7 @@ class Component extends DCLogic {
     try{
       return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
         eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,disabledAssets:[...this.disabledAssets],
-        seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,drill:this.drillData()},name);
+        seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,randState4:(this.rand4&&this.rand4.getState)?this.rand4.getState():null,drill:this.drillData()},name);
     }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
   }
   restoreSnapshot(snap,why){
@@ -3169,6 +3275,7 @@ class Component extends DCLogic {
     this.restoreDisabledAssets(snap.disabledAssets);
     this.tadShed=snap.tadShed; this.phaseSet=snap.phaseSet;
     this.seed=snap.seed||this.seed; this.rand=ESS.Models.createRand(this.seed); if(snap.randState!=null) this.rand.setState(snap.randState);
+    this.rand4=ESS.Models.createRand((this.seed ^ 0x5eed4) >>> 0); if(snap.randState4!=null) this.rand4.setState(snap.randState4);
     this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={}; this._lastPhase=this.P.b.phase;
     // restoreSnapshot replaces this.L/this.V wholesale, so the cached graph must be rebuilt too.
     this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
@@ -4208,6 +4315,7 @@ class Component extends DCLogic {
     if(c==='U1'||c==='UNIT01'){ this.setUnit('U1'); this.nav('graphic'); return true; }
     if(c==='U2'||c==='UNIT02'){ this.setUnit('U2'); this.nav('graphic'); return true; }
     if(c==='U3'||c==='UNIT03'){ this.setUnit('U3'); this.nav('graphic'); return true; }
+    if(c==='U4'||c==='UNIT04'){ this.setUnit('U4'); this.nav('graphic'); return true; }
     if(c==='ASSIST'){ this.setState({assist:!this.state.assist}); return true; }
     if(c==='COACH'||c==='EXPLAIN'){ this.setState({assist:true}); this.coachAsk('explain',''); return true; }
     const map={ALM:'alarms',ALARM:'alarms',ALARMS:'alarms',EVT:'events',EVENT:'events',EVENTS:'events',MSG:'msgs',MESSAGES:'msgs',TRN:'trend',TREND:'trend',GR:'graphic',GRAPHIC:'graphic',UNIT01:'graphic','UNIT 01':'graphic',SYS:'sys',STATUS:'sys',DETAIL:'detail',KPI:'kpi','ALARM KPI':'kpi',ALMKPI:'kpi',ARCH:'arch',ARCHITECTURE:'arch','SIGNAL PATH':'arch'};
@@ -4468,7 +4576,7 @@ class Component extends DCLogic {
     const menusDef=[
       {name:'Station',items:[{l:'Security Level / Logon…',f:()=>this.setState({dlg:{type:'logon'},dlgName:''})},{l:'Sign Off (View Only)',f:()=>this.signOff()},{sep:true},
         ...ESS.Palette.list().map(pn=>({l:(this.paletteName()===pn?'● ':'○ ')+'Alarm colour philosophy: '+this.paletteLabel(pn),f:()=>this.setPalette(pn)})),{sep:true},{l:'Reset Simulation…',f:()=>this.setState({dlg:{type:'reset'}})},{sep:true},{l:'About…',f:()=>this.setState({dlg:{type:'about'}})}]},
-      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{l:'Architecture',f:()=>this.nav('arch',S.archTag)},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
+      {name:'View',items:[{l:'Unit 01 Graphic',f:()=>{this.setState({unit:'U1'});this.nav('graphic');}},{l:'Unit 02 Graphic (Batch)',f:()=>{this.setState({unit:'U2'});this.nav('graphic');}},{l:'Unit 03 Graphic (Fired Reactor)',f:()=>{this.setState({unit:'U3'});this.nav('graphic');}},{l:'Unit 04 Graphic (Separation)',f:()=>{this.setState({unit:'U4'});this.nav('graphic');}},{l:'Alarm Summary',f:()=>this.nav('alarms')},{l:'Event Summary',f:()=>this.nav('events')},{l:'Change Log (MOC)',f:()=>this.openChangeLog()},{l:'Message Summary',f:()=>this.nav('msgs')},{l:'System Status',f:()=>this.nav('sys')},{l:'Trends',f:()=>this.nav('trend')},{l:'Alarm KPI',f:()=>this.nav('kpi')},{l:'Architecture',f:()=>this.nav('arch',S.archTag)},{sep:true},{l:'Point Detail of Selected',f:()=>{S.sel?this.nav('detail',S.sel):this.msgZone('NO POINT SELECTED');}}]},
       {name:'Action',items:[{l:'Silence',f:()=>this.silence()},{l:'Acknowledge',f:()=>this.ackTop()},{l:'Acknowledge Page',f:()=>this.ackPage()},{sep:true},{l:'Shelve Selected…',f:()=>this.openShelve()},{l:'Unshelve Selected',f:()=>this.unshelve()},{sep:true},{l:'Disable / Enable Alarms for Asset… (MNGR)',f:()=>this.toggleAssetAlarms(S.almAsset)}]},
       {name:'Drills',items:[{l:'Start Drill…',f:()=>this.setState({dlg:{type:'drills'}})},{l:'End Active Drill',f:()=>{ if(this.P.aDrill) this.endADrill('ENDED BY INSTRUCTOR'); else this.endDrill('ENDED BY INSTRUCTOR'); }},{sep:true},{l:'Operator Task Coverage…',f:()=>this.setState({dlg:{type:'coverage'}})},{l:'Training Record…',f:()=>this.setState({dlg:{type:'record'}})},{sep:true},{l:'Instructor Station…',f:()=>this.openInstructor()}]},
       {name:'Help',items:[{l:'Ops Assistant Panel',f:()=>this.setState({assist:!S.assist})},{l:'Shortcut Keys & Operating Hints…',f:()=>this.setState({dlg:{type:'help'}})},{l:'Plant orientation — what the units make…',f:()=>this.setState({dlg:{type:'process'}})},{l:'PIP cloud credential…',f:()=>this.openCloudKey()},{l:'Alarm and display philosophy…',f:()=>this.setState({dlg:{type:'philosophy'}})},{l:'About This Simulator…',f:()=>this.setState({dlg:{type:'about'}})}]}
@@ -4516,10 +4624,12 @@ class Component extends DCLogic {
     const gvList=mkGv(gpts);
     const gv2=mkGv([{tag:'FIC211',x:180,y:60},{tag:'M202',x:790,y:96},{tag:'PI214',x:790,y:236},{tag:'TIC212',x:790,y:326},{tag:'LI215',x:790,y:416},{tag:'TI216',x:790,y:506},{tag:'TIC213',x:150,y:560}]);
     const gv3=mkGv([{tag:'FIC310',x:40,y:300},{tag:'FIC313',x:470,y:60},{tag:'TIC311',x:500,y:232},{tag:'TI312',x:840,y:400},{tag:'TI314',x:40,y:470},{tag:'TI315',x:40,y:530},{tag:'AI316',x:300,y:170}]);
+    const gv4=mkGv([{tag:'TIC502',x:40,y:130},{tag:'PIC505',x:930,y:60},{tag:'LIC504',x:400,y:610},{tag:'LIC503',x:1130,y:300},{tag:'AI509',x:1130,y:420},{tag:'AI510',x:130,y:610}]);
     const mkVl=(defs)=>defs.map(v=>({...v,fill:V[v.id].pos>0.05?'#4a4a4a':'#FFFFFF',pos:Math.round(V[v.id].pos*100)+'%',tx:v.rot===90?v.x+22:v.x-24,ty:v.rot===90?v.y+4:v.y+28}));
     const vlist=mkVl([{id:'FV102',x:330,y:470,rot:0,label:'FV-102'},{id:'TV202',x:420,y:640,rot:0,label:'TV-202'},{id:'TV301',x:815,y:494,rot:90,label:'TV-301'},{id:'PV401',x:1250,y:150,rot:0,label:'PV-401'},{id:'LV401',x:1250,y:620,rot:0,label:'LV-401'}]);
     const vl2=mkVl([{id:'MV211',x:330,y:120,rot:0,label:'MV-211'},{id:'JV213',x:420,y:600,rot:0,label:'JV-213'}]);
     const vl3=mkVl([{id:'FV310',x:150,y:400,rot:0,label:'FV-310'},{id:'FV311',x:370,y:560,rot:90,label:'FV-311'},{id:'QV313',x:620,y:120,rot:0,label:'QV-313'}]);
+    const vl4=mkVl([{id:'TV502',x:150,y:250,rot:0,label:'TV-502'},{id:'PV505',x:860,y:180,rot:0,label:'PV-505'},{id:'WV504',x:560,y:640,rot:0,label:'WV-504'},{id:'LV503',x:1180,y:620,rot:0,label:'LV-503'}]);
     const gfx={ tankY:388-236*P.tankL/100, tankH:236*P.tankL/100, drumY:548-276*P.drumL/100, drumH:276*P.drumL/100,
       pumpFill:L.P101.run?'#4a4a4a':'#FFFFFF', pumpGlyph:L.P101.run?'#FFFFFF':'#4a4a4a',
       rTripOp:P.trips.rx?(blink?1:0.25):0, ovfOp:P.trips.ovf?(blink?1:0.25):0, psvOp:P.trips.psv?(blink?1:0.25):0 };
@@ -4550,7 +4660,7 @@ class Component extends DCLogic {
     const assetDis=asset!=='PLANT'&&this.disabledAssets.has(asset);
     const views=this.builtinViews().concat(S.savedViews).map(v=>({label:v.name,note:v.builtin?'':'saved',bg:(asset===v.asset&&S.shelfView===v.view)?'#B8C4D4':'transparent',cb:()=>this.applyView(v)}));
     const TRK=30, lanes=this.trackerLanes(TRK);
-    const tracker=['U1','U2','U3'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?UC:n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
+    const tracker=['U1','U2','U3','U4'].map(u=>{const bars=[]; const bw=600/TRK; lanes[u].forEach((n,i)=>{ if(!n) return; const h=Math.min(14,4+n*2.5); bars.push({x:(i*bw).toFixed(1),y:(14-h).toFixed(1),w:(bw-1).toFixed(1),h:h.toFixed(1),fill:n>=3?UC:n>=2?HC:'#31548F',cb:()=>this.applyView({asset:u,view:'MAIN'})}); });
       return {label:u,bars,cb:()=>this.applyView({asset:u,view:'MAIN'})};});
     const helpSel=selA?this.alarmHelpFor(selA.tag,selA.cond):null;
     const av={rows,tree,views,tracker,trackerSpan:TRK,trackerNow:this.fT(P.t),
@@ -4577,7 +4687,8 @@ class Component extends DCLogic {
                TG02:{title:'TG02 · FEED / TANK',pens:[['LIC101','pv','#C00000'],['FIC102','pv','#0050C0'],['FIC102','op','#008000'],['FI100','pv','#806000']]},
                TG03:{title:'TG03 · SEPARATION',pens:[['PIC401','pv','#C00000'],['LIC401','pv','#0050C0'],['TIC301','pv','#008000'],['PIC401','op','#B000B0']]},
                TG04:{title:'TG04 · BATCH R-202',pens:[['TIC212','pv','#C00000'],['TIC212','sp','#C00000','6,5'],['TIC213','pv','#0050C0'],['FIC211','pv','#008000'],['TI216','pv','#B000B0']]},
-               TG05:{title:'TG05 · FIRED REACTOR',pens:[['TI312','pv','#C00000'],['TIC311','pv','#0050C0'],['TIC311','sp','#0050C0','6,5'],['FIC313','pv','#008000'],['TI314','pv','#806000'],['TI315','pv','#B000B0']]}};
+               TG05:{title:'TG05 · FIRED REACTOR',pens:[['TI312','pv','#C00000'],['TIC311','pv','#0050C0'],['TIC311','sp','#0050C0','6,5'],['FIC313','pv','#008000'],['TI314','pv','#806000'],['TI315','pv','#B000B0']]},
+               TG06:{title:'TG06 · SEPARATION',pens:[['LIC503','pv','#0050C0'],['LIC504','pv','#008000'],['PIC505','pv','#C00000'],['AI509','pv','#B000B0']]}};
     const mkPens=(defs,span)=>{
       const t0=P.t-span*60000;
       return defs.map(d=>{
@@ -4765,7 +4876,7 @@ class Component extends DCLogic {
     });
     function eq2(tag,p){ return S.entry&&S.entry.tag===tag&&S.entry.param===p; }
     // units / batch / assistant
-    const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setUnit(u[0])}));
+    const utabs=[['U1','UNIT 01'],['U2','UNIT 02 · BATCH'],['U3','UNIT 03 · FIRED RX'],['U4','UNIT 04 · SEPARATION']].map(u=>({label:u[1],bg:S.unit===u[0]?'#B8C4D4':'#D4D0C8',bc:S.unit===u[0]?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setUnit(u[0])}));
     const bb=P.b, phasesL=['CHARGE','HEATUP','FEED','REACT','COOL','DRAIN'];
     const batch={phase:P.trips.batch?'TRIP':(bb.held?'HELD · '+bb.phase:bb.phase), phFg:P.trips.batch?UT:'#000000', pt:this.mmss(bb.pt*1000),
       phBg:P.trips.batch?UC:(bb.phase==='IDLE'?'#D4D0C8':'#B8C4D4'),
@@ -4774,6 +4885,16 @@ class Component extends DCLogic {
     const gfx2={lvlY:546-330*bb.lvl/100, lvlH:330*bb.lvl/100, agFill:L.M202.run?'#4a4a4a':'#FFFFFF', agFg:L.M202.run?'#FFFFFF':'#4a4a4a',
       tripOp:P.trips.batch?(blink?1:0.25):0, cmW:Math.max(0,Math.min(272,bb.Cm/60*272)), cmFill:bb.Cm>30?'#CC0000':'#6E86A0', cmT:this.fmt(bb.Cm,1)+' KMOL', cmWarn:bb.Cm>30?(blink?1:0.4):0};
     const fuelOff=!!(P.trips.bed||P.trips.skin);   // both trips close FV-311 (models.js moveValves); the graphic shows the burners out and names the cause
+    // Unit 04 geometry: vessel x 380..1080, y 240..560 (320 px tall); the weir plate at 60 % of the
+    // width; heights are per cent of vessel height from the bottom (contract section 3).
+    const s4=P.s||{hw:0,ho:0,h2:0,pres:0}, W4=(P.env&&P.env.weirH)||55, ypx=(pct)=>560-Math.max(0,Math.min(100,pct))*3.2;
+    const h1=Math.min(100,s4.hw+s4.ho);
+    const gfx4={weirY:ypx(W4).toFixed(1), weirH:(560-ypx(W4)).toFixed(1), weirLabel:'WEIR '+Math.round(W4)+' %',
+      wY:ypx(s4.hw).toFixed(1), wH:(560-ypx(s4.hw)).toFixed(1),
+      oY:ypx(h1).toFixed(1), oH:Math.max(0,ypx(s4.hw)-ypx(h1)).toFixed(1),
+      o2Y:ypx(s4.h2).toFixed(1), o2H:(560-ypx(s4.h2)).toFixed(1),
+      overOp:s4.qover>0.05?Math.min(1,0.3+s4.qover/20):0,
+      psvOp:P.trips.psv502?(blink?1:0.25):0, psvT:P.trips.psv502?'▲ PSV-502 LIFTED — VENTING TO FLARE':''};
     const gfx3={tripOp:fuelOff?(blink?1:0.25):0, flameOp:fuelOff?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250)),
       tripT:P.trips.bed?'▲ FUEL TRIP — BED OVERTEMP':(P.trips.skin?'▲ FUEL TRIP — TUBE SKIN OVERTEMP':'')};
     const issues=this.diagnose().map(it=>({sev:it.sev,title:it.title,why:it.why,arrow:S.assistSel===it.id?'▾':'▸',open:S.assistSel===it.id,
@@ -4844,7 +4965,7 @@ class Component extends DCLogic {
       archDrills:ESS.DrillArch.drillIds().map(id=>{ const def=ESS.DrillArch.drillById(id); return {id,name:def.traineeTitle,cb:()=>this.startADrillFromMenu(id)}; }),
       randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; } const ds=this.drillDefs();this.startDrillFromMenu(ds[Math.floor(this.modelCtx().rand()*ds.length)],'canonical');},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
-      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
+      sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Unit 04 Separation','graphic','U4'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:'',dbGuide:'',dbGuideOn:false};
     if(dgT==='debrief' && S.dlg.drill){
       const d=S.dlg.drill;
@@ -4864,7 +4985,7 @@ class Component extends DCLogic {
     const instr=this.instructorView();
     const arch=this.archView(disp);
     const activeUpsets=ESS.Instructor.upsetDefs().filter(d=>this.upsetOn(d.k)).map(d=>d.k.toUpperCase());
-    const simRows=[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'FROZEN':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'24 CMS / 10 VALVES / 3 UNITS'}];
+    const simRows=[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'FROZEN':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'30 CMS / 14 VALVES / 4 UNITS'}];
     if(!this.instr.hidden) simRows.push({k:'Upsets',v:activeUpsets.length?activeUpsets.join(', '):'NONE'});
     return {
       showBadge:this.props.showBadge??true, hcol:HC, cnts,
@@ -4873,9 +4994,9 @@ class Component extends DCLogic {
       msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
       cMsg:pend, msgOn:pend>0, msgBg:pend>0&&blink?'#7a1a00':'transparent', msgFg:pend>0&&blink?'#FFFFFF':'#7a1a00', msgGo:()=>this.nav('msgs'),
       disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
-      isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
+      isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isG4:disp==='graphic'&&S.unit==='U4', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
       gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg, arch,
-      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, asst, pal,
+      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, gv4, vl4, gfx4, asst, pal,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
       entryRef:(el)=>{ if(el&&document.activeElement!==el) el.focus(); },

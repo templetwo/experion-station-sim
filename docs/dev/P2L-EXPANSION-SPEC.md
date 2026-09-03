@@ -737,6 +737,11 @@ Effort in focused engineer-days. Every stage leaves the sim shippable.
 > §4 split into 4.1–4.11 with every citation made specific and a gate-5 test refusing the bare id.
 > **Not done, by design:** the golden-baseline archive (§10 Q2) -- nothing in Stage 1 re-captured a
 > v2 fixture, so the decision is still open and still Anthony's. Details in `CHANGELOG.md` 3.1.0.
+> **2026-09-03, later:** Anthony chose option A; the 21 v2 goldens are archived under
+> `tests/fixtures/v2-baseline/`. API credits landed and the cloud coach is live (`COACH_PROVIDER=auto`,
+> cloud first, local fallback); Opus 5 passed the bad-PV judgment scenario the local model failed.
+> Stage 2 began with a first cut of Unit 04 as a **two-chamber weir separator** (Anthony's design
+> choice over the boot-type vessel drawn in §4), additive by construction: `docs/dev/U4-SEPARATOR-CONTRACT.md`.
 > **Waiting on that decision, with the change already written and measured:** flooring the R-310 bed
 > reading at its inlet (`src/models.js fixedBed`, one line) moves three v2 goldens (D12, `air`,
 > `bedact`); see CHANGELOG 3.1.0 known limitations. The 2026-09-03 veteran review that found it also

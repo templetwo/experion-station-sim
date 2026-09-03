@@ -108,6 +108,7 @@
       modelId: src.modelId != null ? src.modelId : (ess && ess.MODEL_ID) || null,
       name: name || '', t: src.t, wall: src.wall || 0,
       seed: src.seed, randState: src.randState == null ? null : src.randState,
+      randState4: src.randState4 == null ? null : src.randState4,   // Unit 04's own seeded stream (U4-SEPARATOR-CONTRACT rule 0.2)
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
@@ -311,7 +312,8 @@
       { k: 'Tamb', label: 'Ambient temperature', path: 'env.Tamb', min: -10, max: 45, step: 1, def: 25, eu: 'DEG C', dec: 0 },
       { k: 'foulRate', label: 'E-301 fouling rate (baseline 2 %/h × this; the fouling upset runs on top)', path: 'env.foulRate', min: 0.5, max: 3, step: 0.1, def: 1, eu: '× base', dec: 1 },
       { k: 'catAct', label: 'R-310 catalyst activity', path: 'env.catAct', min: 0.7, max: 1.3, step: 0.01, def: 1, eu: '× design', dec: 2 },
-      { k: 'monoPurity', label: 'Monomer purity', path: 'env.monoPurity', min: 0.8, max: 1, step: 0.01, def: 1, eu: 'fraction', dec: 2 }
+      { k: 'monoPurity', label: 'Monomer purity', path: 'env.monoPurity', min: 0.8, max: 1, step: 0.01, def: 1, eu: 'fraction', dec: 2 },
+      { k: 'weirH', label: 'V-502 weir height', path: 'env.weirH', min: 30, max: 90, step: 1, def: 55, eu: '%', dec: 0 }
     ];
   }
 

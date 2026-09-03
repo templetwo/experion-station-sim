@@ -166,7 +166,7 @@ Rule for everything here: open it privately to check that a name, a mode semanti
 
 ## 4. Better process dynamics
 
-Eleven sources, each now its own subsection so each carries its own id. Code cites the specific model it implements — `RESOURCES 4.4` for the Henson/Seborg CSTR, `RESOURCES 4.2` for the Badgwell fired heater — not the section as a whole. A bare `RESOURCES-4` no longer discharges release gate 5 for a model: §4 is a registry of eleven distinct sources and a citation must name the subsection whose model it actually uses. Order and content are unchanged from the flat table this replaces; only the ids are new.
+Twelve sources, each now its own subsection so each carries its own id. Code cites the specific model it implements — `RESOURCES 4.4` for the Henson/Seborg CSTR, `RESOURCES 4.2` for the Badgwell fired heater — not the section as a whole. A bare `RESOURCES-4` no longer discharges release gate 5 for a model: §4 is a registry of twelve distinct sources and a citation must name the subsection whose model it actually uses. Order and content are unchanged from the flat table this replaces; only the ids are new.
 
 ### 4.1 do-mpc industrial polymerization reactor (Lucia, Finkler, Engell)
 - Resource: do-mpc industrial polymerization reactor (Lucia, Finkler, Engell, J. Process Control 23(9) 2013, DOI 10.1016/j.jprocont.2013.08.008)
@@ -244,6 +244,13 @@ Eleven sources, each now its own subsection so each carries its own id. Code cit
 - Licence: Compiler GPL-3.0 (check shim licence before shipping); model libraries permissive
 - Unit upgraded: U1 flash and HX, U3 furnace gas side
 - What it gives: Only route found to run rigorous Modelica unit models in a static page via WASM; the result is an opaque compiled engine, not a readable reference.
+
+### 4.12 Three-phase weir separator (Arnold and Stewart; API 12J; Francis weir)
+- Resource: Arnold and Stewart, *Surface Production Operations*, vol. 1 (Gulf Professional Publishing) for the bucket-and-weir three-phase separator; API Specification 12J *Oil and Gas Separators* for the retention-time sizing basis; the Francis weir formula from open-channel hydraulics
+- URL: Print / purchase sources with no free full text, so nothing is linked to a mirrored copy. API standards catalogue: https://www.api.org/products-and-services/standards . The Francis formula (flow proportional to head over the crest to the 3/2 power) is textbook open-channel hydraulics and public domain, with no single owning source.
+- Licence: Book and standard are copyrighted; both are cited by name only and nothing is reproduced -- no text, tables, figures, sizing charts or retention-time tables. The Francis relation itself is public domain and is implemented directly.
+- Unit upgraded: U4 two-chamber weir separator V-502 (water interface and oil-chamber levels, weir overflow, water and oil carry-over, overhead pressure and PSV-502)
+- What it gives: The arrangement itself -- an inlet chamber where water settles under the oil and is drawn from the bottom on interface control, an internal weir plate the oil overflows into a second chamber whose level sets the product draw, and gas leaving overhead on pressure control -- together with the two failure directions that make the unit worth training on: an interface carried up near the weir crest sends water over with the oil (product off-spec), and an interface run too thin sends oil out of the water draw (a process-water excursion). API 12J supplies the way of thinking about the size, minutes of liquid retention per chamber rather than a droplet-settling calculation, which is what the chamber areas here are chosen against. Francis supplies the 3/2 head exponent, which makes the weir a soft level clamp instead of a hard one: raise the weir live and the first chamber must fill to the new crest before overflow resumes, so the second chamber starves for a measurable time.
 
 ## 5. Suggested next five changes to the simulator
 

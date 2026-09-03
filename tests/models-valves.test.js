@@ -24,7 +24,7 @@ test('MODEL_VALVES is the single list of valves the process equations know', asy
   await t.test('it is exported, frozen and non-trivial', () => {
     assert.ok(Array.isArray(Models.MODEL_VALVES));
     assert.ok(Object.isFrozen(Models.MODEL_VALVES));
-    assert.equal(Models.MODEL_VALVES.length, 10);
+    assert.equal(Models.MODEL_VALVES.length, 14);
   });
 
   await t.test('the app\'s this.V declares exactly those valves', () => {

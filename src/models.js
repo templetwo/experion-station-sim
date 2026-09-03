@@ -17,7 +17,8 @@
 //                                              U1 measurements, P101 lockout/pump fault
 //   stepU2(P, L, V, dt, ctx)                   R-202 semi-batch reactor + SCM202 sequence
 //   stepU3(P, L, V, dt, ctx)                   H-310 two-pass fired heater + R-310 bed
-//   step(P, L, V, dt, ctx)                     advanceClock + stepU1 + stepU2 + stepU3
+//   stepU4(P, L, V, dt, ctx)                   E-502 trim cooler + V-502 two-chamber weir separator
+//   step(P, L, V, dt, ctx)                     advanceClock + stepU1 + stepU2 + stepU3 + stepU4
 //   PARAMS                                     the calibrated parameter sets (read-only use)
 //
 // Arguments
@@ -28,6 +29,11 @@
 //        tripMotor(tag, why)                     required  (Component.tripMotor)
 //        addEvent(type, src, desc, oldV, newV)   required  (Component.addEvent)
 //        rand()                                  optional  uniform [0,1), default Math.random
+//        rand4()                                 optional  uniform [0,1), Unit 04 measurement noise ONLY. A SECOND
+//                                                          generator, so adding Unit 04 cannot shift the stream
+//                                                          U1-U3 draw from and the v2 goldens cannot move. Absent
+//                                                          means Unit 04 noise is exactly zero -- it never falls
+//                                                          back to rand() and never to Math.random.
 //        shed(point)                             optional  bad-PV shed (Component.applyShed);
 //                                                          default: mode -> MAN, hold OP
 //        message(txt)                            optional  message zone (Component.msgZone)
@@ -93,6 +99,10 @@
 //       two tube passes with outlet and tube-skin temperatures, combined
 //       outlet; LearnChemE parametric sensitivity of a PFR with heat exchange
 //       for the exponential hot-spot growth of the fixed bed.
+//   U4  Arnold and Stewart bucket-and-weir three-phase separator, sized the way API
+//       Spec 12J thinks about separators (minutes of liquid retention per chamber), with
+//       the weir overflow in the Francis 3/2-power form (RESOURCES 4.12). Correlation
+//       only, no property package: the unit 4 header lists what is invented outright.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else (root.ESS = root.ESS || {}).Models = factory();
@@ -181,6 +191,53 @@
       bedLightOff: 200, bedLightW: 25,   // C: inlet temperature below which the bed extinguishes, and its width
       tripT: 480, resetT: 400,
     },
+    // Unit 04, V-502 two-chamber weir separator (RESOURCES 4.12). Every number is this
+    // simulator's own and was calibrated by running the model, not assumed: the design
+    // point -- U3 feed 40 m3/h, weirH 55 %, TV-502 0.60, LV-503 0.50, WV-504 0.45,
+    // PV-505 0.40 -- is a steady state at hw 25 %, h2 50 %, pres 800 kPa, Tin 45 C,
+    // AI509 0.3 %, AI510 0.2 %. Lines marked CALIBRATED were moved from the build
+    // contract's first cut because that value could not hold the design point; the note
+    // says what the value has to be and why.
+    U4: {
+      waterFrac: 0.15,     // m3 of water made per m3 of U3 feed at full catalyst activity (HDO stoichiometry,
+                           //   scaled): 40 m3/h feed splits 6.0 water / 34.0 oil
+      gasFrac: 3.3333e-5,  // CALIBRATED (contract first cut 0.004): light gas made per m3 of feed at 45 C.
+                           //   qg_in = qfeed*gasFrac*3600 = 4.80 m3/h at design, exactly what PV-505 passes at
+                           //   0.40 with Cg 12, so the vessel holds 800 kPa. At 0.004 the make was 576 m3/h and
+                           //   a shut vent drove the PSV inside one second -- no drill window at all.
+      A1: 0.12, A2: 0.07,  // CALIBRATED (first cut 0.30 / 0.18): chamber areas, m3 per % of height, chamber 1
+                           //   the wider one. 12 m3 and 7 m3 hold 6.7 and 3.5 m3 of liquid at the design levels,
+                           //   which is 10.0 minutes of retention on the 40 m3/h feed and 6.2 on the 34 m3/h
+                           //   product draw -- the band API Spec 12J is written around (RESOURCES 4.12), and the
+                           //   reason to size a separator that way. At
+                           //   0.30 / 0.18 the retention was 25 and 16 minutes: the design point was still steady,
+                           //   but the interface crept at 0.33 %/min and a water-carry-over exercise took over an
+                           //   hour of simulated time before the analyser moved, which is no drill at all.
+      Cweir: 80,           // CALIBRATED (first cut 6.0): weir coefficient in q_over = Cweir*max(0,h1-W)^1.5, the
+                           //   Francis 3/2 power (RESOURCES 4.12). At 80 the design crest head is 0.57 % of
+                           //   height, so the design oil layer stays essentially at the contract's s.ho 30 (h1
+                           //   sits on the crest) instead of standing 3.2 % above it. It is also inside the bound
+                           //   Cweir <= A1*3600/(10*dt) = 86, under which one explicit 0.5 s step can never drain
+                           //   more head than exists for any head up to 100 %, so a weir dropped live empties over
+                           //   the crest without overshooting chamber 2 past the level the dump can actually fill.
+      Cw: 18.86,           // CALIBRATED (first cut 30): water draw, m3/h at full valve and 50 % head. WV-504 at
+                           //   its design 0.45 with hw 25 draws 6.001 m3/h, the water the feed makes, so the
+                           //   interface sits still. At 30 the draw was 9.5 m3/h and the boot emptied.
+      Cp: 68,              // CALIBRATED (first cut 45): product draw, same form. LV-503 at its design 0.50 with
+                           //   h2 50 draws 34.0 m3/h, the weir overflow, so chamber 2 sits still. At 45 it drew
+                           //   22.5 and chamber 2 filled to the PVHH.
+      carryBand: 10,       // INVENTED: water starts going over the weir when hw > W - carryBand (% of height)
+      thinBand: 8,         // INVENTED: oil starts leaving down the water draw when hw < thinBand
+      kP: 0.9,             // INVENTED: kPa per (m3/h of gas imbalance) per second
+      Cg: 12,              // vent capacity, m3/h at full valve and the design dP (800 - 100 kPa). The pressure
+                           //   time constant is 1400/(kP*0.4*Cg) = 324 s at the design point.
+      Pdown: 100,          // off-gas header pressure, kPa
+      coolK: 507,          // CALIBRATED, as the contract directs: C of cooling at full TV-502. The measured design
+                           //   inlet is Thot = (h.pre 320.0 + h.bed 378.1)/2 = 349.06 C, so TV-502 at 0.60 lands
+                           //   349.06 - 0.60*507 = 44.86 C against the 45 C design (0.3 % low).
+      tauT: 45,            // s, E-502 outlet temperature lag
+      psvSet: 1100, psvReset: 1000,   // PSV-502 lift and reseat, kPa
+    },
   };
 
   // ---------------------------------------------------------------- utilities
@@ -201,10 +258,17 @@
 
   // Instructor variables (plant conditions the trainee cannot see) and upset magnitudes; both live in P so
   // they travel with snapshots and initial conditions (cstr-ots architecture notes, RESOURCES 4.9).
-  function envDefaults() { return { feedConc: 1, Tamb: 25, foulRate: 1, catAct: 1, monoPurity: 1 }; }
+  function envDefaults() { return { feedConc: 1, Tamb: 25, foulRate: 1, catAct: 1, monoPurity: 1, weirH: 55 }; }
   function magDefaults() { return { surge: 50, coolLoss: 1, bedact: 1.35, drift: 1 }; }
+  // V-502 process state. Its own factory so createState and the pre-U4-snapshot default
+  // below cannot drift apart (the env/mag pattern above).
+  function sepDefaults() { return { Tin: 45, hw: 25, ho: 30, h2: 50, pres: 800, qover: 0, wcarry: 0, ocarry: 0 }; }
   const envOf = (P) => P.env || (P.env = envDefaults());
   const magOf = (P) => P.mag || (P.mag = magDefaults());
+  const sepOf = (P) => P.s || (P.s = sepDefaults());
+  // A snapshot taken before Unit 04 has an env with no weirH; treat it as the design weir
+  // rather than integrating NaN into every level from there on.
+  const weirOf = (P) => { const w = envOf(P).weirH; return Number.isFinite(w) ? w : 55; };
 
   function noiseFn(ctx) {
     const r = (ctx && ctx.rand) || Math.random;
@@ -223,6 +287,7 @@
            Ts: 25, Tehe: 25, mP: 0, accM: 0, Tad: 25, conv: 0, _last: 'IDLE' },
       h: { f: 40, pre: 320, bed: 380, q: 10, fb: 575, t1: 318, t2: 322, ts1: 364, ts2: 378,
            air: 0.468, o2: 3.0, dT: 60 },
+      s: sepDefaults(),
     };
   }
 
@@ -266,6 +331,10 @@
     FV310: (P, L) => L.FIC310.op / 100,
     FV311: (P, L) => (P.trips.bed || P.trips.skin) ? 0 : L.TIC311.op / 100,
     QV313: (P, L) => L.FIC313.op / 100,
+    TV502: (P, L) => L.TIC502.op / 100,
+    LV503: (P, L) => L.LIC503.op / 100,
+    WV504: (P, L) => L.LIC504.op / 100,
+    PV505: (P, L) => L.PIC505.op / 100,
   };
   const MODEL_VALVES = Object.freeze(Object.keys(VALVE_TARGET));
 
@@ -515,7 +584,10 @@
     const c = PARAMS.U3, h = P.h;
     h.q = lag(h.q, 40 * V.QV313.pos, c.tauFlow, dt);
     const act = envOf(P).catAct * (P.faults.bedact ? magOf(P).bedact : 1);
-    const bedSS = h.pre + hotSpotRise(c, h, act) - c.quench * h.q;
+    // Floored at the inlet less a small mixing dip: quench cools the bed toward the inlet, it
+    // cannot carry the hot spot below what enters (TI312 read 232 C against a 320 C inlet
+    // under full quench before this; CHANGELOG 3.1.0, re-captured D12 / air / bedact).
+    const bedSS = Math.max(h.pre + hotSpotRise(c, h, act) - c.quench * h.q, h.pre - 5);
     h.bed = lag(h.bed, bedSS, c.tauBed, dt);
     h.dT = h.bed - h.pre;
     if (h.bed >= c.tripT && !P.trips.bed) { P.trips.bed = true; raiseTrip(ctx, 'R-310', 'HI TEMP TRIP', h.bed, 'DEG C', 'BED OVERTEMP — FUEL GAS SHUT OFF'); }
@@ -537,6 +609,107 @@
     measureU3(P, L, n);
   }
 
+  // ---------------------------------------------------------------- unit 4
+  // V-502, a horizontal three-phase separator split by an internal weir plate: the
+  // bucket-and-weir arrangement of Arnold and Stewart, sized the way API Spec 12J thinks
+  // about separators, with the overflow in the Francis 3/2-power form (RESOURCES 4.12).
+  // Mixed liquid from U3 is trim-cooled in E-502 and enters chamber 1; water settles under
+  // the oil and is drawn from the bottom (LIC504 -> WV-504); the oil overflows the weir
+  // into chamber 2, whose level sets the product draw (LIC503 -> LV-503); gas leaves
+  // overhead on pressure control (PIC505 -> PV-505). The weir height is an instructor
+  // plant variable (env.weirH), so the operating window moves under the trainee.
+  //
+  // This is a training-fidelity correlation of that arrangement, NOT a property package:
+  // there is no VLE, no droplet-settling criterion, no water chemistry and no emulsion
+  // band. INVENTED outright -- this simulator's own, calibrated against nothing but its
+  // own design point: carryBand and thinBand and the linear carry-over ramps they define,
+  // gasFrac and the (1 + dT/40) vapour term, kP, the 0.3 % / 0.2 % analyser floors and
+  // their 30 s lag, and every capacity coefficient (Cweir, Cw, Cp, Cg, coolK).
+  //
+  // Unit 04 draws its measurement noise from ctx.rand4, a SECOND seeded generator, so that
+  // adding this unit cannot shift the shared stream U1-U3 consume and the v2 goldens
+  // cannot move (U4-SEPARATOR-CONTRACT section 0). No rand4 in the ctx means no noise at
+  // all: never ctx.rand, never Math.random.
+  function noise4Fn(ctx) {
+    const r = ctx && ctx.rand4;
+    if (typeof r !== 'function') return () => 0;
+    return (k) => (r() - 0.5) * k;
+  }
+
+  // A valve set that predates Unit 04 (module tests built on the v2 V, and any pre-U4
+  // snapshot) reads as the design position instead of throwing, so Models.step stays
+  // callable with a v2 V and every existing test keeps passing. moveValves only strokes
+  // valves that are actually present in V.
+  const vpos = (V, k, d) => (V && V[k] && Number.isFinite(V[k].pos)) ? V[k].pos : d;
+
+  // Returns the water draw, which measureU4 needs for the AI510 ratio.
+  function separator(P, L, V, dt, ctx) {
+    const c = PARAMS.U4, env = envOf(P), s = sepOf(P), W = weirOf(P);
+    const qfeed = Math.max(0, P.h.f);                       // U3 fresh feed, m3/h (read only)
+    const act = env.catAct * (P.faults.bedact ? magOf(P).bedact : 1);   // the activity U3 uses (read only)
+    const qwIn = qfeed * c.waterFrac * act;
+    const qoIn = Math.max(0, qfeed - qwIn);
+
+    // E-502 trim cooler on cooling water. TV-502 fails OPEN, so an air loss over-cools.
+    const Thot = 0.5 * (P.h.pre + P.h.bed);
+    s.Tin = lag(s.Tin, Math.max(30, Thot - c.coolK * vpos(V, 'TV502', 0.6)), c.tauT, dt);
+
+    // chamber 1. Interface near the crest carries water over with the oil; an interface
+    // run thin lets the water draw pull oil under it.
+    s.wcarry = qwIn * clamp((s.hw - (W - c.carryBand)) / c.carryBand, 0, 1);
+    const qwOut = c.Cw * vpos(V, 'WV504', 0.45) * Math.sqrt(Math.max(s.hw, 0) / 50);
+    s.ocarry = qwOut * clamp((c.thinBand - s.hw) / c.thinBand, 0, 1);
+    const h1 = s.hw + s.ho;
+    s.qover = c.Cweir * Math.pow(Math.max(0, h1 - W), 1.5);
+    s.hw = clamp(s.hw + (qwIn - s.wcarry - qwOut) / c.A1 / 3600 * dt, 0, 100);
+    s.ho = clamp(s.ho + (qoIn - s.ocarry - s.qover) / c.A1 / 3600 * dt, 0, 100);
+
+    // chamber 2: what came over the weir, less the product draw
+    const qp = c.Cp * vpos(V, 'LV503', 0.5) * Math.sqrt(Math.max(s.h2, 0) / 50);
+    s.h2 = clamp(s.h2 + (s.qover + s.wcarry - qp) / c.A2 / 3600 * dt, 0, 100);
+
+    // overhead gas: more vapour when the inlet runs warm, out through PV-505 and, once
+    // PSV-502 has lifted, through the relief as well until the vessel is back below reseat
+    const qgIn = qfeed * c.gasFrac * (1 + Math.max(0, s.Tin - 45) / 40) * 3600;
+    const cap = c.Cg * vpos(V, 'PV505', 0.4) + (P.trips.psv502 ? c.Cg * 1.5 : 0);
+    const qgOut = cap * Math.sqrt(Math.max(s.pres - c.Pdown, 0) / 700);
+    s.pres = clamp(s.pres + c.kP * (qgIn - qgOut) * dt, 0, 1500);
+    if (s.pres >= c.psvSet && !P.trips.psv502) {
+      P.trips.psv502 = true;
+      raiseTrip(ctx, 'V-502', 'PSV LIFT', s.pres, 'KPA', 'SEPARATOR RELIEF — VENTING TO FLARE');
+    }
+    if (P.trips.psv502 && s.pres < c.psvReset) { P.trips.psv502 = false; ctx.clear('V-502', 'PSV LIFT'); }
+    return qwOut;
+  }
+
+  // The four noise draws happen whether or not the points exist, so the rand4 cursor
+  // advances the same way on a tag database that predates Unit 04. A missing point is
+  // simply not written -- Models.step stays callable with the v2 L.
+  function measureU4(P, L, dt, n4, qwOut) {
+    const s = sepOf(P);
+    const nT = n4(0.3), nH2 = n4(0.2), nHw = n4(0.2), nP = n4(2);
+    if (L.TIC502) L.TIC502.pv = s.Tin + nT;
+    if (L.LIC503) L.LIC503.pv = s.h2 + nH2;
+    if (L.LIC504) L.LIC504.pv = s.hw + nHw;
+    if (L.PIC505) L.PIC505.pv = s.pres + nP;
+    // Draw-quality analysers: the carried fraction of each draw over a 0.3 % / 0.2 % floor
+    // (the clean product is never reported as bone dry), on a 30 s analyser lag.
+    if (L.AI509) {
+      const prev = Number.isFinite(L.AI509.pv) ? L.AI509.pv : 0.3;
+      L.AI509.pv = lag(prev, Math.max(0.3, 100 * s.wcarry / Math.max(s.qover + s.wcarry, 0.01)), 30, dt);
+    }
+    if (L.AI510) {
+      const prev = Number.isFinite(L.AI510.pv) ? L.AI510.pv : 0.2;
+      L.AI510.pv = lag(prev, Math.max(0.2, 100 * s.ocarry / Math.max(qwOut, 0.01)), 30, dt);
+    }
+  }
+
+  function stepU4(P, L, V, dt, ctx) {
+    const n4 = noise4Fn(ctx);
+    const qwOut = separator(P, L, V, dt, ctx);
+    measureU4(P, L, dt, n4, qwOut);
+  }
+
   // ---------------------------------------------------------------- combined
   function advanceClock(P, dt) { P.t += dt * 1000; P.up += dt; }
 
@@ -545,7 +718,8 @@
     stepU1(P, L, V, dt, ctx);
     stepU2(P, L, V, dt, ctx);
     stepU3(P, L, V, dt, ctx);
+    stepU4(P, L, V, dt, ctx);
   }
 
-  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, step, PARAMS, MODEL_VALVES };
+  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, stepU4, step, PARAMS, MODEL_VALVES };
 });

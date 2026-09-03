@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-bedact",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
   "seed": 20260829,
   "seconds": 600,
-  "endStateDigest": "644e4ff6610d5e8a0e18caa3de7acd6e6bca4f503367793c650021f81fa6ee31",
+  "endStateDigest": "9a3f4e4508da9dd81b45bc0c674ae675e26124bfccc21182bc2bbbceda6531dc",
   "alarmSequenceDigest": "56050f3883f6880ca918dfd25fd2e7c00c793b365305838e58e70de51667e91c",
   "alarmSeq": [
     "TI312:PVHI:High",

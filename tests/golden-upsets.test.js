@@ -60,7 +60,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const Instructor = require('../src/instructor.js');
-const { newSim, run, endState, alarmSequence, fixture, digest, round, FIXTURE_DIR } = require('./_fixture');
+const { newSim, run, endState, alarmSequence, fixture, digest, round, FIXTURE_DIR, NEW_UNIT_SOURCES, v2Trips } = require('./_fixture');
 
 const SEED = 20260829;
 const SETTLE = 120; // seconds settled before any injection -- a choice local to this file; golden-drills.test.js does not settle at all before startDrill()
@@ -74,12 +74,13 @@ const UPSET_KEYS = ['xmtr', 'drift', 'surge', 'pump', 'cool', 'stick', 'vap', 'a
 function extras(c) {
   return {
     alarmSeq: alarmSequence(c),
-    trips: JSON.parse(JSON.stringify(c.P.trips)),
+    trips: JSON.parse(JSON.stringify(v2Trips(c.P.trips))),
     faults: JSON.parse(JSON.stringify(c.P.faults)),
     phase: c.P.b.phase,
     driftOff: round(c.P.driftOff),
-    countsAlarms: (c.alarms || []).length,
-    countsEvents: (c.events || []).length,
+    // Scoped to the v2 universe like endState(): Unit 04 (2026-09-03) has its own goldens.
+    countsAlarms: (c.alarms || []).filter((a) => !NEW_UNIT_SOURCES.has(a.tag || a.src)).length,
+    countsEvents: (c.events || []).filter((e) => !NEW_UNIT_SOURCES.has(e.src)).length,
   };
 }
 

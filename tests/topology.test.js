@@ -139,7 +139,7 @@ test('derivation fidelity: the graph cannot drift from the tag database', async 
 
   await t.test('every valve VALVE_OF names appears as a FIELD/VALVE node carrying its fail-safe direction', () => {
     const tags = Object.keys(Topology.VALVE_OF);
-    assert.equal(tags.length, 10);
+    assert.equal(tags.length, 14);
     for (const tag of tags) {
       const valve = Topology.VALVE_OF[tag];
       const vId = 'VLV-' + valve;
@@ -157,14 +157,14 @@ test('derivation fidelity: the graph cannot drift from the tag database', async 
     const byLayer = {};
     Object.values(graph.nodes).forEach((n) => { byLayer[n.layer] = (byLayer[n.layer] || 0) + 1; });
     assert.deepEqual(byLayer, {
-      FIELD: 34, IO: 36, CONTROL: 31, NETWORK: 6, SERVICE: 3, HMI: 2, INFORMATION: 2,
+      FIELD: 44, IO: 46, CONTROL: 39, NETWORK: 8, SERVICE: 3, HMI: 2, INFORMATION: 2,   // +30 for Unit 04 (2026-09-03)
     });
-    assert.equal(Object.keys(graph.nodes).length, 114);
-    assert.equal(graph.edges.length, 247);  // 246 + the HIST-STORE -> STN-FLEX trend read-back
-    assert.equal(Object.keys(graph.pointPaths).length, 24);
+    assert.equal(Object.keys(graph.nodes).length, 144);
+    assert.equal(graph.edges.length, 315);  // 247 (246 + the HIST-STORE -> STN-FLEX trend read-back) + 68 for Unit 04
+    assert.equal(Object.keys(graph.pointPaths).length, 30);
   });
 
-  await t.test('all 24 points resolve a measurement path of the documented shape', () => {
+  await t.test('all 30 points resolve a measurement path of the documented shape', () => {
     for (const tag of Object.keys(c.L)) {
       const l = c.L[tag];
       const u = c.unitOf(tag) || 'U1';
@@ -175,9 +175,9 @@ test('derivation fidelity: the graph cannot drift from the tag database', async 
     }
   });
 
-  await t.test('exactly 12 points resolve a command path (10 valves + 2 motors); the rest are null', () => {
+  await t.test('exactly 16 points resolve a command path (14 valves + 2 motors); the rest are null', () => {
     const withCommand = Object.keys(graph.pointPaths).filter((t) => graph.pointPaths[t].command);
-    assert.equal(withCommand.length, 12);
+    assert.equal(withCommand.length, 16);
     for (const valveTag of Object.keys(Topology.VALVE_OF)) assert.ok(withCommand.includes(valveTag));
     assert.ok(withCommand.includes('P101'));
     assert.ok(withCommand.includes('M202'));
@@ -186,13 +186,13 @@ test('derivation fidelity: the graph cannot drift from the tag database', async 
     }
   });
 
-  await t.test('applicable path types per point sum to 84 across the graph (24 measurement + 24 alarm + 24 history + 12 command)', () => {
+  await t.test('applicable path types per point sum to 106 across the graph (30 measurement + 30 alarm + 30 history + 16 command)', () => {
     let total = 0;
     for (const tag of Object.keys(graph.pointPaths)) {
       const p = graph.pointPaths[tag];
       ['measurement', 'command', 'alarm', 'history'].forEach((k) => { if (p[k] !== null && p[k] !== undefined) total += 1; });
     }
-    assert.equal(total, 84);
+    assert.equal(total, 106);
   });
 
   await t.test('FINDING: a point with zero configured alarm conditions still resolves a 2-hop alarm path with no backing ALARM edge', () => {
@@ -236,7 +236,7 @@ test('derivation fidelity: the graph cannot drift from the tag database', async 
     // what a trainee uses to reason about "what does this failure affect", lost a point
     // with no indication anything was wrong. validate() raised nothing.
     //
-    // The lead fixed add() to MERGE pointRefs at SA integration. None of the real 24 tags
+    // The lead fixed add() to MERGE pointRefs at SA integration. None of the real 30 tags
     // share a `cm` today, so this was latent; SCM202 already shows a control module need
     // not map to exactly one point, and nothing in the contract forbids sharing. This test
     // now pins the fix instead of the defect.
@@ -372,7 +372,7 @@ test('purity: build() is a pure function over its inputs', async (t) => {
 
 test('no cycles: blastRadius terminates and never includes its own start node', () => {
   const allIds = Object.keys(graph.nodes);
-  assert.equal(allIds.length, 114);
+  assert.equal(allIds.length, 144);
   for (const nid of allIds) {
     const br = Topology.blastRadius(graph, nid);
     assert.ok(!br.nodes.includes(nid), `blastRadius(${nid}) must not include its own start node`);

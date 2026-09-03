@@ -61,8 +61,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  newSim, endState, alarmSequence, fixture, digest, FIXTURE_DIR,
-} = require('./_fixture');
+  newSim, endState, alarmSequence, fixture, digest, FIXTURE_DIR, v2Trips } = require('./_fixture');
 
 fs.mkdirSync(FIXTURE_DIR, { recursive: true });
 
@@ -117,7 +116,7 @@ function recordFor(defId, run) {
       endReason: d.reason,
       injected: d.injected,
       alarmSequenceRaw: alarmSequence(c),
-      trips: { ...c.P.trips },
+      trips: v2Trips(c.P.trips),
       faults: { ...c.P.faults },
       batchPhase: c.P.b ? c.P.b.phase : null,
       driftOff: c.P.driftOff,

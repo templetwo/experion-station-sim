@@ -146,6 +146,42 @@ test('PROCESS TEXT: the V-401 relief description matches the model', () => {
   assert.match(Process.text(), /lifts at 950 KPA and\s*\n?reseats below 900/);
 });
 
+test('PROCESS TEXT: the Unit 04 numbers in the prose are the real ones', () => {
+  // Every number the UNIT FOUR section states, pinned to the configuration and the model the
+  // way the U1-U3 gates above pin theirs (U4-SEPARATOR-CONTRACT section 4: "the gate checks them").
+  const Models = require('../src/models.js');
+  const Instr = require('../src/instructor.js');
+  const c = boot();
+  const text = Process.text();
+  const lim = (t, cond) => c.L[t].alm[cond].slice(0, 2);
+  // setpoints
+  assert.equal(c.L.TIC502.sp, 45); assert.match(text, /separator inlet\s*\n?at 45 DEG C/);
+  assert.equal(c.L.LIC504.sp, 25); assert.match(text, /interface at 25 percent/);
+  assert.equal(c.L.PIC505.sp, 800); assert.match(text, /PIC505 holds 800 KPA/);
+  // alarm limits
+  assert.deepEqual(lim('LIC504', 'PVHI'), [40, 'High']);
+  assert.deepEqual(lim('LIC504', 'PVHH'), [48, 'Urgent']);
+  assert.match(text, /LIC504 is High at 40 percent and Urgent at 48/);
+  assert.deepEqual(lim('AI509', 'PVHI'), [2, 'High']);
+  assert.deepEqual(lim('AI509', 'PVHH'), [5, 'Urgent']);
+  assert.match(text, /AI509 reads water in the oil draw, High at 2 percent\s*\n?and Urgent at 5/);
+  assert.ok(c.L.AI510.alm.PVHI && !c.L.AI510.alm.PVHH, 'AI510 carries a High alarm only, as the prose says');
+  assert.match(text, /carries a High alarm only/);
+  // the weir
+  assert.equal(Models.envDefaults().weirH, 55);
+  const w = Instr.variableDefs().find((d) => d.k === 'weirH');
+  assert.deepEqual([w.min, w.max, w.def], [30, 90, 55]);
+  assert.match(text, /55 percent of vessel height by default, adjustable from 30 to 90/);
+  // relief
+  assert.equal(Models.PARAMS.U4.psvSet, 1100);
+  assert.equal(Models.PARAMS.U4.psvReset, 1000);
+  assert.match(text, /PSV-502 lifts at 1100\s*\n?KPA and reseats below 1000/);
+  // analyser lag: both analysers are lagged 30 s in measureU4
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'models.js'), 'utf8');
+  assert.equal((src.match(/L\.AI5(09|10)\.pv = lag\([^;]*, 30, dt\)/g) || []).length, 2, 'the analyser lag is no longer 30 s for both analysers');
+  assert.match(text, /lag the interface that makes\s*\n?them by about half a minute/);
+});
+
 test('PROCESS TEXT: headings survive the coach section splitter', () => {
   // tools/coach/serve.py splits guide/process sections with:
   //     line.isupper() and line.replace(" ","").isalpha() and len(line) < 40

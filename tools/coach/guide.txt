@@ -36,6 +36,7 @@ UNITS
 U1: TK-101 (LIC101), pump P-101, feed FIC102, CSTR R-201 (TIC201) with jacket TIC202, E-301 (TIC301), flash V-401 (LIC401, PIC401).
 U2: R-202 batch, agitator M-202, SCM202 phases CHARGE HEATUP FEED REACT COOL DRAIN. FIC211 monomer. TIC212/TIC213. HOLD stops feed. ABORT goes to COOL.
 U3: H-310 fired heater (TIC311, tube skins TI314/TI315, excess O2 AI316), bed R-310 (TI312), quench FIC313.
+U4: E-502 trim cooler (TIC502), two-chamber weir separator V-502. Chamber 1 water interface LIC504 to WV-504, chamber 2 oil level LIC503 to LV-503, pressure PIC505 to PV-505. AI509 water in oil draw, AI510 oil in water draw. Weir height is an instructor variable.
 
 ALARMS
 Urgent red, High yellow (representative), Low cyan. Journal does not annunciate.

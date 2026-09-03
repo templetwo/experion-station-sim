@@ -1,0 +1,112 @@
+{
+  "//": "@artifact dev (Unit 04 golden fixture; see tests/golden-u4.test.js)",
+  "fixture": "u4-vent-closed-psv",
+  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "seed": 20260829,
+  "seconds": 3600,
+  "endStateDigest": "4776a88a049dd42c9f228cc3a2235ee4987d759148e651c4951f33949f7608b6",
+  "alarmSequenceDigest": "fc29c285e920748bd82153aa568061c9f7610cd5a832129ecb0398bc47d3c18a",
+  "alarmSeq": [
+    "PIC505:PVHI:High",
+    "PIC505:PVHH:Urgent",
+    "V-502:PSV LIFT:Urgent"
+  ],
+  "state": {
+    "s": {
+      "Tin": 45.044278,
+      "h2": 49.99822,
+      "ho": 30.565326,
+      "hw": 24.999945,
+      "ocarry": 0,
+      "pres": 1078.356389,
+      "qover": 34.000049,
+      "wcarry": 0
+    },
+    "points": {
+      "TIC502": {
+        "pv": 44.964212,
+        "sp": 45,
+        "op": 61.39312,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC503": {
+        "pv": 50.032434,
+        "sp": 50,
+        "op": 50.041853,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC504": {
+        "pv": 25.038074,
+        "sp": 25,
+        "op": 45.048744,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "PIC505": {
+        "pv": 1079.188535,
+        "sp": 800,
+        "op": 0,
+        "mode": "MAN",
+        "badPv": false
+      },
+      "AI509": {
+        "pv": 0.3,
+        "badPv": false
+      },
+      "AI510": {
+        "pv": 0.2,
+        "badPv": false
+      }
+    },
+    "valves": {
+      "TV502": {
+        "pos": 0.599164,
+        "stuck": false,
+        "fail": 1
+      },
+      "LV503": {
+        "pos": 0.499875,
+        "stuck": false,
+        "fail": 0
+      },
+      "WV504": {
+        "pos": 0.450435,
+        "stuck": false,
+        "fail": 0
+      },
+      "PV505": {
+        "pos": 0,
+        "stuck": false,
+        "fail": 1
+      }
+    },
+    "alarms": [
+      {
+        "tag": "V-502",
+        "cond": "PSV LIFT",
+        "prio": "Urgent",
+        "state": "UNACK",
+        "active": true
+      },
+      {
+        "tag": "PIC505",
+        "cond": "PVHH",
+        "prio": "Urgent",
+        "state": "DSUPR",
+        "active": true
+      },
+      {
+        "tag": "PIC505",
+        "cond": "PVHI",
+        "prio": "High",
+        "state": "DSUPR",
+        "active": true
+      }
+    ],
+    "weirH": 55,
+    "psv": true,
+    "rand4": 4283583049
+  }
+}

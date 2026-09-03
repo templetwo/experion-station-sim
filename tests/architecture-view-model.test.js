@@ -37,8 +37,8 @@ const graph = buildGraph(c);
 // Sanity: this suite's expectations (branch counts, applicable-path lists) are pinned to
 // the measured graph shape, not re-derived here, so a graph regression fails loudly.
 test('fixture sanity: the graph this suite runs against has the measured shape', () => {
-  assert.equal(Object.keys(graph.nodes).length, 114);
-  assert.equal(graph.edges.length, 247);
+  assert.equal(Object.keys(graph.nodes).length, 144);
+  assert.equal(graph.edges.length, 315);
   assert.deepEqual(Topology.validate(graph), []);
 });
 
@@ -157,7 +157,7 @@ test('learn vs trace: learn carries no traced path, trace does not compute blast
   // is selected (the backdrop graph is the content).
   const learnBare = AVM.build({ graph, mode: 'learn' });
   assert.equal(learnBare.empty, false);
-  assert.equal(learnBare.layers.reduce((n, l) => n + l.nodes.length, 0), 114);
+  assert.equal(learnBare.layers.reduce((n, l) => n + l.nodes.length, 0), 144);
 });
 
 test('trace/diagnose/debrief with no tag come back explicitly empty, never throwing', () => {

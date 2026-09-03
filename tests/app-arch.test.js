@@ -34,8 +34,8 @@ test('all six v3 modules load as ESS.* globals in document order (advisory Q5)',
 test('the topology graph is cached on the instance, not rebuilt per render', () => {
   const c = boot();
   assert.ok(c.topo, 'initSim() must cache the built graph on this.topo');
-  assert.equal(Object.keys(c.topo.nodes).length, 114, 'measured graph size (lead + advisory)');
-  assert.equal(c.topo.edges.length, 247);
+  assert.equal(Object.keys(c.topo.nodes).length, 144, 'measured graph size (lead + advisory)');
+  assert.equal(c.topo.edges.length, 315);
   const before = c.topo;
   c.renderVals();
   c.renderVals();
@@ -100,8 +100,8 @@ test('renderVals() produces a well-formed arch object without throwing, in every
     assert.equal(rv.arch.banner, 'Conceptual training architecture. Simulated; not a Honeywell diagnostic display.');
     assert.ok(Array.isArray(rv.arch.layers) && rv.arch.layers.length === 7, 'seven FIELD..INFORMATION layer columns');
     const totalNodes = rv.arch.layers.reduce((n, ly) => n + ly.nodes.length, 0);
-    assert.equal(totalNodes, 114, 'every graph node must be laid out somewhere');
-    assert.ok(Array.isArray(rv.arch.edges) && rv.arch.edges.length === 247);
+    assert.equal(totalNodes, 144, 'every graph node must be laid out somewhere');
+    assert.ok(Array.isArray(rv.arch.edges) && rv.arch.edges.length === 315);
   });
 });
 

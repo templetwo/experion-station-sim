@@ -24,15 +24,15 @@ const graph = buildGraph();
 const TAGS = Object.keys(graph.pointPaths).sort();
 
 const EXPECTED_COMMAND_TAGS = [
-  'FIC102', 'FIC211', 'FIC310', 'FIC313', 'LIC401', 'M202', 'P101',
-  'PIC401', 'TIC202', 'TIC213', 'TIC301', 'TIC311'
+  'FIC102', 'FIC211', 'FIC310', 'FIC313', 'LIC401', 'LIC503', 'LIC504', 'M202', 'P101',
+  'PIC401', 'PIC505', 'TIC202', 'TIC213', 'TIC301', 'TIC311', 'TIC502'
 ];
 
-test('the graph has the 24 configured points this suite assumes', () => {
-  assert.equal(TAGS.length, 24);
+test('the graph has the 30 configured points this suite assumes (24 v2 + 6 Unit 04)', () => {
+  assert.equal(TAGS.length, 30);
 });
 
-test('applicability sweep: every point resolves a valid path for every applicable type, totalling 84', () => {
+test('applicability sweep: every point resolves a valid path for every applicable type, totalling 106', () => {
   let total = 0;
   const perType = { measurement: 0, command: 0, alarm: 0, history: 0 };
   const commandTags = [];
@@ -63,12 +63,12 @@ test('applicability sweep: every point resolves a valid path for every applicabl
   }
 
   // The stage contract, asserted as an exact count -- never a vacuous loop-and-pass.
-  assert.equal(total, 84);
-  assert.deepEqual(perType, { measurement: 24, alarm: 24, history: 24, command: 12 });
+  assert.equal(total, 106);
+  assert.deepEqual(perType, { measurement: 30, alarm: 30, history: 30, command: 16 });
   assert.deepEqual(commandTags.slice().sort(), EXPECTED_COMMAND_TAGS);
 });
 
-test('command applicability is exactly the ten valve points plus the two motors', () => {
+test('command applicability is exactly the fourteen valve points plus the two motors', () => {
   const commandTags = TAGS.filter((t) => SignalPath.applicablePaths(graph, t).includes('command'));
   assert.deepEqual(commandTags.sort(), EXPECTED_COMMAND_TAGS);
   for (const tag of TAGS) {

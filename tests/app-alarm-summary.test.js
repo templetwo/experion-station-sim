@@ -122,8 +122,8 @@ test('saved views apply a location and filter together', () => {
   c.setState({ almAsset: 'PLANT', shelfView: 'MAIN', display: 'graphic' });
   const v = c.renderVals();
   const views = v.av.views.map(x => x.label);
-  assert.deepEqual(views.slice(0, 3), ['U1 ALL', 'U2 ALL', 'U3 ALL']);
-  v.av.views[3].cb();
+  assert.deepEqual(views.slice(0, 4), ['U1 ALL', 'U2 ALL', 'U3 ALL', 'U4 ALL']);
+  v.av.views[4].cb();
   assert.equal(c.state.almAsset, 'R-201');
   assert.equal(c.state.shelfView, 'UNACK');
   assert.equal(c.state.display, 'alarms');
@@ -152,7 +152,7 @@ test('KPI display renders with a synthetic flood and reports it', () => {
   assert.ok(v.menus.find(mn => mn.name === 'View').items.some(i => i.label === 'Alarm KPI'));
   assert.ok(v.tbtns.some(b => b.label === 'KPI'));
   const tracker = c.renderVals().av.tracker;
-  assert.equal(tracker.length, 3);
+  assert.equal(tracker.length, 4);
   assert.ok(tracker.find(l => l.label === 'U1').bars.length >= 1, 'tracker shows the U1 cluster');
 });
 

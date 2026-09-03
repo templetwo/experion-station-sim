@@ -1,0 +1,120 @@
+{
+  "//": "@artifact dev (Unit 04 golden fixture; see tests/golden-u4.test.js)",
+  "fixture": "u4-interface-high",
+  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "seed": 20260829,
+  "seconds": 2400,
+  "endStateDigest": "b834cef6d1349872d18b520c5cd39dc95d55d8eed173be46cd0df0fe13550523",
+  "alarmSequenceDigest": "f0894629f26aff392d6c997733caff71dce30064b8be5cfa6279e66ded54faec",
+  "alarmSeq": [
+    "LIC504:PVHI:High",
+    "AI509:PVHI:High",
+    "LIC504:PVHH:Urgent",
+    "AI509:PVHH:Urgent"
+  ],
+  "state": {
+    "s": {
+      "Tin": 44.966622,
+      "h2": 49.994311,
+      "ho": 3.226313,
+      "hw": 52.356566,
+      "ocarry": 0,
+      "pres": 800.065292,
+      "qover": 35.601735,
+      "wcarry": 4.413305
+    },
+    "points": {
+      "TIC502": {
+        "pv": 44.924577,
+        "sp": 45,
+        "op": 60.354519,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC503": {
+        "pv": 50.010274,
+        "sp": 50,
+        "op": 58.897436,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC504": {
+        "pv": 52.361875,
+        "sp": 25,
+        "op": 0,
+        "mode": "MAN",
+        "badPv": false
+      },
+      "PIC505": {
+        "pv": 800.381873,
+        "sp": 800,
+        "op": 40.043796,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "AI509": {
+        "pv": 10.859532,
+        "badPv": false
+      },
+      "AI510": {
+        "pv": 0.2,
+        "badPv": false
+      }
+    },
+    "valves": {
+      "TV502": {
+        "pos": 0.598079,
+        "stuck": false,
+        "fail": 1
+      },
+      "LV503": {
+        "pos": 0.588888,
+        "stuck": false,
+        "fail": 0
+      },
+      "WV504": {
+        "pos": 0,
+        "stuck": false,
+        "fail": 0
+      },
+      "PV505": {
+        "pos": 0.400274,
+        "stuck": false,
+        "fail": 1
+      }
+    },
+    "alarms": [
+      {
+        "tag": "AI509",
+        "cond": "PVHH",
+        "prio": "Urgent",
+        "state": "DSUPR",
+        "active": true
+      },
+      {
+        "tag": "LIC504",
+        "cond": "PVHH",
+        "prio": "Urgent",
+        "state": "UNACK",
+        "active": true
+      },
+      {
+        "tag": "AI509",
+        "cond": "PVHI",
+        "prio": "High",
+        "state": "DSUPR",
+        "active": true
+      },
+      {
+        "tag": "LIC504",
+        "cond": "PVHI",
+        "prio": "High",
+        "state": "UNACK",
+        "active": true
+      }
+    ],
+    "weirH": 55,
+    "psv": false,
+    "rand4": 552920777
+  }
+}

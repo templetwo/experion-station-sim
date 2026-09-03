@@ -86,10 +86,22 @@ function byteCmp(x, y) { return x < y ? -1 : x > y ? 1 : 0; }
  * interlock latch and the applied state-based alarm limit set are all things a v3 stage
  * could break with no continuous variable moving at all. (Advisory review, 2026-08-30.)
  */
+// THE v2 UNIVERSE. The S0 goldens froze the v2 plant: 24 points, 10 valves, and the alarm and
+// event sources that existed then. A unit added later (Unit 04, 2026-09-03) is OUTSIDE that
+// universe by construction -- its points, valves, alarms and events are digested by its own
+// golden file -- so the v2 digests stay byte-identical and keep meaning "v2 behaviour did not
+// move". Anything not listed here is excluded from the v2 digest; tests/app-u4.test.js pins the
+// list against the app's own unit map so it cannot silently swallow a v2 tag.
+const NEW_UNIT_SOURCES = new Set(['TIC502', 'LIC503', 'LIC504', 'PIC505', 'AI509', 'AI510', 'V-502', 'E-502']);
+const NEW_UNIT_VALVES = new Set(['TV502', 'LV503', 'WV504', 'PV505']);
+const NEW_UNIT_TRIPS = new Set(['psv502']);
+const v2Trips = (trips) => Object.fromEntries(Object.entries(trips || {}).filter(([k]) => !NEW_UNIT_TRIPS.has(k)));
+const inV2 = (src) => !NEW_UNIT_SOURCES.has(src);
+
 function endState(c) {
   const P = c.P;
   const points = {};
-  for (const tag of Object.keys(c.L).sort()) {
+  for (const tag of Object.keys(c.L).filter(inV2).sort()) {
     const l = c.L[tag];
     points[tag] = {
       pv: round(l.pv), sp: round(l.sp), op: round(l.op),
@@ -98,11 +110,12 @@ function endState(c) {
     };
   }
   const valves = {};
-  for (const v of Object.keys(c.V).sort()) {
+  for (const v of Object.keys(c.V).filter((k) => !NEW_UNIT_VALVES.has(k)).sort()) {
     const V = c.V[v];
     valves[v] = { pos: round(V.pos), stuck: !!V.stuck, fail: V.fail };
   }
   const alarms = (c.alarms || [])
+    .filter(a => inV2(a.tag || a.src))
     .map(a => ({
       tag: a.tag || a.src, cond: a.cond, prio: a.prio, state: a.state,
       active: !!a.active, subprio: a.subprio === undefined ? null : a.subprio,
@@ -115,7 +128,7 @@ function endState(c) {
     points, valves, alarms,
     up: round(P.up),
     // Latched / discrete state -- invisible to the continuous variables above.
-    trips: { ...P.trips },
+    trips: v2Trips(P.trips),
     faults: { ...P.faults },
     tadShed: !!c.tadShed,
     phaseSet: c.phaseSet === undefined ? null : c.phaseSet,
@@ -127,13 +140,13 @@ function endState(c) {
     heater: { o2: round(h.o2), ts1: round(h.ts1), ts2: round(h.ts2), bed: round(h.bed) },
     drift: { driftOff: round(P.driftOff), foulF: round(P.foulF), foulBase: round(P.foulBase) },
     mag: { ...P.mag },
-    counts: { alarms: (c.alarms || []).length, events: (c.events || []).length },
+    counts: { alarms: (c.alarms || []).filter(a => inV2(a.tag || a.src)).length, events: (c.events || []).filter(e => inV2(e.src)).length },
   };
 }
 
 /** The alarm arrival ORDER, which endState's sorted set deliberately throws away. */
 function alarmSequence(c) {
-  return (c.alarms || []).map(a => `${a.tag || a.src}:${a.cond}:${a.prio}`);
+  return (c.alarms || []).filter(a => inV2(a.tag || a.src)).map(a => `${a.tag || a.src}:${a.cond}:${a.prio}`);
 }
 
 /**
@@ -155,6 +168,7 @@ function fixture(name, { seed, seconds, c, extra = {} }) {
 const FIXTURE_DIR = path.join(__dirname, 'fixtures');
 
 module.exports = {
+  NEW_UNIT_SOURCES, NEW_UNIT_VALVES, NEW_UNIT_TRIPS, v2Trips,
   canon, digest, round, modelId,
   newSim, run, endState, alarmSequence, fixture,
   FIXTURE_DIR, DP,

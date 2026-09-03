@@ -43,14 +43,15 @@
   var HEALTH = ['HEALTHY', 'DEGRADED', 'FAILED', 'UNKNOWN'];
   var SEMANTICS = ['PV', 'COMMAND', 'ALARM', 'EVENT', 'HISTORY', 'CONFIG'];
   var PROFILES = ['console', 'flex'];
-  var UNITS = ['U1', 'U2', 'U3'];
+  var UNITS = ['U1', 'U2', 'U3', 'U4'];
 
   // Which valve each control module strokes. NOT derivable from the tag database: the
   // coupling lives in the process equations (src/models.js reads V.FV102.pos for the
   // FIC102 flow, and so on), so it is declared here and checked by validate().
   var VALVE_OF = {
     FIC102: 'FV102', TIC202: 'TV202', TIC301: 'TV301', LIC401: 'LV401', PIC401: 'PV401',
-    FIC211: 'MV211', TIC213: 'JV213', FIC310: 'FV310', TIC311: 'FV311', FIC313: 'QV313'
+    FIC211: 'MV211', TIC213: 'JV213', FIC310: 'FV310', TIC311: 'FV311', FIC313: 'QV313',
+    TIC502: 'TV502', LIC503: 'LV503', LIC504: 'WV504', PIC505: 'PV505'
   };
 
   // Sequence control modules that own a unit's phase logic (U2 batch only today).
