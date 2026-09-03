@@ -409,6 +409,7 @@ def context_pack(ask: str, projection: dict) -> dict:
         "points": chosen[:8],
         "selectedAlarm": projection.get("selected"),
         "selectedAlarmHelp": projection.get("help"),
+        "helpFor": projection.get("helpFor"),   # which alarm that help belongs to (the selected one, or the top one)
         "drill": projection.get("drill"),
         "arch": projection.get("arch"),
         "process": _process_section(unit, focus)[:900],
@@ -429,7 +430,9 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
             "do not promote them to confirmed board facts or a root cause.\n"
         )
     if kind == "explain":
-        task = "Explain the selected alarm, or the highest-priority active alarm."
+        task = ("Explain the selected alarm, or the highest-priority active alarm. selectedAlarmHelp is that "
+                "alarm's rationalised help (consequence, probable cause, corrective action) and is authoritative: "
+                "a BADPV or bad-quality condition means the measurement cannot be trusted, never that the process moved.")
         cap = ASK_WORDS
         shape = "Priority, evidence to check, then one safe next move."
     elif kind == "ask":

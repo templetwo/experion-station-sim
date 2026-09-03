@@ -128,7 +128,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <div style="padding:3px 14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid;border-color:{{ u.bc }};background:{{ u.bg }}" onClick="{{ u.cb }}">{{ u.label }}</div>
   </sc-for>
   <div style="flex:1"></div>
-  <div style="font-size:10px;color:#6a665e">CONTINUOUS TRAIN — TANK / REACTOR / HX / FLASH DRUM</div>
+  <div style="font-size:10px;color:#6a665e">CONTINUOUS TRAIN — TANK / REACTOR / PREHEATER / FLASH DRUM</div>
 </div>
 <svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
   <defs>
@@ -138,8 +138,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     </pattern>
   </defs>
   <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
-  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 01 — GENERIC PROCESS UNIT</text>
-  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">TK-101 FEED → R-201 REACTOR → E-301 EXCHANGER → V-401 FLASH DRUM · SIMULATION</text>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 01 — RECEIPT AND CONVERSION</text>
+  <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">TK-101 FEED → R-201 CONVERSION REACTOR → E-301 FLASH PREHEATER → V-401 FLASH DRUM · SIMULATION</text>
 
   <path d="M20,190 H60" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
   <polygon points="52,185 62,190 52,195" fill="#4a4a4a"></polygon>
@@ -333,7 +333,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     </pattern>
   </defs>
   <rect x="0" y="0" width="1420" height="720" fill="#BFBFBF"></rect>
-  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 03 — FIRED PREHEATER + FIXED-BED REACTOR</text>
+  <text x="24" y="38" style="font:700 19px Tahoma;fill:#3c3c3c">UNIT 03 — HYDROFINISHING · FIRED HEATER + FIXED-BED REACTOR</text>
   <text x="24" y="56" style="font:10px Tahoma;fill:#6a665e">H-310 FUEL-FIRED PREHEATER · R-310 EXOTHERMIC CATALYST BED · QUENCH TRAINING</text>
   <path d="M20,400 H134" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
   <text x="20" y="392" style="font:700 10px Tahoma;fill:#4a4a4a">FEED</text>
@@ -1920,13 +1920,20 @@ class Component extends DCLogic {
     [S.sel, S.detailTag, S.archTag].concat(fps).forEach(tag=>{ if(tag) want[tag]=true; });
     const points=[]; Object.keys(want).sort().slice(0,16).forEach(tag=>{ const row=pointRow(tag); if(row) points.push(row); });
     const catalog=[]; Object.keys(L).sort().forEach(tag=>{ const row=pointRow(tag); if(row) catalog.push(row); });
-    let selected=null, help=null;
+    let selected=null, help=null, helpFor=null;
+    const helpOf=(row)=>{ if(!row||!ESS.AlarmHelp) return null; const h=ESS.AlarmHelp.resolve(row.tag,row.cond,{prio:row.priority,eu:row.eu}); return h?{priority:h.priority,setting:h.setting,responseTime:h.responseTime,consequence:h.consequence,probableCause:h.probableCause,correctiveAction:h.correctiveAction}:null; };
     if(S.selAlm!=null&&E&&typeof E.get==='function'){
       selected=alarmRow(E.get(S.selAlm));
-      if(selected&&ESS.AlarmHelp){
-        const h=ESS.AlarmHelp.resolve(selected.tag,selected.cond,{prio:selected.prio,eu:selected.eu});
-        if(h) help={priority:h.priority,setting:h.setting,responseTime:h.responseTime,consequence:h.consequence,probableCause:h.probableCause,correctiveAction:h.correctiveAction};
-      }
+      help=helpOf(selected); if(help&&selected) helpFor={tag:selected.tag,cond:selected.cond,why:'selected alarm'};
+    }
+    // With nothing selected (the autonomous tip and EXPLAIN ALARM), send the rationalised help of
+    // the alarm that matters most: unacknowledged first, then by priority. The local model read the
+    // board correctly and still called a bad-quality PV a process effect while LIVE DIAGNOSIS beside
+    // it had the answer; the answer is in the alarm help, so the coach gets it too (2026-09-03).
+    if(!help&&alarms.length){
+      const rank={Urgent:0,High:1,Low:2,Journal:3};
+      const top=alarms.slice().sort((a,b)=>((a.state==='UNACK'?0:1)-(b.state==='UNACK'?0:1))||((rank[a.priority]??9)-(rank[b.priority]??9)))[0];
+      help=helpOf(top); if(help) helpFor={tag:top.tag,cond:top.cond,why:top.state==='UNACK'?'highest-priority unacknowledged alarm':'highest-priority active alarm'};
     }
     let drill=null;
     if(this.P&&this.P.aDrill&&this.P.aDrill.id){
@@ -1952,7 +1959,7 @@ class Component extends DCLogic {
       const n=nid&&this.topo.nodes[nid];
       arch={mode:S.archMode||'', profile:S.archProfile||'', tag:S.archTag||null, node:n?{id:n.id,label:n.label,layer:n.layer,kind:n.kind,role:n.trainingDescription||''}:null};
     }
-    return {capturedAtSim:this.P&&this.P.t,unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),screen,catalog,alarms,points,selected,help,drill,arch};
+    return {capturedAtSim:this.P&&this.P.t,unit:S.unit||'',display:S.display||'',sec:S.sec||'',oper:this.operName(),screen,catalog,alarms,points,selected,help,helpFor,drill,arch};
   }
   coachScrub(t){
     let s=String(t||'').replace(/<think>[\s\S]*?<\/think>/gi,' ');
