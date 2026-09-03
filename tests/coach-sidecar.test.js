@@ -143,7 +143,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
     env: {
       ...process.env,
       COACH_PORT: String(coachPort),
-      COACH_MODEL: 'test-coach:1b',
+      COACH_MODEL: 'test-coach:1b', COACH_WARM: '0',
       OLLAMA_HOST: `http://127.0.0.1:${ollamaPort}`
     },
     stdio: ['ignore', 'ignore', 'pipe']

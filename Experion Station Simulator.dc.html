@@ -2002,12 +2002,13 @@ class Component extends DCLogic {
     fetch('/api/coach/health').then(r=>r.json()).then(j=>{
       if(gen!==(this._coachGen||0)||this.coachUnavailable()) return;
       const m=(j&&j.model)||'local';
+      const loading=!!(j&&j.warm===false);           // the local model is still loading: say so, never THINKING
       const current=this.state.coachFeed||[];
       const untouchedOfflineHello=current.length===1&&current[0]&&current[0].id===0&&current[0].kind==='hello';
       const hello=current.length&&!untouchedOfflineHello
         ? current
         : [{id:1, who:'PIP', text:'Watching this board on '+m+'. Click me, EXPLAIN ALARM, or just talk.', kind:'hello'}];
-      this.setState({coachLive:true, coachModel:m, coachStatus:m, assist:true, coachMood:'idle',
+      this.setState({coachLive:true, coachModel:m, coachStatus:loading?('LOADING '+m+'…'):m, assist:true, coachMood:'idle',
         coachProvider:(j&&j.provider)||'', coachCred:(j&&j.credential)||'',
         coachFeed:hello, coachText:hello[0]&&hello[0].text});
     }).catch(()=>{
@@ -2052,7 +2053,7 @@ class Component extends DCLogic {
         this.addEvent('SYSTEM','STN01','PIP COACH — '+what.toUpperCase()+' — '+after+' · '+(j.model||''),'','');
         this.setState({dlg:null,dlgKey:'',dlgKeyModel:'',coachProvider:j.provider||'',coachModel:j.model||this.state.coachModel,coachCred:j.credential||''});
         this.msgZone('PIP COACH: '+after+' · '+(j.model||''));
-        this.coachWatch();
+        this.coachPing();                          // refresh provider, credential and warm state from health
         return true;
       })
       .catch((e)=>{ this.setState({dlgKey:''}); const why=String(e&&e.message||''); this.msgZone(why==='no credential'?'PIP COACH: NO CLOUD CREDENTIAL — ENTER A KEY FIRST':(why==='key format'?'PIP COACH: KEY REJECTED — CHECK IT AND RE-ENTER':'PIP COACH: CREDENTIAL REQUEST FAILED')); return false; });

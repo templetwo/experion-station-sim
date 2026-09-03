@@ -88,7 +88,7 @@ test('the station can hand the sidecar a cloud key for the session, and only the
   // an empty config dir: whatever `ant auth login` profile THIS machine holds must not
   // leak into the test, and the sidecar must report "none", not "unknown"
   const emptyConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'coach-noprofile-'));
-  const env = { ...process.env, COACH_PORT: String(coachPort), COACH_MODEL: 'test-coach:1b',
+  const env = { ...process.env, COACH_PORT: String(coachPort), COACH_MODEL: 'test-coach:1b', COACH_WARM: '0',
     OLLAMA_HOST: `http://127.0.0.1:${ollamaPort}`, ANTHROPIC_BASE_URL: `http://127.0.0.1:${cloudPort}`,
     ANTHROPIC_CONFIG_DIR: emptyConfig };
   delete env.COACH_PROVIDER; delete env.ANTHROPIC_API_KEY; delete env.ANTHROPIC_AUTH_TOKEN; delete env.ANTHROPIC_PROFILE;

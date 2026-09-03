@@ -18,6 +18,8 @@ import json
 import os
 import re
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -45,6 +47,12 @@ CLOUD_EFFORT = os.environ.get("COACH_CLOUD_EFFORT", "medium").strip().lower() or
 if PROVIDER == "anthropic":
     MODEL = CLOUD_MODEL   # health, the done frame and the page badge report the model actually served
 LOCAL_MODEL = os.environ.get("COACH_MODEL", "granite4:1b")
+# Keep the local model loaded between questions, and load it once at startup. On the first
+# live run the 8B model took over three minutes to answer its first question and PIP sat in
+# THINKING the whole time -- the exact impression the coach must never give an operator.
+KEEP_ALIVE = os.environ.get("COACH_KEEP_ALIVE", "30m")
+WARM = os.environ.get("COACH_WARM", "1").strip().lower() not in ("0", "false", "off", "no")
+WARM_STATE = {"ready": None, "seconds": None}   # ready: None until known or if the warm-up failed
 
 # Runtime provider and credential, settable from the station's CLOUD KEY dialog (a masked
 # input, SUPV or above). MEMORY ONLY: never written to disk, never logged (the request log
@@ -609,6 +617,7 @@ def ollama_post(messages: list, stream: bool, think, timeout: float, num_predict
     body = {
         "model": LOCAL_MODEL,
         "stream": stream,
+        "keep_alive": KEEP_ALIVE,
         "think": think,
         "messages": messages,
         "options": {"temperature": 0.2, "num_predict": num_predict, "num_ctx": 8192},
@@ -620,6 +629,21 @@ def ollama_post(messages: list, stream: bool, think, timeout: float, num_predict
         method="POST",
     )
     return urllib.request.urlopen(req, timeout=timeout)
+
+
+def warm_local_model() -> None:
+    """Load the local model in the background so the first question does not pay the load
+    time. Health reports warm: false until this finishes and the page shows LOADING."""
+    t0 = time.time()
+    WARM_STATE["ready"] = False
+    try:
+        with ollama_post([{"role": "user", "content": "warm"}], False, False, 900, 1) as resp:
+            resp.read()
+        WARM_STATE.update(ready=True, seconds=round(time.time() - t0, 1))
+        sys.stderr.write("coach: model %s warm in %ss\n" % (LOCAL_MODEL, WARM_STATE["seconds"]))
+    except Exception as err:
+        WARM_STATE.update(ready=None, seconds=round(time.time() - t0, 1))   # unknown, not "loading forever"
+        sys.stderr.write("coach: warm-up of %s failed (%s)\n" % (LOCAL_MODEL, err.__class__.__name__))
 
 
 def split_delta(prev: str, incoming: str) -> tuple[str, str]:
@@ -1004,6 +1028,7 @@ class Handler(BaseHTTPRequestHandler):
                 "provider": _provider(),
                 "model": _model(),
                 "credential": _credential_state(),
+                "warm": True if _provider() == "anthropic" else WARM_STATE["ready"],
                 "bind": "%s:%s" % (HOST, PORT),
                 "think": THINK,
                 "stream": True,
@@ -1078,6 +1103,8 @@ def main() -> None:
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print("AI coach sidecar on http://%s:%s/  provider=%s model=%s think=%s stream=on" % (HOST, PORT, PROVIDER, MODEL, THINK))
     print("Open that URL (not the file:// dist). PIP gets one compact, trainee-safe board context per turn.")
+    if WARM and _provider() == "ollama":
+        threading.Thread(target=warm_local_model, name="coach-warm", daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
