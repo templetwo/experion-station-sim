@@ -1,3 +1,4 @@
+<!-- @artifact dev -->
 # Power-to-Liquids Expansion — Build Spec
 
 **Status:** proposal, not ratified. Anthony's decisions are marked in §10.
