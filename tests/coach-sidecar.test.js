@@ -12,6 +12,17 @@ const { spawn } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const SERVE = path.join(ROOT, 'tools', 'coach', 'serve.py');
 
+// The cap fixtures below must exceed the server's ASK_WORDS. Derive it from
+// serve.py rather than hardcoding a count: this fixture previously emitted 90
+// words against a cap of 76, and when the cap was raised to 95 the "capped"
+// stream silently stopped being capped -- the assertion still passed a
+// non-event and the real behaviour went untested. Read the number.
+const SERVE_SRC = require('node:fs').readFileSync(SERVE, 'utf8');
+const ASK_WORDS = Number((SERVE_SRC.match(/^ASK_WORDS\s*=\s*(\d+)/m) || [])[1]);
+assert.ok(Number.isFinite(ASK_WORDS) && ASK_WORDS > 0,
+  'could not read ASK_WORDS out of serve.py; the cap fixtures below depend on it');
+const OVER_CAP_WORDS = ASK_WORDS + 40;
+
 function listen(server) {
   return new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -79,7 +90,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
       return;
     }
     if (promptText.includes('CAPPED_STREAM_TEST')) {
-      res.write(JSON.stringify({ message: { content: Array.from({ length: 90 }, (_, i) => 'word' + i).join(' ') }, done: false }) + '\n');
+      res.write(JSON.stringify({ message: { content: Array.from({ length: OVER_CAP_WORDS }, (_, i) => 'word' + i).join(' ') }, done: false }) + '\n');
       res.end(JSON.stringify({ message: {}, done: true, done_reason: 'stop' }) + '\n');
       return;
     }
@@ -90,7 +101,7 @@ test('PIP sidecar serves the station and completes streamed and fallback convers
     }
     if (promptText.includes('CAPPED_FALLBACK_TEST')) {
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ message: { content: Array.from({ length: 90 }, (_, i) => 'word' + i).join(' ') }, done: true, done_reason: 'stop' }));
+      res.end(JSON.stringify({ message: { content: Array.from({ length: OVER_CAP_WORDS }, (_, i) => 'word' + i).join(' ') }, done: true, done_reason: 'stop' }));
       return;
     }
     if (promptText.includes('PREFIX_STREAM_TEST')) {

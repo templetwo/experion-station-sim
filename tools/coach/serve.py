@@ -37,8 +37,8 @@ elif _THINK_RAW in ("1", "true", "on", "yes"):
     THINK = "low"
 else:
     THINK = _THINK_RAW
-TIP_WORDS = 42
-ASK_WORDS = 76
+TIP_WORDS = 70
+ASK_WORDS = 120
 
 BANNED = [
     "FROZEN_MEASUREMENT", "BIASED_MEASUREMENT", "NOISY_MEASUREMENT",
@@ -57,6 +57,110 @@ if PROMPT_FILE.exists():
     ).strip()
 else:
     SYSTEM = "You are PIP, a board-operator coach on a training simulator. Advisory only."
+
+# ---------------------------------------------------------------------------
+# The plant orientation document.
+#
+# src/process.js carries the operator-facing process description between
+# PROCESS-TEXT sentinels precisely so this file can read it as plain text
+# without executing JavaScript. One copy of the prose, shared by the PROC
+# dialog the operator opens and the context PIP is given. If they were two
+# copies they would drift, and the operator would be the one to find out.
+PROCESS_FILE = COACH.parent.parent / "src" / "process.js"
+PROCESS_TEXT = ""
+PROCESS_SECTIONS: dict[str, str] = {}
+PROCESS_ORDER: list[str] = []
+
+
+def _load_process_text() -> None:
+    """Read the sentinel-delimited document and split it on its own headings.
+
+    Uses the SAME heading rule as _guide_section below, so the operator's
+    dialog and PIP can never disagree about where a section begins.
+    """
+    global PROCESS_TEXT
+    if not PROCESS_FILE.exists():
+        return
+    raw = PROCESS_FILE.read_text(encoding="utf-8")
+    m = re.search(r"/\* PROCESS-TEXT-BEGIN \*/(.*?)/\* PROCESS-TEXT-END \*/", raw, re.S)
+    if not m:
+        return
+    # The block is a JS array of single-quoted lines joined by newlines. Pull the
+    # string literals out rather than eval anything.
+    lines = []
+    for lit in re.finditer(r"^\s*'((?:[^'\\]|\\.)*)',?\s*$", m.group(1), re.M):
+        lines.append(lit.group(1).replace("\\'", "'").replace('\\"', '"').replace("\\\\", "\\"))
+    PROCESS_TEXT = "\n".join(lines).strip()
+    cur = None
+    for line in PROCESS_TEXT.splitlines():
+        t = line.strip()
+        if t and len(t) < 40 and t.isupper() and t.replace(" ", "").isalpha():
+            cur = t
+            PROCESS_ORDER.append(cur)
+            PROCESS_SECTIONS[cur] = ""
+        elif cur:
+            PROCESS_SECTIONS[cur] += line + "\n"
+    for k in PROCESS_SECTIONS:
+        PROCESS_SECTIONS[k] = PROCESS_SECTIONS[k].strip()
+
+
+_load_process_text()
+
+# Which orientation section belongs to which unit the operator is looking at.
+# Routed by the unit the station reports, NOT by keyword matching on the
+# question -- the autonomous tip and the EXPLAIN ALARM button both send an
+# empty ask, and keyword routing hands those paths nothing. Those are exactly
+# the two paths that failed in front of operators.
+_UNIT_SECTION = {
+    "U1": "UNIT ONE RECEIPT AND CONVERSION",
+    "U2": "UNIT TWO BATCH CAMPAIGN REACTOR",
+    "U3": "UNIT THREE HYDROFINISHING",
+}
+
+
+def _process_section(unit: str) -> str:
+    """The orientation text for the unit on screen, plus what the plant makes."""
+    if not PROCESS_SECTIONS:
+        return ""
+    # Unit-specific ONLY. What the plant makes is already unconditional in the
+    # SYSTEM prompt, so repeating it here would spend most of the per-request
+    # budget restating something the model already has, and the unit detail --
+    # the part that changes with the screen -- would be the bit truncated away.
+    key = _UNIT_SECTION.get(str(unit or "").strip().upper())
+    if key and PROCESS_SECTIONS.get(key):
+        return key + "\n" + PROCESS_SECTIONS[key]
+    # No unit on screen (plant overview, alarm summary): fall back to the route,
+    # which is short and orients without duplicating SYSTEM.
+    route = PROCESS_SECTIONS.get("THE ROUTE THROUGH THE PLANT", "")
+    return ("THE ROUTE THROUGH THE PLANT\n" + route).strip() if route else ""
+
+
+def _plant_identity() -> str:
+    """A short, ALWAYS-PRESENT statement of what plant PIP is standing in.
+
+    This goes in the SYSTEM prompt rather than the per-request context because
+    it must survive the paths that send no question at all.
+    """
+    if not PROCESS_SECTIONS:
+        return ""
+    makes = PROCESS_SECTIONS.get("WHAT THE PLANT MAKES", "")
+    route = PROCESS_SECTIONS.get("THE ROUTE THROUGH THE PLANT", "")
+    body = (makes + "\n\n" + route).strip()
+    words = body.split()
+    if len(words) > 230:
+        body = " ".join(words[:230]) + " ..."
+    return (
+        "\n\nTHE PLANT YOU ARE STANDING IN (authoritative; the operator can read "
+        "the same document from the PROC display):\n" + body +
+        "\n\nThis plant is simulated and generic. Never present it as a real "
+        "company's plant, and never invent equipment that is not on the board."
+    )
+
+
+# Appended, never merged into prompt.txt -- tests/coach-stream.test.js pins six
+# phrases in that file verbatim.
+SYSTEM = SYSTEM + _plant_identity()
+
 
 GUIDE_FILE = COACH / "guide.txt"
 GUIDE = ""
@@ -194,6 +298,22 @@ def context_pack(ask: str, projection: dict) -> dict:
 
     topic = _question_topic(ask, projection)
     guide = _guide_section(topic)
+
+    # The station already sends a catalog of every configured point with its
+    # description on EVERY request; context_pack used it only as a lookup table
+    # inside _find_point and never showed it to the model. Render it as a
+    # one-line-per-tag nameplate so PIP knows what the tags on this unit ARE.
+    # Zero new authoring: this content was already crossing the wire.
+    unit = str(projection.get("unit") or (projection.get("screen") or {}).get("unit") or "")
+    nameplate = []
+    for row in (projection.get("catalog") or [])[:60]:
+        if not isinstance(row, dict):
+            continue
+        tag = str(row.get("tag") or "")
+        desc = str(row.get("desc") or "")
+        if tag and desc:
+            nameplate.append(tag + " = " + desc)
+    nameplate = "; ".join(nameplate)[:900]
     return {
         "lookingAt": screen_line(projection),
         "screen": projection.get("screen"),
@@ -203,6 +323,8 @@ def context_pack(ask: str, projection: dict) -> dict:
         "selectedAlarmHelp": projection.get("help"),
         "drill": projection.get("drill"),
         "arch": projection.get("arch"),
+        "process": _process_section(unit)[:900],
+        "nameplate": nameplate,
         "guide": guide[:1000],
     }
 
@@ -327,6 +449,29 @@ def _guide_section(topic: str) -> str:
     return chunks[0][0] + "\n" + chunks[0][1] if chunks else GUIDE[:800]
 
 
+class CapExceeded(RuntimeError):
+    """The model answered correctly but ran past the local spoken-word cap.
+
+    Kept as a hard failure on purpose: a truncated coaching answer that looks
+    complete is worse than no answer, and tests/coach-sidecar.test.js pins that
+    a capped stream must fail visibly rather than return partial text as
+    success. What was WRONG was the reporting. Every exception -- cap over-run,
+    malformed NDJSON, a genuine connection failure -- was collapsed into
+    "PIP cannot reach the local model", so an operator watched a correct answer
+    stream in, get discarded, and be blamed on the network. Six distinct
+    failures wore one lie. This class exists so the message can tell the truth.
+    """
+
+
+def _failure_message(err: Exception) -> str:
+    if isinstance(err, CapExceeded):
+        return ("PIP had more to say than it is allowed to say here and stopped "
+                "rather than cut a sentence in half. Ask again more narrowly. "
+                "The model is fine; LIVE DIAGNOSIS is unaffected.")
+    return ("PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works."
+            % err.__class__.__name__)
+
+
 def ollama_post(messages: list, stream: bool, think, timeout: float, num_predict: int):
     body = {
         "model": MODEL,
@@ -434,7 +579,7 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     if done_reason and done_reason != "stop":
         raise RuntimeError("Ollama stream ended before completion: " + done_reason)
     if locally_truncated:
-        raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+        raise CapExceeded("answer exceeded the local spoken-word cap")
     if not spoken_out.strip():
         raise RuntimeError("Ollama stream completed without an answer")
     final_think = think_scrubber.push("", final=True)
@@ -460,7 +605,7 @@ def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bo
         if done_reason and done_reason != "stop":
             raise RuntimeError("Ollama response ended before completion: " + done_reason)
         if word_count(raw_text) > cap:
-            raise RuntimeError("Ollama answer exceeded the local spoken-word cap")
+            raise CapExceeded("answer exceeded the local spoken-word cap")
         text = clip_spoken(raw_text, cap)
         thinking = scrub(msg.get("thinking") or "").strip()
         if not text:
@@ -571,7 +716,8 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 self._emit({
                     "t": "err",
-                    "d": "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__,
+                    "d": _failure_message(err),
+                    "reason": "cap" if isinstance(err, CapExceeded) else "model",
                 })
             except (BrokenPipeError, ConnectionResetError):
                 return
