@@ -1,6 +1,8 @@
 <!-- @artifact production -->
 # Experion-Style Operator Station Training Simulator
 
+**Authorship:** built by Anthony Vasquez Sr. ([The Temple of Two](https://github.com/templetwo)) with Claude (Anthropic) as co-author — every commit carries the co-author trailer. Independent training aid; not affiliated with Honeywell.
+
 A browser-based, single-page training simulator that reproduces the conventions of a Honeywell Experion PKS Console/Flex Station: HMIWeb-style gray graphics, four alarm priorities (Journal/Low/High/Urgent) with an ISA-18.2 alarm lifecycle, PID faceplates (MAN/AUTO/CAS, PROGRAM mode attribute, PV tracking), Point Detail tabs with Experion parameter names (K, T1/T2 in minutes, SPHILM/OPHILM, SHEDHOLD, ALMDB/ALMDELAY), alarm shelving with reasons, dynamic suppression, out-of-service, an event journal with management-of-change audit, trends, station security levels with electronic signatures, scored training drills, an instructor station with snapshots and replay, a rule-based Ops Assistant, and a conceptual architecture-training layer: an ARCH view teaching the FIELD → IO → CONTROL → NETWORK → SERVICE → HMI → INFORMATION path behind every point, in Learn, Trace, Diagnose and Debrief modes, across the console and flex station profiles.
 
 **Independent training aid, not a Honeywell product.** Contains no Honeywell software, artwork, or manual text. Colors, columns, and key legends are representative defaults; real sites configure these. Experion® is a trademark of Honeywell International Inc. Alarm help, the philosophy page and every rationalisation field describe this simulator only.
