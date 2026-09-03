@@ -108,7 +108,9 @@ elif _THINK_RAW in ("1", "true", "on", "yes"):
 else:
     THINK = _THINK_RAW
 TIP_WORDS = 70
-ASK_WORDS = 120
+# Re-measured 2026-09-03 with the alarm help in the context: the 8B model's asks ran to
+# ~160 words and were discarded by a 120-word cap. 200 keeps ~25 % headroom over that.
+ASK_WORDS = 200
 
 BANNED = [
     "FROZEN_MEASUREMENT", "BIASED_MEASUREMENT", "NOISY_MEASUREMENT",
@@ -446,7 +448,7 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
     elif kind == "ask":
         task = "Answer the operator's question: " + (ask or "(empty)")
         cap = ASK_WORDS
-        shape = "Answer first. Then the next useful check or click."
+        shape = "Answer first, in one or two sentences. Then the single most useful check or click. Stop there."
     else:
         task = "A new UNACK alarm episode settled. Call out only the highest priority and the first independent check."
         cap = TIP_WORDS
