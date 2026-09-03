@@ -249,10 +249,20 @@ test('initial conditions are data and load through a restore: batch presets reac
   assert.equal(c.L.LIC101.sp, 40);
   assert.ok(c.P.rT > 158 && c.P.rT < 170, 'reactor near its High limit: ' + c.P.rT);
   c.applyPreset('U3_HILOAD');
-  assert.equal(c.L.FIC310.sp, 46);
-  assert.ok(c.P.h.bed > 420 && c.P.h.bed < 440, 'bed hotspot under its High limit: ' + c.P.h.bed);
-  assert.ok(c.P.h.ts2 > 384, 'tube skins above design: ' + c.P.h.ts2);
+  assert.equal(c.L.FIC310.sp, 44);
+  assert.equal(c.L.TIC311.sp, 320);
+  assert.ok(c.P.h.bed > 390 && c.P.h.bed < 425, 'bed hotspot under its High limit at load: ' + c.P.h.bed);
+  assert.ok(c.P.h.ts2 > 380, 'tube skins above design: ' + c.P.h.ts2);
   assert.deepEqual(c.P.trips, {});
+  // A high-load initial condition must BE a steady state. The previous values (46 / 322) sat past
+  // the bed's open-loop stability limit and limit-cycled 312-479 C, tripping with nobody at the
+  // console (veteran review 2026-09-03). Left alone for an hour it settles (the preset's own
+  // run-forward is only 8 min) and then holds flat: the last half hour must not hunt.
+  let lo = 1e9, hi = -1e9;
+  for (let i = 0; i < 7200; i++) { c.step(0.5); if (i >= 3600) { lo = Math.min(lo, c.P.h.bed); hi = Math.max(hi, c.P.h.bed); } }
+  assert.deepEqual(c.P.trips, {}, 'the initial condition tripped itself');
+  assert.ok(hi - lo < 5, `the bed hunted ${lo.toFixed(1)}-${hi.toFixed(1)} C in the second half hour of a supposedly steady initial condition`);
+  assert.ok(lo > 405 && hi < 425, `settled bed ${lo.toFixed(1)}-${hi.toFixed(1)} C is not the high load the label promises`);
   for (const p of Instr.presets()) assert.ok(typeof p.cb === 'undefined' && typeof p.run === 'number', 'preset ' + p.id + ' is plain data');
 });
 

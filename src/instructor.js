@@ -269,14 +269,19 @@
   function presets() {
     return [
       { id: 'U1_SS', label: 'U1 steady state', desc: 'Continuous unit at design feed, all loops on setpoint, no batch running.', run: 120 },
-      { id: 'U1_HIFEED', label: 'U1 high feed', desc: 'Feed tank drawn down at a low level setpoint: throughput up, R-201 near its High limit with little jacket margin left.',
+      { id: 'U1_HIFEED', label: 'U1 high feed', desc: 'Feed tank being drawn down to a 40 % setpoint: throughput up and R-201 near its High limit with little jacket margin, for about ten minutes until the tank settles and throughput returns to the supply rate. Start the exercise inside that window.',
         set: { L: { LIC101: { sp: 40 } } }, run: 480 },
       { id: 'U2_FEED', label: 'U2 batch mid-FEED', desc: 'A batch started and run into the FEED phase with about half the monomer charged.',
         batch: true, waitPhase: 'FEED', waitLvl: 55, maxRun: 3600, run: 10 },
       { id: 'U2_REACT', label: 'U2 batch REACT', desc: 'A batch run through FEED into REACT: monomer inventory still high, jacket working.',
         batch: true, waitPhase: 'REACT', maxRun: 6000, run: 10 },
-      { id: 'U3_HILOAD', label: 'U3 high load', desc: 'Fired reactor at raised feed and preheat: the bed hotspot sits just under its High limit, skins above design.',
-        set: { L: { FIC310: { sp: 46 }, TIC311: { sp: 322 } } }, run: 480 }
+      // Feed 46 / preheat 322 put the bed past its open-loop stability limit (loop gain crosses
+      // 1.0 near 435 C at that feed) and the unit limit-cycled 312-479 C and tripped itself with
+      // nobody at the console (veteran review 2026-09-03). Measured: feed 44 / preheat 320 holds
+      // the bed flat at 413 C for an hour; 45 and above limit-cycle and trip. A steady high load
+      // 27 C under the High alarm, with less margin than design, is what the label promises.
+      { id: 'U3_HILOAD', label: 'U3 high load', desc: 'Fired reactor at raised feed and preheat: the bed hotspot settles near 413 DEG C and holds there, under its 440 High limit with less margin than design; the tube skins run above design.',
+        set: { L: { FIC310: { sp: 44 }, TIC311: { sp: 320 } } }, run: 480 }
     ];
   }
 

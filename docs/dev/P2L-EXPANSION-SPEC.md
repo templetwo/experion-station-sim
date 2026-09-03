@@ -736,7 +736,12 @@ Effort in focused engineer-days. Every stage leaves the sim shippable.
 > `Topology.validate()` wired into `initSim()` with the `unitOf` catch-all removed, and RESOURCES
 > §4 split into 4.1–4.11 with every citation made specific and a gate-5 test refusing the bare id.
 > **Not done, by design:** the golden-baseline archive (§10 Q2) -- nothing in Stage 1 re-captured a
-> fixture, so the decision is still open and still Anthony's. Details in `CHANGELOG.md` 3.1.0.
+> v2 fixture, so the decision is still open and still Anthony's. Details in `CHANGELOG.md` 3.1.0.
+> **Waiting on that decision, with the change already written and measured:** flooring the R-310 bed
+> reading at its inlet (`src/models.js fixedBed`, one line) moves three v2 goldens (D12, `air`,
+> `bedact`); see CHANGELOG 3.1.0 known limitations. The 2026-09-03 veteran review that found it also
+> found the operating story contradicting the model on feed, quench, fouling and fail-safe direction;
+> all of that was prose and is fixed.
 
 ### STAGE 0 · SHIP NOW — 4-6 days
 
