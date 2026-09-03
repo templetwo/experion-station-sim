@@ -38,7 +38,7 @@ A browser-based, single-page training simulator that reproduces the conventions 
 - `docs/dev/CODE-MAP.md` (structure, v2 change notes), `docs/dev/UPGRADE-PLAN.md` (rules and conventions), `docs/RESOURCES.md` (verified public references the design is based on)
 
 ## Versioning
-Semantic versioning; see `CHANGELOG.md`. Current: **v3.0.0** (unreleased on the `v3` branch; `main` remains 2.0.0).
+Semantic versioning; see `CHANGELOG.md`. Current: **v3.1.0** (2026-09-03).
 
 ## Files
 - `Experion Station Simulator.dc.html`: the application (template + station logic)
