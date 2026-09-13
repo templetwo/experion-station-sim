@@ -3085,10 +3085,46 @@ class Component extends DCLogic {
   //   2. Inert under replay. A refusal there would break deterministic replay, which release
   //      gate 3 exists to protect (cf. src/dispatch.js skipping gates when ctx.replaying).
   //   3. Reads P.t only, never the wall clock -- see the 3.1.0 clock re-basing fix.
+  // The specification-integrity NOTES. dofPreflight acted on refusals only, so every note the
+  // check computed -- CASCADE_OPEN above all, "the cascade is open and the master is not in
+  // control" -- was computed and dropped on the floor. Found by a second seat running it rather
+  // than reading it. Anthony, 2026-09-13: "Wire notes to the instructor log and the debrief,
+  // nowhere else. Trainee sees the board."
+  //
+  // They go to instr.log and instr.dofNotes and NOWHERE ELSE. NOT to this.events, NOT to the
+  // journal, NOT to P -- and that is not fastidiousness, it is the only golden-safe route.
+  // tests/_fixture.js endState() digests the v2 event COUNT, and its inV2() filter excludes only
+  // Unit 04 sources, so a 'DOF' event IS digested; BOUNDARY_SPEC_STRUCTURAL emits on EVERY drill
+  // start, so one event here would move every golden in the set. `instr` is in neither endState()
+  // nor P, so this path is inert by construction rather than by luck.
+  dofNotesRecord(what,r){
+    const notes=((r&&r.findings)||[]).filter(f=>f&&f.severity==='note');
+    if(!notes.length) return;
+    for(const n of notes) this.instrNote(what+' — '+n.code+': '+n.detail);
+    const ring=this.instr.dofNotes||(this.instr.dofNotes=[]);
+    ring.push({t:this.P.t,what,notes:notes.map(n=>({code:n.code,detail:n.detail,tags:(n.tags||[]).slice()}))});
+    if(ring.length>24) ring.splice(0,ring.length-24);   // display ring, same discipline as instr.log
+  }
+  // Instructor-only debrief rows for the notes above. Rendered ONLY under DEBRIEF_REVEALED --
+  // the trainee's TRAINEE_SAFE debrief never carries them, matching how root-location rows are
+  // already handled two functions down.
+  dofNoteRows(reveal){
+    if(!reveal) return [];
+    const ring=(this.instr&&this.instr.dofNotes)||[];
+    const rows=[];
+    for(const e of ring) for(const n of e.notes) rows.push({
+      rel:this.mmss(Math.max(0,(e.t-(this.t0||e.t)))),
+      lane:'INSTRUCTOR', actor:'SYSTEM', kind:'SPEC',
+      text:e.what+' — '+n.code+': '+n.detail,
+      pvT:'', hasPv:false, fg:'#1c1c1c'
+    });
+    return rows;
+  }
   dofPreflight(what){
     if(this.replaying()) return true;
     if(typeof ESS==='undefined'||!ESS.BoundaryDof) return true;   // module absent: fail open, never block a drill
     const r=ESS.BoundaryDof.check(this.P,this.L);
+    this.dofNotesRecord(what,r);
     if(r.ok) return true;
     const why=ESS.BoundaryDof.formatRefusal(r);
     this.msgZone(what+' REFUSED — '+why);
@@ -5321,7 +5357,7 @@ class Component extends DCLogic {
     const counts=out.summary&&out.summary.counts||{};
     const aDrillOn=!!this.P.aDrill;
     return {
-      rows:(out.rows||[]).map(r=>{
+      rows:this.dofNoteRows(reveal).concat((out.rows||[]).map(r=>{
         const pv=r.process||{};
         const pvT=Object.keys(pv).map(k=>k+' '+(pv[k].pv!=null?this.fmt(pv[k].pv,1):'')).join(' · ');
         return {
@@ -5329,8 +5365,8 @@ class Component extends DCLogic {
           pvT:pvT, hasPv:!!pvT,
           fg:r.kind==='REFUSED'?'#7A2E0E':(r.kind==='SCORE'?'#0a3a12':'#1c1c1c')
         };
-      }),
-      empty:!out.rows.length,
+      })),
+      empty:!out.rows.length&&!this.dofNoteRows(reveal).length,
       summary:(counts.operator||0)+' operator · '+(counts.instructor||0)+' instructor · '+(counts.refused||0)+' refused'+(score?(' · score '+score.score+'/100'):''),
       projection:out.projection,
       ask:aDrillOn, submit:()=>this.submitADrillDebrief()

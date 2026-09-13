@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SERVE = path.join(ROOT, 'tools', 'coach', 'serve.py');
@@ -23,6 +23,17 @@ const SERVE_SRC = require('node:fs').readFileSync(SERVE, 'utf8');
 const ASK_WORDS = Number((SERVE_SRC.match(/^ASK_WORDS\s*=\s*(\d+)/m) || [])[1]);
 assert.ok(Number.isFinite(ASK_WORDS) && ASK_WORDS > 0, 'could not read ASK_WORDS out of serve.py');
 const OVER_CAP_WORDS = ASK_WORDS + 40;
+
+// The `anthropic` Python package is an optional extra for the PIP cloud sidecar
+// (CONVERGENCE-SPEC §9.1: no dependency the deterministic core or the suite needs).
+// Any test below that actually drives serve.py's cloud path (COACH_PROVIDER=anthropic,
+// or auto with a credential present) needs it importable by the spawned python3.
+const HAS_ANTHROPIC = (() => {
+  try { execFileSync('python3', ['-c', 'import anthropic'], { stdio: 'ignore' }); return true; }
+  catch { return false; }
+})();
+const NO_ANTHROPIC_REASON = 'anthropic Python package absent — the PIP cloud sidecar is an optional ' +
+  'extra; the deterministic core and the suite need no Python packages (CONVERGENCE-SPEC §9.1)';
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -63,7 +74,7 @@ const end = (stop_reason) => ['message_delta', { type: 'message_delta', delta: {
 const fin = () => ['message_stop', { type: 'message_stop' }];
 const answer = (parts, stop_reason = 'end_turn') => [start(), openThink(0), think(0, 'check the PV quality first'), close(0), openText(1), ...parts.map((p) => text(1, p)), close(1), end(stop_reason), fin()];
 
-test('PIP sidecar on the cloud provider: same contract with the page, honest reasons, no Ollama', { timeout: 30000 }, async (t) => {
+test('PIP sidecar on the cloud provider: same contract with the page, honest reasons, no Ollama', { timeout: 30000, skip: HAS_ANTHROPIC ? false : NO_ANTHROPIC_REASON }, async (t) => {
   const cloudCalls = [];
   const fakeAnthropic = http.createServer(async (req, res) => {
     if (req.method !== 'POST' || !req.url.startsWith('/v1/messages')) { res.writeHead(404).end('not found'); return; }
@@ -215,7 +226,7 @@ test('the default provider is auto (cloud first, local fallback) and an unknown 
   assert.match(err, /COACH_PROVIDER must be/);
 });
 
-test('auto: the cloud answers when it can; when it refuses before answering, the local model answers that question', { timeout: 30000 }, async (t) => {
+test('auto: the cloud answers when it can; when it refuses before answering, the local model answers that question', { timeout: 30000, skip: HAS_ANTHROPIC ? false : NO_ANTHROPIC_REASON }, async (t) => {
   let cloudCalls = 0;
   const fakeAnthropic = http.createServer(async (req, res) => {
     await readBody(req); cloudCalls++;

@@ -410,7 +410,21 @@ All twenty-two are now registered as `docs/RESOURCES.md` **§7, ids RESOURCES-7.
 
 ## 9. Verification and receipts
 
-9.1 Suite. node --test tests/*.test.js must stay 0 fail on node 22 with no dependencies, on a clean checkout, for every change in this spec.
+9.1 Suite. `node --test tests/*.test.js` must stay 0 fail on node 22 with no dependencies, on a clean checkout, for every change in this spec.
+
+**"No dependencies" means the suite, and it is enforced against a genuinely clean machine.** A second seat ran `ff25cb9` on a machine with no Python packages and got **907 pass, 3 fail** — three coach tests failing on a missing `anthropic` module — while the same commit was green here, because this machine happens to have `anthropic` installed. That divergence is the failure: a test that fails on a clean machine is a gate firing on normal practice, which is the same error as a drill check that refuses ordinary operation. Fixed by making those tests **skip with a stated reason** when the package is absent.
+
+**The sidecar's requirements, stated here because this is where the no-dependencies rule lives.** The deterministic core and the whole test suite need **nothing but node 22** — no npm package, no Python package, no network. `tools/coach/` is an **optional sidecar** and is the only thing in the repo with further requirements:
+
+- **Python 3** for `serve.py`, always. It otherwise uses only the standard library.
+- **`COACH_PROVIDER` defaults to `auto`** (`tools/coach/serve.py:47`), and `auto` means **cloud first, local as the fallback** — `_provider()` resolves it to `anthropic` whenever *any* credential is discoverable (a station key, `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`, or an `ant auth login` profile) and only falls back to Ollama when none is. The file says so itself at `:46`: *"we swapped to api — the cloud is the default, local is the fallback."*
+- So the practical requirement depends on the machine: **a credential present ⇒ the `anthropic` Python package is needed under the default**, no explicit `COACH_PROVIDER=anthropic` required; **no credential ⇒ a local Ollama at `127.0.0.1:11434`** (override with `OLLAMA_HOST`).
+
+An earlier draft of this paragraph called Ollama "the default provider". That was **wrong**, and wrong in the direction that understates the requirement — it implied the `anthropic` package was only needed when explicitly opted into, when in fact the default path reaches for it on any machine carrying a credential. Caught by the verify pass against `serve.py`, the README and a passing test that all say otherwise. Recorded rather than quietly amended, because the error is instructive: the paragraph was written from memory of how the sidecar *used* to work.
+
+**None of the above is required to run the simulator, to run the suite, or to ship.** A contributor with a bare node 22 install must see a green suite; any test needing more than that skips with a reason saying so. Rule 7 is unchanged — the raw page still never fetches.
+
+**The standing rule this establishes:** a test may require something beyond node 22 only if it skips, with a reason, when that thing is absent. Never fail.
 
 9.2 Goldens. v2 and v3 goldens stay byte-for-byte identical for all of v3.2. A reviewer reproduces this by running the golden comparison and confirming zero diff. Any diff is a stop condition (the change was not additive).
 
@@ -443,6 +457,10 @@ Each item is sized so one builder seat can finish and verify it in one focused p
 Binding, corrected twice during the build and worth reading before W2 repeats either mistake: **not `src/training.js`** (it has no drill-start path, §3.4.3), and **not the menu wrappers** that §3.4.3 originally named — `tests/golden-drills.test.js:87` calls `c.startDrill(def)` directly, so a validator at the menu layer would never run against the golden suite and (c) could not be demonstrated. It sits in `startDrill` / `startADrill`, **immediately before `startDrill`'s `rand()` draw for the injection delay**, because refusing after that draw would advance the seeded cursor without arming and shift every downstream trajectory. It is inert under `replaying()`, reads `P.t` only, and fails open if the module is absent. Goldens proved byte-identical by digest. Acceptance: 3.4.6. No golden moved.
 
 10.2 W2 (item 2, **re-scoped by Anthony 2026-09-13**): build the C&E matrix as a **declarative assertion layer**. Declare the six trip rows as data; subscribe a reader to the existing `ctx.onTrip` seam (`src/models.js:294-297`); render the operator-facing C&E chart; score `INTERLOCK.DEFEAT` from the declared matrix (A5 / `DRV-M202`, `src/drill-arch.js:326`). **The code stays the source of truth. No runtime enforcement — the matrix never fires an effect.** Do not edit `src/models.js`; the hook is already there. Acceptance: 3.1.6, including the test that deleting the reader leaves every golden byte-identical. Matrix-as-source-of-truth is out of scope here and sits behind gate 8.1.
+
+**Visibility is staged (Anthony, 2026-09-13).** The C&E chart ships **instructor-only** and stays instructor-only **until the assertion test has passed clean across the full golden set** — every golden drill and every golden upset, matrix equalling code tick-for-tick, not a sample. Only then does it become operator-visible, **and by a one-line config change**, so the promotion is one reviewable line rather than a refactor and the demotion is equally cheap if the chart proves wrong in front of a trainee.
+
+The reasoning is W1's, learned the hard way: a surface that tells an operator "this cause drives that effect" is making a claim about the plant, and a C&E chart that disagrees with the code teaches a wrong lesson with the authority of a console display. The assertion test passing across the whole golden set is what earns the chart the right to be believed. Build the config flag in from the start — retrofitting a visibility gate after the chart is wired is how it ends up shipped on by accident.
 
 10.3 W3 (item 3): the scenario scheduler and data format, instructor-only. **Binds to the app's `injectFault(k, on)` (`…dc.html:3111`), not to fault-engine effects hooks, which do not exist** (corrected in 3.2.3). Read the existing one-shot time+predicate trigger at `…dc.html:3122` before designing the trigger schema, and reconcile with `ESS.Instructor.compoundScripts`, which already runs ordered fault timelines — extend or subsume it, do not ship a second mechanism. Acceptance: 3.2.6.
 
