@@ -19,7 +19,7 @@ don't restate it. This file is what you need to *change* it safely.
 ## Commands
 
 ```bash
-node --test tests/*.test.js     # 197 tests, ~1.5 s, no dependencies
+node --test tests/*.test.js     # 879 tests, ~5 s, no dependencies
 python3 tools/build-dist.py     # rebuild dist/ after ANY change to the app or src/
 tools/smoke.sh                  # headless-Chrome check of both builds
 tools/strip-dev.sh              # list/produce the production-only tree (dry run by default)
@@ -48,9 +48,12 @@ From `docs/dev/UPGRADE-PLAN.md`, compressed. Read the original for the full text
 3. **No bundler, no ES modules, no npm dependencies, no network calls.** The app
    is one `.dc.html` page plus plain scripts and must work from `file://` and
    inside the standalone.
-4. **Keep every existing feature working**, including the five trip thresholds
-   (98 % tank, 185 °C R-201, 950 kPa PSV, 110 °C R-202, 480 °C R-310), unless a
-   cited source justifies a change.
+4. **Keep every existing feature working**, including the six trip thresholds
+   (98 % tank, 185 °C R-201, 950 kPa PSV V-401, 110 °C R-202, 480 °C R-310 bed,
+   1100 kPa PSV V-502), unless a cited source justifies a change. All six are
+   raised through `raiseTrip()` in `src/models.js` — grep that symbol for the
+   live list. `UPGRADE-PLAN.md` rule 4 and `V3-PLAN.md` still say *five*: they
+   were written before Unit 04, whose V-502 relief shipped in 3.1.0.
 5. **Test + build + smoke before every commit.**
 
 v3 adds two more (`docs/dev/V3-PLAN.md` §1): **no employer or real-site material,
