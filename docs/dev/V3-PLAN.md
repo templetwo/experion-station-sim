@@ -20,6 +20,15 @@ This is not a more visually exact Experion clone. It is a mental-model trainer.
 
 Rules 1 through 5 of `UPGRADE-PLAN.md` remain binding word for word (no Honeywell text/tables/screenshots/artwork/icons/filenames; never edit `support.js` or hand-edit `dist/`; single `.dc.html` page plus plain-script modules, no bundler, no ES modules, no npm dependencies, no network calls, everything works from `file://` and inside the standalone; every existing feature and the five trip thresholds stay; test + build + smoke before every commit).
 
+> **Note added 2026-09-13.** The line above says *five* trip thresholds. That was true when this
+> plan was written and it is left standing, because this document is the historical v3 stage
+> contract and the record does not move. **There are six.** Unit 04 shipped the sixth — V-502
+> `PSV LIFT` at 1100 kPa — in release 3.1.0 on 2026-09-03, after this line was written, and the
+> rule was not updated at the time. `UPGRADE-PLAN.md` rule 4 and `CLAUDE.md` rule 4 now both carry
+> the corrected count and point at `raiseTrip()` in `src/models.js` as the live list, so the number
+> is derived from the code rather than restated. Read those for the binding form; read this line as
+> what was true on the day it was written.
+
 Two rules are added for v3:
 
 **Rule 6. No employer or real-site material, ever.** Nothing photographed, copied, transcribed, or paraphrased from any real operating facility or its control system enters this repo or shapes its content: no site tag names or tag-numbering schemes, no display layouts, no setpoints or operating values, no interlock logic, no flowsheet topology copied from a workplace. This applies to demo and training databases at a real site exactly as it applies to live ones; ownership does not change with the database label. All process content derives from published literature models and open standards registered in `docs/RESOURCES.md` and `docs/SOURCE-PROVENANCE.md`. If a proposed feature cannot cite a public source, it does not ship.

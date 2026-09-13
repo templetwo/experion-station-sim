@@ -317,8 +317,14 @@ Status key, carried from the spec's Appendix A and re-stated per entry:
 - **CITED-NOT-HELD** — registered and identified, but no copy has been read by this project. A
   source in this state may be cited for the concept it is the standard reference for; it may
   **not** be used to justify a specific equation, default or numeric value until it is held and
-  read. Every entry below is CITED-NOT-HELD as of registration. This is the honest state and it
+  read. Every entry below was CITED-NOT-HELD as of registration. This is the honest state and it
   is recorded rather than implied.
+- **HELD** — a copy has been read by this project, and the entry records which part was read.
+  Only a HELD source may justify a specific equation, default or numeric value. **§7.4 is HELD**
+  as of 2026-09-13; every other §7 entry is still CITED-NOT-HELD. Promoting one is a small piece
+  of real work — find a legitimately public copy, verify it is the paper it claims to be, read the
+  part the work needs, and write down what it says — and it is done ahead of the work item that
+  needs it, not during.
 
 Standards access: §2.19's rule governs here too. Purchase is required for the two standards in
 this section, citation is by clause number only, and ISA's prohibition on feeding standard text
@@ -344,10 +350,15 @@ into AI tools applies. Implement the model, cite the clause, never paste text.
 - Status: VERIFIED (ISBN, publisher page). CITED-NOT-HELD.
 
 ### 7.4 Skogestad, "Simple analytic rules for model reduction and PID controller tuning" (2003)
-- Resource: S. Skogestad, Journal of Process Control 13(4) (2003) 291–309. DOI 10.1016/S0959-1524(02)00062-8.
-- What it gives: the SIMC tuning rules — the primary public tuning rule the step-test grader scores against.
+- Resource: S. Skogestad, Journal of Process Control 13(4) (2003) 291–309. DOI 10.1016/S0959-1524(02)00062-8; PII S0959-1524(02)00062-8 (printed on the paper's first page, and it matches the DOI).
+- Author-hosted full text, free and public, on Skogestad's own NTNU publication page: https://skoge.folk.ntnu.no/publications/2003/tuningPID/ — `finalpaper.pdf` is the published paper; the same directory carries an MIC version (2004, with corrections), a 2012 chapter with Grimholt, and Matlab files. Author self-archiving, not a re-host of a paywalled copy.
+- What it gives: the SIMC tuning rules — the primary public tuning rule the step-test grader scores against — plus the half rule for model reduction.
 - Used by: spec item 4 (W4).
-- Status: VERIFIED (DOI). CITED-NOT-HELD.
+- **Status: VERIFIED (DOI, and against the paper's own first page). HELD.** Read 2026-09-13, pp. 291–298 (§1 through §4.1), which is the span carrying everything W4 needs. Promoted from CITED-NOT-HELD ahead of W4 on Anthony's instruction, because acquiring a paper is a lead-time problem and W4's grader needs the rules themselves, not the concept.
+
+  **What was read, recorded here so W4 does not have to re-fetch it.** The model is first- or second-order plus delay, eq (4): `g(s) = k·e^(−θs) / ((τ₁s+1)(τ₂s+1))`. The SIMC settings, eqs (23)–(25), are `Kc = (1/k)·τ₁/(τc+θ)`, `τ_I = min{τ₁, 4(τc+θ)}`, `τ_D = τ₂`, with `τc` the sole tuning parameter. The recommended choice, eq (28), is `τc = θ` — "SIMC-rule for fast response with good robustness" — which reduces the settings to eqs (29)–(31): `Kc = 0.5·τ₁/(k·θ)`, `τ_I = min{τ₁, 8θ}`, `τ_D = τ₂`. The half rule, §2.1, is that the largest neglected denominator time constant is distributed evenly between the effective delay and the smallest retained time constant, eq (10).
+
+  **One trap W4 must not walk into.** The paper's eq (1) states its settings are for the **series (cascade, "interacting") form** PID, and says so explicitly; the ideal (parallel) form settings are obtained through its eq (36). The simulator's faceplate is `K`/`T1`/`T2` and `src/pid.js` already exposes `isaForm(K, T1, T2) -> {Kc, Ti, Td, ...}`, so W4 must establish which form the sim's loops are in and convert before grading, or it will score a correct tuning as wrong. Confirm against `src/pid.js` at the checkpoint before writing the grader.
 
 ### 7.5 Ziegler & Nichols, "Optimum settings for automatic controllers" (1942)
 - Resource: J. G. Ziegler and N. B. Nichols, Trans. ASME 64 (1942) 759–768.

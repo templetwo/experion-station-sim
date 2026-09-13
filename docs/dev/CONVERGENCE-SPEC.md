@@ -5,7 +5,7 @@ Path at commit: docs/dev/CONVERGENCE-SPEC.md
 Working title: V3.2 / V4 CONVERGENCE SPEC
 Owner: Anthony Vasquez Sr. (github.com/templetwo, "The Temple of Two")
 Builder seats: Claude Code (HQ, lead/integrator), Codex, Grok
-Status: **rev 2**, 2026-09-13. Verified against the checkpoint and corrected.
+Status: **rev 3**, 2026-09-13. Verified against the checkpoint, corrected, and item 6 renamed after it was built.
 
 **Revision history**
 - rev 1, 2026-09-03 — authored against the repository's public README. Proposal only.
@@ -14,6 +14,13 @@ Status: **rev 2**, 2026-09-13. Verified against the checkpoint and corrected.
   re-scoped on Anthony's ruling, and work item **W0** inserted ahead of W1. The evidence for each
   correction, with file:line, is `docs/dev/CONVERGENCE-SPEC-VERIFICATION.md`; that memo is the
   receipt for this revision and is not superseded by it.
+- rev 3, 2026-09-13 — W1 built, and building it changed the item. Item 6 renamed from "explicit
+  boundary streams and a degrees-of-freedom check" to **"specification integrity at drill start"**,
+  because the DOF check as specified cannot fail on this plant and the old title promised what the
+  plant does not cash. §3.4 reframed as a declared plant map plus two lanes; §3.4.6(b) moved to a
+  lane B test; §4.1.4 now binds item 1 to *reading* the plant map rather than inferring couplings;
+  §10.1 marked done with the two binding corrections the build found. Anthony's rulings of
+  2026-09-13 throughout. Build contract: `docs/dev/W1-BOUNDARY-DOF-CONTRACT.md`.
 
 ---
 
@@ -193,11 +200,27 @@ The scheduler fires on the same 0.5 s tick as the models (set at the call sites,
 
 3.3.8 Sources, with their registered ids (all registered by W0, 2026-09-13): **RESOURCES-7.3** Seborg, Edgar, Mellichamp & Doyle 4th ed., for step-test identification and FOPDT; **RESOURCES-7.4** Skogestad (SIMC) as the primary public tuning rule; **RESOURCES-7.5** Ziegler & Nichols and **RESOURCES-7.6** Cohen & Coon as the historical rules; **RESOURCES-7.7** Åström & Hägglund as the tuning reference. Note that **RESOURCES-7.3 is not RESOURCES-4.4**: §4.4 registers the Henson/Seborg CSTR *parameters* as served by APMonitor, a different work. Cite the subsection id, never a bare `RESOURCES-7`.
 
-### 3.4 Item 6: explicit boundary streams and a degrees-of-freedom check (data contract)
+### 3.4 Item 6: specification integrity at drill start (declared plant map + two-lane check)
 
-3.4.1 What it is. A declared boundary-stream contract between unit modules: each inter-unit stream carries a declared spec (a pressure spec or a flow spec), and a degrees-of-freedom (DOF) check runs before a drill starts. This is the discipline of "verified steady state first, then dynamics" and it is what makes item 1 composable later.
+**Renamed in rev 3** (Anthony, 2026-09-13), from "explicit boundary streams and a degrees-of-freedom check". The old title promised a DOF check over boundary streams. The build found that check cannot fail on this plant, and the name was writing a cheque the plant does not cash. The item is now named for what it actually does: **check that a drill starts from a well-specified configuration**, across two lanes, and **declare the plant's topology as data**. Built as W1; see `docs/dev/W1-BOUNDARY-DOF-CONTRACT.md` for the contract and `src/boundary-dof.js` for the module.
 
-3.4.2 Data contract (proposed path: generalize the per-unit contract pattern in docs/dev/U4-SEPARATOR-CONTRACT.md into a boundary-stream contract). **No artifact class is registered — see §3.1.2: `ARTIFACT-CLASSES.md` defines exactly two classes on purpose. A new `src/` module carries `// @artifact production`; a new `docs/dev/` document carries `<!-- @artifact dev -->`.** Each boundary stream: id, upstream unit, downstream unit, declared spec type (pressure or flow), nominal value, and units. The DOF check counts specified versus free variables at every boundary and refuses to start a drill that is over- or under-specified.
+3.4.1 What it is, in three parts.
+
+**(i) The declared plant map — the durable artifact.** `ESS.BoundaryDof.PLANT_MAP` records which units are coupled and which are not, derived by reading `src/models.js` field by field rather than inferred from the process prose or the graphic. The finding it encodes: **U3 → U4 is the only inter-unit material coupling in the simulator, carrying exactly three variables (`P.h.f`, `P.h.pre`, `P.h.bed`); U1 and U2 are islands.** U1 has zero `P`-field coupling to U3 — U3's feed comes from `V.FV310.pos` on its own `FIC310` loop. It also declares what is deliberately *not* a boundary (`P.Tcw`, `env.Tamb`, `env.catAct`, the global clock): fields read by two units but written by neither unit's step code, which are instructor and fault inputs rather than material streams.
+
+This map is the item's most load-bearing output, and it is the part item 1 consumes. **Item 1 reads the map; it does not invent couplings.** A pressure-flow network must place a node and a resistance for every real coupling and for no imagined one, and its sharpest exposure is a builder assuming a U1 → U3 feed train the code does not have. The map is falsifiable and tested: every declared field path must resolve on a real `ESS.Models.createState()`, so it cannot drift from the model without a test going red.
+
+**(ii) Lane A — the material-boundary declaration.** Each declared boundary variable carries its spec type (`flow` today; `pressure` once item 1 lands), its producer and consumer sites, and a nominal value with stated provenance. **Lane A says plainly that it cannot fail on this plant**, and emits that statement as a finding (`BOUNDARY_SPEC_STRUCTURAL`) rather than leaving a reader to infer a pass means more than it does: while every variable ships `spec:'flow'`, the producer fixes the value and the consumer accepts it, so contention is not constructible. Its one real refusal is `BOUNDARY_NOT_FINITE` — a boundary variable carrying no valid value, the NaN-leak class the 3.1.0 `VALVE_TARGET` fix documents. Lane A becomes load-bearing the moment a variable's spec becomes `pressure`.
+
+**(iii) Lane B — control-loop configuration, the lane with teeth.** `CASCADE_OPEN` first: a cascade master in AUTO or CAS whose slave has left CAS, so the master is not in control while the board looks normal. Reported, never refused — taking a slave to MAN while its master tracks is ordinary practice and is drill D6's premise, and `pid.js` back-calculates through INITMAN so the state is well-posed. Then `CASCADE_NO_MASTER` (refuses: a CAS loop with no resolvable master — unreachable through `transferMode`, reachable through `restoreSnapshot`), and the two exclusions that must never be scored as misconfiguration: `LOOP_SEQUENCE_OWNED` (a `modeAttr:'PROGRAM'` loop is owned by the SCM, not the operator) and `LOOP_SHED` (a bad-PV shed is a fault response).
+
+This is still the discipline of "verified steady state first, then dynamics", and it is still what makes item 1 composable later. What changed is the honest scope of the gate.
+
+3.4.2 Data contract. **Shipped** as `src/boundary-dof.js` (`ESS.BoundaryDof`), generalising the per-unit contract pattern of `docs/dev/U4-SEPARATOR-CONTRACT.md`. **No artifact class is registered — see §3.1.2: `ARTIFACT-CLASSES.md` defines exactly two classes on purpose. A new `src/` module carries `// @artifact production`; a new `docs/dev/` document carries `<!-- @artifact dev -->`.**
+
+`PLANT_MAP` = `{version, asOf, derivedFrom, units, boundaries, islands, assertion, notBoundaries}`. Each boundary stream: id, upstream unit, downstream unit, and its variables; each variable: name, field path, kind, engineering units, declared spec type (`flow` or `pressure`), nominal value with provenance, and its producer and consumer sites in `src/models.js`. Each island: unit and the verified reason it has no cross-unit coupling.
+
+The check does **not** count specified versus free variables at a boundary and refuse on the count. That was rev 1's design and it is unbuildable here for the reason §3.4.1(ii) gives — on a flow-driven, one-write-per-tick model there is nothing to count. It refuses on the two states that are genuinely ill-posed and reachable by corruption, and reports the rest.
 
 3.4.3 Engine binding. **Corrected in rev 2.** `src/training.js` has no drill-start path. Its entire export list is competency and record-keeping: `GROUPS, PASS_MARK, PASS_LABEL, tasks, coverage, coverageSummary, addRecord, recordFor, message, pending, SIGNED_ACTIONS, configChange` (`src/training.js:149-150`).
 
@@ -205,11 +228,16 @@ The A-series drills, their gates and their scoring live in **`src/drill-arch.js`
 
 One caution from the 3.1.0 history, which a validator at this exact point must not repeat: both canonical drill starts once re-based the simulation clock from `Date.now()` mid-exercise, and the fix was to seed the preset from `P.t`. A validator inserted into this path must read `P.t`, never the wall clock, or it will re-introduce the failure that release gate 3 exists to catch.
 
-3.4.4 Training rationale. Operators and builders both benefit from the rule that a drill must start from a verified steady state. The DOF check catches an ill-posed initial condition before it teaches a wrong lesson.
+3.4.4 Training rationale. Operators and builders both benefit from the rule that a drill must start from a verified steady state. The check catches an ill-posed initial condition before it teaches a wrong lesson — and lane B's `CASCADE_OPEN` earns its place here even though it never refuses: "you are starting with the reactor cascade open, the master is not in control" is a wrong lesson waiting to happen, and no other board surface says it.
 
 3.4.5 Additive or gated. Additive, as a data contract. It is a gate on starting a drill, not a change to dynamics.
 
-3.4.6 Acceptance tests. (a) A well-posed initial condition passes the DOF check. (b) An over-specified and an under-specified boundary each fail with a named reason. (c) Existing golden drills all pass the DOF check unchanged. (d) Suite stays 0 fail.
+3.4.6 Acceptance tests. **(b) restated in rev 3** (Anthony, 2026-09-13: "§3.4.6(b) becomes a lane B test").
+
+(a) A well-posed initial condition passes both lanes — the default post-`initSim()` state and every shipped preset.
+(b) **A lane B test.** Rev 1 asked for an over-specified and an under-specified *boundary* each to fail with a named reason. Those are unconstructible on this plant (§3.4.1(ii)), so the criterion moves to lane B, where specification integrity is real: **`CASCADE_NO_MASTER` is constructed and refuses with a named reason** — a loop specified to follow a master that does not exist — and **`CASCADE_OPEN` is constructed and is reported with a named reason without refusing**, because an open cascade is legitimate operation. Lane A contributes its own named refusal, `BOUNDARY_NOT_FINITE`, on a boundary variable carrying no valid value. Three named outcomes, each constructed in a test, none invented.
+(c) Existing golden drills all pass unchanged — **every** D-series and all twelve A-series initial conditions, not a sample.
+(d) Suite stays 0 fail, and **every golden digest stays byte-identical**, which is the real proof the check is inert on the paths that do not refuse.
 
 3.4.7 Golden impact. None; the check validates existing steady states and must pass them as they stand.
 
@@ -247,7 +275,9 @@ This line changes the dynamics of existing units and therefore is not additive. 
 
 4.1.3 Migration and golden re-capture (option A). (a) Open a v4 branch/line. (b) Archive the full v2 and v3 golden set byte-for-byte, with checksums recorded in the receipts (section 9). (c) Implement the pressure-node/resistance network behind a build flag so v3.2 behavior stays reproducible. (d) Re-capture v4 goldens fresh; never overwrite the archived v2/v3 goldens. (e) Document in CHANGELOG.md that v4 dynamics are a new baseline, not a continuation.
 
-4.1.4 Sequencing note. Item 6 (boundary-stream contract, DOF check) is the additive groundwork that makes item 1 composable. Item 6 ships in v3.2; item 1 waits for the v4 gate.
+4.1.4 Sequencing note. Item 6 is the additive groundwork that makes item 1 composable. Item 6 ships in v3.2; item 1 waits for the v4 gate.
+
+**Item 1 reads the plant map. It does not invent couplings.** (Anthony, 2026-09-13.) `ESS.BoundaryDof.PLANT_MAP` is the declared topology W1 produced by reading `src/models.js` field by field: **U3 → U4 is the only inter-unit material coupling, carrying three variables; U1 and U2 are islands.** A pressure-flow network must place a node and a resistance for every real coupling and for no imagined one, and the map exists because the most likely way to get item 1 wrong is to assume a U1 → U3 feed train the code does not have. `PLANT_MAP.notBoundaries` is equally binding: `P.Tcw`, `env.Tamb`, `env.catAct` and the global clock are read by two units but written by neither unit's step code, and a network that counted them would carry phantom edges. When item 1 changes a variable's `spec` from `'flow'` to `'pressure'`, lane A stops being structural and starts being a real gate — that transition is the map's whole purpose.
 
 4.1.5 Sources. Luyben, Process Modeling, Simulation and Control for Chemical Engineers, 2nd ed., 1990 (McGraw-Hill), and Luyben, Plantwide Dynamic Simulators in Chemical Processing and Control, Marcel Dekker, 2002 (ISBN 0824708016 / 978-0824708016; DOI 10.1201/9781482275803), for pressure-flow network modeling and holdup; ISA-75.01.01-2012 (IEC 60534-2-1 MOD) and IEC 60534-2-1:2011 for control-valve sizing and flow characteristics; pump affinity laws and pump curves from Karassik, Messina, Cooper & Heald, Pump Handbook, 4th ed., McGraw-Hill, 2008 (ISBN 978-0-07-146044-6). **Registered 2026-09-13 by W0**, before item 1 is built, as required: Luyben 1990 = `RESOURCES-7.1`, Luyben 2002 = `RESOURCES-7.2`, ISA-75.01.01-2012 / IEC 60534-2-1:2011 = `RESOURCES-7.9`, Karassik = `RESOURCES-7.17`. All four are CITED-NOT-HELD — citable for the concept, not for a number, until a copy is held (see §8.5).
 
@@ -393,7 +423,7 @@ All twenty-two are now registered as `docs/RESOURCES.md` **§7, ids RESOURCES-7.
 - Byte-for-byte goldens for v3.2 (archived checksums match).
 - For item 2: the trips the **code** fires, collected at `ctx.onTrip`, match what the matrix **declares**, tick-for-tick, on the golden upsets — and deleting the C&E reader entirely leaves every golden digest byte-identical. (Rev 1 said "matrix-driven trips match legacy trips". That wording described the matrix firing the trips, which is the runtime enforcement Anthony's 2026-09-13 ruling rejected; see §3.1.1. The matrix drives nothing.)
 - For item 4: fitted step-test parameters match known values within tolerance; grader passes and fails at the 80% mark.
-- For item 6: all existing golden drills pass the DOF check unchanged.
+- For item 6: every D-series and all twelve A-series drill initial conditions pass the specification-integrity check unchanged, **and every golden digest is byte-identical** — the digests are the proof the check is inert on the paths that do not refuse, not the fact that the suite is green. (Rev 1 said "pass the DOF check". There is no DOF check in the built item and there could not be; see §3.4.1. The check refuses only a non-finite boundary variable and a CAS loop with no master.)
 - For Stream B: no network from the sim page; shadow log append-only.
 
 9.6 Receipt format (matching the repo's habits). Each merged item records a receipt: the commit hash, the date, the suite result (0 fail), the golden result (byte-for-byte or, for v4 only, the archived-then-recaptured note with checksums), the build result, and one line naming what was added and which rule keeps it additive or gated. Receipts live with the change and are referenced in CHANGELOG.md.
@@ -408,7 +438,9 @@ Each item is sized so one builder seat can finish and verify it in one focused p
 
 10.0 **W0 (new in rev 2, and it comes before everything): register the sources.** Add a Registered sources section to `docs/RESOURCES.md`, seeded from Appendix A, every work with its own `### 7.n` subsection and a verification status. Anthony's ruling, 2026-09-13: *nothing builds on an unregistered source.* Twenty-two works, not the three gate 8.5 named — see that gate for why the count grew. Acceptance — stated precisely, because the obvious criterion is hollow. **`tests/provenance.test.js` passing proves nothing about W0.** That test resolves the `sourceBasis` arrays hard-coded in `src/topology.js` and `src/drill-arch.js` against `docs/RESOURCES.md` headings; it never reads this spec, and no `src/` module cites a `RESOURCES-7.x` id yet, so it would pass identically if §7 were mis-numbered or deleted outright. It is a real gate that this work does not yet reach. The criteria that do bite: (a) every `RESOURCES-7.x` id cited in this spec resolves to a real `### 7.n` heading, and every `### 7.n` heading is either cited or knowingly recorded as an orphan — checked by reading both files against each other, since no test does it; (b) each source has its own `### 7.n` subsection, so none is reachable as a bare `RESOURCES-7`; (c) each entry carries a held/not-held status, so a builder can tell a concept citation from a number citation. `provenance.test.js` becomes a genuine gate on §7 at **W2**, the first work item that puts a `RESOURCES-7.x` citation inside a `src/` module (`RESOURCES-7.8`, `RESOURCES-7.10`). It must be green then, and that is when this registration is machine-checked for the first time. **Status: done, 2026-09-13** (`docs/RESOURCES.md` §7, ids 7.1–7.22, all CITED-NOT-HELD). Gate 8.5 is discharged.
 
-10.1 W1 (item 6, the first build item, and it unblocks the rest): add the boundary-stream contract and the pre-drill DOF check. **Binds to `src/drill-arch.js` plus the app's drill-start path, not `src/training.js`** (corrected in 3.4.3 — `src/training.js` has no drill-start path). The validator reads `P.t`, never the wall clock. Acceptance: 3.4.6. No golden movement.
+10.1 W1 (item 6, the first build item, and it unblocks the rest): the declared plant map and the pre-drill specification-integrity check. **Status: done, 2026-09-13** — `src/boundary-dof.js`, `tests/boundary-dof.test.js`, `tests/app-boundary-dof.test.js`, wired into `startDrill` and `startADrill`; contract at `docs/dev/W1-BOUNDARY-DOF-CONTRACT.md`.
+
+Binding, corrected twice during the build and worth reading before W2 repeats either mistake: **not `src/training.js`** (it has no drill-start path, §3.4.3), and **not the menu wrappers** that §3.4.3 originally named — `tests/golden-drills.test.js:87` calls `c.startDrill(def)` directly, so a validator at the menu layer would never run against the golden suite and (c) could not be demonstrated. It sits in `startDrill` / `startADrill`, **immediately before `startDrill`'s `rand()` draw for the injection delay**, because refusing after that draw would advance the seeded cursor without arming and shift every downstream trajectory. It is inert under `replaying()`, reads `P.t` only, and fails open if the module is absent. Goldens proved byte-identical by digest. Acceptance: 3.4.6. No golden moved.
 
 10.2 W2 (item 2, **re-scoped by Anthony 2026-09-13**): build the C&E matrix as a **declarative assertion layer**. Declare the six trip rows as data; subscribe a reader to the existing `ctx.onTrip` seam (`src/models.js:294-297`); render the operator-facing C&E chart; score `INTERLOCK.DEFEAT` from the declared matrix (A5 / `DRV-M202`, `src/drill-arch.js:326`). **The code stays the source of truth. No runtime enforcement — the matrix never fires an effect.** Do not edit `src/models.js`; the hook is already there. Acceptance: 3.1.6, including the test that deleting the reader leaves every golden byte-identical. Matrix-as-source-of-truth is out of scope here and sits behind gate 8.1.
 
@@ -472,7 +504,9 @@ Original note: Their names, roles and the facts cited here (v3.1.0 dated 2026-09
 - Option A: Anthony's ruling that goldens are archived byte-for-byte before any re-capture.
 - Golden / golden baseline: the recorded reference run used to detect any change in dynamics.
 - C&E matrix: cause-and-effect matrix, causes down, effects across, read by the engine and shown as a chart.
-- DOF check: degrees-of-freedom check that a boundary specification is well-posed before a drill starts.
+- DOF check: degrees-of-freedom check that a specification is well-posed. Named in rev 1 as item 6's mechanism; **the built item does not contain one**, because on a flow-driven model with one owning write per variable per tick there is nothing to count (§3.4.1). Retained in this glossary only so a reader of rev 1 or rev 2 can find out what happened to it. What shipped is the specification-integrity check.
+- Plant map: the declared topology artifact (`ESS.BoundaryDof.PLANT_MAP`) recording which units are coupled and which are islands, derived by reading `src/models.js` field by field. Item 1 reads it rather than inferring couplings.
+- Lane A / lane B: item 6's two checks — the material-boundary declaration (which cannot fail on this plant, and says so) and control-loop configuration (which can).
 - FOPDT: first-order-plus-dead-time model estimated from a step test (gain, time constant, dead time).
 - PIP: the advisory-only hover coach in the station; receives a read-only, operator-visible projection; has no write path.
 - Shadow mode: the coach logs what it would have done to an append-only log; never acts on the process.

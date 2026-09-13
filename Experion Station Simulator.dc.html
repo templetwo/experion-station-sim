@@ -23,6 +23,7 @@
 <script src="./src/drill-arch.js"></script>
 <script src="./src/architecture-view-model.js"></script>
 <script src="./src/debrief.js"></script>
+<script src="./src/boundary-dof.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -3073,6 +3074,28 @@ class Component extends DCLogic {
        q:'Bed temperature climbing at constant preheat. Correct response?',opts:['Raise quench flow and/or lower the preheater SP — the fuel trips at 480 °C','Raise the preheater SP to burn off deposits','Put FIC313 in MAN and close the quench','Increase feed to sweep the heat out'],a:0}
     ];
   }
+  // W1 (CONVERGENCE-SPEC item 6, contract docs/dev/W1-BOUNDARY-DOF-CONTRACT.md §4): the pre-drill
+  // DOF check. Runs on the initial condition the trainee will actually meet -- after applyPreset
+  // and after the drill's own setup() -- and BEFORE the drill arms, because a refusal after arming
+  // is too late. Three constraints, each for a reason the repo has already paid for once:
+  //   1. In startDrill it must run BEFORE the rand() draw for the injection delay. Refusing after
+  //      that draw would advance the seeded cursor without arming anything and shift every
+  //      downstream trajectory -- the failure class rand4 was introduced for in 3.1.0. The goldens
+  //      staying byte-identical is the proof, not this comment.
+  //   2. Inert under replay. A refusal there would break deterministic replay, which release
+  //      gate 3 exists to protect (cf. src/dispatch.js skipping gates when ctx.replaying).
+  //   3. Reads P.t only, never the wall clock -- see the 3.1.0 clock re-basing fix.
+  dofPreflight(what){
+    if(this.replaying()) return true;
+    if(typeof ESS==='undefined'||!ESS.BoundaryDof) return true;   // module absent: fail open, never block a drill
+    const r=ESS.BoundaryDof.check(this.P,this.L);
+    if(r.ok) return true;
+    const why=ESS.BoundaryDof.formatRefusal(r);
+    this.msgZone(what+' REFUSED — '+why);
+    this.addEvent('SYSTEM','DOF',what+' REFUSED — '+why,'','');
+    this.instrNote(what+' REFUSED BY THE PRE-DRILL DOF CHECK — '+why);
+    return false;
+  }
   startDrill(d,opts){
     if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
     const o=opts||{}, startMode=o.startMode==='CANONICAL'?'CANONICAL':'LIVE STATE';
@@ -3081,6 +3104,7 @@ class Component extends DCLogic {
     // LIVE STATE is literal: arming cannot secretly manufacture a precondition.
     // Defined setup belongs only to a canonical start and is replayed with it.
     if(o.applySetup&&d.setup) d.setup(this);
+    if(!this.dofPreflight('DRILL '+d.id)) return;   // BEFORE the rand() draw below -- see dofPreflight
     const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0,startMode,preset},dlg:null});
     this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT});
@@ -3836,6 +3860,7 @@ class Component extends DCLogic {
     if(this.state.drill){ this.msgZone('A DRILL IS ALREADY ACTIVE — END IT FIRST'); return; }
     if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ALREADY ACTIVE'); return; }
     const o=opts||{};
+    if(!this.dofPreflight('A-DRILL '+id)) return;   // see dofPreflight; startADrill draws no randomness
     this.P.aDrill={id,startedAt:this.P.t,fired:[],events:[],cues:[]};
     this.journal('ADRILL',id,'',{instr:true,preset:o.preset||null,presetBaseT:o.presetBaseT});
     this.instrNote('A-DRILL '+id+' ARMED — '+def.title.toUpperCase());
