@@ -4,6 +4,28 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### W2 — the cause-and-effect matrix as an assertion layer
+
+Work item W2 of `docs/dev/CONVERGENCE-SPEC.md` (item 2), built to `docs/dev/W2-CAUSE-EFFECT-CONTRACT.md`. **No golden moved**; `stepU1`..`stepU4` untouched; **the matrix declares, it never enforces.**
+
+**Three findings from the mapping pass shaped the build, and one is about the gate itself.**
+
+- **The golden set reaches only four of the six seam rows.** V-401 `PSV LIFT` and R-202 `HI TEMP TRIP` are fired by **no fixture anywhere** — `drill-D9` and `drill-D11`, the two that plausibly should, both record `"trips": {}` and score *"trip avoided"*. So the promotion gate as worded ("passed clean across the full golden set") was satisfiable while two rows reached an operator-visible chart never once checked against the code. **The gate was strengthened rather than weakened**: W2 authors two coverage scripts — V-401 driven past its 950 kPa set, R-202 to its trip — and the condition is now **all six rows verified**. They are not goldens: no fixture added, nothing recaptured.
+- **A seventh cause bypasses the seam, and shares an effect column.** `P.trips.skin` is raised in the app's `interlocks()` and never passes `ctx.onTrip`. It is not merely absent: `VALVE_TARGET`'s `FV311` closes on `trips.bed || trips.skin`, so a matrix declaring that column under R-310 alone would be **wrong about the plant** and would teach a trainee the wrong blast radius. Seven causes are declared, each carrying an explicit `seam`, and exactly six are asserted at the hook.
+- **`INTERLOCK.DEFEAT` scoring (§3.1.6(d)) has no join key and is deferred.** `DRV-M202` is not a `raiseTrip` source and no M202 interlock exists in code; A5's gate is a generic "accepted START while tripped, on any motor", keyed on `actionType`+`target`, while the matrix is keyed on `(src, cond)`. Rather than fabricate a join, it is deferred with three readings for Anthony. **`src/drill-arch.js` is untouched**, so `tests/refusal-scoring.test.js`'s outcome-based guarantee holds whichever way he rules.
+
+#### Added
+- **`src/cause-effect.js`** (`ESS.CauseEffect`): seven declared causes with thresholds, resets and verbatim `raiseTrip` descriptions; effect columns declared from `VALVE_TARGET`'s own gating; `createRecorder()`, `verify()` (`SEAM_TRIP_UNDECLARED` / `SEAM_ROW_UNREACHED`, comparing order and tick), `chart()`, and `CHART_VISIBILITY`. Pure — no DOM, timers, clock or randomness. Cites `RESOURCES-7.8` and `RESOURCES-7.10` for the C&E framing only; both CITED-NOT-HELD, and every number comes from `src/models.js`.
+- **The recorder chained onto the existing seam** at the app's `onTrip`. `dTrip` runs **first and unconditionally**, so D-series scoring is byte-identical, and the recorder lives on the Component rather than on `P` — same discipline as W1's notes, for the same reason.
+- **The C&E chart**, instructor-only behind a one-word flag. **It fails closed**, deliberately opposite to `dofPreflight`'s fail-open: there the risk was a drill wrongly blocked, here a surface shown too early. A test flips the flag under a running Component and asserts the app *follows the module* rather than hardcoding the gate, so the promotion path is exercised before it is taken.
+- **Four test files** (47 tests): the matrix checked field-by-field against `src/models.js` by reading it; both `verify()` failures constructed; the coverage gate driving all six rows; and **acceptance §3.1.6(e) as a real stub-and-diff** — the same seed through a *tripping* run with the recorder attached and detached, comparing every point, valve, trip, event, alarm and the seeded generator cursor. Identical.
+- **`tests/models-valves.test.js` extended** to pin `valveMap()` against `VALVE_TARGET`'s key set — the gap §0.4 found. The two effect implementations agree today, but only because those key sets are inverses and nothing pinned it. Pinned **behaviourally** (drive each loop, observe which valve moves), not by matching source text.
+
+#### Fixed, and the mechanism is worth more than the bug
+The verify pass found `H310_SKIN` citing `…dc.html:2836` — a line that had become `const P=this.P, L=this.L;` inside `stepU2`. **The citation was correct when written and went stale inside the same change that wrote it**: wiring the recorder and the chart added ~37 lines above it and pushed the real interlock down to `:2873`. Nothing asserted on `site`, so it passed unnoticed.
+
+The fix is not a better line number. All fourteen citations are now `{file, anchor}` — a grep-able string rather than a coordinate — and three tests derive the location from the anchor: it must resolve **exactly once**, and the line it resolves to must name that cause's own `src` and `cond`. If the code moves, the anchor moves with it; if the code changes, the test goes red. This is CLAUDE.md's own doctrine (*"Line numbers drift. Grep for the symbol."*) applied to data instead of to a human reader. Sabotage-tested: pointing the anchor at the wrong-but-real line fails two ways.
+
 ### W1 — the declared plant map and specification integrity at drill start
 
 Work item W1 of `docs/dev/CONVERGENCE-SPEC.md` (item 6), built to `docs/dev/W1-BOUNDARY-DOF-CONTRACT.md`. **No golden moved**; `stepU1`..`stepU4` untouched.
@@ -45,7 +67,8 @@ A second seat verified the commit six for six and found two things by **running 
 
 #### Receipt (spec §9.6)
 - **Date:** 2026-09-13. **Checkpoint:** built from `dfee660`.
-- **Suite, run under BOTH conditions, because one machine's environment is not evidence about another's:** with the `anthropic` package present (this seat) **933 tests, 932 pass, 1 skipped, 0 fail**; with it absent (the second seat's condition, reproduced here by shadowing the module on `PYTHONPATH`) **933 tests, 929 pass, 4 skipped, 0 fail**. The three extra skips are the guarded coach tests naming their reason. Before this change the same simulation produced 3 failures.
+- **Suite (W2), run under BOTH conditions:** with `anthropic` present **987 tests, 986 pass, 1 skipped, 0 fail**; absent **987 tests, 983 pass, 4 skipped, 0 fail**. Goldens 31/31 byte-identical. Build and smoke ok on both builds.
+- **Suite (earlier in this release), run under BOTH conditions, because one machine's environment is not evidence about another's:** with the `anthropic` package present (this seat) **933 tests, 932 pass, 1 skipped, 0 fail**; with it absent (the second seat's condition, reproduced here by shadowing the module on `PYTHONPATH`) **933 tests, 929 pass, 4 skipped, 0 fail**. The three extra skips are the guarded coach tests naming their reason. Before this change the same simulation produced 3 failures.
 - **Goldens:** **byte-for-byte unmoved** — `golden-drills`, `golden-upsets`, `golden-u4` and `v2-baseline-archive` 31/31 green. This is the proof the `rand()` ordering is right, not the comment next to it.
 - **Build:** `python3 tools/build-dist.py` run; `dist/` and `src/model-id.js` restamped in this commit because a new `src/*.js` file changes the model hash.
 - **Smoke:** ok on both builds.

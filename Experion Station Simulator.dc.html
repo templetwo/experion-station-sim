@@ -24,6 +24,7 @@
 <script src="./src/architecture-view-model.js"></script>
 <script src="./src/debrief.js"></script>
 <script src="./src/boundary-dof.js"></script>
+<script src="./src/cause-effect.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -1658,6 +1659,33 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         </div>
       </sc-if>
 
+      <sc-if value="{{ dg.isCE }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;line-height:1.5">
+          <div style="font-size:10.5px;color:#55524c;margin-bottom:8px">{{ dg.ce.note }}</div>
+          <div style="overflow-x:auto">
+            <div style="display:flex;font-weight:700;font-size:10.5px;color:#55524c;border-bottom:1px solid #B6B6B2;padding-bottom:3px">
+              <div style="width:150px">Cause</div><div style="width:120px">Trip point</div><div style="width:110px">Reset</div>
+              <sc-for list="{{ dg.ce.cols }}" as="col" hint-placeholder-count="7"><div style="width:82px;text-align:center">{{ col.id }}</div></sc-for>
+            </div>
+            <sc-for list="{{ dg.ce.rows }}" as="row" hint-placeholder-count="7">
+              <div style="display:flex;font-size:11.5px;padding:3px 0;border-bottom:1px solid #CFCFCB">
+                <div style="width:150px;font-weight:700">{{ row.src }} {{ row.cond }}</div>
+                <div style="width:120px">{{ row.trip }}</div>
+                <div style="width:110px">{{ row.reset }}</div>
+                <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="7"><div style="width:82px;text-align:center;font-weight:700">{{ cell.mark }}</div></sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-weight:700;margin-top:12px;margin-bottom:4px">Final elements</div>
+          <sc-for list="{{ dg.ce.cols }}" as="col" hint-placeholder-count="7">
+            <div style="display:flex;font-size:11.5px;padding:2px 0"><div style="width:110px;font-weight:700">{{ col.id }}</div><div style="width:110px">{{ col.target }}</div><div style="flex:1;color:#3c3c3c">{{ col.action }}</div></div>
+          </sc-for>
+          <div style="margin-top:12px;font-size:10.5px;color:#55524c;line-height:1.55">
+            Causes are raised by the process models; the row marked as raised by the station is enforced there instead. This chart is a declaration of what the plant does. It does not drive anything: the code remains the source of truth and the chart is asserted against it.
+          </div>
+        </div>
+      </sc-if>
+
       <sc-if value="{{ dg.isAbout }}" hint-placeholder-val="{{ false }}">
         <div style="font-size:12px;line-height:1.7">
           <b>Operator Station Training Simulator</b><br />
@@ -1888,6 +1916,11 @@ class Component extends DCLogic {
     // src/instructor.js (advisory Q3(B)). Defaulted below in restoreSnapshot() for a
     // snapshot taken before this field existed.
     this.P.archFaults = ESS.FaultEngine.createState();
+    // W2: the C&E recorder. Lives on the Component, NOT on P -- it must stay out of the process
+    // state for the same reason W1's notes do (tests/_fixture.js endState() digests P and the v2
+    // event count; the recorder is neither). Re-created here so a reset or a preset starts it
+    // clean, and so a restored snapshot does not inherit another run's trips.
+    this.ceRec = (typeof ESS!=='undefined'&&ESS.CauseEffect) ? ESS.CauseEffect.createRecorder() : null;
     // The panel's own schedule ledger (V3-PLAN S2, DO item 1): archPending holds
     // instructor-scheduled engine faults not yet at their onset time; archMeta carries,
     // per active instanceId, the STEP/RAMP mode, ramp length, target magnitude and optional
@@ -2748,7 +2781,11 @@ class Component extends DCLogic {
       rand4:()=>this.rand4?this.rand4():0,                 // Unit 04 only; zero, never Math.random, if absent
       shed:(l)=>this.applyShed(l),
       message:(t)=>this.msgZone(t),
-      onTrip:(src,cond)=>this.dTrip(src,cond),
+      // W2: the C&E recorder chains onto the EXISTING seam. dTrip runs first and
+      // unconditionally, so D-series drill scoring is byte-identical; the recorder is
+      // read-only and writes only to its own log. The guard means a missing recorder is a
+      // no-op, so nothing here can ever be the reason a trip is not scored.
+      onTrip:(src,cond)=>{ this.dTrip(src,cond); if(this.ceRec) this.ceRec.observe(src,cond,this.P.t); },
       measurementBias:(tag,simTime,span)=>ESS.FaultEngine.measurementBias(
         this.P.archFaults||ESS.FaultEngine.createState(),'XMTR-'+tag,simTime,span)
     };
@@ -4403,6 +4440,7 @@ class Component extends DCLogic {
     if(c==='HELP'){ this.setState({dlg:{type:'help'},menu:null}); return true; }
     if(c==='PHILOSOPHY'||c==='ALARM PHILOSOPHY'||c==='ALMPHIL'){ this.setState({dlg:{type:'philosophy'},menu:null}); return true; }
     if(c==='PROCESS'||c==='OVERVIEW'||c==='PLANT'||c==='ORIENTATION'){ this.setState({dlg:{type:'process'},menu:null}); return true; }
+    if(c==='CE'||c==='CAUSE EFFECT'||c==='CAUSE AND EFFECT'||c==='INTERLOCKS'){ if(!this.ceAllowed()){ this.msgZone('CAUSE AND EFFECT CHART — INSTRUCTOR ONLY'); return true; } this.setState({dlg:{type:'ce'},menu:null}); return true; }
     if(c==='CLOUDKEY'||c==='CLOUD KEY'||c==='APIKEY'||c==='API KEY'||c==='PIP KEY'){ this.openCloudKey(); return true; }
     if(c==='DRILL'||c==='DRILLS'){ this.setState({dlg:{type:'drills'},menu:null}); return true; }
     if(c==='INSTR'||c==='INSTRUCTOR'){ this.openInstructor(); return true; }
@@ -5008,7 +5046,7 @@ class Component extends DCLogic {
     };
     // dialogs
     const dgT=S.dlg?S.dlg.type:null;
-    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',process:'HELP — PLANT ORIENTATION',cloudkey:'PIP — CLOUD COACH CREDENTIAL',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
+    const titles={logon:(S.dlg&&S.dlg.instr)?'INSTRUCTOR STATION — LOGON':'STATION SECURITY',shelve:'SHELVE ALARM',comment:'ALARM COMMENT',drills:'TRAINING DRILLS',debrief:'DRILL DEBRIEF',help:'HELP — KEYS & OPERATING HINTS',philosophy:'HELP — ALARM AND DISPLAY PHILOSOPHY',process:'HELP — PLANT ORIENTATION',ce:'CAUSE AND EFFECT CHART',cloudkey:'PIP — CLOUD COACH CREDENTIAL',about:'ABOUT',reset:'RESET SIMULATION',sysmenu:'SYSTEM MENU',esig:'ELECTRONIC SIGNATURE',record:'TRAINING RECORD',coverage:'OPERATOR TASK COVERAGE'};
     const widths={logon:460,shelve:460,comment:520,drills:620,debrief:620,help:520,philosophy:680,process:720,cloudkey:560,about:520,reset:380,sysmenu:420,esig:520,record:680,coverage:760};
     const cov=ESS.Training.coverage(this.tasksDone), covSum=ESS.Training.coverageSummary(this.tasksDone);
     const recs=this.trainingRecords.map(r=>({t:this.fD(r.t)+' '+this.fT(r.t),oper:r.oper,drill:r.drill+' — '+r.name,score:r.score+'/100',res:r.pass?'PASS':'NOT PASSED',fg:r.pass?'#0a3a12':'#A00000',
@@ -5016,7 +5054,7 @@ class Component extends DCLogic {
     const byOper={}; this.trainingRecords.forEach(r=>{ const o=byOper[r.oper]||(byOper[r.oper]={n:0,pass:0,sum:0}); o.n++; o.sum+=r.score; if(r.pass)o.pass++; });
     const recOpers=Object.keys(byOper).map(k=>({oper:k,txt:byOper[k].n+' drill'+(byOper[k].n===1?'':'s')+', '+byOper[k].pass+' passed, average '+Math.round(byOper[k].sum/byOper[k].n)}));
     let dg={open:!!dgT,title:titles[dgT]||'',w:widths[dgT]||460,close:()=>{ if(dgT==='esig') this.cancelSignature(); else this.setState({dlg:null,dlgKey:'',dlgKeyModel:''}); },
-      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isProcess:dgT==='process',proc:this.processView(dgT==='process'),isCloudKey:dgT==='cloudkey',ck:this.cloudKeyView(dgT==='cloudkey'),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
+      isLogon:dgT==='logon',isShelve:dgT==='shelve',isComment:dgT==='comment',isDrills:dgT==='drills',isDebrief:dgT==='debrief',isHelp:dgT==='help',isPhil:dgT==='philosophy',phil:this.philosophyView(),isProcess:dgT==='process',proc:this.processView(dgT==='process'),isCE:dgT==='ce',ce:this.ceView(dgT==='ce'),isCloudKey:dgT==='cloudkey',ck:this.cloudKeyView(dgT==='cloudkey'),isAbout:dgT==='about',isReset:dgT==='reset',isSysMenu:dgT==='sysmenu',
       isEsig:dgT==='esig',isRecord:dgT==='record',isCoverage:dgT==='coverage',
       logonNote:(S.dlg&&S.dlg.instr)?'The instructor station needs the instructor password or the manager password. Trainees at OPER / SUPV cannot open it.':'Enter your name and the level password. The name goes on every journal entry, message confirmation, signature and training record.',
       logonIsOper:!(S.dlg&&S.dlg.instr),operCur:this.operName(),name:S.dlgName,nameChange:(e)=>this.setState({dlgName:e.target.value}),
@@ -5411,6 +5449,35 @@ class Component extends DCLogic {
     const reflow=(body)=>body.split('\n\n').map(par=>{ const lines=par.split('\n'); return lines.some(l=>/^\s{2,}\S/.test(l))?par:lines.map(l=>l.trim()).join(' '); }).join('\n\n');
     return {lede:'Our own prose about our own plant. The plant does not exist and nothing here derives from any real facility. Command PROCESS opens this page; PIP reads the same text.',
       sections:ESS.Process.sections().map(sec=>({title:sec.title,body:reflow(sec.body)})),sources:ESS.Process.sources()};
+  }
+  // W2 (CONVERGENCE-SPEC item 2, contract docs/dev/W2-CAUSE-EFFECT-CONTRACT.md): the C&E chart.
+  //
+  // VISIBILITY FAILS CLOSED, which is the opposite of dofPreflight's fail-open, and deliberately:
+  // there the risk was a drill wrongly blocked, here it is a surface shown too early. A chart that
+  // tells an operator which cause drives which final element is making a claim about the plant with
+  // a console display's authority, so it stays instructor-only until the coverage gate has proved
+  // the matrix equals the code across all six seam rows. Promotion is one word in
+  // src/cause-effect.js (CHART_VISIBILITY), and demotion is the same word back.
+  ceVisibleToOperator(){ return !!(typeof ESS!=='undefined'&&ESS.CauseEffect&&ESS.CauseEffect.CHART_VISIBILITY==='operator'); }
+  ceAllowed(){ return this.ceVisibleToOperator()||this.instructorAllowed(); }
+  ceView(open){
+    if(!open||typeof ESS==='undefined'||!ESS.CauseEffect) return {rows:[],cols:[],note:'',locked:true,empty:true};
+    if(!this.ceAllowed()) return {rows:[],cols:[],locked:true,empty:true,
+      note:'CAUSE AND EFFECT CHART — INSTRUCTOR ONLY. The chart becomes operator-visible once the coverage gate has verified every declared row against the code.'};
+    const CE=ESS.CauseEffect, cols=CE.effects(), cells=CE.cells();
+    const rows=CE.causes().map(c=>({
+      id:c.id, src:c.src, cond:c.cond, seam:c.seam,
+      trip:c.threshold==null?'':(c.comparator+' '+c.threshold+(c.eu?' '+c.eu:'')),
+      reset:c.reset||'', desc:c.desc||'',
+      seamNote:c.seam==='onTrip'?'':'raised by the station, not by the process models',
+      cells:cols.map(col=>({id:col.id,mark:cells.some(x=>x.causeId===c.id&&x.effectId===col.id)?'X':'·'}))
+    }));
+    return {
+      rows, cols:cols.map(col=>({id:col.id,target:col.target,action:col.action})),
+      locked:!this.ceVisibleToOperator(), empty:!rows.length,
+      note:this.ceVisibleToOperator()?'Declared cause and effect. The chart states what the plant does; it does not make it happen.'
+        :'INSTRUCTOR VIEW — not yet released to the operator. The chart states what the plant does; it does not make it happen.'
+    };
   }
   philosophyView(){
     const name=this.paletteName(), C=this.colours();
