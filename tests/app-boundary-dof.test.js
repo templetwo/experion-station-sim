@@ -201,14 +201,31 @@ describe('specification-integrity notes are surfaced, and only where the ruling 
     assert.equal('dofNotes' in c.P, false, 'notes must not be stored on the process state');
   });
 
-  test('the revealed debrief carries the note; the TRAINEE_SAFE debrief does not', () => {
+  test('BOTH debrief projections carry the note -- the trainee sees it too', () => {
+    // Anthony, 2026-09-13: "trainee's post-exercise debrief too, always. The reveal switch is for
+    // hidden truth; the cascade note reads the board." A note is derived from faceplates the
+    // trainee was already looking at, so gating it behind DEBRIEF_REVEALED would hide a fair
+    // lesson behind a switch built for unfair ones.
     const c = boot();
     armOpenCascade(c);
-    const revealed = c.dofNoteRows(true);
-    assert.ok(revealed.length > 0, 'the revealed debrief must carry note rows');
-    assert.equal(revealed[0].lane, 'INSTRUCTOR');
-    assert.ok(/CASCADE_OPEN/.test(revealed.map((r) => r.text).join(' ')));
-    assert.deepEqual(c.dofNoteRows(false), [], 'the trainee-safe debrief must carry none');
+    const rows = c.dofNoteRows();
+    assert.ok(rows.length > 0, 'the debrief must carry note rows');
+    assert.equal(rows[0].lane, 'SYSTEM', 'not INSTRUCTOR -- nothing here is instructor-privileged');
+    assert.ok(/CASCADE_OPEN/.test(rows.map((r) => r.text).join(' ')));
+    // dofNoteRows takes no projection argument at all: there is no way to render it for one
+    // audience and not the other, which is the point.
+    assert.equal(c.dofNoteRows.length, 0, 'dofNoteRows must take no reveal parameter');
+  });
+
+  test('pre-drill stays silent for the trainee: a note never reaches the message zone', () => {
+    const c = boot();
+    const before = (c.state.msg || '') + '|' + JSON.stringify(c.pendingMsgs ? c.pendingMsgs() : []);
+    armOpenCascade(c);
+    const after = (c.state.msg || '') + '|' + JSON.stringify(c.pendingMsgs ? c.pendingMsgs() : []);
+    assert.equal(/CASCADE_OPEN|BOUNDARY_SPEC/.test(after), false,
+      'a note must never appear in the operator message zone: ' + after);
+    assert.ok(c.state.drill, 'and the drill still arms');
+    void before;
   });
 
   test('a clean start records the structural note and nothing alarming', () => {

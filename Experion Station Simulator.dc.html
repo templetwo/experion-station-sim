@@ -3108,13 +3108,27 @@ class Component extends DCLogic {
   // Instructor-only debrief rows for the notes above. Rendered ONLY under DEBRIEF_REVEALED --
   // the trainee's TRAINEE_SAFE debrief never carries them, matching how root-location rows are
   // already handled two functions down.
-  dofNoteRows(reveal){
-    if(!reveal) return [];
+  // Debrief rows for the notes. THE TRAINEE SEES THESE TOO, in both projections, and that is a
+  // deliberate ruling (Anthony, 2026-09-13): "trainee's post-exercise debrief too, always. The
+  // reveal switch is for hidden truth; the cascade note reads the board."
+  //
+  // That distinction is the whole point and it is worth not blurring. DEBRIEF_REVEALED exists to
+  // gate things the trainee could not have known -- the active fault id, the changed topology
+  // node, the answer key. A specification note is the opposite: it is derived entirely from the
+  // faceplates the trainee was looking at the whole time. "LIC101 is AUTO with its slave FIC102
+  // in MAN" is a reading of the board, not a disclosure about it. Gating it behind reveal would
+  // have hidden a fair lesson behind a switch built for unfair ones. Lane is SYSTEM, not
+  // INSTRUCTOR, for the same reason: nothing here is instructor-privileged.
+  //
+  // PRE-DRILL STAYS SILENT FOR THE TRAINEE. Notes never reach msgZone; dofPreflight messages the
+  // operator only on a REFUSAL, where the drill did not start and they are owed the reason. The
+  // note is a debrief observation, not a nag at arming time.
+  dofNoteRows(){
     const ring=(this.instr&&this.instr.dofNotes)||[];
     const rows=[];
     for(const e of ring) for(const n of e.notes) rows.push({
       rel:this.mmss(Math.max(0,(e.t-(this.t0||e.t)))),
-      lane:'INSTRUCTOR', actor:'SYSTEM', kind:'SPEC',
+      lane:'SYSTEM', actor:'SYSTEM', kind:'SPEC',
       text:e.what+' — '+n.code+': '+n.detail,
       pvT:'', hasPv:false, fg:'#1c1c1c'
     });
@@ -5357,7 +5371,7 @@ class Component extends DCLogic {
     const counts=out.summary&&out.summary.counts||{};
     const aDrillOn=!!this.P.aDrill;
     return {
-      rows:this.dofNoteRows(reveal).concat((out.rows||[]).map(r=>{
+      rows:this.dofNoteRows().concat((out.rows||[]).map(r=>{
         const pv=r.process||{};
         const pvT=Object.keys(pv).map(k=>k+' '+(pv[k].pv!=null?this.fmt(pv[k].pv,1):'')).join(' · ');
         return {
@@ -5366,7 +5380,7 @@ class Component extends DCLogic {
           fg:r.kind==='REFUSED'?'#7A2E0E':(r.kind==='SCORE'?'#0a3a12':'#1c1c1c')
         };
       })),
-      empty:!out.rows.length&&!this.dofNoteRows(reveal).length,
+      empty:!out.rows.length&&!this.dofNoteRows().length,
       summary:(counts.operator||0)+' operator · '+(counts.instructor||0)+' instructor · '+(counts.refused||0)+' refused'+(score?(' · score '+score.score+'/100'):''),
       projection:out.projection,
       ask:aDrillOn, submit:()=>this.submitADrillDebrief()

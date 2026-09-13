@@ -34,8 +34,7 @@ OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 HOST = "127.0.0.1"
 # Optional CLOUD provider for PIP's judgment (Anthony, 2026-09-03: the local model
 # read the board correctly and still misdiagnosed a bad-quality PV as a process
-# effect). The default stays local: set COACH_PROVIDER=anthropic to route PIP through
-# the Anthropic API. Gate 4 is untouched either way: the station page only ever talks
+# effect). Gate 4 is untouched either way: the station page only ever talks
 # to this sidecar's relative /api/coach/ endpoints, the deterministic core never waits
 # on it, and file:// stays offline. The context sent is the same trainee-safe board
 # projection in both cases; no employer or real-site material exists in this product.
@@ -44,6 +43,10 @@ HOST = "127.0.0.1"
 # refusal BEFORE the first frame, such as credentials, billing or network, is answered by the
 # local model for that question and logged), "anthropic" (cloud only), "ollama" (local only).
 # Anthony, 2026-09-03: "we swapped to api" -- the cloud is the default, local is the fallback.
+# (This block said "the default stays local" until 2026-09-13. That was left over from before the
+# swap and contradicted the very next comment line and the default on the line below it; a second
+# seat caught it. tests/doc-consistency.test.js now DERIVES the default from the assignment below
+# and fails any prose that disagrees, so the two cannot drift apart again.)
 PROVIDER = os.environ.get("COACH_PROVIDER", "auto").strip().lower() or "auto"
 if PROVIDER not in ("auto", "ollama", "anthropic"):
     raise SystemExit("COACH_PROVIDER must be 'auto', 'ollama' or 'anthropic', not %r" % PROVIDER)

@@ -298,6 +298,111 @@ function isAllowed(allowlist, file, text, claim) {
 }
 
 // ---------------------------------------------------------------------------
+// Derivation 3: the coach sidecar's DEFAULT PROVIDER, from the PROVIDER
+// assignment in tools/coach/serve.py.
+//
+// Added 2026-09-13 on Anthony's ruling, after a second seat found serve.py
+// contradicting itself five lines apart: a leftover comment said "The default
+// stays local" while the assignment below it defaulted to "auto" and the next
+// comment line said "the cloud is the default, local is the fallback". Exactly
+// the drift this file exists to stop, so it now guards a third claim.
+// ---------------------------------------------------------------------------
+function deriveProviderDefault() {
+  const text = read('tools/coach/serve.py');
+  const m = /^PROVIDER\s*=\s*os\.environ\.get\(\s*["']COACH_PROVIDER["']\s*,\s*["']([a-z]+)["']/m.exec(text);
+  assert.ok(m, 'could not find the PROVIDER assignment in tools/coach/serve.py');
+  return m[1];
+}
+
+// Which provider names may be called "the default", given the derived value.
+//
+// THE ASYMMETRY IS DELIBERATE and is the whole substance of this check. The
+// literal default is `auto`, and `auto` resolves to the CLOUD whenever any
+// credential exists and only falls back to Ollama when none does. So:
+//   - "auto", "cloud", "anthropic" as the default are all ACCURATE glosses
+//     (serve.py's own comment says "the cloud is the default, local is the
+//     fallback", and that is true of how auto behaves);
+//   - "local" or "ollama" as the default is WRONG, and wrong in the direction
+//     that understates what a machine needs -- it implies the anthropic package
+//     is only reached on explicit opt-in, when the default path reaches for it
+//     on any machine carrying a credential.
+// That asymmetry is why this cannot be a simple string equality.
+const DEFAULT_OK = new Set(['auto', 'cloud', 'anthropic']);
+const DEFAULT_WRONG = new Set(['local', 'ollama']);
+
+const PROVIDER_PROSE_FILES = [
+  'tools/coach/serve.py',
+  'README.md',
+  'docs/dev/CONVERGENCE-SPEC.md',
+  'CHANGELOG.md',
+  'tools/coach/README.md',
+];
+
+// Narrow on purpose: only the shapes this repo's prose actually uses to name a
+// default provider. Each requires the word "default" adjacent to a provider
+// token, so it can never fire on an unrelated sentence containing "local".
+const PROVIDER_PATTERNS = [
+  /the\s+default\s+(?:stays|is|remains)\s+(local|ollama|cloud|anthropic|auto)\b/gi,
+  /\b(local\s+Ollama|Ollama|local|cloud|anthropic|auto)\b[^.\n]{0,40}?\(\s*the\s+default(?:\s+provider)?\s*\)/gi,
+  /\bthe\s+(cloud|local|ollama|anthropic|auto)\s+is\s+the\s+default\b/gi,
+  /\bdefaults?\s+to\s+[`'"]?(auto|ollama|anthropic|local|cloud)[`'"]?/gi,
+];
+
+function normalizeProviderToken(raw) {
+  const t = String(raw).toLowerCase().replace(/`|'|"/g, '').trim();
+  if (t === 'local ollama' || t === 'ollama') return 'ollama';
+  if (t === 'local') return 'local';
+  if (t === 'cloud') return 'cloud';
+  if (t === 'anthropic') return 'anthropic';
+  if (t === 'auto') return 'auto';
+  return t;
+}
+
+function findProviderClaims(text) {
+  const claims = [];
+  for (const pattern of PROVIDER_PATTERNS) {
+    pattern.lastIndex = 0;
+    let m;
+    while ((m = pattern.exec(text))) {
+      const token = normalizeProviderToken(m[1]);
+      if (!DEFAULT_OK.has(token) && !DEFAULT_WRONG.has(token)) continue;
+      const matchStart = m.index;
+      const matchEnd = m.index + m[0].length;
+      claims.push({
+        token,
+        wrong: DEFAULT_WRONG.has(token),
+        matchStart,
+        matchEnd,
+        text: m[0],
+        context: text.slice(Math.max(0, matchStart - 70), Math.min(text.length, matchEnd + 70)).replace(/\s+/g, ' '),
+      });
+    }
+  }
+  return claims;
+}
+
+// Deliberate exceptions: prose that QUOTES the old wrong claim while correcting
+// it. Same discipline as TRIP_ALLOWLIST -- the correction has to be able to name
+// what it is correcting.
+const PROVIDER_ALLOWLIST = [
+  {
+    file: 'tools/coach/serve.py',
+    substring: 'This block said "the default stays local" until 2026-09-13',
+    reason: 'The correction note quotes the removed line in order to record what was fixed.',
+  },
+  {
+    file: 'docs/dev/CONVERGENCE-SPEC.md',
+    substring: 'called Ollama "the default provider". That was **wrong**',
+    reason: '§9.1 quotes its own earlier error while correcting it.',
+  },
+  {
+    file: 'CHANGELOG.md',
+    substring: 'called Ollama "the default provider", which was wrong',
+    reason: 'The CHANGELOG quotes the same earlier error while recording the correction.',
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -443,3 +548,50 @@ describe('the allowlist cannot rot silently', () => {
 //   Both scratch trees and the scratch test copy were deleted afterward;
 //   `git status --short` showed only this file as new.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Derivation 3 tests: the coach sidecar's default provider.
+// ---------------------------------------------------------------------------
+describe('the derived provider default', () => {
+  test('tools/coach/serve.py declares a default we can read', () => {
+    const d = deriveProviderDefault();
+    assert.ok(d.length > 0);
+    assert.equal(d, 'auto', 'COACH_PROVIDER defaults to auto (cloud-first, local fallback)');
+  });
+});
+
+describe('provider-default prose claims agree with tools/coach/serve.py (or are allowlisted)', () => {
+  test('no document calls the local model the default', () => {
+    const derived = deriveProviderDefault();
+    assert.ok(DEFAULT_OK.has(derived), `derived default ${derived} is not an accepted token`);
+    const bad = [];
+    for (const file of PROVIDER_PROSE_FILES) {
+      let text;
+      try { text = read(file); } catch { continue; }   // optional files
+      for (const claim of findProviderClaims(text)) {
+        if (!claim.wrong) continue;
+        if (isAllowed(PROVIDER_ALLOWLIST, file, text, claim)) continue;
+        bad.push(`${file}: "${claim.text}" names ${claim.token} as the default, but ` +
+          `tools/coach/serve.py defaults COACH_PROVIDER to "${derived}", which is cloud-first ` +
+          `with local only as the fallback.\n    context: …${claim.context}…`);
+      }
+    }
+    assert.deepEqual(bad, [],
+      `provider-default prose disagrees with serve.py:\n${bad.join('\n')}`);
+  });
+});
+
+describe('the provider allowlist cannot rot silently', () => {
+  test('every PROVIDER_ALLOWLIST entry still matches real text in its file', () => {
+    const stale = [];
+    for (const entry of PROVIDER_ALLOWLIST) {
+      let text;
+      try { text = read(entry.file); } catch { stale.push(`${entry.file} (unreadable)`); continue; }
+      if (!findAllOccurrences(text, entry.substring).length) {
+        stale.push(`${entry.file}: "${entry.substring}"`);
+      }
+    }
+    assert.deepEqual(stale, [],
+      `stale PROVIDER_ALLOWLIST entries -- the text they excuse no longer exists, remove or update them:\n${stale.join('\n')}`);
+  });
+});
