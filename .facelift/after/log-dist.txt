@@ -1,0 +1,68 @@
+[30415:46028208:0914/012215.229210:INFO:components/enterprise/browser/controller/chrome_browser_cloud_management_controller.cc:241] No machine level policy manager exists.
+[30421:46028311:0914/012215.273391:WARNING:net/dns/address_sorter_posix.cc:588] FromSockAddr failed on netmask
+[30421:46028311:0914/012215.273585:WARNING:net/dns/address_sorter_posix.cc:588] FromSockAddr failed on netmask
+[30420:46028318:0914/012215.402299:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.404897:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.404989:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.405066:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.405122:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.405179:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012215.405232:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+Trying to load the allocator multiple times. This is *not* supported.
+139615 bytes written to file .facelift/after/shot-dist.png
+[30415:46028266:0914/012217.219518:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[30415:46028266:0914/012217.219560:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[30420:46028318:0914/012219.000532:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.080745:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.110172:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.165145:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.196106:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.256664:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30420:46028318:0914/012219.283908:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[30584:46029561:0914/012234.349846:VERBOSE1:chrome/updater/updater.cc:374] Version: 152.0.7933.0, opt, ARM_64, command line: /Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --wake-all --enable-logging --vmodule=*/components/update_client/*=2,*/chrome/enterprise_companion/*=2,*/chrome/updater/*=2
+[30584:46029561:0914/012234.350581:VERBOSE1:chrome/updater/updater.cc:377] OS version: 26.5.1, arch: arm64, System uptime (seconds): 1056579, parent pid: 30415
+[30584:46029561:0914/012234.352138:VERBOSE1:chrome/updater/updater.cc:382] Available disk space in install directory (/Users/vaquez/Library/Application Support/Google/GoogleUpdater): 58837049344B (54.796GiB) / 994662584320B (926.352GiB)
+[30584:46029561:0914/012234.352156:VERBOSE1:chrome/updater/updater.cc:386] Available disk space in temporary directory (/var/folders/m3/93dz__bx387249x2qyglb2sw0000gn/T/): 58837049344B (54.796GiB) / 994662584320B (926.352GiB)
+[30584:46029561:0914/012234.352223:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS START event to the history log
+[30586:46029565:0914/012234.360839:VERBOSE1:chrome/updater/updater.cc:374] Version: 152.0.7933.0, opt, ARM_64, command line: /Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --crash-handler --database=/Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/Crashpad --url=https://clients2.google.com/cr/report --annotation=prod=Update4 --annotation=ver=152.0.7933.0 --handshake-fd=6 --enable-logging --vmodule=*/components/update_client/*=2,*/chrome/enterprise_companion/*=2,*/chrome/updater/*=2
+[30586:46029565:0914/012234.361370:VERBOSE1:chrome/updater/updater.cc:377] OS version: 26.5.1, arch: arm64, System uptime (seconds): 1056579, parent pid: 1
+[30586:46029565:0914/012234.362799:VERBOSE1:chrome/updater/updater.cc:382] Available disk space in install directory (/Users/vaquez/Library/Application Support/Google/GoogleUpdater): 58837049344B (54.796GiB) / 994662584320B (926.352GiB)
+[30586:46029565:0914/012234.362815:VERBOSE1:chrome/updater/updater.cc:386] Available disk space in temporary directory (/var/folders/m3/93dz__bx387249x2qyglb2sw0000gn/T/): 58837049344B (54.796GiB) / 994662584320B (926.352GiB)
+[30586:46029565:0914/012234.362890:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS START event to the history log
+[30584:46029561:0914/012234.363359:VERBOSE1:chrome/updater/crash_reporter.cc:124] Crash handler launched and ready.
+[30584:46029561:0914/012234.363981:VERBOSE1:chrome/updater/crash_client.cc:108] Found 0 completed crash reports
+[30584:46029561:0914/012234.364055:VERBOSE1:chrome/updater/crash_client.cc:132] Found 0 pending crash reports
+[30584:46029561:0914/012234.364118:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/RLZ/Crashpad/settings.dat: No such file or directory (2)
+[30584:46029561:0914/012234.364130:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/Android File Transfer/Crashpad/settings.dat: No such file or directory (2)
+[30584:46029561:0914/012234.364167:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/Chrome-headless/Crashpad/settings.dat: No such file or directory (2)
+[30584:46029561:0914/012234.364181:VERBOSE1:chrome/updater/updater.cc:105] Crash reporting initialized.
+[30584:46029573:0914/012234.364410:VERBOSE1:chrome/updater/app/app_wakeall.cc:58] Launching `/Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --wake`
+[30587:46029577:0914/012234.372419:VERBOSE1:chrome/updater/updater.cc:374] Version: 152.0.7933.0, opt, ARM_64, command line: /Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --wake --enable-logging --vmodule=*/components/update_client/*=2,*/chrome/enterprise_companion/*=2,*/chrome/updater/*=2
+[30587:46029577:0914/012234.372957:VERBOSE1:chrome/updater/updater.cc:377] OS version: 26.5.1, arch: arm64, System uptime (seconds): 1056579, parent pid: 30584
+[30587:46029577:0914/012234.374416:VERBOSE1:chrome/updater/updater.cc:382] Available disk space in install directory (/Users/vaquez/Library/Application Support/Google/GoogleUpdater): 58837045248B (54.796GiB) / 994662584320B (926.352GiB)
+[30587:46029577:0914/012234.374428:VERBOSE1:chrome/updater/updater.cc:386] Available disk space in temporary directory (/var/folders/m3/93dz__bx387249x2qyglb2sw0000gn/T/): 58837045248B (54.796GiB) / 994662584320B (926.352GiB)
+[30587:46029577:0914/012234.374499:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS START event to the history log
+[30589:46029581:0914/012234.382727:VERBOSE1:chrome/updater/updater.cc:374] Version: 152.0.7933.0, opt, ARM_64, command line: /Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --crash-handler --database=/Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/Crashpad --url=https://clients2.google.com/cr/report --annotation=prod=Update4 --annotation=ver=152.0.7933.0 --handshake-fd=6 --enable-logging --vmodule=*/components/update_client/*=2,*/chrome/enterprise_companion/*=2,*/chrome/updater/*=2
+[30589:46029581:0914/012234.383195:VERBOSE1:chrome/updater/updater.cc:377] OS version: 26.5.1, arch: arm64, System uptime (seconds): 1056579, parent pid: 1
+[30589:46029581:0914/012234.384487:VERBOSE1:chrome/updater/updater.cc:382] Available disk space in install directory (/Users/vaquez/Library/Application Support/Google/GoogleUpdater): 58837045248B (54.796GiB) / 994662584320B (926.352GiB)
+[30589:46029581:0914/012234.384500:VERBOSE1:chrome/updater/updater.cc:386] Available disk space in temporary directory (/var/folders/m3/93dz__bx387249x2qyglb2sw0000gn/T/): 58837045248B (54.796GiB) / 994662584320B (926.352GiB)
+[30589:46029581:0914/012234.384568:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS START event to the history log
+[30587:46029577:0914/012234.384963:VERBOSE1:chrome/updater/crash_reporter.cc:124] Crash handler launched and ready.
+[30587:46029577:0914/012234.385506:VERBOSE1:chrome/updater/crash_client.cc:108] Found 0 completed crash reports
+[30587:46029577:0914/012234.385576:VERBOSE1:chrome/updater/crash_client.cc:132] Found 0 pending crash reports
+[30587:46029577:0914/012234.385642:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/RLZ/Crashpad/settings.dat: No such file or directory (2)
+[30587:46029577:0914/012234.385655:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/Android File Transfer/Crashpad/settings.dat: No such file or directory (2)
+[30587:46029577:0914/012234.385689:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /Users/vaquez/Library/Application Support/Google/Chrome-headless/Crashpad/settings.dat: No such file or directory (2)
+[30587:46029577:0914/012234.385704:VERBOSE1:chrome/updater/updater.cc:105] Crash reporting initialized.
+[30587:46029577:0914/012234.385845:VERBOSE1:chrome/updater/ipc/update_service_internal_proxy_mojo.cc:61] Run
+[30587:46029577:0914/012251.454327:VERBOSE1:chrome/updater/app/app.cc:52] Shutdown: 0
+[30587:46029577:0914/012251.455116:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS END event to the history log
+[30587:46029577:0914/012251.455129:VERBOSE1:chrome/updater/updater.cc:419] UpdaterMain (--wake) returned 0.
+[30584:46029573:0914/012251.534941:VERBOSE1:chrome/updater/app/app_wakeall.cc:68] `/Users/vaquez/Library/Application Support/Google/GoogleUpdater/152.0.7933.0/GoogleUpdater.app/Contents/MacOS/GoogleUpdater --wake` exited 0
+[30584:46029561:0914/012251.535140:VERBOSE1:chrome/updater/app/app.cc:52] Shutdown: 0
+[30584:46029561:0914/012251.535532:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS END event to the history log
+[30584:46029561:0914/012251.535556:VERBOSE1:chrome/updater/updater.cc:419] UpdaterMain (--wake-all) returned 0.
+[30589:46029581:0914/012301.473616:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS END event to the history log
+[30589:46029581:0914/012301.473685:VERBOSE1:chrome/updater/updater.cc:419] UpdaterMain (--crash-handler) returned 0.
+[30586:46029565:0914/012301.475433:VERBOSE2:chrome/updater/event_history.cc:265] Emitted a UPDATER_PROCESS END event to the history log
+[30586:46029565:0914/012301.475488:VERBOSE1:chrome/updater/updater.cc:419] UpdaterMain (--crash-handler) returned 0.

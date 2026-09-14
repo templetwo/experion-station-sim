@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const Palette = require('../src/palette.js');
 
 test('list and lookup; unknown names fall back to representative', () => {
-  assert.deepEqual(Palette.list(), ['representative', 'isa101']);
+  assert.deepEqual(Palette.list(), ['representative', 'isa101', 'night']);
   assert.equal(Palette.getPalette('isa101').name, 'isa101');
   assert.equal(Palette.getPalette('nope').name, 'representative');
   const a = Palette.getPalette('isa101'); a.prio.Urgent = '#000000';
@@ -45,14 +45,80 @@ test('contrast helper matches WCAG reference values', () => {
   assert.equal(Palette.luminance('#000'), 0);
 });
 
-test('every text/background pair in both presets is at least 3:1', () => {
+// ---------------------------------------------------------------------------
+// THE CONTRAST GATE, raised from 3:1 to WCAG AA normal text (4.5:1) on 2026-09-14.
+//
+// It enforced 3:1 -- the AA bar for LARGE text -- while the alarm surfaces it governs render at
+// 9-12.5 px, where 4.5 is required. That one tier is why 29 real pairs failed AA at their rendered
+// size while this suite stayed green. Measured, not assumed: see docs/dev/FACELIFT-BASELINE-AUDIT.md.
+//
+// Two pre-existing failures in the LIGHT presets are allowlisted rather than "fixed", and the
+// reason matters. `representative` is meant to represent Experion defaults, where urgent is red
+// with white text; darkening it to reach 4.5 would make it LESS representative, which is the one
+// thing that preset exists to be. `isa101` carries the published style-guide values (RESOURCES 2.4)
+// for the same reason. Corrupting a citation to pass a test is worse than recording the debt.
+//
+// The `night` preset owes nothing to a vendor default and is therefore held to the full bar with no
+// exceptions -- and passes all 24 pairs.
+//
+// The allowlist cannot rot: an entry that stops matching a real failure fails the test below, so a
+// later palette fix forces the exception to be removed rather than quietly outliving its reason.
+const AA_NORMAL = 4.5;
+const KNOWN_SUB_AA = [
+  { palette: 'representative', label: 'Urgent text on fill',
+    why: 'Experion urgent is red with white text; darkening it makes the preset less representative.' },
+  { palette: 'representative', label: 'High dim text on bg',
+    why: 'Pre-existing; the dim tones are accents and borders on this preset, not body text.' },
+  { palette: 'representative', label: 'Low dim text on bg',
+    why: 'Pre-existing; the dim cyan is a band and border accent on this preset, not body text.' },
+  { palette: 'representative', label: 'Journal dim text on bg',
+    why: 'Pre-existing; journal is the quietest priority and its dim tone is deliberately recessive.' },
+  { palette: 'isa101', label: 'Journal text on fill',
+    why: 'Published ISA-101 style-guide value (RESOURCES 2.4); changing it would misquote the source.' },
+];
+const isKnown = (n, label) => KNOWN_SUB_AA.some((k) => k.palette === n && k.label === label);
+
+test('every text/background pair meets WCAG AA (4.5:1), except the recorded pre-existing pairs', () => {
+  const unexpected = [];
   for (const n of Palette.list()) {
     const p = Palette.getPalette(n);
     const pairs = Palette.textPairs(p);
     assert.ok(pairs.length >= 20);
     for (const pr of pairs) {
       const r = Palette.contrastRatio(pr.fg, pr.bg);
-      assert.ok(r >= 3, n + ': ' + pr.label + ' ' + pr.fg + ' on ' + pr.bg + ' = ' + r.toFixed(2));
+      if (r >= AA_NORMAL) continue;
+      // Nothing may fall below the large-text floor, allowlisted or not.
+      assert.ok(r >= 3, n + ': ' + pr.label + ' ' + pr.fg + ' on ' + pr.bg + ' = ' + r.toFixed(2) +
+        ' is below even the 3:1 large-text floor');
+      if (!isKnown(n, pr.label)) {
+        unexpected.push(n + ': ' + pr.label + ' ' + pr.fg + ' on ' + pr.bg + ' = ' + r.toFixed(2));
+      }
     }
   }
+  assert.deepEqual(unexpected, [],
+    'new sub-AA pairs -- fix the colour or, if it is genuinely unfixable, add it to KNOWN_SUB_AA ' +
+    'with a reason:\n' + unexpected.join('\n'));
+});
+
+test('the night preset is held to full AA with no exceptions', () => {
+  const p = Palette.getPalette('night');
+  for (const pr of Palette.textPairs(p)) {
+    const r = Palette.contrastRatio(pr.fg, pr.bg);
+    assert.ok(r >= AA_NORMAL,
+      'night: ' + pr.label + ' ' + pr.fg + ' on ' + pr.bg + ' = ' + r.toFixed(2) + ' (needs 4.5)');
+  }
+});
+
+test('the sub-AA allowlist cannot rot: every entry still names a real failure', () => {
+  const stale = [];
+  for (const k of KNOWN_SUB_AA) {
+    const p = Palette.getPalette(k.palette);
+    const pr = Palette.textPairs(p).find((x) => x.label === k.label);
+    if (!pr) { stale.push(k.palette + ': "' + k.label + '" no longer exists as a pair'); continue; }
+    if (Palette.contrastRatio(pr.fg, pr.bg) >= AA_NORMAL) {
+      stale.push(k.palette + ': "' + k.label + '" now passes AA -- remove the exception');
+    }
+    assert.ok(k.why && k.why.length > 20, k.palette + '/' + k.label + ' needs a real reason');
+  }
+  assert.deepEqual(stale, [], 'stale allowlist entries:\n' + stale.join('\n'));
 });

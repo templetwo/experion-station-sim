@@ -2495,7 +2495,7 @@ class Component extends DCLogic {
   prioColor(p){ return this.colours().prio[p]; }
   prioDark(p){ return this.colours().prioDim[p]; }
   prioText(p){ return this.colours().prioText[p]; }
-  paletteLabel(n){ return n==='isa101'?'ISA-101':'REPRESENTATIVE'; }
+  paletteLabel(n){ return n==='isa101'?'ISA-101':(n==='night'?'NIGHT':'REPRESENTATIVE'); }
   // The colour philosophy is a station-wide display configuration: SUPV or above, journaled as a CONFIG (MOC) change.
   setPalette(name){
     if(!ESS.Palette.list().includes(name)) return;
