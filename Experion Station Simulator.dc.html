@@ -103,6 +103,17 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 .ess-night [style*="rgb(201, 197, 189)"]{background-color:#1A1F26 !important}
 .ess-night [style*="background: rgb(255, 255, 255)"]{background-color:#0E1218 !important}
 .ess-night [style*="rgb(184, 196, 212)"]{background-color:#24303F !important}
+/* remaining surfaces found by dumping the night DOM: assistant chips, panel headers */
+.ess-night [style*="rgb(250, 250, 248)"]{background-color:#161A20 !important}
+.ess-night [style*="rgb(196, 193, 186)"]{background-color:#1A1F26 !important}
+.ess-night [style*="rgb(255, 255, 255)"]{background-color:#12161C !important}
+/* the white 3D highlight: glaring on a dark ground, and it is the single biggest
+   remaining tell of the Win95 bevel. Border colours are UI-component boundaries, so the
+   replacement clears WCAG 1.4.11 non-text contrast at 3.0 rather than AA text contrast. */
+.ess-night [style*="border-color: rgb(255, 255, 255)"],
+.ess-night [style*="border: 1px solid rgb(255, 255, 255)"],
+.ess-night [style*="border: 2px solid rgb(255, 255, 255)"]{border-color:#39424E !important}
+.ess-night [style*="rgb(110, 110, 110)"]{border-color:#6B7684 !important}
 /* the Win95 bevels: white highlight and grey shadow become one quiet rule */
 .ess-night [style*="rgb(154, 150, 142)"]{background-color:#2A313B !important;border-color:#39424E !important}
 /* text */
@@ -117,12 +128,28 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 .ess-night input,.ess-night select,.ess-night textarea{background:#0E1218 !important;color:#E6EAF0 !important;border:1px solid #6B7684 !important}
 .ess-night input::placeholder{color:#8C94A0 !important}
 .ess-night :focus-visible,.ess-night input:focus,.ess-night select:focus{outline:2px solid #7EB6D6 !important;outline-offset:1px}
-/* the P&ID: muted steel, so saturation stays available to mean abnormal (ISA-101) */
+/* the P&ID: muted steel, so saturation stays available to mean abnormal (ISA-101).
+   SVG text carries its colour as an INLINE style ("fill: rgb(85, 82, 76)"), so every rule below
+   needs !important -- a plain `svg text{fill:...}` loses to the inline value and leaves the
+   graphic labels unreadably dark on the new ground. That was the visible defect in the first
+   render. Attribute fills (fill="#4a4a4a") do NOT need it; both forms are present. */
 .ess-night svg [fill="#BFBFBF"],.ess-night svg [fill="#CDCDCD"],.ess-night svg [fill="#C4C4C4"]{fill:#0E1116}
 .ess-night svg [fill="#D4D0C8"],.ess-night svg [fill="#D8D8D8"]{fill:#1C232C}
 .ess-night svg [fill="#FFFFFF"]{fill:#C5CCD6}
+.ess-night svg [fill="#4a4a4a"],.ess-night svg [fill="#4A4A4A"]{fill:#8C96A4}
 .ess-night svg [fill="#41608A"],.ess-night svg [fill="#4a6a8a"],.ess-night svg [fill="#93A8B8"]{fill:#2E4257}
-.ess-night svg text{fill:#C5CCD6}
+.ess-night svg [stroke="#4a4a4a"],.ess-night svg [stroke="#6a6a6a"],.ess-night svg [stroke="#7a7a7a"]{stroke:#6B7684}
+/* inline fills on <text>, measured against the #0E1116 canvas:
+   #E6EAF0 15.66 · #C5CCD6 11.69 · #A8B0BC 8.65 · #7EB6D6 8.60 -- AA needs 4.5 */
+.ess-night svg [style*="fill: rgb(60, 60, 60)"],
+.ess-night svg [style*="fill: rgb(0, 0, 0)"]{fill:#E6EAF0 !important}
+.ess-night svg [style*="fill: rgb(85, 82, 76)"],
+.ess-night svg [style*="fill: rgb(68, 65, 60)"],
+.ess-night svg [style*="fill: rgb(74, 74, 74)"],
+.ess-night svg [style*="fill: rgb(58, 58, 58)"]{fill:#C5CCD6 !important}
+.ess-night svg [style*="fill: rgb(106, 102, 94)"]{fill:#A8B0BC !important}
+.ess-night svg [style*="fill: rgb(49, 84, 143)"]{fill:#7EB6D6 !important}
+/* red and amber fills are left alone: on this board they already mean abnormal */
 .ess-night ::-webkit-scrollbar{background:#12161C}
 .ess-night ::-webkit-scrollbar-thumb{background:#39424E;border:2px solid #12161C;border-radius:8px}
 </style>
