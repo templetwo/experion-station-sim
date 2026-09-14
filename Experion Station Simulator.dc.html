@@ -73,9 +73,61 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 @keyframes ess-pip-caret{0%,49%{opacity:1}50%,100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){
 .ess-pip,.ess-pip[data-mood],.ess-pip-eye,.ess-pip-needle,.ess-pip-dots span,.ess-coach-live .ess-coach-body:after{animation:none}
-}</style>
+}
+/* ---------------------------------------------------------------------------
+   NIGHT THEME -- the dark console. Facelift review item 1 (docs/dev/FACELIFT-REVIEW-MEMO.md).
+
+   Scoped to .ess-night on the root: today's look is the default AND the fallback, and the switch
+   is the Station menu's existing alarm-colour-philosophy control. Nothing loads from the network
+   -- no font file, no external sheet (Rule 7). Remove the class and the shipped look returns
+   byte for byte; no markup carries a theme decision.
+
+   SELECTORS MATCH rgb(), NOT HEX, and that is not cosmetic. React normalises inline styles, so a
+   template literal of #D4D0C8 reaches the DOM as "background: rgb(212, 208, 200)". A first cut of
+   this file matched on hex and silently selected NOTHING -- the page rendered unchanged and looked
+   like a CSS specificity problem. Verified by dumping the rendered DOM: 0 hex occurrences, 35 rgb.
+   If a colour is ever added here, take the value from the rendered DOM, not from the template.
+
+   Every text pair was measured before it was written: worst 6.63, best 15.66 (AA needs 4.5).
+   Borders use #6B7684 (3.78 on chrome) to clear WCAG 1.4.11 non-text contrast at 3.0.
+--------------------------------------------------------------------------- */
+.ess-night{background:#161A20 !important;color:#E6EAF0 !important}
+/* chrome, panels, lists -- the big surfaces */
+.ess-night [style*="rgb(212, 208, 200)"]{background-color:#161A20 !important}
+.ess-night [style*="rgb(207, 207, 203)"]{background-color:#1C232C !important}
+.ess-night [style*="rgb(198, 198, 198)"]{background-color:#12161C !important}
+.ess-night [style*="rgb(191, 191, 191)"]{background-color:#0E1116 !important}
+.ess-night [style*="rgb(205, 205, 205)"]{background-color:#1C232C !important}
+.ess-night [style*="rgb(216, 216, 216)"]{background-color:#222A34 !important}
+.ess-night [style*="rgb(204, 200, 192)"]{background-color:#1A1F26 !important}
+.ess-night [style*="rgb(201, 197, 189)"]{background-color:#1A1F26 !important}
+.ess-night [style*="background: rgb(255, 255, 255)"]{background-color:#0E1218 !important}
+.ess-night [style*="rgb(184, 196, 212)"]{background-color:#24303F !important}
+/* the Win95 bevels: white highlight and grey shadow become one quiet rule */
+.ess-night [style*="rgb(154, 150, 142)"]{background-color:#2A313B !important;border-color:#39424E !important}
+/* text */
+.ess-night [style*="color: rgb(0, 0, 0)"]{color:#E6EAF0 !important}
+.ess-night [style*="color: rgb(44, 44, 44)"]{color:#D6DCE4 !important}
+.ess-night [style*="color: rgb(60, 60, 60)"]{color:#C5CCD6 !important}
+.ess-night [style*="color: rgb(85, 82, 76)"]{color:#A8B0BC !important}
+.ess-night [style*="color: rgb(106, 102, 94)"]{color:#A8B0BC !important}
+.ess-night [style*="color: rgb(110, 110, 110)"]{color:#A8B0BC !important}
+.ess-night [style*="color: rgb(92, 88, 80)"]{color:#A8B0BC !important}
+/* inputs and focus -- the app ships no focus style at all, in either theme (review item 12) */
+.ess-night input,.ess-night select,.ess-night textarea{background:#0E1218 !important;color:#E6EAF0 !important;border:1px solid #6B7684 !important}
+.ess-night input::placeholder{color:#8C94A0 !important}
+.ess-night :focus-visible,.ess-night input:focus,.ess-night select:focus{outline:2px solid #7EB6D6 !important;outline-offset:1px}
+/* the P&ID: muted steel, so saturation stays available to mean abnormal (ISA-101) */
+.ess-night svg [fill="#BFBFBF"],.ess-night svg [fill="#CDCDCD"],.ess-night svg [fill="#C4C4C4"]{fill:#0E1116}
+.ess-night svg [fill="#D4D0C8"],.ess-night svg [fill="#D8D8D8"]{fill:#1C232C}
+.ess-night svg [fill="#FFFFFF"]{fill:#C5CCD6}
+.ess-night svg [fill="#41608A"],.ess-night svg [fill="#4a6a8a"],.ess-night svg [fill="#93A8B8"]{fill:#2E4257}
+.ess-night svg text{fill:#C5CCD6}
+.ess-night ::-webkit-scrollbar{background:#12161C}
+.ess-night ::-webkit-scrollbar-thumb{background:#39424E;border:2px solid #12161C;border-radius:8px}
+</style>
 </helmet>
-<div style="position:fixed;inset:0;display:flex;flex-direction:column;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;background:#D4D0C8;color:#000;font-variant-numeric:tabular-nums" onMouseMove="{{ rootMove }}" onMouseUp="{{ rootUp }}">
+<div class="ess-root {{ themeClass }}" style="position:fixed;inset:0;display:flex;flex-direction:column;font:12px Tahoma,Verdana,'Segoe UI',sans-serif;background:#D4D0C8;color:#000;font-variant-numeric:tabular-nums" onMouseMove="{{ rootMove }}" onMouseUp="{{ rootUp }}">
 
 <div style="display:flex;align-items:center;gap:2px;padding:1px 4px;border-bottom:1px solid #9a968e;user-select:none">
   <sc-for list="{{ menus }}" as="m" hint-placeholder-count="5">
@@ -1838,7 +1890,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;highColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;#FFE000&quot;,&quot;#FFA500&quot;],&quot;default&quot;:&quot;#FFE000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;representative&quot;,&quot;isa101&quot;,&quot;night&quot;],&quot;default&quot;:&quot;representative&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Representative defaults&quot;},&quot;audible&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showBadge&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
 class Component extends DCLogic {
   state = { tk:0, blink:true, unit:'U1', assist:true, assistSel:'', assistQ:'', display:'graphic', hist:[{d:'graphic'}], hi:0, sec:'OPER', msg:'', msgT:0, cmd:'', fps:[], entry:null, entryText:'', sel:null, selAlm:null, aud:true, silenced:true, shelfView:'MAIN', evtFilter:'ALL', detailTag:'FIC102', detailTab:'main', tg:'TG01', span:15, menu:null, dlg:null, dlgPw:'', dlgKey:'', dlgKeyModel:'', dlgReason:'', debAns:-1, drill:null, drag:null, speed:1, almAsset:'PLANT', almHelp:false, savedViews:[], detailAlmCond:null, kpiSpan:30, palette:null, instrSnapName:'', instrSeedTxt:'', oper:'OPERATOR', dlgName:'',
     // ARCH view state (V3-PLAN S1) -- view-only, never process/control/alarm/topology state.
@@ -4665,6 +4717,10 @@ class Component extends DCLogic {
   }
 
   // ---------- render ----------
+  // Theme scope on the root, derived from the palette so the Station menu's existing
+  // colour-philosophy control switches the whole skin. `representative` -- today's look --
+  // remains the default and the fallback.
+  themeClass(){ return 'ess-'+this.paletteName(); }
   renderVals(){
     if(!this.L) this.initSim();
     this.publishCoach();
@@ -5101,6 +5157,7 @@ class Component extends DCLogic {
     const simRows=[{k:'Step',v:'0.5 S · SPEED '+(S.speed===0?'FROZEN':S.speed+'×')},{k:'Uptime',v:this.mmss(P.up*1000)},{k:'Points',v:'30 CMS / 14 VALVES / 4 UNITS'}];
     if(!this.instr.hidden) simRows.push({k:'Upsets',v:activeUpsets.length?activeUpsets.join(', '):'NONE'});
     return {
+      themeClass:this.themeClass(),
       showBadge:this.props.showBadge??true, hcol:HC, cnts,
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
       cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
