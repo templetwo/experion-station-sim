@@ -5,7 +5,7 @@ Path at commit: docs/dev/CONVERGENCE-SPEC.md
 Working title: V3.2 / V4 CONVERGENCE SPEC
 Owner: Anthony Vasquez Sr. (github.com/templetwo, "The Temple of Two")
 Builder seats: Claude Code (HQ, lead/integrator), Codex, Grok
-Status: **rev 3**, 2026-09-13. Verified against the checkpoint, corrected, and item 6 renamed after it was built.
+Status: **rev 4**, 2026-09-13. Verified against the checkpoint; item 6 renamed after it was built; §3.1.6(d) reworded after W2 found it had no join key.
 
 **Revision history**
 - rev 1, 2026-09-03 — authored against the repository's public README. Proposal only.
@@ -107,7 +107,7 @@ The sixth shipped with Unit 04 in 3.1.0. `UPGRADE-PLAN.md` rule 4 and `V3-PLAN.m
   }
   ```
   `ctx.onTrip(src, cond)` is an existing optional hook, documented at `src/models.js:40` as *"called once per equipment trip with the alarm source and condition."* Subscribing to it adds no dynamics.
-- The reader **renders** the operator-facing C&E chart and **scores** `INTERLOCK.DEFEAT` against the declared matrix.
+- The reader **renders** the operator-facing C&E chart and **annotates** `INTERLOCK.DEFEAT` against the declared matrix. *Annotates*, not scores — see §3.1.6(d): the defeat resolves to its effect column and the reader reports the cause and the cause-state at reset. The gate's own logic is untouched.
 - **No runtime enforcement.** The matrix never fires an effect, never closes a valve, never trips anything. It observes and declares. If matrix and code disagree, a test goes red; the plant does not change behaviour.
 
 Matrix-as-source-of-truth — the matrix actually driving the effects — moves to **v4, behind gate 8.1**, where golden re-capture is already budgeted.
@@ -123,7 +123,7 @@ Three checkpoint facts a builder needs here, none of which rev 1 knew:
 
 - **Subscription:** the app supplies `ctx.onTrip(src, cond)` (the seam at `src/models.js:294-297`). The C&E reader receives every trip the code fires, with its source and condition, and records it. `src/models.js` itself is **not edited** — the hook is already there and already optional.
 - **Chart reader:** renders the declared matrix as the operator-facing C&E chart display.
-- **Scoring reader:** the `INTERLOCK.DEFEAT` drill safety gate scores against the declared C&E rather than against ad hoc code.
+- **Annotating reader:** an `INTERLOCK.DEFEAT` resolves to its declared effect column (`DRV-M202`, built as `motorCmd` builds it) and is explained from the declared C&E rather than left unexplained. The **gate itself is unchanged** — it caps exactly what it capped before, and `src/drill-arch.js` is not touched. Rev 1 said the gate "scores against the declared C&E"; that overstated what is possible, and §3.1.6(d) records why.
 
 Verified at the checkpoint: the three safety-gate action types are declared in **`src/drill-arch.js:124-126`** as `MODE_SET: 'MODE.SET'`, `POINT_SUPPRESS: 'POINT.SUPPRESS'`, `INTERLOCK_DEFEAT: 'INTERLOCK.DEFEAT'`, and are used as `gate.actionType` across `:247-463`. The live `INTERLOCK.DEFEAT` gate is drill A5, target `DRV-M202` (`src/drill-arch.js:326`). That file, not "the drill rubric", is where a builder binds.
 
@@ -138,7 +138,13 @@ Matrix-as-source-of-truth is **gated** — v4, gate 8.1.
 (a) **Code equals matrix across scripted upsets.** For each of the six trips in the 3.1.1 table there is exactly one matrix row, and a suite test drives the scripted upsets that reach each trip, collects what `ctx.onTrip` actually emitted, and asserts the emitted `(src, cond)` sequence equals what the matrix declares — same trips, same order, same tick. This is the test Anthony named. Note the assertion runs against the *code's* firing, not against a parallel evaluation: there is no second implementation to drift.
 (b) Every matrix row is reachable — no row declares a trip no scripted upset can fire — and no trip fires that has no row. Both directions, so the matrix cannot go stale in either.
 (c) The C&E chart renders every row and column with no orphan cells.
-(d) `INTERLOCK.DEFEAT` in a drill is scored from the matrix (A5 / `DRV-M202`).
+(d) **`INTERLOCK.DEFEAT` is scored from the matrix, by annotation.** Reworded in rev 4 (Anthony, 2026-09-13) after the build found the original had no join key: `DRV-M202` is not a `raiseTrip` source and no M202 interlock existed as declarable logic, so "scored from the matrix" had nothing to look up.
+
+**The join key is the effect column, named `DRV-M202` exactly as `motorCmd` builds it** — `archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null)`. A string equality, and nothing else connects the drill gate to the matrix, so the id is pinned against the app's own template.
+
+**Scored from the matrix means: the defeat resolves to that column, and the reader annotates the cause and the cause-state at reset. Annotation only.** `ESS.CauseEffect.annotateDefeat(target, causeState)` returns text — no score, no cap, no severity — and `src/cause-effect.js` does not reference the drill scorer in code at all. **Gate logic is unchanged and no A-drill score moves.** A test pins the return shape and the absence of the scorer reference, so the boundary cannot erode.
+
+The matrix earns the join by declaring the motor interlocks **as they actually are**: latched, manual-reset by START after a 30 s lockout, recorded — and **advisory, not enforced**, because `motorCmd` clears the latch and starts rather than refusing. The one motor guard that genuinely refuses, P-101's level permissive, is declared as an enforced row beside them. Every row true of the code, or no row.
 (e) **No runtime enforcement, proven, not asserted in prose:** a test confirms that deleting the C&E reader entirely leaves every golden digest byte-identical.
 (f) `node --test tests/*.test.js` stays 0 fail.
 

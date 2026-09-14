@@ -4,6 +4,30 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### W2 follow-up — the motor interlocks declared as they actually are, and §3.1.6(d) resolved
+
+`INTERLOCK.DEFEAT` scoring had no join key: `DRV-M202` was not a `raiseTrip` source and no M202 interlock existed as declarable logic, so "scored from the declared matrix" had nothing to look up. Anthony's ruling of 2026-09-13 resolved it by **making the honest reading standard rather than bespoke**.
+
+**Every cause row now carries the same four fields — `latch`, `reset`, `lockout`, `permissive` — whatever family it belongs to.** A field that does not apply is `null`, never absent, and a test fails on a *missing* field rather than a null one. Ten rows: seven process trips (six at the `onTrip` seam), two motor trips, one permissive.
+
+A fifth field, `enforced`, carries the distinction that makes the motor rows worth having. A process trip really shuts the valve. The P-101 level permissive really refuses the START. **A motor trip latch does neither** — `motorCmd` sets `m.trip=false` and runs the motor, then stamps the defeat. The plant *permits and records*. Declaring that is true of the code and teaches the real control philosophy; declaring an inhibit that does not exist would have been a fiction with a console display's authority behind it.
+
+**The lockout is 30 s, not 15.** `tripMotor` sets `m.lock=30` after a trip; `motorCmd`'s STOP path sets `15` after an operator stop, and the app's own Point Detail says both: *"30 s after trip, 15 s after stop"*. An earlier draft of the contract had 15, from reading the STOP path alone — caught by applying Anthony's own rule ("every row true of the code, or no row") to the instruction before the code.
+
+**The join key is the effect column**, `DRV-P101` / `DRV-M202`, named exactly as `motorCmd` builds it (`'DRV-' + tag`). A string equality, and a test pins it against the app's own template so the join cannot break silently and leave every annotation quietly unresolvable.
+
+**"Scored from the matrix" means annotation, and that boundary is proved, not promised.** `annotateDefeat(target, causeState)` resolves the defeat to its column, names the cause, states that the latch is advisory and the reset is a recorded manual START after the lockout, names the enforced permissive where one exists, and reports the cause-state at reset. It returns exactly `{resolved, target, column, causes, text}` — a test asserts that shape and the absence of any `score`/`cap`/`penalty`/`severity`/`weight` key, and asserts that `src/cause-effect.js` never reaches the drill scorer **in code**. `src/drill-arch.js` is untouched; **no A-drill score moves**. Spec §3.1.6(d) reworded to match; spec at rev 4.
+
+### Logged, not fixed: drill A5 penalises a restart after the cause has cleared
+
+`docs/dev/A5-RESTART-SCORING-DEFECT.md`. Anthony asked for this to be verified and logged **outside** W2, and it is: no scoring code changed.
+
+A5's gate fires on **every** accepted M-202 restart following a trip, regardless of whether the cause still holds — because **nothing anywhere consults cause-state**. `motorCmd` reads `wasTrip = !!m.trip`, which records only that the motor was tripped at some point; the `ActionEvent` shape carries no fault status, so even a scorer that wanted to distinguish has nothing to read; and `P.faults` has zero matches in `src/drill-arch.js`. Worse for A5 specifically, the `agit` upset is a one-shot that clears itself in the same call that trips the motor, so **the cause has always already cleared by the time a restart is possible** — the penalised case is the only case.
+
+Measured: a textbook-correct A5 run scores **100 / pass**; the identical run plus a restart 40 s after the cause cleared and the lockout expired scores **75 / fail**. Confirmed by two independent probes, two independent skeptics each reproducing it from scratch, and the architect's own run.
+
+Two things worth carrying past the defect itself. A5's `gateDescription` says the lesson is *controller-domain staleness*, but the mechanism tests "was this motor ever tripped" — **intent and mechanism are about different things**. And the existing test covers this gate by hand-setting `m.trip=true; m.lock=0`, never driving the real fault-injection path — so it proves the **wiring** and never asks whether the **conditions of firing** are right. A test that pins a mechanism is not a test that the mechanism is correctly conditioned.
+
 ### W2 — the cause-and-effect matrix as an assertion layer
 
 Work item W2 of `docs/dev/CONVERGENCE-SPEC.md` (item 2), built to `docs/dev/W2-CAUSE-EFFECT-CONTRACT.md`. **No golden moved**; `stepU1`..`stepU4` untouched; **the matrix declares, it never enforces.**
@@ -12,7 +36,7 @@ Work item W2 of `docs/dev/CONVERGENCE-SPEC.md` (item 2), built to `docs/dev/W2-C
 
 - **The golden set reaches only four of the six seam rows.** V-401 `PSV LIFT` and R-202 `HI TEMP TRIP` are fired by **no fixture anywhere** — `drill-D9` and `drill-D11`, the two that plausibly should, both record `"trips": {}` and score *"trip avoided"*. So the promotion gate as worded ("passed clean across the full golden set") was satisfiable while two rows reached an operator-visible chart never once checked against the code. **The gate was strengthened rather than weakened**: W2 authors two coverage scripts — V-401 driven past its 950 kPa set, R-202 to its trip — and the condition is now **all six rows verified**. They are not goldens: no fixture added, nothing recaptured.
 - **A seventh cause bypasses the seam, and shares an effect column.** `P.trips.skin` is raised in the app's `interlocks()` and never passes `ctx.onTrip`. It is not merely absent: `VALVE_TARGET`'s `FV311` closes on `trips.bed || trips.skin`, so a matrix declaring that column under R-310 alone would be **wrong about the plant** and would teach a trainee the wrong blast radius. Seven causes are declared, each carrying an explicit `seam`, and exactly six are asserted at the hook.
-- **`INTERLOCK.DEFEAT` scoring (§3.1.6(d)) has no join key and is deferred.** `DRV-M202` is not a `raiseTrip` source and no M202 interlock exists in code; A5's gate is a generic "accepted START while tripped, on any motor", keyed on `actionType`+`target`, while the matrix is keyed on `(src, cond)`. Rather than fabricate a join, it is deferred with three readings for Anthony. **`src/drill-arch.js` is untouched**, so `tests/refusal-scoring.test.js`'s outcome-based guarantee holds whichever way he rules.
+- ~~**`INTERLOCK.DEFEAT` scoring (§3.1.6(d)) has no join key and is deferred.**~~ **Superseded the same day** — see the W2 follow-up entry above: Anthony ruled on 2026-09-13 and the join key is the effect column. Struck rather than deleted, because this entry is why the question reached him. `DRV-M202` is not a `raiseTrip` source and no M202 interlock exists in code; A5's gate is a generic "accepted START while tripped, on any motor", keyed on `actionType`+`target`, while the matrix is keyed on `(src, cond)`. Rather than fabricate a join, it is deferred with three readings for Anthony. **`src/drill-arch.js` is untouched**, so `tests/refusal-scoring.test.js`'s outcome-based guarantee holds whichever way he rules.
 
 #### Added
 - **`src/cause-effect.js`** (`ESS.CauseEffect`): seven declared causes with thresholds, resets and verbatim `raiseTrip` descriptions; effect columns declared from `VALVE_TARGET`'s own gating; `createRecorder()`, `verify()` (`SEAM_TRIP_UNDECLARED` / `SEAM_ROW_UNREACHED`, comparing order and tick), `chart()`, and `CHART_VISIBILITY`. Pure — no DOM, timers, clock or randomness. Cites `RESOURCES-7.8` and `RESOURCES-7.10` for the C&E framing only; both CITED-NOT-HELD, and every number comes from `src/models.js`.

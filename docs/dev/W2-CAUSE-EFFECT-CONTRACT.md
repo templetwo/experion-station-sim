@@ -44,24 +44,48 @@ V-401 driven to its 950 kPa PSV set, R-202 driven to its trip — and the promot
 and actually achievable. The two new scenarios are **not** goldens: they are assertion-coverage
 scripts, so no fixture is added to the frozen set and nothing recaptured.
 
-### 0.2 "Score INTERLOCK.DEFEAT from the declared matrix" does not map onto what exists
+### 0.2 `INTERLOCK.DEFEAT` had no join key — resolved by declaring the motor interlocks truthfully
 
-Acceptance §3.1.6(d) asks for this. Verified: **`DRV-M202` never appears as a `raiseTrip` source**
-anywhere in `src/models.js`. There is no coded M202 agitator interlock — no permissive, no latched
-SIF — comparable to the six process trips. A5's gate is a *generic* synthesis: an accepted START
-while `m.trip` was true, on **any** motor, keyed on `actionType` + `target`. The matrix is keyed on
-`raiseTrip`'s `(src, cond)`. **The two mechanisms have no natural join key.**
+Acceptance §3.1.6(d) asked for the defeat to be "scored from the declared matrix". Verified:
+**`DRV-M202` never appears as a `raiseTrip` source**, there was no M202 interlock in code, and A5's
+gate is a generic synthesis — an accepted START while `m.trip`, on **any** motor, keyed on
+`actionType` + `target`. The matrix was keyed on `(src, cond)`. Nothing joined them.
 
-This is the third time an item in this spec has asked for something the plant does not have, and the
-honest response is the same each time: say so rather than build a join that fabricates one.
+**Anthony's ruling, 2026-09-13, and it is better than the three options originally offered:** make
+the fourth reading standard rather than bespoke.
 
-**Scoped out of this cut, pending Anthony's ruling.** W2 builds the matrix, the reader, the
-assertion and the chart. §3.1.6(d) is deferred with three readings for him to choose between:
-(a) the matrix grows motor-interlock rows, making the join real; (b) the scorer consults the matrix
-only for *blast radius* — which effects a defeated interlock governs — and severity stays where it
-is; (c) §3.1.6(d) is struck as unmappable, as §3.4.6(b) was in W1. **Nothing in this cut changes
-`src/drill-arch.js` scoring**, so `tests/refusal-scoring.test.js`'s outcome-based guarantee is
-untouched whichever way he rules.
+**Every row carries the same four fields — `latch`, `reset`, `lockout`, `permissive` — whatever
+family it belongs to.** A field that does not apply is `null`, never absent. Ten rows:
+
+| Family | Rows | latch | reset | lockout | permissive | enforced |
+|---|---|---|---|---|---|---|
+| process trip | 7 (six at the seam + H310_SKIN) | `P.trips.*` | auto, by hysteresis | — | — | **yes** |
+| motor trip | `P101_TRIP`, `M202_TRIP` | `L.<m>.trip` | manual START, **recorded** | **30 s** after trip (15 s after stop) | P-101 only | **no** |
+| permissive | `P101_PERMISSIVE` | — | continuous | — | `P.tankL >= 5` | **yes** |
+
+A fifth field, `enforced`, carries the distinction that makes the motor rows honest, and it is the
+whole point of the fourth reading. A process trip really shuts the valve. The P-101 permissive
+really refuses the START. **A motor trip latch does neither** — `motorCmd` sets `m.trip=false` and
+runs the motor, then stamps the defeat. The plant *permits and records*. Declaring that is truthful
+and teaches the real control philosophy; declaring an inhibit that does not exist would not.
+
+**The lockout is 30 s, not 15.** `tripMotor` sets `m.lock=30` after a trip; `motorCmd`'s STOP path
+sets `15` after an operator stop. The app's own Point Detail says so: *"30 s after trip, 15 s after
+stop"*. An earlier reading of this contract had 15 from the STOP path alone — caught by applying the
+rule below to the instruction itself.
+
+**The join key is the effect column**, `DRV-P101` / `DRV-M202`, named exactly as `motorCmd` builds
+it (`'DRV-' + tag`). A string equality, pinned by test against the app's own template so the join
+cannot break silently.
+
+**"Scored from the matrix" means annotation.** `annotateDefeat(target, causeState)` resolves the
+defeat to its column, names the cause, states that the latch is advisory and the reset is a recorded
+manual START after the lockout, names the enforced permissive where one exists, and reports the
+cause-state at reset. **It returns text. No score, no cap, no severity.** `src/cause-effect.js` does
+not reference the drill scorer in code, `src/drill-arch.js` is untouched, and **no A-drill score
+moves.** Tests pin the return shape and the absence of the reference.
+
+**The governing rule: every row true of the code, or no row.**
 
 ### 0.3 A seventh trip bypasses the seam, and shares an effect column
 
@@ -217,7 +241,7 @@ gap §0.4 found. Independent of the chart and worth having regardless.
 | (a) code equals matrix across scripted upsets | `cause-effect-coverage.test.js`, **all six rows**, goldens plus two authored scenarios |
 | (b) every row reachable, no trip without a row, both directions | `verify()`'s two named failures, plus the seam-count assertion (six of seven) |
 | (c) chart renders every row and column, no orphan cells | `chart()` test |
-| (d) INTERLOCK.DEFEAT scored from the matrix | **deferred — §0.2. No join key exists. Awaiting Anthony's ruling; `drill-arch.js` untouched.** |
+| (d) INTERLOCK.DEFEAT scored from the matrix | **Discharged by annotation** — §0.2. The join key is the effect column `DRV-M202`, named as `motorCmd` builds it and pinned by test against the app's own template; `annotateDefeat()` resolves the defeat to that column and reports cause and cause-state at reset. **Annotation only**: the return shape carries no score, cap or severity, `src/cause-effect.js` never reaches the scorer in code, `src/drill-arch.js` is untouched, and no A-drill score moves. |
 | (e) deleting the reader leaves goldens byte-identical | stub-and-diff test, not prose |
 | (f) suite 0 fail | full run, under both the `anthropic`-present and `-absent` conditions |
 

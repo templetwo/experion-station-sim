@@ -76,61 +76,158 @@
   // raiseTrip / raiseA description string, copied character for character -- it is
   // what the operator actually sees in the alarm summary, not a paraphrase.
 
+  // Every row carries the SAME four fields Anthony named -- latch, reset, lockout, permissive --
+  // whatever kind of thing it describes. The schema is standard rather than bespoke so a reader
+  // (or a chart, or a future item 1) can walk any row without knowing which family it came from;
+  // a field that does not apply is null, never absent.
+  //
+  // A fifth field, `enforced`, carries the distinction that makes the motor rows honest:
+  //   enforced:true  -- the plant PREVENTS the thing. A process trip really does shut the valve;
+  //                     the P-101 level permissive really does refuse the START.
+  //   enforced:false -- the plant PERMITS it and RECORDS it. A motor trip latch does not block a
+  //                     restart: motorCmd sets m.trip=false and starts, then stamps
+  //                     INTERLOCK.DEFEAT. That is the real control philosophy and a trainee is
+  //                     better served knowing it than being told about a guard that is not there.
   var CAUSES = Object.freeze([
     Object.freeze({
-      id: 'TK101_HIHI', src: 'TK-101', cond: 'HIHI TRIP', seam: 'onTrip',
+      id: 'TK101_HIHI', src: 'TK-101', cond: 'HIHI TRIP', seam: 'onTrip', kind: 'process-trip',
       variable: 'tankL', comparator: '>=', threshold: 98, eu: '%',
-      latched: true, reset: '< 90',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.ovf' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'P.tankL < 90' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'FEED TANK OVERFLOW PROTECTION — FEED ISOLATED',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'TK-101', 'HIHI TRIP'" },
     }),
     Object.freeze({
-      id: 'R201_HITEMP', src: 'R-201', cond: 'HI TEMP TRIP', seam: 'onTrip',
+      id: 'R201_HITEMP', src: 'R-201', cond: 'HI TEMP TRIP', seam: 'onTrip', kind: 'process-trip',
       variable: 'rT', comparator: '>=', threshold: 185, eu: 'DEG C',
-      latched: true, reset: '< 160',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.rx' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'P.rT < 160' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'REACTOR HIGH TEMPERATURE TRIP — FEED VALVE CLOSED',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'R-201', 'HI TEMP TRIP'" },
     }),
     Object.freeze({
-      id: 'V401_PSV', src: 'V-401', cond: 'PSV LIFT', seam: 'onTrip',
+      id: 'V401_PSV', src: 'V-401', cond: 'PSV LIFT', seam: 'onTrip', kind: 'process-trip',
       variable: 'drumP', comparator: '>', threshold: 950, eu: 'KPA',
-      latched: true, reset: '< 900',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.psv' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'P.drumP < 900' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'RELIEF VALVE LIFTED TO FLARE',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'V-401', 'PSV LIFT'" },
     }),
     Object.freeze({
-      id: 'R202_HITEMP', src: 'R-202', cond: 'HI TEMP TRIP', seam: 'onTrip',
+      id: 'R202_HITEMP', src: 'R-202', cond: 'HI TEMP TRIP', seam: 'onTrip', kind: 'process-trip',
       variable: 'b.T', comparator: '>=', threshold: 110, eu: 'DEG C',
-      latched: true, reset: '< 70',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.batch' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'b.T < 70' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'BATCH REACTOR OVERTEMP — FEED CUT, JACKET FULL COLD',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'R-202', 'HI TEMP TRIP'" },
     }),
     Object.freeze({
-      id: 'R310_HITEMP', src: 'R-310', cond: 'HI TEMP TRIP', seam: 'onTrip',
+      id: 'R310_HITEMP', src: 'R-310', cond: 'HI TEMP TRIP', seam: 'onTrip', kind: 'process-trip',
       variable: 'h.bed', comparator: '>=', threshold: 480, eu: 'DEG C',
-      latched: true, reset: '< 400',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.bed' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'h.bed < 400' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'BED OVERTEMP — FUEL GAS SHUT OFF',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'R-310', 'HI TEMP TRIP'" },
     }),
     Object.freeze({
-      id: 'V502_PSV', src: 'V-502', cond: 'PSV LIFT', seam: 'onTrip',
+      id: 'V502_PSV', src: 'V-502', cond: 'PSV LIFT', seam: 'onTrip', kind: 'process-trip',
       variable: 's.pres', comparator: '>=', threshold: 1100, eu: 'KPA',
-      latched: true, reset: '< 1000',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.psv502' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 's.pres < 1000' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'SEPARATOR RELIEF — VENTING TO FLARE',
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'V-502', 'PSV LIFT'" },
     }),
-    // The seventh row. seam:'app', not 'onTrip' -- see the header comment and
-    // docs/dev/W2-CAUSE-EFFECT-CONTRACT.md §0.3. Its "threshold" is not one number:
-    // the app latches on EITHER tube-skin channel reaching its own Urgent (PVHH)
-    // alarm limit -- TI314 at 490 DEG C or TI315 at 500 DEG C (…dc.html:1866-1867) --
-    // so both are named rather than picking one and hiding the other.
+    // The seventh process row. seam:'app', not 'onTrip' -- contract §0.3. Its threshold is not
+    // one number: the app latches on EITHER tube-skin channel reaching its own Urgent (PVHH)
+    // limit, TI314 at 490 or TI315 at 500, so both are named rather than hiding one.
     Object.freeze({
-      id: 'H310_SKIN', src: 'H-310', cond: 'TUBE SKIN TRIP', seam: 'app',
+      id: 'H310_SKIN', src: 'H-310', cond: 'TUBE SKIN TRIP', seam: 'app', kind: 'process-trip',
       variable: 'max(h.ts1, h.ts2)', comparator: 'PVHH latch (either channel)',
       threshold: 'TI314 >= 490 DEG C or TI315 >= 500 DEG C', eu: 'DEG C',
-      latched: true, reset: 'h.ts1 < 400 && h.ts2 < 400',
+      latched: true,
+      latch: Object.freeze({ field: 'P.trips.skin' }),
+      reset: Object.freeze({ kind: 'auto-hysteresis', expr: 'h.ts1 < 400 && h.ts2 < 400' }),
+      lockout: null,
+      permissive: null,
+      enforced: true,
       desc: 'TUBE SKIN OVERTEMP — FUEL GAS SHUT OFF',
       site: { file: APP_FILE, anchor: "this.raiseA('H-310','TUBE SKIN TRIP'" },
+    }),
+
+    // ---- motor rows. Manual reset by START after the lockout, and RECORDED, not prevented. ----
+    Object.freeze({
+      id: 'P101_TRIP', src: 'P-101', cond: 'MOTOR TRIP', seam: 'app', kind: 'motor-trip',
+      variable: 'L.P101.trip', comparator: 'latched by', threshold: 'CAVITATION (P.tankL < 2) or the pump fault (UNCOMMANDED STOP)', eu: '',
+      latched: true,
+      latch: Object.freeze({ field: 'L.P101.trip' }),
+      reset: Object.freeze({
+        kind: 'manual-start', expr: 'operator START once L.P101.lock reaches 0',
+        recorded: true,
+        note: 'START sets m.trip=false and runs the motor; it is NOT refused. The defeat is ' +
+          'stamped as INTERLOCK.DEFEAT on DRV-P101.',
+      }),
+      lockout: Object.freeze({ sec: 30, after: 'trip', alsoSec: 15, alsoAfter: 'stop',
+        site: { file: APP_FILE, anchor: 'm.run=false; m.trip=true; m.tripWhy=why; m.lock=30;' } }),
+      permissive: Object.freeze({ expr: 'P.tankL >= 5', enforced: true, ref: 'P101_PERMISSIVE' }),
+      enforced: false,
+      desc: 'PUMP TRIPPED',
+      site: { file: 'src/models.js', anchor: "ctx.tripMotor('P101', 'CAVITATION — LOW SUCTION LEVEL')" },
+    }),
+    Object.freeze({
+      id: 'M202_TRIP', src: 'M-202', cond: 'MOTOR TRIP', seam: 'app', kind: 'motor-trip',
+      variable: 'L.M202.trip', comparator: 'latched by', threshold: 'the agit upset (UNCOMMANDED STOP)', eu: '',
+      latched: true,
+      latch: Object.freeze({ field: 'L.M202.trip' }),
+      reset: Object.freeze({
+        kind: 'manual-start', expr: 'operator START once L.M202.lock reaches 0',
+        recorded: true,
+        note: 'As P-101: START clears the latch rather than being refused, and stamps ' +
+          'INTERLOCK.DEFEAT on DRV-M202. This is the column drill A5 gates on.',
+      }),
+      lockout: Object.freeze({ sec: 30, after: 'trip', alsoSec: 15, alsoAfter: 'stop',
+        site: { file: APP_FILE, anchor: 'm.run=false; m.trip=true; m.tripWhy=why; m.lock=30;' } }),
+      permissive: null,   // the faceplate says so in as many words: "PERMISSIVE: NONE CONFIGURED"
+      enforced: false,
+      desc: 'AGITATOR TRIPPED',
+      site: { file: APP_FILE, anchor: "this.tripMotor('M202','UNCOMMANDED STOP')" },
+    }),
+
+    // ---- the one ENFORCED permissive. Unlike a motor trip latch, this really does refuse. ----
+    Object.freeze({
+      id: 'P101_PERMISSIVE', src: 'P-101', cond: 'START PERMISSIVE', seam: 'app', kind: 'permissive',
+      variable: 'P.tankL', comparator: '<', threshold: 5, eu: '%',
+      latched: false,
+      latch: null,
+      reset: Object.freeze({ kind: 'continuous', expr: 'P.tankL >= 5 -- the permissive is re-evaluated on every START, nothing latches' }),
+      lockout: null,
+      permissive: Object.freeze({ expr: 'P.tankL >= 5', enforced: true }),
+      enforced: true,
+      desc: 'START PERMISSIVE NOT MET — TK-101 LEVEL LOW',
+      site: { file: APP_FILE, anchor: "this.P.tankL<5" },
     }),
   ]);
 
@@ -192,6 +289,34 @@
       causedBy: Object.freeze(['V502_PSV']),
       site: { file: 'src/models.js', anchor: "raiseTrip(ctx, 'V-502', 'PSV LIFT'" },
     }),
+    // ---- the JOIN KEY. These ids are 'DRV-' + tag, built the same way motorCmd builds the
+    // target it stamps on an INTERLOCK.DEFEAT:  archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null).
+    // That string equality IS the join: a defeat resolves to this column, and the column names the
+    // cause. Nothing else connects the drill gate to the matrix, so the id is not cosmetic and
+    // must not be prettified -- tests/cause-effect.test.js pins it against the app's own template.
+    Object.freeze({
+      id: 'DRV-P101', kind: 'motor', target: 'P-101',
+      action: 'START clears L.P101.trip and runs the pump. NOT refused: the latch is advisory and ' +
+        'the restart is recorded as INTERLOCK.DEFEAT. The enforced guard on this motor is its ' +
+        'permissive (TK-101 level >= 5 %), which does refuse.',
+      causedBy: Object.freeze(['P101_TRIP']),
+      site: { file: APP_FILE, anchor: "this.archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null)" },
+    }),
+    Object.freeze({
+      id: 'DRV-M202', kind: 'motor', target: 'M-202',
+      action: 'START clears L.M202.trip and runs the agitator. NOT refused: the latch is advisory ' +
+        'and the restart is recorded as INTERLOCK.DEFEAT. No permissive is configured on this ' +
+        'motor. This is the column drill A5 gates on.',
+      causedBy: Object.freeze(['M202_TRIP']),
+      site: { file: APP_FILE, anchor: "this.archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null)" },
+    }),
+    Object.freeze({
+      id: 'P101-START-INHIBIT', kind: 'permissive', target: 'P-101',
+      action: 'START is REFUSED while TK-101 level < 5 %: motorCmd returns early, raises P101 ' +
+        'CMDFAIL and messages the operator. The only motor guard in the plant that actually blocks.',
+      causedBy: Object.freeze(['P101_PERMISSIVE']),
+      site: { file: APP_FILE, anchor: "'START PERMISSIVE NOT MET — TK-101 LEVEL LOW'" },
+    }),
   ]);
 
   var MATRIX = Object.freeze({ causes: CAUSES, effects: EFFECTS });
@@ -226,6 +351,58 @@
       }
     }
     return out;
+  }
+
+  // ---------------------------------------------------------------- defeat annotation
+  //
+  // "Scored from the matrix" means, per Anthony's ruling of 2026-09-13: the defeat RESOLVES to an
+  // effect column, and the reader annotates the cause and the cause-state at reset.
+  //
+  // ANNOTATION ONLY. This function returns text. It does not score, does not cap, does not touch
+  // src/drill-arch.js, and no A-drill score moves because of it. The gate logic is exactly what it
+  // was; the matrix supplies the explanation the gate never had.
+  //
+  // causeState is whatever the caller can observe at the moment of the reset -- typically
+  // {tankL: …} for P-101's cavitation. It is optional: when the caller cannot evaluate the cause,
+  // the annotation says so rather than guessing.
+  function annotateDefeat(target, causeState) {
+    var col = null, i;
+    for (i = 0; i < EFFECTS.length; i++) if (EFFECTS[i].id === target) { col = EFFECTS[i]; break; }
+    if (!col) {
+      return {
+        resolved: false, target: target, causes: [],
+        text: 'INTERLOCK.DEFEAT on ' + target + ': no declared effect column. The matrix cannot ' +
+          'explain this defeat, which is itself worth knowing.',
+      };
+    }
+    var causes = col.causedBy.map(function (cid) {
+      var row = null, j;
+      for (j = 0; j < CAUSES.length; j++) if (CAUSES[j].id === cid) { row = CAUSES[j]; break; }
+      return row;
+    }).filter(Boolean);
+
+    var parts = causes.map(function (r) {
+      var bit = r.src + ' ' + r.cond + ' (' + r.desc + ')';
+      if (r.lockout) bit += '; reset is a manual START after a ' + r.lockout.sec + ' s lockout, and is recorded';
+      if (r.enforced === false) bit += '; the latch is advisory -- the plant permits the restart and records it';
+      if (r.permissive && r.permissive.enforced) bit += '; the enforced guard here is the permissive ' + r.permissive.expr;
+      return bit;
+    });
+
+    var state = 'cause-state at reset: not evaluated';
+    if (causeState && typeof causeState === 'object') {
+      var keys = Object.keys(causeState);
+      state = keys.length
+        ? 'cause-state at reset: ' + keys.map(function (k) { return k + '=' + causeState[k]; }).join(', ')
+        : 'cause-state at reset: nothing observable was supplied';
+    }
+
+    return {
+      resolved: true, target: target, column: col.id,
+      causes: causes.map(function (r) { return r.id; }),
+      text: 'INTERLOCK.DEFEAT on ' + target + ' resolves to effect column ' + col.id + ' — ' +
+        parts.join(' | ') + '. ' + state + '.',
+    };
   }
 
   function chart() {
@@ -335,5 +512,6 @@
     createRecorder: createRecorder,
     verify: verify,
     chart: chart,
+    annotateDefeat: annotateDefeat,
   };
 });

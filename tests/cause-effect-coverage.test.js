@@ -94,7 +94,12 @@ const ROW_BY_KEY = new Map(ONTRIP_ROWS.map((r) => [`${r.src}|${r.cond}`, r]));
 
 test('sanity: MATRIX declares exactly six onTrip-seam rows (contract §0.3)', () => {
   assert.equal(ONTRIP_ROWS.length, 6);
-  assert.equal(CauseEffect.causes().length, 7, 'seven causes total -- the six onTrip rows plus H310_SKIN (seam:\'app\')');
+  // The coverage gate is about the SEAM, so it counts process trips, not the whole matrix. The
+  // motor-trip and permissive rows added on 2026-09-13 are app-seam by nature and are covered by
+  // tests/cause-effect.test.js instead -- no trip the recorder can observe belongs to them.
+  const processTrips = CauseEffect.causes().filter((c) => c.kind === 'process-trip');
+  assert.equal(processTrips.length, 7, "seven process trips -- six onTrip plus H310_SKIN (seam:'app')");
+  assert.equal(processTrips.filter((c) => c.seam === 'onTrip').length, 6);
 });
 
 // ---------------------------------------------------------------- the seam observer

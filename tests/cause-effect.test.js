@@ -142,10 +142,10 @@ test('module hygiene: pure UMD, no DOM/timers/randomness/clock; exact export sur
   }
   assert.deepEqual(
     Object.keys(CE).sort(),
-    ['MATRIX', 'CHART_VISIBILITY', 'causes', 'effects', 'cells', 'createRecorder', 'verify', 'chart'].sort(),
+    ['MATRIX', 'CHART_VISIBILITY', 'causes', 'effects', 'cells', 'createRecorder', 'verify', 'chart', 'annotateDefeat'].sort(),
     'no export beyond the eight the contract names (§1)'
   );
-  for (const fn of ['causes', 'effects', 'cells', 'createRecorder', 'verify', 'chart']) {
+  for (const fn of ['causes', 'effects', 'cells', 'createRecorder', 'verify', 'chart', 'annotateDefeat']) {
     assert.equal(typeof CE[fn], 'function', `${fn} must be a function`);
   }
   assert.ok(CE.MATRIX, 'MATRIX must be exported');
@@ -153,13 +153,19 @@ test('module hygiene: pure UMD, no DOM/timers/randomness/clock; exact export sur
 
 // ---- the declared data (contract §2) -----------------------------------------
 
-test('declares exactly seven cause rows: six onTrip, H310_SKIN alone on the app seam', () => {
+test('declares ten cause rows: seven process trips (six onTrip), two motor trips, one permissive', () => {
   const rows = CE.causes();
-  assert.equal(rows.length, 7, 'exactly seven declared causes');
+  assert.equal(rows.length, 10, 'exactly ten declared causes');
   assert.deepEqual(
     rows.map((r) => r.id).sort(),
-    ['H310_SKIN', 'R201_HITEMP', 'R202_HITEMP', 'R310_HITEMP', 'TK101_HIHI', 'V401_PSV', 'V502_PSV']
+    ['H310_SKIN', 'M202_TRIP', 'P101_PERMISSIVE', 'P101_TRIP', 'R201_HITEMP', 'R202_HITEMP',
+     'R310_HITEMP', 'TK101_HIHI', 'V401_PSV', 'V502_PSV']
   );
+  // The three families, each with its own count.
+  const byKind = (k) => rows.filter((r) => r.kind === k).map((r) => r.id).sort();
+  assert.equal(byKind('process-trip').length, 7, 'seven process trips');
+  assert.deepEqual(byKind('motor-trip'), ['M202_TRIP', 'P101_TRIP']);
+  assert.deepEqual(byKind('permissive'), ['P101_PERMISSIVE']);
   const onTrip = rows.filter((r) => r.seam === 'onTrip');
   assert.equal(onTrip.length, 6, "exactly six rows carry seam:'onTrip'");
   assert.deepEqual(
@@ -169,7 +175,40 @@ test('declares exactly seven cause rows: six onTrip, H310_SKIN alone on the app 
   const skin = rows.find((r) => r.id === 'H310_SKIN');
   assert.ok(skin, 'H310_SKIN must be declared');
   assert.equal(skin.seam, 'app', 'H310_SKIN bypasses the onTrip seam (§0.3)');
-  for (const r of rows) assert.equal(r.latched, true, `${r.id}.latched must be true`);
+  // Only the latching rows latch. The permissive is continuous -- it is re-evaluated on every
+  // START and nothing is held, which is exactly why it can be enforced without a reset.
+  for (const r of rows) {
+    assert.equal(r.latched, r.kind !== 'permissive', `${r.id}.latched`);
+  }
+
+  // THE STANDARD SCHEMA (Anthony, 2026-09-13: "Rows carry latch, reset, lockout and permissive").
+  // Every row carries all four, whatever family it belongs to; a field that does not apply is
+  // null, never absent. That is what makes the schema standard rather than bespoke.
+  for (const r of rows) {
+    for (const f of ['latch', 'reset', 'lockout', 'permissive']) {
+      assert.ok(f in r, `${r.id} must carry the field "${f}" even when it is null`);
+    }
+    assert.equal(typeof r.enforced, 'boolean', `${r.id}.enforced must be declared either way`);
+    assert.ok(r.reset && typeof r.reset.kind === 'string', `${r.id}.reset needs a kind`);
+  }
+
+  // ENFORCED vs ADVISORY -- the distinction that makes the motor rows honest.
+  // A process trip really shuts the valve. The P-101 permissive really refuses the START.
+  // A motor trip latch does NOT block a restart: START clears it and runs.
+  for (const r of rows.filter((x) => x.kind === 'process-trip')) {
+    assert.equal(r.enforced, true, `${r.id}: a process trip is enforced by the plant`);
+  }
+  for (const r of rows.filter((x) => x.kind === 'motor-trip')) {
+    assert.equal(r.enforced, false, `${r.id}: a motor trip latch is advisory -- START clears it`);
+    assert.equal(r.reset.kind, 'manual-start');
+    assert.equal(r.reset.recorded, true, `${r.id}: the defeat must be recorded`);
+    assert.equal(r.lockout.sec, 30, `${r.id}: 30 s lockout after a trip (tripMotor sets m.lock=30)`);
+    assert.equal(r.lockout.alsoSec, 15, `${r.id}: 15 s after an operator stop`);
+  }
+  const perm = rows.find((r) => r.id === 'P101_PERMISSIVE');
+  assert.equal(perm.enforced, true, 'the P-101 level permissive is the one motor guard that refuses');
+  assert.equal(perm.lockout, null);
+  assert.equal(perm.latch, null);
 });
 
 test('every onTrip cause matches its raiseTrip(...) call site in src/models.js: src, cond, desc, eu, comparator, threshold, reset', () => {
@@ -194,7 +233,11 @@ test('every onTrip cause matches its raiseTrip(...) call site in src/models.js: 
     const f = facts[id];
     assert.equal(row.comparator, f.comparator, `${id}.comparator`);
     assert.equal(row.threshold, f.threshold, `${id}.threshold`);
-    assert.equal(row.reset, '< ' + f.reset, `${id}.reset`);
+    // The declared expr names the variable too ('P.tankL < 90'), which is more useful than the
+    // bare '< 90' this test derives from the code. Containment keeps the check strict about the
+    // threshold while allowing the richer form.
+    assert.ok(row.reset.expr.includes('< ' + f.reset),
+      `${id}.reset: declared "${row.reset.expr}" must contain the derived "< ${f.reset}"`);
   }
 });
 
@@ -388,11 +431,89 @@ test('every site anchor resolves to exactly one place in the file it names', () 
 
 test('each cause site anchor really is the code that raises that cause', () => {
   // Not just "the anchor exists" -- the anchor must name the right trip.
-  for (const c of CE.causes()) {
+  // Scoped to the onTrip seam: those anchors are raiseTrip(...) calls, which literally carry the
+  // src and cond strings. Motor and permissive rows are raised by the app through other shapes
+  // (tripMotor('M202', …), a bare level test), so their anchors are pinned for UNIQUE RESOLUTION
+  // by the test above rather than for string containment. Relaxing that here rather than silently
+  // weakening the whole assertion.
+  for (const c of CE.causes().filter((r) => r.seam === 'onTrip')) {
     const text = fsSite.readFileSync(pathSite.join(ROOT_SITE, c.site.file), 'utf8');
     const line = text.split('\n').find((l) => l.includes(c.site.anchor));
     assert.ok(line, `${c.id}: anchor not found`);
     assert.ok(line.includes(c.src), `${c.id}: the cited line must name ${c.src} -- got: ${line.trim().slice(0, 90)}`);
     assert.ok(line.includes(c.cond), `${c.id}: the cited line must name "${c.cond}"`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// THE JOIN KEY, and the annotation built on it.
+//
+// Anthony's ruling, 2026-09-13: "Join key is the effect column, named DRV-M202 exactly as
+// motorCmd builds it. Scored from the matrix means the defeat resolves to that column, and the
+// reader annotates cause and cause-state at reset. Annotation only."
+//
+// The join is a STRING EQUALITY between an id in this module and a string the app constructs at
+// runtime as 'DRV-' + tag. Nothing else connects the drill gate to the matrix, so the id is not
+// cosmetic and these tests pin it against the app's own source rather than against a copy.
+// ---------------------------------------------------------------------------
+
+test('the motor effect columns are named exactly as the app constructs the defeat target', () => {
+  const app = fsSite.readFileSync(pathSite.join(ROOT_SITE, 'Experion Station Simulator.dc.html'), 'utf8');
+  // The one place the app builds the target. If this template ever changes, the join silently
+  // breaks and every annotation stops resolving -- so the template itself is pinned.
+  assert.ok(app.includes("this.archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null)"),
+    "the app must still build the defeat target as 'DRV-' + tag");
+  for (const tag of ['P101', 'M202']) {
+    const id = 'DRV-' + tag;                       // built the same way the app builds it
+    const col = CE.effects().find((e) => e.id === id);
+    assert.ok(col, `${id} must be a declared effect column -- it is the join key`);
+    assert.equal(col.kind, 'motor');
+  }
+});
+
+test('each motor column names exactly the cause row for its own motor', () => {
+  assert.deepEqual(CE.effects().find((e) => e.id === 'DRV-M202').causedBy, ['M202_TRIP']);
+  assert.deepEqual(CE.effects().find((e) => e.id === 'DRV-P101').causedBy, ['P101_TRIP']);
+});
+
+test('annotateDefeat resolves DRV-M202 and names the cause and the advisory latch', () => {
+  const a = CE.annotateDefeat('DRV-M202', null);
+  assert.equal(a.resolved, true);
+  assert.equal(a.column, 'DRV-M202');
+  assert.deepEqual(a.causes, ['M202_TRIP']);
+  assert.match(a.text, /M-202 MOTOR TRIP/);
+  assert.match(a.text, /30 s lockout/);
+  assert.match(a.text, /advisory/, 'the annotation must say the plant permits the restart');
+  assert.match(a.text, /cause-state at reset: not evaluated/);
+});
+
+test('annotateDefeat reports the cause-state when the caller can observe it', () => {
+  const a = CE.annotateDefeat('DRV-P101', { tankL: 42.7 });
+  assert.match(a.text, /cause-state at reset: tankL=42\.7/);
+  // P-101 is the motor that DOES have an enforced guard, and the annotation says which.
+  assert.match(a.text, /permissive P\.tankL >= 5/);
+});
+
+test('an unresolvable target is reported as unresolvable, not guessed at', () => {
+  const a = CE.annotateDefeat('DRV-NOSUCH', null);
+  assert.equal(a.resolved, false);
+  assert.deepEqual(a.causes, []);
+  assert.match(a.text, /no declared effect column/);
+});
+
+test('annotateDefeat is ANNOTATION ONLY: it returns text and scores nothing', () => {
+  // The whole ruling turns on this. The function must expose no score, no cap, no severity, and
+  // must not be reachable from anything that does. Its return shape is the proof.
+  const a = CE.annotateDefeat('DRV-M202', { anything: 1 });
+  assert.deepEqual(Object.keys(a).sort(), ['causes', 'column', 'resolved', 'target', 'text']);
+  for (const forbidden of ['score', 'cap', 'penalty', 'severity', 'weight', 'earned', 'max']) {
+    assert.equal(forbidden in a, false, `annotateDefeat must not return "${forbidden}"`);
+  }
+  // and the module must not reach the scorer in CODE. Comment lines are stripped first, the same
+  // way the purity check does it: the comments SHOULD mention src/drill-arch.js, because they are
+  // what record that this module deliberately does not touch it.
+  const src = fsSite.readFileSync(pathSite.join(ROOT_SITE, 'src', 'cause-effect.js'), 'utf8');
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  assert.equal(/DrillArch|drill-arch|scoreDrill|applyGate/.test(code), false,
+    'src/cause-effect.js must not reference the drill scorer in code -- gate logic is unchanged');
 });
