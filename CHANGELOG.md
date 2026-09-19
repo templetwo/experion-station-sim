@@ -4,6 +4,22 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### Governed PEB live operations
+
+The complete native scan now lives in shared `PlantCore`, used by the existing
+station and the new deterministic headless kernel. A private Node worker computes
+0.5-second candidates from full checkpoints; PEB owns durable commits, authority,
+receipts and model scheduling. The remote station renders committed state and
+routes operator controls through its authenticated parent. Standalone timing and
+controls retain their existing entry point.
+
+The U4 product meter samples the model's actual pre-update draw flow without
+changing equations or PRNG draws. Its analyzer-qualified proxy separates off-band
+and unknown quality and displays inventory change. See
+[the integration inventory](docs/dev/realtime/README.md) for the artifact and state
+boundary. Model commissioning remains separate from deterministic regression tests.
+
+
 ### W2 follow-up — the motor interlocks declared as they actually are, and §3.1.6(d) resolved
 
 `INTERLOCK.DEFEAT` scoring had no join key: `DRV-M202` was not a `raiseTrip` source and no M202 interlock existed as declarable logic, so "scored from the declared matrix" had nothing to look up. Anthony's ruling of 2026-09-13 resolved it by **making the honest reading standard rather than bespoke**.

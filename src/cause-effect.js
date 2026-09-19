@@ -68,7 +68,7 @@
 
   // ---------------------------------------------------------------- the app file's
   // own name, spelled once, so no row below has to repeat the awkward literal.
-  var APP_FILE = 'Experion Station Simulator.dc.html';
+  var APP_FILE = 'src/plant-core.js';
 
   // ---------------------------------------------------------------- seven cause rows
   //

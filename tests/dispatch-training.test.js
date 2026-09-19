@@ -414,7 +414,7 @@ test('the app builds a ctx carrying every field these handlers read', async (t) 
   // The list is DERIVED from what src/dispatch.js actually reads off ctx, never typed, so a
   // handler that starts depending on a new ctx field fails here until the app supplies it.
   const dispatchSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'dispatch.js'), 'utf8');
-  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'src/plant-core.js'), 'utf8');
 
   const needed = new Set();
   const re = /\bctx\.([A-Za-z_$][\w$]*)/g;

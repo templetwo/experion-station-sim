@@ -107,7 +107,7 @@ test('4. unseeded-random guard: a fully seeded run never falls through to Math.r
   assert.equal(count, 0, 'Math.random must not be called during a fully seeded run + drill start + upset injection');
 });
 
-test('4b. the guard above is not vacuous: forcing the unseeded fallback path is actually detected', () => {
+test('4b. missing seeded randomness fails closed without consuming an uncontrolled draw', () => {
   // Proves the previous test would fail on a real regression rather than passing by
   // construction. Forcing this.rand away leaves the app's own fallback
   // ("rand:()=>this.rand?this.rand():Math.random()") as the only path.
@@ -117,11 +117,11 @@ test('4b. the guard above is not vacuous: forcing the unseeded fallback path is 
   try {
     const c = newSim({ seed: 20260829 });
     c.rand = null;
-    run(c, 2);
+    assert.throws(() => run(c, 2), /rand is not a function/);
   } finally {
     Math.random = orig;
   }
-  assert.ok(count > 0, 'forcing the fallback path must be observable through the same guard mechanism');
+  assert.equal(count, 0, 'missing seeded randomness must never fall back to uncontrolled randomness');
 });
 
 test('5. snapshot round-trip: restoring the same snapshot and replaying identical commands reproduces identical state', () => {

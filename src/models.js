@@ -666,6 +666,7 @@
 
     // chamber 2: what came over the weir, less the product draw
     const qp = c.Cp * vpos(V, 'LV503', 0.5) * Math.sqrt(Math.max(s.h2, 0) / 50);
+    if (ctx.productSample) ctx.productSample({draw_rate_m3h:qp,dt_s:dt});
     s.h2 = clamp(s.h2 + (s.qover + s.wcarry - qp) / c.A2 / 3600 * dt, 0, 100);
 
     // overhead gas: more vapour when the inlet runs warm, out through PV-505 and, once

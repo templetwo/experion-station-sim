@@ -22,7 +22,7 @@ function modelsSrc() {
 }
 
 function appSrc() {
-  return fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8');
+  return fs.readFileSync(path.join(__dirname, '..', 'Experion Station Simulator.dc.html'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'src/plant-core.js'), 'utf8');
 }
 
 function findByCode(findings, code) {
@@ -458,7 +458,7 @@ test('each cause site anchor really is the code that raises that cause', () => {
 // ---------------------------------------------------------------------------
 
 test('the motor effect columns are named exactly as the app constructs the defeat target', () => {
-  const app = fsSite.readFileSync(pathSite.join(ROOT_SITE, 'Experion Station Simulator.dc.html'), 'utf8');
+  const app = fsSite.readFileSync(pathSite.join(ROOT_SITE, 'src/plant-core.js'), 'utf8');
   // The one place the app builds the target. If this template ever changes, the join silently
   // breaks and every annotation stops resolving -- so the template itself is pinned.
   assert.ok(app.includes("this.archSynthEvent('INTERLOCK.DEFEAT','DRV-'+tag,null)"),

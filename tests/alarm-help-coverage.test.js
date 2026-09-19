@@ -26,7 +26,7 @@ const AlarmHelp = require('../src/alarm-help.js');
 const { load } = require('../tools/logic-harness');
 
 const ROOT = path.join(__dirname, '..');
-const PAGE = fs.readFileSync(path.join(ROOT, 'Experion Station Simulator.dc.html'), 'utf8');
+const PAGE = fs.readFileSync(path.join(ROOT, 'Experion Station Simulator.dc.html'), 'utf8') + fs.readFileSync(path.join(ROOT, 'src/plant-core.js'), 'utf8');
 const MODELS = fs.readFileSync(path.join(ROOT, 'src', 'models.js'), 'utf8');
 const { Component } = load();
 
