@@ -12,13 +12,24 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SERVE = path.join(ROOT, 'tools', 'coach', 'serve.py');
 const KEY = 'sk-test-0123456789abcdefghijklmnop';
 const fs = require('node:fs');
 const os = require('node:os');
+
+// The `anthropic` Python package is an optional extra for the PIP cloud sidecar
+// (CONVERGENCE-SPEC §9.1: no dependency the deterministic core or the suite needs).
+// This file's test hands the sidecar a credential and drives the cloud path, so it
+// needs the package importable by the spawned python3.
+const HAS_ANTHROPIC = (() => {
+  try { execFileSync('python3', ['-c', 'import anthropic'], { stdio: 'ignore' }); return true; }
+  catch { return false; }
+})();
+const NO_ANTHROPIC_REASON = 'anthropic Python package absent — the PIP cloud sidecar is an optional ' +
+  'extra; the deterministic core and the suite need no Python packages (CONVERGENCE-SPEC §9.1)';
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -55,7 +66,7 @@ const cloudAnswer = (model, txt) => [
   ['message_stop', { type: 'message_stop' }],
 ];
 
-test('the station can hand the sidecar a cloud key for the session, and only the station can', { timeout: 30000 }, async (t) => {
+test('the station can hand the sidecar a cloud key for the session, and only the station can', { timeout: 30000, skip: HAS_ANTHROPIC ? false : NO_ANTHROPIC_REASON }, async (t) => {
   const cloudCalls = [];
   const fakeAnthropic = http.createServer(async (req, res) => {
     const body = JSON.parse(await readBody(req));

@@ -309,7 +309,7 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
     // branch the working tree has repeatedly not been the commit — 934b81d itself ships a
     // page calling this.aDrillWatch and this.archSynthEvent with zero definitions in the
     // committed bytes — so the distinction is load-bearing, not pedantry.
-    const page = rd(APP_PAGE);
+    const page = rd(APP_PAGE) + '\n' + rd(path.join(ROOT, 'src/plant-core.js'));
     const at = page.indexOf('startReplay(i){');
     assert.ok(at > 0, 'startReplay is gone from the app page');
     const body = page.slice(at, at + 2000);
@@ -349,7 +349,7 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
     // only. Fail-open. Never from step(). file:// has no API so it no-ops.
     // src/*.js still has zero network. An absolute or foreign fetch still fails this gate.
     const offenders = [];
-    const page = rd(APP_PAGE);
+    const page = rd(APP_PAGE) + '\n' + rd(path.join(ROOT, 'src/plant-core.js'));
     page.split('\n').forEach((line, i) => {
       if (!(NETWORK.test(line) || DYNAMIC_IMPORT.test(line))) return;
       if (/fetch\s*\(\s*['`]\/api\/coach\//.test(line)) return;
@@ -386,7 +386,7 @@ test('GATE 4 SEPARATION: the core reaches no network, and names no gateway', asy
     // weaker gate under the same name. Resolution (a): V3-PLAN 11.4 / Rule 7 / §12 now
     // name the local coach. Do not delete this assertion.
     const spec = rd(path.join(ROOT, 'docs', 'dev', 'V3-PLAN.md'));
-    const page = rd(APP_PAGE);
+    const page = rd(APP_PAGE) + '\n' + rd(path.join(ROOT, 'src/plant-core.js'));
     const coreHasCoach = /fetch\s*\(\s*['`]\/api\/coach\//.test(page);
     // NOT merely /coach/i on the whole document — that would pass on any stray mention,
     // including the case where section 11.4 is reverted and only the section 12 prose
@@ -477,7 +477,7 @@ test('BUILD INTEGRITY: the page never calls a method it does not define', async 
   // The instrument is seat 3/3's, from its 934b81d verdict: compare every `this.X(` CALL in
   // the page against every method DEFINITION in it. Adopted here so it runs on every suite
   // rather than only when a verifier happens to look.
-  const page = rd(APP_PAGE);
+  const page = rd(APP_PAGE) + '\n' + rd(path.join(ROOT, 'src/plant-core.js'));
 
   await t.test('every this.X() call resolves to a definition or an assigned field', () => {
     const calls = new Set();

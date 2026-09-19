@@ -294,3 +294,177 @@ Twelve sources, each now its own subsection so each carries its own id. Code cit
 - cstr-ots reaction: A+B->2C, not A+B->C; loops described inconsistently as PI/PID in the repo.
 - DWSIM tutorial: a three-part series, not a single page with the title originally cited.
 - GitHub topics and code searches for hmiweb, hscnetapi, Server.ParamValue, SHEDHOLD, OPHILM: nothing beyond this project and unrelated hits; honeywellForge exists only as an individual user account.
+## 7. Registered sources (v3.2 / v4 convergence line)
+
+Added 2026-09-13 as work item **W0** of `docs/dev/CONVERGENCE-SPEC.md`, under Anthony's ruling
+that *nothing builds on an unregistered source*. Every source the convergence spec cites now has
+an id here before any work item that leans on it may start.
+
+Seeded from the spec's Appendix A. The verification pass that produced this section found the
+spec's own count low: it named fifteen absent sources, but Luyben is two distinct books, the
+Seborg **textbook** is a different work from the Henson/Seborg CSTR parameters already registered
+at §4.4, and the five operator-training-simulator papers cited in spec §3.2.8 and §3.5.8 were
+absent as well. The real load was twenty-two works, all registered below.
+
+Each source gets its own `### 7.n` subsection, so each carries its own citable id. This follows
+the §4 lesson: a section with many sources in it must not be citable as one bare id, or a
+citation names nothing and traces nothing. **Cite `RESOURCES-7.4`, never `RESOURCES-7`.**
+
+Status key, carried from the spec's Appendix A and re-stated per entry:
+- **VERIFIED (DOI)** / **VERIFIED (ISBN)** — identifier confirmed against publisher or registry.
+- **VERIFIED (standards page)** — confirmed on the issuing body's own webstore.
+- **VERIFIED (citation, historical)** — pre-DOI paper; the volume/page citation is the identifier.
+- **CITED-NOT-HELD** — registered and identified, but no copy has been read by this project. A
+  source in this state may be cited for the concept it is the standard reference for; it may
+  **not** be used to justify a specific equation, default or numeric value until it is held and
+  read. Every entry below was CITED-NOT-HELD as of registration. This is the honest state and it
+  is recorded rather than implied.
+- **HELD** — a copy has been read by this project, and the entry records which part was read.
+  Only a HELD source may justify a specific equation, default or numeric value. **§7.4 is HELD**
+  as of 2026-09-13; every other §7 entry is still CITED-NOT-HELD. Promoting one is a small piece
+  of real work — find a legitimately public copy, verify it is the paper it claims to be, read the
+  part the work needs, and write down what it says — and it is done ahead of the work item that
+  needs it, not during.
+
+Standards access: §2.19's rule governs here too. Purchase is required for the two standards in
+this section, citation is by clause number only, and ISA's prohibition on feeding standard text
+into AI tools applies. Implement the model, cite the clause, never paste text.
+
+### 7.1 Luyben, Process Modeling, Simulation and Control for Chemical Engineers (2nd ed., 1990)
+- Resource: W. L. Luyben, McGraw-Hill, 2nd ed., 1990. ISBN 0071007938 / 978-0071007931 (the 1989 hardcover is 0070391599 / 978-0070391598).
+- What it gives: degrees-of-freedom analysis, and the "verified steady state first, then dynamics" discipline.
+- Used by: spec item 6 (boundary streams / DOF check, W1); item 1 (pressure-flow network, v4).
+- Status: VERIFIED (ISBN). CITED-NOT-HELD.
+
+### 7.2 Luyben, Plantwide Dynamic Simulators in Chemical Processing and Control (2002)
+- Resource: W. L. Luyben, Marcel Dekker, 2002. ISBN 0824708016 / 978-0824708016; LCCN 2002067800; DOI 10.1201/9781482275803; 448 pp.
+- What it gives: pressure-flow network modelling and vessel holdup for a plantwide dynamic simulator.
+- Used by: spec item 1 (pressure-driven flow network, v4, gate 8.1).
+- Status: VERIFIED (DOI, ISBN). CITED-NOT-HELD.
+
+### 7.3 Seborg, Edgar, Mellichamp & Doyle, Process Dynamics and Control (4th ed., 2016)
+- Resource: Wiley, 4th ed., 2016. ISBN 978-1-119-28591-5 (eBook 978-1-119-28595-3).
+- What it gives: step-test identification, the first-order-plus-dead-time (FOPDT) model, and DOF analysis of control loops.
+- Used by: spec item 4 (step-test / loop-tuning drills, W4); item 6 (DOF check, W1).
+- Note: distinct from §4.4, which registers the **Henson/Seborg CSTR parameters** as served by APMonitor. Different work; do not cite one for the other.
+- Status: VERIFIED (ISBN, publisher page). CITED-NOT-HELD.
+
+### 7.4 Skogestad, "Simple analytic rules for model reduction and PID controller tuning" (2003)
+- Resource: S. Skogestad, Journal of Process Control 13(4) (2003) 291–309. DOI 10.1016/S0959-1524(02)00062-8; PII S0959-1524(02)00062-8 (printed on the paper's first page, and it matches the DOI).
+- Author-hosted full text, free and public, on Skogestad's own NTNU publication page: https://skoge.folk.ntnu.no/publications/2003/tuningPID/ — `finalpaper.pdf` is the published paper; the same directory carries an MIC version (2004, with corrections), a 2012 chapter with Grimholt, and Matlab files. Author self-archiving, not a re-host of a paywalled copy.
+- What it gives: the SIMC tuning rules — the primary public tuning rule the step-test grader scores against — plus the half rule for model reduction.
+- Used by: spec item 4 (W4).
+- **Status: VERIFIED (DOI, and against the paper's own first page). HELD.** Read 2026-09-13, pp. 291–298 (§1 through §4.1), which is the span carrying everything W4 needs. Promoted from CITED-NOT-HELD ahead of W4 on Anthony's instruction, because acquiring a paper is a lead-time problem and W4's grader needs the rules themselves, not the concept.
+
+  **What was read, recorded here so W4 does not have to re-fetch it.** The model is first- or second-order plus delay, eq (4): `g(s) = k·e^(−θs) / ((τ₁s+1)(τ₂s+1))`. The SIMC settings, eqs (23)–(25), are `Kc = (1/k)·τ₁/(τc+θ)`, `τ_I = min{τ₁, 4(τc+θ)}`, `τ_D = τ₂`, with `τc` the sole tuning parameter. The recommended choice, eq (28), is `τc = θ` — "SIMC-rule for fast response with good robustness" — which reduces the settings to eqs (29)–(31): `Kc = 0.5·τ₁/(k·θ)`, `τ_I = min{τ₁, 8θ}`, `τ_D = τ₂`. The half rule, §2.1, is that the largest neglected denominator time constant is distributed evenly between the effective delay and the smallest retained time constant, eq (10).
+
+  **One trap W4 must not walk into.** The paper's eq (1) states its settings are for the **series (cascade, "interacting") form** PID, and says so explicitly; the ideal (parallel) form settings are obtained through its eq (36). The simulator's faceplate is `K`/`T1`/`T2` and `src/pid.js` already exposes `isaForm(K, T1, T2) -> {Kc, Ti, Td, ...}`, so W4 must establish which form the sim's loops are in and convert before grading, or it will score a correct tuning as wrong. Confirm against `src/pid.js` at the checkpoint before writing the grader.
+
+### 7.5 Ziegler & Nichols, "Optimum settings for automatic controllers" (1942)
+- Resource: J. G. Ziegler and N. B. Nichols, Trans. ASME 64 (1942) 759–768.
+- What it gives: the historical open-loop/closed-loop tuning rules, for teaching contrast against SIMC.
+- Used by: spec item 4 (W4).
+- Status: VERIFIED (citation, historical — pre-DOI). CITED-NOT-HELD.
+
+### 7.6 Cohen & Coon, "Theoretical consideration of retarded control" (1953)
+- Resource: G. H. Cohen and G. A. Coon, Trans. ASME 75 (1953) 827–834.
+- What it gives: the dead-time-compensating historical tuning rule.
+- Used by: spec item 4 (W4).
+- Status: VERIFIED (citation, historical — pre-DOI). CITED-NOT-HELD.
+
+### 7.7 Åström & Hägglund, Advanced PID Control (2006)
+- Resource: K. J. Åström and T. Hägglund, ISA, 2006. ISBN 978-1-55617-942-6.
+- What it gives: the general PID tuning reference behind the faceplate's K / T1 / T2 form.
+- Used by: spec item 4 (W4).
+- Status: VERIFIED (ISBN, publisher and university records). CITED-NOT-HELD.
+
+### 7.8 IEC 61511-1:2016+AMD1:2017 (Ed. 2.1) — functional safety, SIS for the process sector
+- Resource: IEC webstore. Purchase required; cite clause numbers only (§2.19 rule).
+- What it gives: the interlock / safety-instrumented-function framing and voting (e.g. 2oo3) for the cause-and-effect matrix.
+- Used by: spec item 2 (C&E matrix, W2).
+- Status: VERIFIED (IEC webstore). CITED-NOT-HELD.
+
+### 7.9 ISA-75.01.01-2012 / IEC 60534-2-1:2011 — control valve sizing
+- Resource: ANSI/ISA-75.01.01-2012 (IEC 60534-2-1 MOD); IEC 60534-2-1:2011. Purchase required; cite clause numbers only.
+- What it gives: control-valve flow equations and the installed flow characteristics (linear, equal-percentage, quick-opening).
+- Used by: spec item 1 (pressure-driven flow network, v4, gate 8.1).
+- Status: VERIFIED (ISA / IEC pages). CITED-NOT-HELD.
+
+### 7.10 CCPS, Guidelines for Safe Automation of Chemical Processes (2nd ed., 2016)
+- Resource: CCPS, Wiley-AIChE, 2nd ed., 2016 (hardcover) / 2017 (online). ISBN 978-1-118-94949-8; online ISBN 978-1-119-35204-4; DOI 10.1002/9781119352044.
+- What it gives: safe-automation layers and cause-and-effect practice — the engineering convention a C&E chart follows.
+- Used by: spec item 2 (W2).
+- Status: VERIFIED (publisher page, DOI). CITED-NOT-HELD.
+
+### 7.11 Mehta & Reddy, Industrial Process Automation Systems (2014)
+- Resource: B. R. Mehta and Y. J. Reddy, Butterworth-Heinemann/Elsevier, 2014. ISBN 978-0-12-800939-0.
+- What it gives: a functional-safety/SIS chapter and alarm-management material.
+- Used by: Stream C (fidelity-feedback intake), spec §6.5 — **registered only for the increment it adds over ISA-18.2-2016 (§2.5, §2.19) and EEMUA 191 (§2.19)**. It is behind gate 8.4; registration here does not discharge that gate.
+- Status: VERIFIED (publisher and booksellers). CITED-NOT-HELD.
+
+### 7.12 Law, Simulation Modeling and Analysis (5th ed., 2015)
+- Resource: A. M. Law, McGraw-Hill, 5th ed., 2015. ISBN 978-0-07-340132-4 (earlier eds. 2000 / 2007 exist).
+- What it gives: the discrete-event trigger/action model behind a declarative scenario schedule.
+- Used by: spec item 3 (scenario schedules, W3).
+- Status: VERIFIED (publisher and ISBN). CITED-NOT-HELD.
+
+### 7.13 Banks, Carson, Nelson & Nicol, Discrete-Event System Simulation (5th ed.)
+- Resource: Pearson, 5th ed. ISBN 978-0-13-606212-7 (Pearson New International Edition 978-1-292-02437-0).
+- What it gives: discrete-event scheduling, the event-list discipline a scenario scheduler implements.
+- Used by: spec item 3 (W3).
+- Status: VERIFIED (publisher and booksellers). CITED-NOT-HELD.
+
+### 7.14 Bloom, "Learning for Mastery" (1968)
+- Resource: B. S. Bloom, Evaluation Comment (UCLA-CSEIP) 1(2) (1968) 1–12. ERIC ED053419. No ISBN or DOI (occasional paper).
+- What it gives: mastery learning and the mastery-gate idea behind the curriculum graph.
+- Used by: spec item 7 (curriculum as a graph, W5).
+- Status: VERIFIED (ERIC record). CITED-NOT-HELD.
+
+### 7.15 Ascher & Petzold, Computer Methods for ODEs and DAEs (1998)
+- Resource: U. M. Ascher and L. R. Petzold, SIAM, 1998. ISBN 978-0-89871-412-8 (ISBN-10 0-89871-412-5).
+- What it gives: stiff and differential-algebraic integration, the numerical basis for a multi-rate scheme.
+- Used by: spec item 5 (multi-rate stepping, v4, gate 8.1).
+- Status: VERIFIED (SIAM, ISBN). CITED-NOT-HELD.
+
+### 7.16 Gear & Wells, "Multirate linear multistep methods" (1984)
+- Resource: C. W. Gear and D. R. Wells, BIT Numerical Mathematics 24(4) (1984) 484–502. DOI 10.1007/BF01934907.
+- What it gives: the multirate integration scheme itself — a fine inner step with a coarse outer step.
+- Used by: spec item 5 (v4, gate 8.1).
+- Status: VERIFIED (SpringerLink, DOI). CITED-NOT-HELD.
+
+### 7.17 Karassik, Messina, Cooper & Heald, Pump Handbook (4th ed., 2008)
+- Resource: McGraw-Hill, 4th ed., 2008. ISBN 978-0-07-146044-6 (ISBN-10 0071460446); 1824 pp.
+- What it gives: pump characteristic curves and the affinity laws, for pressure-driven flow.
+- Used by: spec item 1 (v4, gate 8.1).
+- Status: VERIFIED (publisher AccessEngineering and booksellers). CITED-NOT-HELD.
+
+### 7.18 Balaton, Nagy & Szeifert, OTS process model for a batch unit (2013)
+- Resource: M. G. Balaton, L. Nagy and F. Szeifert, "Operator training simulator process model implementation of a batch processing unit in a packaged simulation software," Computers & Chemical Engineering 48 (2013) 335–344. DOI 10.1016/j.compchemeng.2012.09.005.
+- What it gives: peer-reviewed OTS scenario authoring and batch-unit model implementation practice.
+- Used by: spec item 3 (W3).
+- Status: VERIFIED (DOI). CITED-NOT-HELD.
+
+### 7.19 Reviews in Chemical Engineering, OTS field review
+- Resource: "Operator training simulators in the chemical industry: review, issues, and future directions." DOI 10.1515/revce-2013-0027.
+- What it gives: the field review — OTS competency framing and training-effectiveness survey.
+- Used by: spec item 3 (W3) and item 7 (W5).
+- Status: VERIFIED (DOI). CITED-NOT-HELD.
+
+### 7.20 Processes, conceptual design of an OTS for a bio-ethanol plant (2015)
+- Resource: "Conceptual Design of an Operator Training Simulator for a Bio-Ethanol Plant," Processes 3(3) (2015) 664. DOI 10.3390/pr3030664. Open access (MDPI).
+- What it gives: OTS conceptual design and scenario structure.
+- Used by: spec item 3 (W3).
+- Status: VERIFIED (DOI). CITED-NOT-HELD.
+
+### 7.21 Lee et al., interactive plant simulation for a gas pressure-regulating station (2017)
+- Resource: Lee, Ko, Lee, Jeon, Shin & Han, "Interactive plant simulation modeling for developing an operator training system in a natural gas pressure-regulating station," Petroleum Science 14(3) (2017) 529–538. DOI 10.1007/s12182-017-0170-5.
+- What it gives: interactive OTS modelling for a pressure-driven system.
+- Note: the spec's Appendix A records a correction worth keeping — this paper is in *Petroleum Science*, 2017, **not** Computers & Chemical Engineering, 2022, as it is sometimes miscited.
+- Used by: spec item 3 (W3), cited at CONVERGENCE-SPEC §3.2.8. Registered for item 3 only: this paper models a pressure-driven system and so reads as item 1 background, but the spec does not cite it there (§4.1.5 names only 7.1, 7.2, 7.9 and 7.17), and a Used-by line that claims a citation nobody made is exactly the laundering §4's restructure exists to prevent.
+- Status: VERIFIED (DOI). CITED-NOT-HELD.
+
+### 7.22 Applied Sciences, an OTS for responses to chemical accidents (2023)
+- Resource: "An Operator Training Simulator to Enable Responses to Chemical Accidents," Applied Sciences 13(3) (2023) 1382. Open access (MDPI).
+- What it gives: upset-response OTS design and scenario escalation.
+- Used by: spec item 3 (W3).
+- Status: VERIFIED (publisher / issue). CITED-NOT-HELD.

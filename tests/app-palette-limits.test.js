@@ -71,7 +71,14 @@ test('every priority/text pair is at least 3:1 in both presets as the app draws 
       }
       for (const k of ['Urgent', 'High', 'Low', 'Journal']) {
         assert.ok(Palette.contrastRatio(c.prioText(k), c.prioColor(k)) >= 3, name + ' ' + k);
-        assert.ok(Palette.contrastRatio(c.prioDark(k), '#C6C6C6') >= 3, name + ' ' + k + ' dim on list background');
+        // The list background is a PROPERTY OF THE PALETTE, not a constant. '#C6C6C6' is the
+        // alarm-list ground the two light presets draw on; a palette that declares its own
+        // surfaces (added 2026-09-14 for `night`) is checked against its own ground instead.
+        // Hardcoding the light value here would have failed `night` for being correctly dark --
+        // the same light-theme assumption that was baked into textPairs().
+        const listBg = (p.surfaces && p.surfaces.length) ? p.bg : '#C6C6C6';
+        assert.ok(Palette.contrastRatio(c.prioDark(k), listBg) >= 3,
+          name + ' ' + k + ' dim on list background ' + listBg);
       }
     }
   }

@@ -60,6 +60,29 @@
       state: { stopped: '#808080', running: '#F0F0F0', manual: '#93C2E4' },
       stateText: { stopped: '#000000', running: '#000000', manual: '#000000' },
       band: { target: '#93C2E4', normal: '#F0F0F0', range: '#A0A0A4', marker: '#000000' }
+    },
+    // NIGHT -- the dark console. Added 2026-09-14 from the facelift review
+    // (docs/dev/FACELIFT-REVIEW-MEMO.md item 1 and item 5).
+    //
+    // Every pair is AA-clean at 4.5:1 against this palette's OWN surfaces -- text 15.03 on the
+    // ground, and no priority fill or dim below 5.6. That is the point of it: the two light
+    // presets each carry one pre-existing sub-AA pair (representative Urgent 4.00, isa101
+    // Journal 4.31) that cannot be fixed without making them less faithful to what they claim
+    // to represent. This palette owes nothing to a vendor default, so it is simply correct.
+    //
+    // ISA-101 does not mandate a light ground; it asks for a MUTED one with colour reserved for
+    // abnormal (RESOURCES 2.4, 2.11). A dark console satisfies that reading, and here it also
+    // buys a large accessibility margin over what the light presets can reach.
+    night: {
+      name: 'night', bg: '#12161C', line: '#5A6572', text: '#E6EAF0',
+      surfaces: ['#12161C', '#1C232C'],   // the grounds this palette actually renders text on
+      onDim: '#0E1116',                   // text colour when a dim tone is used as a fill
+      prio: { Urgent: '#C62828', High: '#E6B422', Low: '#26C6C6', Journal: '#5A6068' },
+      prioText: { Urgent: '#FFFFFF', High: '#111111', Low: '#111111', Journal: '#FFFFFF' },
+      prioDim: { Urgent: '#FF8A80', High: '#FFD54F', Low: '#80DEEA', Journal: '#B9C0CC' },
+      state: { stopped: '#2A313A', running: '#C5CCD6', manual: '#E6B422' },
+      stateText: { stopped: '#E6EAF0', running: '#12161C', manual: '#111111' },
+      band: { target: '#7EB6D6', normal: '#1C232C', range: '#3A424E', marker: '#E6EAF0' }
     }
   };
 
@@ -90,13 +113,27 @@
     return (hi + 0.05) / (lo + 0.05);
   }
 
+  // The surfaces a palette renders text on, and the text colour used when a dim tone is itself a
+  // fill. Defaulting to white preserves EXACTLY the pairs the two light presets were checked
+  // against before 2026-09-14, so adding this field changed no existing coverage.
+  //
+  // Hardcoding '#FFFFFF' here was a light-theme assumption baked into the contrast contract, and
+  // it made a dark palette mathematically impossible rather than merely unfashionable: passing
+  // 4.5:1 against a #12161C ground requires luminance >= 0.214, and against white requires
+  // <= 0.183. No colour satisfies both. Deriving the surfaces from the palette fixes that.
+  function surfacesOf(p) { return (p.surfaces && p.surfaces.length) ? p.surfaces : ['#FFFFFF']; }
+  function onDimOf(p) { return p.onDim || '#FFFFFF'; }
+
   function textPairs(p) {
     var pairs = [{ label: 'text on bg', fg: p.text, bg: p.bg }];
+    var surfaces = surfacesOf(p), onDim = onDimOf(p);
     Object.keys(p.prio).forEach(function (k) {
       pairs.push({ label: k + ' text on fill', fg: p.prioText[k], bg: p.prio[k] });
       pairs.push({ label: k + ' dim text on bg', fg: p.prioDim[k], bg: p.bg });
-      pairs.push({ label: k + ' dim text on white', fg: p.prioDim[k], bg: '#FFFFFF' });
-      pairs.push({ label: 'white text on ' + k + ' dim', fg: '#FFFFFF', bg: p.prioDim[k] });
+      surfaces.forEach(function (s) {
+        pairs.push({ label: k + ' dim text on ' + s, fg: p.prioDim[k], bg: s });
+      });
+      pairs.push({ label: 'on-dim text on ' + k + ' dim', fg: onDim, bg: p.prioDim[k] });
     });
     Object.keys(p.state).forEach(function (k) {
       pairs.push({ label: k + ' state text', fg: p.stateText[k], bg: p.state[k] });

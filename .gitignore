@@ -7,3 +7,6 @@ node_modules/
 
 # Python bytecode from the coach sidecar
 __pycache__/
+
+# facelift before/after working area (screenshots are sent, not committed)
+.facelift/
