@@ -1,9 +1,9 @@
 // @artifact production
 // Complete deterministic checkpoint/candidate boundary. No DOM, timers, eval or network.
 (function(root,factory){
-  if(typeof module==='object'&&module.exports) module.exports=factory(require('./plant-core'),require('./models'),require('./instructor'),require('./topology'),require('./product-meter'),require('./control-contract'));
-  else root.ESS.PlantKernel=factory(root.ESS.PlantCore,root.ESS.Models,root.ESS.Instructor,root.ESS.Topology,root.ESS.ProductMeter,root.ESS.ControlContract);
-})(typeof globalThis!=='undefined'?globalThis:this,function(Core,Models,Instructor,Topology,Meter,Control){
+  if(typeof module==='object'&&module.exports) module.exports=factory(require('./plant-core'),require('./models'),require('./instructor'),require('./topology'),require('./product-meter'),require('./control-contract'),require('./plausibility'));
+  else root.ESS.PlantKernel=factory(root.ESS.PlantCore,root.ESS.Models,root.ESS.Instructor,root.ESS.Topology,root.ESS.ProductMeter,root.ESS.ControlContract,root.ESS.Plausibility);
+})(typeof globalThis!=='undefined'?globalThis:this,function(Core,Models,Instructor,Topology,Meter,Control,Plausibility){
   'use strict';
   function stable(value){
     if(value===null||typeof value==='string'||typeof value==='boolean')return JSON.stringify(value);
@@ -43,7 +43,7 @@
   }
   const fields=['historyLimit','P','L','V','events','msgs','hist','eid','alarmLog','t0','seed','vLag','phaseSet','tadShed','_lastPhase','trainingRecords','mocCount','_lastADrill'];
   function capture(c){
-    const data={schema_version:'peb.plant.v1',tick:c.rtTick,nextMessage:c.nextMessage,fields:{},alarms:c.alarmEngine.snapshot(),rand:c.rand.getState(),rand4:c.rand4.getState(),tasksDone:[...c.tasksDone],disabledAssets:[...c.disabledAssets],drill:c.drillData(),product:c.product,revisions:c.revisions,focus:c.focus,ce:c.ceRec?c.ceRec.seen():[],instructor:{}};
+    const data={schema_version:'peb.plant.v1',tick:c.rtTick,nextMessage:c.nextMessage,fields:{},alarms:c.alarmEngine.snapshot(),rand:c.rand.getState(),rand4:c.rand4.getState(),tasksDone:[...c.tasksDone],disabledAssets:[...c.disabledAssets],drill:c.drillData(),product:c.product,plausibility:c.plausibility,revisions:c.revisions,focus:c.focus,ce:c.ceRec?c.ceRec.seen():[],instructor:{}};
     for(const k of fields)if(c[k]!==undefined)data.fields[k]=c[k];
     for(const k of ['hidden','seed','seq','journal','replay','log','runResetSeq'])data.instructor[k]=c.instr[k];
     // Drill scoring reads these semantic fields; screen selections and dialogs are absent.
@@ -53,7 +53,7 @@
   function fresh(options){
     const c=new Plant();c.instr=Instructor.create({seed:options.seed||20260829});c.nextMessage=1;
     c.initSim(options.sim_time_ms||0);c.rtTick=0;c.revisions={};c.focus={view:'U1',tag:null};
-    c.product=Meter.create(c.P,options.mission);return c;
+    c.product=Meter.create(c.P,options.mission);c.plausibility=Plausibility.create(c.P,options.plausibility);return c;
   }
   function create(options){return capture(fresh(options||{}));}
   function restore(checkpoint){
@@ -62,7 +62,7 @@
     Object.assign(c,s.fields);c.rtTick=s.tick;c.nextMessage=s.nextMessage;
     c.alarmEngine.restore(s.alarms);c.rand=Models.createRand(c.seed);c.rand.setState(s.rand);c.rand4=Models.createRand((c.seed^0x5eed4)>>>0);c.rand4.setState(s.rand4);
     c.tasksDone=new Set(s.tasksDone);c.disabledAssets=new Set(s.disabledAssets);Object.assign(c.instr,s.instructor);
-    c.state.drill=c.drillFromData(s.drill);Object.assign(c.state,s.exercise);c.product=s.product;c.revisions=s.revisions;c.focus=s.focus;
+    c.state.drill=c.drillFromData(s.drill);Object.assign(c.state,s.exercise);c.product=s.product;c.plausibility=s.plausibility||Plausibility.create(c.P);c.revisions=s.revisions;c.focus=s.focus;
     c.ceRec.reset();for(const e of s.ce)c.ceRec.observe(e.src,e.cond,e.t);
     c._ctx=null;c._pidCtx=null;c.topo=Topology.build({L:c.L,V:c.V,assetTree:c.assetTree(),unitOf:t=>c.unitOf(t)});
     return c;

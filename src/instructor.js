@@ -110,6 +110,7 @@
       seed: src.seed, randState: src.randState == null ? null : src.randState,
       randState4: src.randState4 == null ? null : src.randState4,   // Unit 04's own seeded stream (U4-SEPARATOR-CONTRACT rule 0.2)
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
+      plausibility: src.plausibility ? clone(src.plausibility) : null,
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
       disabledAssets: Array.isArray(src.disabledAssets) ? src.disabledAssets.slice() : [],

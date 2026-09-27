@@ -25,6 +25,8 @@
 <script src="./src/debrief.js"></script>
 <script src="./src/boundary-dof.js"></script>
 <script src="./src/cause-effect.js"></script>
+<script src="./src/measurement.js"></script>
+<script src="./src/plausibility.js"></script>
 <script src="./src/plant-core.js"></script>
 <script src="./support.js"></script>
 </head>
@@ -1153,6 +1155,15 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       </div>
 
       <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">MODEL PLAUSIBILITY</div>
+        <div style="font-size:11px;margin-bottom:6px">{{ instr.plausibility.note }}</div>
+        <sc-if value="{{ instr.plausibility.empty }}" hint-placeholder-val="{{ true }}"><div style="font-size:11px;color:#55524c">No findings recorded in this interval.</div></sc-if>
+        <sc-for list="{{ instr.plausibility.rows }}" as="finding" hint-placeholder-count="2">
+          <div style="font-size:11px;padding:3px 4px;border-bottom:1px solid rgba(0,0,0,0.05)"><strong>{{ finding.code }}</strong> · {{ finding.t }}<div>{{ finding.detail }}</div></div>
+        </sc-for>
+      </div>
+
+      <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
         <div style="font-weight:700;font-size:12px;margin-bottom:6px">INSTRUCTOR LOG</div>
         <sc-if value="{{ instr.logEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#55524c">Nothing yet.</div></sc-if>
         <sc-for list="{{ instr.log }}" as="e" hint-placeholder-count="8">
@@ -2011,14 +2022,14 @@ class Component extends ESS.PlantCore(DCLogic) {
   coachProjection(){
     const S=this.state||{}, L=this.L||{}, E=this.alarmEngine;
     const recs=(E&&typeof E.list==='function')?E.list():[];
-    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:this.coachRnd(l.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:!!l.badPv,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
+    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; const m=ESS.Measurement.observe(l); return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:tag==='TIC202'?m.pv:this.coachRnd(m.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:m.badPv,quality:m.quality,statusCode:m.statusCode,statusName:m.statusName,limit:m.limit,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
     const alarmRow=(a)=>{
       if(!a) return null;
-      const l=L[a.tag], h=ESS.AlarmHelp&&ESS.AlarmHelp.resolve(a.tag,a.cond,{prio:a.prio,eu:a.eu});
+      const l=L[a.tag], m=l?ESS.Measurement.observe(l):null, h=ESS.AlarmHelp&&ESS.AlarmHelp.resolve(a.tag,a.cond,{prio:a.prio,eu:a.eu});
       return {tag:a.tag||'',cond:a.cond||'',priority:a.prio||'',state:a.state||'',
         alarmValue:this.coachRnd(a.val),valueMeaning:'point PV at alarm evaluation',eu:a.eu||(l&&l.eu)||'',desc:a.desc||'',
-        setting:h&&h.setting?h.setting:'',pv:l?this.coachRnd(l.pv):null,sp:l?this.coachRnd(l.sp):null,
-        op:l?this.coachRnd(l.op):null,mode:l&&l.mode||'',badPv:!!(l&&l.badPv)};
+        setting:h&&h.setting?h.setting:'',pv:m?(a.tag==='TIC202'?m.pv:this.coachRnd(m.pv)):null,sp:l?this.coachRnd(l.sp):null,
+        op:l?this.coachRnd(l.op):null,mode:l&&l.mode||'',badPv:!!(m&&m.badPv),quality:m?m.quality:'BAD',statusCode:m?m.statusCode:null,statusName:m?m.statusName:null,limit:m?m.limit:'NONE'};
     };
     const alarms=recs.slice(0,12).map(alarmRow).filter(Boolean);
     const fps=(S.fps||[]).map(f=>f&&f.tag).filter(Boolean).slice(0,6);
@@ -3347,6 +3358,9 @@ class Component extends ESS.PlantCore(DCLogic) {
         magnitude:f.magnitude,activatedAt:f.activatedAt==null?'':this.fT(f.activatedAt)})):[];
     return {on:true,authT:I.auth?'INSTRUCTOR PASSWORD':'MNGR LEVEL',hiddenOn:I.hidden,hidden:chip(I.hidden?'HIDDEN UPSETS: ON':'HIDDEN UPSETS: OFF',I.hidden,()=>{this.setHidden(!I.hidden);bump();}),
       archTruth,archTruthEmpty:!archTruth.length,
+      plausibility:{note:'Read-only findings. Coolant pressure is assumed at '+((this.plausibility&&this.plausibility.options.coolant_pressure_mpa_abs)??0.101325)+' MPa absolute. Accounting covers the model’s separator liquid terms; composition and plant-wide mass closure are not modelled.',
+        empty:!this.plausibility||!this.plausibility.findings.length,
+        rows:this.plausibility?this.plausibility.findings.slice(-12).reverse().map(f=>({code:f.code,t:this.fT(f.sim_time_ms),detail:f.detail})):[]},
       hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row; INSTR events mirrored before the switch were removed. The assistant still diagnoses from process symptoms.':'Upsets, snapshots and replays are mirrored into the station journal (source INSTR) and System Status lists active upsets; variables, magnitudes and the seed are never shown to the trainee.',
       lock:()=>this.lockInstructor(),close:()=>this.nav('graphic'),
       seedT:String(this.seed),seedVal:S.instrSeedTxt,seedChange:(e)=>this.setState({instrSeedTxt:e.target.value}),seedKey:(e)=>{if(e.key==='Enter')this.setSeed(S.instrSeedTxt);},seedGo:()=>this.setSeed(S.instrSeedTxt),

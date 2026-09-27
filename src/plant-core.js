@@ -1,7 +1,7 @@
 // @artifact production
 // Shared complete station semantics, extracted from the simulator at 3aad769.
 (function(root,factory){
-  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js")});
+  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js"),"Plausibility":require("./plausibility.js")});
   else root.ESS.PlantCore=factory(root.ESS);
 })(typeof globalThis!=="undefined"?globalThis:this,function(ESS){
   "use strict";
@@ -48,6 +48,7 @@
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
+    this.plausibility = ESS.Plausibility.create(this.P);
     // Architecture fault-engine state (V3-PLAN S2): instructor-scheduled engine faults
     // that carry no legacy P.faults flag of their own (none yet -- the twelve legacy
     // upsets stay authoritative in P.faults/P.faultT/V[x].stuck per decision D1; this is
@@ -147,6 +148,8 @@
     // (22 of 24 points). Found by the verify pass; release gate 3.
     this.applyReplayDue();
     const P=this.P, L=this.L;
+    const before=ESS.Plausibility.snapshot(P,this.V);
+    this._plausibilityProductSample=null;
     ESS.Models.advanceClock(P,dt);
     ESS.Models.stepU1(P,L,this.V,dt,this.modelCtx());
     L.AI205.pv=P.x*100+this.noise(0.2);          // reactor conversion from the CSTR balance (indication)
@@ -156,6 +159,8 @@
     this.pids(dt);
     this.scan(dt);
     this.interlocks();
+    const after=ESS.Plausibility.snapshot(P,this.V);
+    ESS.Plausibility.advance(this.plausibility,before,after,dt,ESS.Plausibility.u4FlowSample(before,after,this._plausibilityProductSample));
     this.alarmTick();
     this.valveWatch(dt);
     this.drillWatch(dt);
@@ -426,7 +431,12 @@
     L.AI316.pv=P.h.o2+this.noise(0.05);
     if(P.trips.skin && P.h.ts1<400 && P.h.ts2<400){ P.trips.skin=false; this.clearA('H-310','TUBE SKIN TRIP'); }
   }
-  stepU4(dt){ ESS.Models.stepU4(this.P,this.L,this.V,dt,this.modelCtx()); }
+  stepU4(dt){
+    // Observe the existing exact product-flow seam without changing model state or RNG.
+    const ctx=this.modelCtx(), prior=ctx.productSample;
+    ctx.productSample=sample=>{this._plausibilityProductSample=sample;if(prior)prior(sample);};
+    try{ESS.Models.stepU4(this.P,this.L,this.V,dt,ctx);}finally{ctx.productSample=prior;}
+  }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
   scan(dt){
     if(dt==null) dt=0.5;
@@ -865,7 +875,7 @@
   snapshotData(name,wall){
     const r=this.rand;
     try{
-      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,alarms:this.alarmEngine.snapshot(),
+      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,plausibility:this.plausibility,alarms:this.alarmEngine.snapshot(),
         eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,disabledAssets:[...this.disabledAssets],
         seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,randState4:(this.rand4&&this.rand4.getState)?this.rand4.getState():null,drill:this.drillData()},name);
     }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
@@ -1218,6 +1228,7 @@
   restoreSnapshot(snap,why){
     const I=ESS.Instructor;
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
+    this.plausibility=snap.plausibility?I.clone(snap.plausibility):ESS.Plausibility.create(this.P);
     // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
     // absence means all-healthy, the same pattern the architecture-view addendum uses
     // elsewhere for a v2-shaped snapshot. Never overwrites a restored value that IS present.
