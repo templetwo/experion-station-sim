@@ -1,0 +1,4 @@
+# @artifact dev
+# Offline tooling only; no production imports.
+scipy==1.18.1
+numpy==2.5.3

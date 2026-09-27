@@ -3,8 +3,10 @@
 
 2026-09-26. This records the implemented observation and assertion slice of the
 public-source map supplied for main at `edd9dbc`. The convergence specification
-remains rev 4. The map's proposed production chemistry and wider fidelity work
-remain proposals; this document records no new G1, G2, or G4 ruling.
+was rev 4 at implementation. This is the historical receipt for that slice;
+the current specification is rev 5. The 2026-09-27 G2 option-B ruling and its
+first-stage limits are recorded in [G2-STAGE-ONE-CONTRACT.md](G2-STAGE-ONE-CONTRACT.md).
+The original slice itself recorded no new G1, G2, or G4 ruling.
 
 ## Scope and source receipts
 
@@ -25,7 +27,7 @@ to [RESOURCES.md](../RESOURCES.md):
 | RESOURCES-7.25 | Official UA-Nodeset StatusCode.csv, relevant rows | Numeric status identifiers |
 | RESOURCES-7.26 | NIST water saturation table, 0.1–1.0 MPa absolute plus 0.101325 MPa | Bounded pressure/temperature lookup |
 
-The completed registry has forty-four sources in §7, covering all 21 proposed
+At the source-map merge, §7.1–§7.44 covered all 21 proposed
 rows from map §E. The grouped ISA-88 / ISA-TR106 row has two separate entries;
 the historical Part 6 pointer is recorded alongside the official CSV in §7.25.
 RESOURCES-7.4 and RESOURCES-7.23 through RESOURCES-7.33 are HELD for their recorded
@@ -135,8 +137,9 @@ kinetic or property models:
   A logged clamp residual is evidence of non-closure, not an acceptable
   disposal stream; a future repair must give that material a destination.
 
-G1 pressure-driven flow, G2 composition/shared utilities/recovery scope, and G4
-gateway licensing stay pending. Their future acceptance tests need conserved
+At this slice's initial delivery, G1 pressure-driven flow, G2 scope, and G4
+gateway licensing were pending. G2 was subsequently approved with the limits
+linked above; G1, G3 and G4 remain open. Future acceptance tests need conserved
 inventories, explicit equipment logic, and held model sources before claiming
 that the six proposed operating consequences are physically implemented.
 

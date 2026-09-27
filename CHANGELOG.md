@@ -4,6 +4,28 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### G2 stage-one offline composition prototype
+
+The convergence specification is rev 5 and records Anthony's option-B ruling:
+composition and product inventory first, then shared cooling and recovery.
+It corrects the historical claim that main had not moved since the v3.1.0
+checkpoint. Hydraulics, the first-stage live vector-boundary rewrite, G3 and G4
+are not opened by that ruling.
+
+The [stage-one contract](docs/dev/G2-STAGE-ONE-CONTRACT.md) scopes an offline
+reference model before live integration. Four library candidates are registered
+with scoped documentation receipts; the registry now contains 48 sources.
+The offline `tools/g2/` prototype uses a declared synthetic mass-lump recipe,
+conserved reactor/separator/product/off-spec inventories, and separate delayed
+quality observations. Analytical cases and pinned SciPy DOP853 check a fixed
+0.5 s RK4 candidate. A deterministic capture cuts native heater fuel and replays
+the resulting temperature fall into the prototype; receiving product becomes
+off-spec through its composition and stays contaminated during recovery.
+The receipt records input/source hashes, solver versions, closure and step checks.
+Cantera still requires a declared species/thermodynamic/kinetic basis first.
+No live composition, heat balance, plant boundary, checkpoint field or production
+dependency changes in this milestone; the standalone keeps its native dynamics.
+
 ### Public-source map rev 2 — observations and plausibility
 
 TIC202 exports now apply a declared synthetic transmitter range: a 170 °C
@@ -23,9 +45,9 @@ receipts include OPC InfoType/limit bits and a bounded NIST saturation table.
 Envelope findings cover the lookup bounds, the explicit weir term's excess-head
 condition, and optional mission-declared limits; they do not certify unmeasured
 calibration ranges or change downstream quality.
-All 21 proposed source-map rows are now registered with an explicit coverage
-table, bringing the registry to 44 sources (the final proposed row contains two
-standards). Technical chapters and standards not read remain CITED-NOT-HELD;
+All 21 proposed source-map rows were registered with an explicit coverage
+table at §7.23–§7.44 (the final proposed row contains two standards).
+Technical chapters and standards not read remain CITED-NOT-HELD;
 registration does not open the fidelity or licensing gates. See the
 [implementation contract](docs/dev/PUBLIC-SOURCE-MAP-V2.md) for scope, corrections,
 and the fidelity and licensing gates that remain pending.

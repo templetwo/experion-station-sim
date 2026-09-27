@@ -1,0 +1,444 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-stage-one-receipt-v1",
+  "scope": "offline mass-lump surrogate and one-way native replay; no live composition, energy, hydraulics or product qualification change",
+  "versions": {
+    "python": "3.14.6",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "files_sha256": {
+    "model.py": "92adbc24e2362e56057bde7d4549c5e047335cefcd14dc4665a56f0600f7735c",
+    "recipe.json": "3a457c89ad44a6dd238a94f98e4df6bce85b693847625f930cb762d88782a0af",
+    "requirements.txt": "39868a56323cb37df80a21fb6517f344c2361f321564d8e1326db7889a0f0a86",
+    "run.py": "da0c29f36246a278a09aa05e9f67259e548dc96d6c58cefcb0481a0a97754d00",
+    "capture-native.cjs": "3cea8148835d52530aaca74beb2df2305b3eb5f6c2488c97bdecd80028928ed8"
+  },
+  "native_input_sha256": "678af3165d2bce2a0f04eb4fd0ccf67b25accee5e102e810f2ebe993d7a3fadb",
+  "native_source": {
+    "revision": "bfed001fc89d9beaa640b30a7886d5f16f61a31b",
+    "revision_scope": "application page, src/*.js and tools/logic-harness.js; other dev/documentation files may differ",
+    "model_id": "670f49e40c2b3395735e85b3bd09205f77f4a0598c955959f061f1d18810c832",
+    "model_stamp_sha256": "5a1d16ec067c22dae4a4fd0f90e3e76ad95a49963e5309129f230297d79b969d",
+    "step_s": 0.5,
+    "node_version": "v22.23.2",
+    "harness_sha256": "ccd88cd6b8f6fe05c0752b0f0d3152d10fad27c0d72f28cae8e149f6a5627917",
+    "capture_script_sha256": "3cea8148835d52530aaca74beb2df2305b3eb5f6c2488c97bdecd80028928ed8",
+    "sample_timing": "state at time_s after any listed commands and before the next 0.5 s step",
+    "seed": 20260829
+  },
+  "native_events": [
+    {
+      "time_s": 600,
+      "action": "setMode",
+      "tag": "TIC311",
+      "mode": "MAN"
+    },
+    {
+      "time_s": 600,
+      "action": "storeEntry",
+      "tag": "TIC311",
+      "parameter": "OP",
+      "value": 0,
+      "unit": "%"
+    },
+    {
+      "time_s": 1800,
+      "action": "setMode",
+      "tag": "TIC311",
+      "mode": "AUTO",
+      "retained_sp_c": 320
+    }
+  ],
+  "native_provenance": "fresh capture; runtime code and harness verified against pinned baseline hashes",
+  "prescribed_segments": [
+    {
+      "duration_s": 600,
+      "input": {
+        "feed_kg_s": 1.0,
+        "temperature_k": 650,
+        "activity": 1.0,
+        "divert_fraction": 0.0
+      }
+    },
+    {
+      "duration_s": 1200,
+      "input": {
+        "feed_kg_s": 1.0,
+        "temperature_k": 450,
+        "activity": 1.0,
+        "divert_fraction": 0.0
+      }
+    },
+    {
+      "duration_s": 3600,
+      "input": {
+        "feed_kg_s": 1.0,
+        "temperature_k": 650,
+        "activity": 1.0,
+        "divert_fraction": 0.0
+      }
+    }
+  ],
+  "reference_tolerances": {
+    "rtol": 1e-10,
+    "atol_kg": 1e-12,
+    "max_step_s": 2.0,
+    "refined_rtol": 1e-12,
+    "refined_atol_kg": 1e-14
+  },
+  "reproduce": "python tools/g2/run.py --out tools/g2/receipts/stage-one.json (in the pinned offline environment)",
+  "prescribed": {
+    "closure": {
+      "total_residual_kg": 1.7600471080569946e-10,
+      "component_residual_kg": [
+        -5.704112737703326e-10,
+        3.142730520266923e-10,
+        9.932343836283053e-11,
+        -1.2913281555171352e-14
+      ],
+      "maximum_abs_component_residual_kg": 5.710649730872319e-10,
+      "maximum_abs_total_residual_kg": 1.762638923707982e-10,
+      "passed": true
+    },
+    "findings": [],
+    "initial_quality": {
+      "valid": true,
+      "qualified": true,
+      "a_mass_fraction": 0.12289819013604075,
+      "w_mass_fraction": 0.0011286568481881296
+    },
+    "final_quality": {
+      "valid": true,
+      "qualified": true,
+      "a_mass_fraction": 0.1180043390793282,
+      "w_mass_fraction": 0.001134954268221989
+    },
+    "qualified_for_60s_before_cut": true,
+    "reactor_converted_mass_fraction_fell_during_heat_loss": true,
+    "truth_offspec_first_sustained_30s_s": 721.5,
+    "analyzer_offspec_first_sustained_30s_s": 765.0,
+    "truth_requalified_first_sustained_30s_s": 3666.0,
+    "offspec_at_recovery": true,
+    "dispatch": {
+      "qualified_kg": 1959.210921022914,
+      "off_band_kg": 2492.608876702981,
+      "unknown_kg": 0.0,
+      "gross_kg": 4451.819797725895,
+      "classification_step_s": 0.5,
+      "classification_rule": "interval dispatch assigned by left-end product truth; not analyzer readings",
+      "sum_residual_kg": 0.0
+    },
+    "checkpoints": [
+      {
+        "time_s": 0.0,
+        "reactor_converted_mass_fraction": 0.9,
+        "product_inventory_kg": 478.44480000000004,
+        "product_truth": {
+          "valid": true,
+          "qualified": true,
+          "a_mass_fraction": 0.12289819013604075,
+          "w_mass_fraction": 0.0011286568481881296
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.12289819013604075,
+          "w_mass_fraction": 0.0011286568481881296,
+          "sample_source_time_s": 0.0
+        }
+      },
+      {
+        "time_s": 600.0,
+        "reactor_converted_mass_fraction": 0.9056603773584903,
+        "product_inventory_kg": 478.04282845862923,
+        "product_truth": {
+          "valid": true,
+          "qualified": true,
+          "a_mass_fraction": 0.11893976134240349,
+          "w_mass_fraction": 0.0011337505644657155
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.11916525092217872,
+          "w_mass_fraction": 0.0011334604038987814,
+          "sample_source_time_s": 585.0
+        }
+      },
+      {
+        "time_s": 900.0,
+        "reactor_converted_mass_fraction": 0.26413205312320986,
+        "product_inventory_kg": 496.04347280586694,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.28991281978452904,
+          "w_mass_fraction": 0.0009137419963653909
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.2519098405385526,
+          "w_mass_fraction": 0.0009626443270813373,
+          "sample_source_time_s": 885.0
+        }
+      },
+      {
+        "time_s": 1800.0,
+        "reactor_converted_mass_fraction": 0.23920679444669957,
+        "product_inventory_kg": 544.5324335305671,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.6942331322104965,
+          "w_mass_fraction": 0.0003934615860993207
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.6855154790691971,
+          "w_mass_fraction": 0.00040467948441785546,
+          "sample_source_time_s": 1785.0
+        }
+      },
+      {
+        "time_s": 2100.0,
+        "reactor_converted_mass_fraction": 0.9056603773564254,
+        "product_inventory_kg": 524.7016543019763,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.5379076525852854,
+          "w_mass_fraction": 0.0005946216123825337
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.567317151077369,
+          "w_mass_fraction": 0.0005567773946399921,
+          "sample_source_time_s": 2085.0
+        }
+      },
+      {
+        "time_s": 5400.0,
+        "reactor_converted_mass_fraction": 0.9056603773584903,
+        "product_inventory_kg": 477.94793660630876,
+        "product_truth": {
+          "valid": true,
+          "qualified": true,
+          "a_mass_fraction": 0.1180043390793282,
+          "w_mass_fraction": 0.001134954268221989
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.11815539440175292,
+          "w_mass_fraction": 0.0011347598898474463,
+          "sample_source_time_s": 5385.0
+        }
+      }
+    ],
+    "numerics": {
+      "candidate": "fixed RK4 0.5 s",
+      "reference": "SciPy solve_ivp DOP853, restarted at every input change",
+      "rk4_vs_reference": {
+        "maximum_abs_inventory_error_kg": 9.67792161077341e-07,
+        "maximum_abs_all_state_error_kg": 9.67792161077341e-07,
+        "maximum_tolerance_fraction": 0.02274103864308542,
+        "passed": true
+      },
+      "reference_tolerance_refinement": {
+        "maximum_abs_inventory_error_kg": 2.823696831910638e-11,
+        "maximum_abs_all_state_error_kg": 2.823696831910638e-11,
+        "maximum_tolerance_fraction": 5.48608327491612e-07,
+        "passed": true
+      },
+      "rk4_half_step_vs_refined_reference": {
+        "maximum_abs_inventory_error_kg": 5.9372318617079145e-08,
+        "maximum_abs_all_state_error_kg": 5.9372318617079145e-08,
+        "maximum_tolerance_fraction": 0.001395195318391884,
+        "passed": true
+      },
+      "rk4_vs_refined_reference": {
+        "maximum_abs_inventory_error_kg": 9.678038352944895e-07,
+        "maximum_abs_all_state_error_kg": 9.678038352944895e-07,
+        "maximum_tolerance_fraction": 0.022740905945925257,
+        "passed": true
+      },
+      "half_step_reduces_inventory_error": true
+    },
+    "passed": true
+  },
+  "native_replay": {
+    "closure": {
+      "total_residual_kg": -4.274625098332763e-11,
+      "component_residual_kg": [
+        -9.549694368615746e-12,
+        1.8189894035458565e-12,
+        1.8758328224066645e-12,
+        8.526512829121202e-14
+      ],
+      "maximum_abs_component_residual_kg": 5.775291356258094e-11,
+      "maximum_abs_total_residual_kg": 6.821210263296962e-11,
+      "passed": true
+    },
+    "findings": [],
+    "initial_quality": {
+      "valid": true,
+      "qualified": true,
+      "a_mass_fraction": 0.12289819013604075,
+      "w_mass_fraction": 0.0011286568481881296
+    },
+    "final_quality": {
+      "valid": true,
+      "qualified": false,
+      "a_mass_fraction": 0.39747325722148175,
+      "w_mass_fraction": 0.0007753329508679711
+    },
+    "qualified_for_60s_before_cut": true,
+    "reactor_converted_mass_fraction_fell_during_heat_loss": true,
+    "truth_offspec_first_sustained_30s_s": 725.0,
+    "analyzer_offspec_first_sustained_30s_s": 765.0,
+    "truth_requalified_first_sustained_30s_s": null,
+    "offspec_at_recovery": true,
+    "dispatch": {
+      "qualified_kg": 1379.9070468870382,
+      "off_band_kg": 16997.654673234523,
+      "unknown_kg": 0.0,
+      "gross_kg": 18377.561720121565,
+      "classification_step_s": 0.5,
+      "classification_rule": "interval dispatch assigned by left-end product truth; not analyzer readings",
+      "sum_residual_kg": 3.637978807091713e-12
+    },
+    "checkpoints": [
+      {
+        "time_s": 0.0,
+        "reactor_converted_mass_fraction": 0.9,
+        "product_inventory_kg": 478.44480000000004,
+        "product_truth": {
+          "valid": true,
+          "qualified": true,
+          "a_mass_fraction": 0.12289819013604075,
+          "w_mass_fraction": 0.0011286568481881296
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.12289819013604075,
+          "w_mass_fraction": 0.0011286568481881296,
+          "sample_source_time_s": 0.0
+        }
+      },
+      {
+        "time_s": 600.0,
+        "reactor_converted_mass_fraction": 0.9061836144014561,
+        "product_inventory_kg": 2341.517694789184,
+        "product_truth": {
+          "valid": true,
+          "qualified": true,
+          "a_mass_fraction": 0.13183481814066642,
+          "w_mass_fraction": 0.0011171571724564228
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.1342213463361036,
+          "w_mass_fraction": 0.0011140861818816883,
+          "sample_source_time_s": 585.0
+        }
+      },
+      {
+        "time_s": 900.0,
+        "reactor_converted_mass_fraction": 0.12985745105197544,
+        "product_inventory_kg": 3228.782418592695,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.3335497313158136,
+          "w_mass_fraction": 0.0008575899072011884
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.2787651851045709,
+          "w_mass_fraction": 0.0009280868011316539,
+          "sample_source_time_s": 885.0
+        }
+      },
+      {
+        "time_s": 1800.0,
+        "reactor_converted_mass_fraction": 0.02600660068428151,
+        "product_inventory_kg": 4746.9483681284655,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.8715566047266904,
+          "w_mass_fraction": 0.0001652812889557723
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.8620486047180873,
+          "w_mass_fraction": 0.00017751620764092137,
+          "sample_source_time_s": 1785.0
+        }
+      },
+      {
+        "time_s": 2100.0,
+        "reactor_converted_mass_fraction": 0.36713744267550485,
+        "product_inventory_kg": 4898.408668166728,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.8952305087203558,
+          "w_mass_fraction": 0.00013481764885686152
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.8995464916704101,
+          "w_mass_fraction": 0.00012926383097795738,
+          "sample_source_time_s": 2085.0
+        }
+      },
+      {
+        "time_s": 3000.0,
+        "reactor_converted_mass_fraction": 0.8948722081893394,
+        "product_inventory_kg": 4479.017625545734,
+        "product_truth": {
+          "valid": true,
+          "qualified": false,
+          "a_mass_fraction": 0.39747325722148175,
+          "w_mass_fraction": 0.0007753329508679711
+        },
+        "analyzer": {
+          "valid": true,
+          "a_mass_fraction": 0.4172809263413239,
+          "w_mass_fraction": 0.0007498443916752566,
+          "sample_source_time_s": 2985.0
+        }
+      }
+    ],
+    "numerics": {
+      "candidate": "fixed RK4 0.5 s",
+      "reference": "SciPy solve_ivp DOP853, restarted at every input change",
+      "rk4_vs_reference": {
+        "maximum_abs_inventory_error_kg": 1.1794588488100999e-06,
+        "maximum_abs_all_state_error_kg": 1.1794588488100999e-06,
+        "maximum_tolerance_fraction": 0.03981666121611055,
+        "passed": true
+      },
+      "reference_tolerance_refinement": {
+        "maximum_abs_inventory_error_kg": 3.9108272176235914e-11,
+        "maximum_abs_all_state_error_kg": 1.3096723705530167e-10,
+        "maximum_tolerance_fraction": 1.5351390820581758e-08,
+        "passed": true
+      },
+      "rk4_half_step_vs_refined_reference": {
+        "maximum_abs_inventory_error_kg": 7.232696930259408e-08,
+        "maximum_abs_all_state_error_kg": 7.232696930259408e-08,
+        "maximum_tolerance_fraction": 0.0024416066850327573,
+        "passed": true
+      },
+      "rk4_vs_refined_reference": {
+        "maximum_abs_inventory_error_kg": 1.1794588488100999e-06,
+        "maximum_abs_all_state_error_kg": 1.1794588488100999e-06,
+        "maximum_tolerance_fraction": 0.039816661407322755,
+        "passed": true
+      },
+      "half_step_reduces_inventory_error": true
+    },
+    "passed": true
+  },
+  "passed": true
+}
