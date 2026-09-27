@@ -6,9 +6,9 @@
  * It must not copy P.archFaults, fault ids, instructor journal, or hidden truth.
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.ESS_COACH_PROJ = factory();
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('../../src/measurement'));
+  else root.ESS_COACH_PROJ = factory(root.ESS.Measurement);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Measurement) {
   'use strict';
 
   function round(v) {
@@ -43,13 +43,18 @@
     Object.keys(want).sort().slice(0, 10).forEach(function (tag) {
       var l = L[tag];
       if (!l) return;
+      var m = Measurement.observe(l);
       points.push({
         tag: tag,
-        pv: round(l.pv),
+        pv: tag === 'TIC202' ? m.pv : round(m.pv),
         sp: round(l.sp),
         op: round(l.op),
         mode: l.mode || '',
-        badPv: !!l.badPv
+        badPv: m.badPv,
+        quality: m.quality,
+        statusCode: m.statusCode,
+        statusName: m.statusName,
+        limit: m.limit
       });
     });
     var selected = null;

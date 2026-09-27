@@ -304,7 +304,11 @@ Seeded from the spec's Appendix A. The verification pass that produced this sect
 spec's own count low: it named fifteen absent sources, but Luyben is two distinct books, the
 Seborg **textbook** is a different work from the Henson/Seborg CSTR parameters already registered
 at §4.4, and the five operator-training-simulator papers cited in spec §3.2.8 and §3.5.8 were
-absent as well. The real load was twenty-two works, all registered below.
+absent as well. W0 registered that initial set. The registry now contains 44 sources:
+the W0 entries plus the rev 2 map’s proposed sources, registered on 2026-09-26.
+The observation and plausibility slice uses §7.23–§7.26; registration of the
+remaining candidates does not approve their gated implementation. The coverage
+table below maps every proposed entry to its stable id.
 
 Each source gets its own `### 7.n` subsection, so each carries its own citable id. This follows
 the §4 lesson: a section with many sources in it must not be citable as one bare id, or a
@@ -317,18 +321,20 @@ Status key, carried from the spec's Appendix A and re-stated per entry:
 - **CITED-NOT-HELD** — registered and identified, but no copy has been read by this project. A
   source in this state may be cited for the concept it is the standard reference for; it may
   **not** be used to justify a specific equation, default or numeric value until it is held and
-  read. Every entry below was CITED-NOT-HELD as of registration. This is the honest state and it
-  is recorded rather than implied.
+  read. The W0 entries were CITED-NOT-HELD as of registration; later entries record their own
+  read receipts. The status is recorded rather than implied.
 - **HELD** — a copy has been read by this project, and the entry records which part was read.
   Only a HELD source may justify a specific equation, default or numeric value. **§7.4 is HELD**
-  as of 2026-09-13; every other §7 entry is still CITED-NOT-HELD. Promoting one is a small piece
+  as of 2026-09-13, and **§7.23–§7.33 are HELD for their recorded read scopes** as of 2026-09-26; the other entries remain
+  CITED-NOT-HELD. Promoting one is a small piece
   of real work — find a legitimately public copy, verify it is the paper it claims to be, read the
   part the work needs, and write down what it says — and it is done ahead of the work item that
   needs it, not during.
 
-Standards access: §2.19's rule governs here too. Purchase is required for the two standards in
-this section, citation is by clause number only, and ISA's prohibition on feeding standard text
-into AI tools applies. Implement the model, cite the clause, never paste text.
+Standards access: §2.19's rule governs the purchased ISA/IEC standards in §7.8, §7.9, and §7.42–§7.44:
+citation is by clause number only, and ISA's prohibition on feeding standard text into AI
+tools applies. Implement the model, cite the clause, never paste text. The OPC Foundation
+references in §7.23–§7.25 are its own freely accessible publications.
 
 ### 7.1 Luyben, Process Modeling, Simulation and Control for Chemical Engineers (2nd ed., 1990)
 - Resource: W. L. Luyben, McGraw-Hill, 2nd ed., 1990. ISBN 0071007938 / 978-0071007931 (the 1989 hardcover is 0070391599 / 978-0070391598).
@@ -468,3 +474,172 @@ into AI tools applies. Implement the model, cite the clause, never paste text.
 - What it gives: upset-response OTS design and scenario escalation.
 - Used by: spec item 3 (W3).
 - Status: VERIFIED (publisher / issue). CITED-NOT-HELD.
+
+### 7.23 OPC Foundation, OPC 10000-8 Part 8: Data Access (v1.05.07)
+- Resource: OPC Foundation's public reference, [§7.3.2, Tables 61–63](https://reference.opcfoundation.org/specs/OPC-10000-8/7.3.2) and [§7.3.3, LimitBits](https://reference.opcfoundation.org/specs/OPC-10000-8/7.3.3).
+- **Status: VERIFIED (issuing body's pages). HELD.** Read 2026-09-26: the operation-level quality definitions and LimitBits section; no purchased or mirrored text used.
+- What was read: `Uncertain_EngineeringUnitsExceeded` describes a value outside its defined engineering range; limit information identifies the direction. `Uncertain_SensorNotAccurate` covers a sensor limit or reduced accuracy. `Bad_SensorFailure` identifies sensor failure. Bad severity requires a Null value; stale data is assessed using timestamps, not the `Uncertain_LastUsableValue` label alone.
+- Used by: TIC202's synthetic observation policy. The engineering-range choice is a Temple policy, not proof of a real transmitter's transfer function. This source does not specify 4–20 mA endpoints, NAMUR certification, or an Ignition numeric code. Bit encoding is §7.24; numeric identifiers are §7.25.
+
+### 7.24 OPC Foundation, OPC 10000-4 Part 4: Services (v1.05.07)
+- Resource: [§7.38, StatusCode, Tables 176–179](https://reference.opcfoundation.org/specs/OPC-10000-4/7.38).
+- **Status: VERIFIED (issuing body's page). HELD.** Read 2026-09-26: §7.38.1 bit assignments, DataValue information bits, and §7.38.2 common result-code tables.
+- What was read: StatusCode is unsigned 32-bit. Severity occupies bits 30–31: Good `00`, Uncertain `01`, Bad `10`. `InfoType=DataValue` occupies bits 10–11 as `01` (`0x00000400`); the other information bits must be zero for `InfoType=NotUsed`. LimitBits occupy bits 8–9: None `00`, Low `01`, High `10`, Constant `11`.
+- Used by: the observation metadata. A High-limit DataValue combines its base code with `0x00000400 | 0x00000200`; a Low-limit DataValue combines `0x00000400 | 0x00000100`. Setting the limit bit without DataValue InfoType is incomplete encoding.
+
+### 7.25 OPC Foundation, Part 6 status-code mapping and UA-Nodeset Schema/StatusCode.csv
+- Resource: [official StatusCode.csv, latest branch](https://raw.githubusercontent.com/OPCFoundation/UA-Nodeset/latest/Schema/StatusCode.csv). The map’s proposed OPC 10000-6 Part 6: Mappings, v1.04 Annex A.2 pointer is also registered here: https://reference.opcfoundation.org/Core/Part6/v104/docs/A.2 . Checked 2026-09-26, that URL redirects to the Part 6 edition index (current v1.05.07, with v1.04 in its history). **The historical Annex A.2 text remains CITED-NOT-HELD**; the directly read official CSV, not an assumed historical annex, supplies this implementation’s numeric codes.
+- **Status: VERIFIED (OPC Foundation repository). HELD.** Read 2026-09-26: the rows for `BadSensorFailure`, `UncertainSensorNotAccurate`, and `UncertainEngineeringUnitsExceeded`.
+- Numeric receipt: `BadSensorFailure = 0x808C0000`; `UncertainSensorNotAccurate = 0x40930000`; `UncertainEngineeringUnitsExceeded = 0x40940000`. The CSV identifiers omit the underscore used in the specification's prose.
+- Used by: TIC202 observation metadata. Combining `UncertainEngineeringUnitsExceeded` with the flags from §7.24 yields High `0x40940600` and Low `0x40940500`. These are OPC UA codes, not Ignition QualityCode values. The source is fetched at development time only; the deterministic core performs no network lookup.
+
+### 7.26 NIST Chemistry WebBook SRD 69, water saturation data
+- Resource: Lemmon, Bell, Huber & McLinden, *Thermophysical Properties of Fluid Systems*, in the [NIST Chemistry WebBook, SRD 69](https://webbook.nist.gov/chemistry/fluid/), Linstrom & Mallard, eds.
+- **Status: VERIFIED (NIST data service). HELD.** Read 2026-09-26: saturation temperature and absolute pressure columns for water (`ID=C7732185`) from the two tab-separated queries below. Other property columns were not adopted.
+- Reproduction: [0.1–1.0 MPa in 0.1 MPa increments](https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=SatT&Digits=7&PLow=0.1&PHigh=1.0&PInc=0.1&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=mol%2Fl&HUnit=kJ%2Fmol&WUnit=m%2Fs&VisUnit=uPa*s&STUnit=N%2Fm), and [0.101325 MPa](https://webbook.nist.gov/cgi/fluid.cgi?Action=Data&Wide=on&ID=C7732185&Type=SatT&Digits=7&PLow=0.101325&PHigh=0.101325&PInc=0.1&RefState=DEF&TUnit=K&PUnit=MPa&DUnit=mol%2Fl&HUnit=kJ%2Fmol&WUnit=m%2Fs&VisUnit=uPa*s&STUnit=N%2Fm). `Type=SatT` is the pressure-specified query; `Type=SatP` does not consume this pressure grid.
+
+| Pressure (MPa absolute) | Saturation temperature (K) |
+| --- | --- |
+| 0.100000 | 372.7559 |
+| 0.101325 | 373.1243 |
+| 0.200000 | 393.3601 |
+| 0.300000 | 406.6724 |
+| 0.400000 | 416.7584 |
+| 0.500000 | 424.9811 |
+| 0.600000 | 431.9765 |
+| 0.700000 | 438.0962 |
+| 0.800000 | 443.5565 |
+| 0.900000 | 448.5005 |
+| 1.000000 | 453.0280 |
+
+- Used by: `COOLANT_ABOVE_SATURATION`, an assertion about the single-phase model under a declared pressure assumption. The slice linearly interpolates between these rows and converts with `T_C = T_K − 273.15`; interpolation is a Temple approximation, not an additional NIST correlation. No extrapolation or pressure inference from temperature. The table neither gives the loop a pressure state nor simulates boiling.
+
+
+### 7.27 Inductive Automation, Ignition 8.1, Quality Codes and Overlays
+- Resource: [official 8.1 manual page](https://www.docs.inductiveautomation.com/docs/8.1/platform/tags/quality-codes-and-overlays).
+- **Status: VERIFIED (publisher page). HELD.** Read 2026-09-26: quality-reference tables, the 8.1.27 OPC-write conversion note, and quality propagation/overlay explanations.
+- Read receipt: the tables list Good subcodes 0–255, Uncertain 256–511, Bad 512–767, and Error 768–1023; Good is 192 and Uncertain_EngineeringUnitsExceeded is 260. The introductory bullet says 0–225, inconsistent with its Good table heading; use the explicitly identified table and verify behavior on the target version. The 8.1.27 note concerns OPC clients writing exposed tags, not a promise of every read-side conversion.
+- Proposed use: map concept 7, gateway quality interpretation. This is not an installed gateway test, and the exact translation of Bad_SensorFailure is still unverified. OPC StatusCode integers and Ignition QualityCode subcodes remain separate namespaces.
+
+### 7.28 Inductive Automation, Ignition 8.1, Ignition Maker Edition
+- Resource: [official 8.1 manual page](https://www.docs.inductiveautomation.com/docs/8.1/other-editions/ignition-maker-edition), displayed update 2026-01-23.
+- **Status: VERIFIED (publisher page). HELD.** Read 2026-09-26: permitted-use overview, comparison with Standard Edition, and supported-module table.
+- Read receipt: the page describes non-commercial personal education, limits of 10 Perspective sessions and 10,000 tags, no Perspective Workstation, and Independent redundancy mode only. Module support is limited; registration does not imply every module is available.
+- Proposed use: map gate G4, sidecar dependency assessment only. The licence agreement is not held and G4 remains pending; this manual is not a project-specific licence ruling.
+
+### 7.29 Inductive Automation, Ignition 8.1, Leased Licensing
+- Resource: [official 8.1 manual page](https://www.docs.inductiveautomation.com/docs/8.1/platform/licensing-and-activation/leased-licensing).
+- **Status: VERIFIED (publisher page). HELD.** Read 2026-09-26: leased-licence activation and connection-maintenance sections.
+- Read receipt: these licences use an eight-character key plus activation token; the gateway normally renews hourly, with a default 48-hour timeout before reverting to trial mode if renewal fails. Maker activations also require a token. The documented renewal dependency belongs to a sidecar, never the offline deterministic core.
+- Proposed use: map gate G4. The text describes default behavior, not observed installed-version behavior or acceptance of the licence agreement.
+
+### 7.30 Inductive Automation, Maker Edition product page and FAQ
+- Resource: [official product page and FAQ](https://inductiveautomation.com/ignition/maker-edition).
+- **Status: VERIFIED (publisher page). HELD.** Read 2026-09-26: non-commercial-use section and FAQ questions on personal/entity use, session/tag limits, modules, and licences.
+- Read receipt: the publisher distinguishes personal use by individuals from business/non-profit activities and excludes professional uses such as sales demonstrations. This is a product/FAQ statement, not the licence agreement.
+- Proposed use: map gate G4 alongside §7.28 and §7.29. No gateway deployment or licence approval follows from this registration.
+
+### 7.31 Woolf et al., Chemical Process Dynamics and Controls, §3.10
+- Resource: Peter Woolf et al., University of Michigan open text, [§3.10, Valves — Modeling Dynamics](https://eng.libretexts.org/Bookshelves/Industrial_and_Systems_Engineering/Chemical_Process_Dynamics_and_Controls_(Woolf)/03:_Sensors_and_Actuators/3.10:_Valves_-_Modeling_Dynamics), hosted by LibreTexts. The page credits Erin Knight, Matthew Russell, Dipti Sawalka, and Spencer Yendell as its authors; licence CC BY 3.0.
+- **Status: VERIFIED (page credits and licence metadata). HELD.** Read 2026-09-26: Flow through a Valve, Flow Characteristics, Valve Coefficient, Pressure Drop, and Control Valve Gain. The rest of the book is not held by this entry.
+- Read receipt: the liquid relation uses gpm, psi, specific gravity and Cv; the page distinguishes inherent valve characteristics from installed behavior with line resistance. Formula units and stated operating assumptions must travel with any adoption. Its illustrative coefficients are not simulator defaults.
+- Proposed use: map concepts 1–3 and 8, behind pressure-flow gate G1. This read does not justify tank linearization or other unexamined chapters.
+
+### 7.32 Hedengren / APMonitor, Time Delay in Dynamic Systems
+- Resource: J. D. Hedengren, BYU/APMonitor, [Time Delay in Dynamic Systems](https://apmonitor.com/pdc/index.php/Main/FirstOrderPlusDeadTime).
+- **Status: VERIFIED (author's teaching site). HELD.** Read 2026-09-26: introductory FOPDT equation, parameter definitions, and time-shift/step-response explanation.
+- Read receipt: `tau_p * dy/dt = -y + K_p * u(t - theta_p)` separates the time constant from input transport delay. The page's demonstration parameters are not adopted.
+- Proposed use: map concept 13, delayed analyzer observation; no new analyzer transport model ships from registration alone.
+
+### 7.33 Hedengren / APMonitor, Proportional Integral (PI) Control
+- Resource: J. D. Hedengren, BYU/APMonitor, [Proportional Integral (PI) Control](https://apmonitor.com/pdc/index.php/Main/ProportionalIntegralControl).
+- **Status: VERIFIED (author's teaching site). HELD for the anti-reset-windup section and associated saturation branch only.** Read 2026-09-26. The page explains integral accumulation during output saturation and demonstrates undoing that tick's integration when output is limited.
+- Proposed use: map concept 8, comparison with existing back-calculation. This entry does not replace the current PID algorithm or adopt the page's tuning constants, sample exercise, or sample code.
+
+### 7.34 Emerson / Fisher, Control Valve Handbook (6th ed., 2023)
+- Resource: [official free PDF](https://www.emerson.com/documents/automation/control-valve-handbook-en-3661206.pdf), Emerson Flow Controls, Marshalltown, Iowa; publication D101881X012, August 2023.
+- Status: VERIFIED (PDF title/copyright pages and contents). **CITED-NOT-HELD for technical use.** Read 2026-09-26: PDF pages 1–5 only. The cover says Sixth Edition and copyright page names Fisher Controls International LLC; the preface still says fifth edition. Cite the cover edition. No ISBN asserted.
+- Proposed use: map concepts 2, 3, and 21; chapters 2, 3, and 5 remain to be read before adopting actuator conventions, sizing equations, FL/FF/Y factors, or numerical examples. Access is public; the text remains copyrighted and is not copied into the repo.
+
+### 7.35 NAMUR NE 43, transmitter failure-information signal levels
+- Resource: *Standardization of the Signal Level for the Failure Information of Digital Transmitters*. [NAMUR WG 3.1's current list](https://www.namur.net/en/work-areas-and-project-groups/wa-3-field-devices/wg-31-general-sensor-technology.html) identifies NE 043 dated **2021-07-26**. [NAMUR's obsolete list](https://www.namur.net/en/recommendations-and-worksheets/obsolete-nena.html) records the map's historical 1994-01-18 edition and later replaced editions.
+- Status: VERIFIED (issuer's edition metadata). **CITED-NOT-HELD.** No primary recommendation text read. Access requires purchase/membership; the historical 1994 reference is not the current edition.
+- Secondary pointer from map §E, retained as secondary only: Lesman, [What does NAMUR NE 43 do for me?](https://www.lesman.com/what-does-namur-ne-43-do-for-me).
+- Proposed use: map concept 7. The implemented current endpoints are Temple-set; neither this registration nor a secondary explanation establishes NE 43 conformity.
+
+### 7.36 Skogestad, corrections and comments on the 2003 SIMC paper (2004)
+- Resource: S. Skogestad, *Corrections and comments from the author on the paper “Simple analytic rules for model reduction and PID controller tuning”, Journal of Process Control 13 (2003) 291–309*, Journal of Process Control **14(4)** (June 2004), **465**. [DOI 10.1016/j.jprocont.2003.09.001](https://doi.org/10.1016/j.jprocont.2003.09.001).
+- Status: VERIFIED (Crossref DOI metadata, checked 2026-09-26). **CITED-NOT-HELD.** The correction text has not been read. This is a separate work from §7.4 and from the 2004 Modeling, Identification and Control version.
+- Proposed use: map concept 8, a required correction check before changing or extending the existing SIMC grader. Registration does not silently amend §7.4's held formulas.
+
+### 7.37 Fogler, Elements of Chemical Reaction Engineering (6th ed.)
+- Resource: H. Scott Fogler, Pearson, sixth edition; [publisher print listing](https://www.pearson.com/en-ca/subject-catalog/p/elements-of-chemical-reaction-engineering/P200000000249/9780135486399) confirms paperback ISBN **9780135486221**, published 2020. The listing also carries later electronic-package dates; they are not substituted for the print record.
+- Public companion: [University of Michigan sixth-edition site](https://public.websites.umich.edu/~elements/6e/index.html), including [chapter 12 summary](https://public.websites.umich.edu/~elements/6e/12chap/summary.html).
+- Status: VERIFIED (publisher edition/print ISBN). **CITED-NOT-HELD for textbook balances and kinetics.** Metadata and companion navigation/headings were checked 2026-09-26; the required fixed-bed derivation and textbook chapters were not read as an implementation source.
+- Proposed use: map concepts 6, 10, and 22, conserved component balances and reactor conversion behind G2. Synthetic components, kinetics, yields, and numerical parameters still need a declared mass-consistent basis.
+
+### 7.38 Rachford & Rice, flash vaporization calculation (1952)
+- Resource: H. H. Rachford Jr. and J. D. Rice, *Procedure for Use of Electronic Digital Computers in Calculating Flash Vaporization Hydrocarbon Equilibrium*, Journal of Petroleum Technology **4(10)** (1952). [DOI 10.2118/952327-G](https://doi.org/10.2118/952327-G).
+- Status: VERIFIED (SPE-deposited Crossref DOI metadata, checked 2026-09-26). **CITED-NOT-HELD.** The deposited page field is `19-3`; the map's alternative 327–328 refers to a reported Transactions citation. The authoritative page-range reconciliation remains pending rather than silently choosing one. No full article was read.
+- Proposed use: map concept 11, optional vapor/liquid flash after the first split-fraction model. This registration does not turn a two-phase flash equation into a three-outlet separator model or supply equilibrium constants.
+
+### 7.39 Felder, Rousseau & Bullard, Elementary Principles of Chemical Processes (4th ed.)
+- Resource: Richard M. Felder, Ronald W. Rousseau, and Lisa G. Bullard, Wiley, fourth edition. [Publisher listing for ISBN 9781119498636](https://www.wiley.com/en-us/elementary-principles-of-chemical-processes-4th-edition-p-9781119498636) gives **August 2020**, **704 pages** for that format. [Publisher-hosted contents](https://catalogimages.wiley.com/images/db/pdf/9781119576938.toc.pdf) separately confirms title/authors/edition.
+- Status: VERIFIED (publisher metadata, checked 2026-09-26). **CITED-NOT-HELD.** No material- or energy-balance chapter has been read; a contents page is not held chapter content.
+- Proposed use: map concept 17, material and energy accounting behind G2. The present U4 ledger is a declared legacy liquid-volume audit, not evidence of complete component or energy closure.
+
+### 7.40 Tiller, Modelica by Example
+- Resource: Michael M. Tiller, [author's online book](https://mbe.modelica.university/); [author repository licence file](https://raw.githubusercontent.com/mtiller/ModelicaBook/master/LICENSE.md).
+- Status: VERIFIED (author site and licence file, checked 2026-09-26). **CITED-NOT-HELD for technical chapters.** Only title/site metadata and the licence were read for registration; discrete behavior, events, and assertions chapters remain to be held.
+- Licence scope matters: generated book HTML is **CC BY-NC-ND 3.0 Unported**; the **ModelicaByExample example library** is MIT. The latter does not license the book prose, and the licence file does not grant general redistribution of book source/derived formats.
+- Proposed use: map concepts 18 and 19, event/assertion patterns. No book text or examples are copied and no Modelica runtime is added.
+
+### 7.41 Hensley (ed.), Cooling Tower Fundamentals (2nd ed., 2009)
+- Resource: John C. Hensley, editor, *Cooling Tower Fundamentals*, **Second Edition**, SPX Cooling Technologies, Inc., Overland Park, Kansas; copyright **2009**. [Official PDF](https://spxcooling.com/wp-content/uploads/Cooling-Tower-Fundamentals.pdf); [publisher library page](https://spxcooling.com/library/cooling-tower-fundamentals/).
+- Status: VERIFIED (PDF title and copyright pages). **CITED-NOT-HELD for technical chapters.** Read 2026-09-26: PDF pages 1–3 only, resolving editor and edition from the source itself. Technical rejection-capacity and approach-temperature sections were not read.
+- Proposed use: map concept 14, future finite cooling utility behind G2. No tower coefficient or capacity is justified by a cover-page read; the text is copyrighted, not public domain.
+
+### 7.42 IEC 61131-3:2013, Programmable controllers — Part 3: Programming languages
+- Resource: [IEC publication record](https://webstore.iec.ch/en/publication/4552), edition **3.0**, published **2013-02-20**. Historical edition requested by the map; withdrawn **2025-05-22** and replaced by [IEC 61131-3:2025, edition 4.0](https://webstore.iec.ch/en/publication/68533). Public background pointer: [PLCopen Logic](https://www.plcopen.org/standards/logic/).
+- Status: VERIFIED (IEC and PLCopen metadata, checked 2026-09-26). **CITED-NOT-HELD.** No purchased language-standard text or SR/RS clause was read or copied. Current-edition clause numbering is not inferred from the historical citation.
+- Proposed use: map concept 16, set/reset bistable framing only. No trip latching or reset-policy change is authorized by registration.
+
+### 7.43 ANSI/ISA-88.00.01-2010, Batch Control — Part 1: Models and Terminology
+- Resource: [official ISA product record](https://www.isa.org/products/isa-88-00-01-2010-batch-control-part-1-models) and [ISA-88 standards list](https://www.isa.org/standards-and-publications/isa-standards/isa-88-standards), which lists the 2010 work.
+- Status: VERIFIED (ISA title/edition listing, checked 2026-09-26). **CITED-NOT-HELD.** Purchase required; no standard text read or copied. The older ANSI-prefixed product URL redirects to this record.
+- Proposed use: map concept 20, synthetic mission/procedural-model framing, alongside existing scenario sources. No real-facility procedure or unheld clause wording is adopted.
+
+### 7.44 ISA-TR106.00.01-2013, Procedure Automation for Continuous Process Operations — Models and Terminology
+- Resource: [official ISA technical-report record](https://www.isa.org/products/isa-tr106-00-01-procedure-automation-for-continuou) and [ISA-106 standards list](https://www.isa.org/standards-and-publications/isa-standards/isa-106-standards).
+- Status: VERIFIED (ISA title/report listing, checked 2026-09-26). **CITED-NOT-HELD.** No report text read or copied; exact reaffirmation status remains unverified. The standards list also names ANSI/ISA-106.00.01-2023, a distinct standard, which is not silently substituted for the proposed report.
+- Proposed use: map concept 20, synthetic continuous-operation mission framing. The bundle claim remains unconfirmed as recorded in §6; listing this report does not approve new mission physics.
+
+#### Public-source map rev 2 §E coverage (2026-09-26)
+
+All 21 proposed rows are represented. The last row names two distinct standards,
+which have separate ids. The Part 6 proposal shares §7.25 with the stronger,
+directly held official numeric-code CSV; its historical annex remains unheld.
+
+| Map §E row | Proposed resource | Registered id |
+| --- | --- | --- |
+| 1 | OPC Part 8 | RESOURCES-7.23 |
+| 2 | OPC Part 4 | RESOURCES-7.24 |
+| 3 | OPC Part 6 Annex A.2 / official numeric codes | RESOURCES-7.25 |
+| 4 | Ignition quality codes | RESOURCES-7.27 |
+| 5 | Ignition Maker manual | RESOURCES-7.28 |
+| 6 | Ignition leased licensing | RESOURCES-7.29 |
+| 7 | Maker product page / FAQ | RESOURCES-7.30 |
+| 8 | NIST water saturation | RESOURCES-7.26 |
+| 9 | Woolf valve dynamics | RESOURCES-7.31 |
+| 10 | APMonitor time delay | RESOURCES-7.32 |
+| 11 | APMonitor PI | RESOURCES-7.33 |
+| 12 | Emerson handbook | RESOURCES-7.34 |
+| 13 | NAMUR NE 43 | RESOURCES-7.35 |
+| 14 | Skogestad corrections | RESOURCES-7.36 |
+| 15 | Fogler | RESOURCES-7.37 |
+| 16 | Rachford & Rice | RESOURCES-7.38 |
+| 17 | Felder / Rousseau / Bullard | RESOURCES-7.39 |
+| 18 | Modelica by Example | RESOURCES-7.40 |
+| 19 | Cooling Tower Fundamentals | RESOURCES-7.41 |
+| 20 | IEC 61131-3 | RESOURCES-7.42 |
+| 21 | ISA-88 and ISA-TR106 | RESOURCES-7.43; RESOURCES-7.44 |
