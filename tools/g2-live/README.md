@@ -84,6 +84,34 @@ production and campaign sources, an up-to-date model ID and the exact active
 generated recipe. Its receipt names the revision and model hash actually run.
 It makes zero model calls and does not re-evaluate or relabel any MOA baseline.
 
+The [native live receipt](receipts/native-live-v2.json) passes both campaigns,
+bound to commit `80e1f554a878a87d7ebc0ab6aabb2b28eb1abde4` and model
+`de95d858805150a438b3d4dcacf7f6926da2cc51aecda639daba26bd84b10853`.
+Later documentation/receipt commits do not relabel that run.
+
+| Native campaign observation | Measured result |
+|---|---|
+| Heater MAN OP0 at 600 s; AUTO restored at 1800 s | Conversion 0.90114 before removal, 0.02440 at 1800 s |
+| Receiving product A first exceeds 15 mass % | 1007.5 s |
+| AI511 first indicates above 15 mass % | 1055 s, 47.5 s after the material breach |
+| At 3000 s after heat restoration | Conversion 0.88867; stored product still off-spec at 65.5713 mass % A |
+| Normal vent commanded closed for 400 s | 11 relief lifts and 11 reseats |
+| Integrated gas discharge over that vent case | Normal 0.401839 kg during actuator closure; relief 52.863058 kg |
+| Maximum local inventory closure residual | Heater campaign 1.04 × 10⁻⁹ kg; vent campaign 3.59 × 10⁻¹¹ kg |
+
+The numerical probe's ideal closed-valve case and this native controller/actuator
+campaign are different inputs. Their event times are not interchangeable.
+Neither is the earlier offline surrogate experiment. The receipt preserves
+truth-qualified and observed dispatch separately, including 119.899 kg of
+unknown-quality startup dispatch in this heater campaign.
+
+Final integration checks: **1091 Node tests pass, 4 skip**; **6 Python reference
+tests pass**; folder and standalone offline build/smoke pass. The independent
+review also found and fixed a restored-sample flaw: published values, source and
+publication clocks and ages must agree with the stateful observer, while
+legitimate quality downgrades remain possible. Missing metadata cannot invent
+a GOOD startup reading.
+
 Live lifecycle tests cover browser/Kernel parity, exact checkpoint continuation,
 reset/backtrack/replay, invalid-state rejection, whole-scan rollback, channel
 fault quality and remote/public truth exclusion. Default-mode drill, U4 and
