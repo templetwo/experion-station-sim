@@ -126,6 +126,13 @@ declared [refinement plan](../../tools/g2-geometry/refinement-plan.json) tests
 0.125 s and 0.0625 s with the same equations, cases and error margins. It is
 exploratory numerical work, not an opening of live multi-rate stepping.
 
+The [separate refinement receipt](../../tools/g2-geometry/receipts/refinement-v1.json)
+passes all nine cases at both planned finer steps. Maximum inventory differences
+against refined DOP853 are 0.022993 kg at 0.125 s and 0.012600 kg at 0.0625 s,
+within the original error margins. The failed base receipt and original recipe
+remain unchanged. This establishes two tested offline candidates; it neither
+selects a live step nor replaces the required integration/lifecycle review.
+
 ## MOA review: separate bindings and separate experiments
 
 The MOA-seat reflection supplied on 2026-09-28 was checked read-only against
@@ -244,6 +251,17 @@ valid limited offline case; it does not validate PIC505 or a blocked vent. Live
 promotion must resolve the gas/pressure/control relationship before claiming
 that native gas consequences follow from component conservation. That question
 is distinct from opening a pressure-flow network.
+
+Anthony highlighted the separator's pressure vent/bypass during this increment.
+The existing code has two paths: PIC505 drives PV505 for normal overhead
+venting (`src/models.js:337`); PSV-502 adds parallel relief capacity at 1100 kPa
+and reseats below 1000 kPa (`src/models.js:239`, `:675`–`:684`). The current
+code combines their capacities for its pressure update; it does not declare
+an additional manually operated bypass valve. Live component integration must
+preserve the normal control path and the independent protective relief path,
+give each discharged component mass an explicit ledger destination, and avoid
+counting the shared overhead discharge twice. The offline external-G sink
+does not demonstrate pressure control, vent restriction or relief behavior.
 
 ## Proposed interface and interval accounting
 

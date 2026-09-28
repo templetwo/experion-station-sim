@@ -23,6 +23,7 @@ python3 -m venv /tmp/ess-g2-geometry-venv
 /tmp/ess-g2-geometry-venv/bin/python -B -m unittest discover -s tools/g2-geometry -p 'test_*.py' -v
 node --test tests/g2-geometry-capture.test.js
 /tmp/ess-g2-geometry-venv/bin/python -B tools/g2-geometry/run.py --out /tmp/geometry-v1.json
+/tmp/ess-g2-geometry-venv/bin/python -B tools/g2-geometry/refine.py --out /tmp/refinement-v1.json
 ```
 
 Package installation needs a package source or cached wheels. Tests, native
@@ -64,6 +65,12 @@ G goes directly to a declared external sink. G can exist in the reactor but is
 forbidden in liquid geometry compartments. The zero liquid-specific-volume
 entry for G is a routing sentinel, not a gas density. There is no downstream
 gas inventory, pressure response, vent valve or PSV consequence.
+
+The live separator does have pressure-dependent outlets: PIC505 controls
+PV505, and PSV-502 adds parallel relief capacity at 1100 kPa until pressure
+falls below 1000 kPa (`src/models.js:675`–`:684`). This offline sink does not
+replace or validate either path. Their distinct control/protection behavior
+and discharged gas accounting must be retained in a later live integration.
 
 Constant liquid densities are synthetic: A/P 800 kg/m3 and W 1000 kg/m3.
 Volumes add by component specific volume. Chamber levels use native areas
@@ -137,9 +144,8 @@ The checked [geometry-v1 receipt](receipts/geometry-v1.json) has `passed: false`
 eight of nine assessed cases pass all checks, while the abrupt crest/carry/
 starvation case fails numerical comparison. The 0.5 s candidate differs by
 up to 1.142 kg; the 0.25 s candidate by 0.353 kg. Their maximum normalized
-errors are 7.649 and 2.367 times the unchanged limits. The peak occurs at
-1 s as the oil withdrawal availability limiter releases. Matching removal
-and addition still close the ledger; conservation alone cannot establish
+errors are 7.649 and 2.367 times the unchanged limits. Matching removal and
+addition still close the ledger; conservation alone cannot establish
 accurate transfer timing. Reproducing this receipt therefore exits **1**.
 
 All nine assessed cases pass their component/total closure and consequence
@@ -153,6 +159,24 @@ The separately declared [refinement plan](refinement-plan.json) tests the next
 two binary step sizes, 0.125 s and 0.0625 s, over the same nine assessed cases.
 It retains the failed receipt and every original error margin. No finer-step
 result selects or authorizes the live simulator's integration method.
+
+The [refinement receipt](receipts/refinement-v1.json) records both steps passing
+all nine cases. It pins the failed base receipt, recipe, computational sources,
+refinement plan and exact fresh native capture before simulation. It checks
+closure on every finer computed state and compares all 96 fields on the same
+0.5 s observation grid, leaving analyzer and dispatch classification unchanged.
+
+| RK4 step | Maximum inventory error against refined DOP853 | Maximum fraction of original comparison limit | Cases passing |
+| --- | --- | --- | --- |
+| 0.125 s | 0.022993 kg | 0.154020 | 9/9 |
+| 0.0625 s | 0.012600 kg | 0.084417 | 9/9 |
+
+The largest component closure residual across both finer campaigns is below
+5.7e-8 kg. Heat-loss quality timings on the common observation grid match the
+base campaign. Both native activity-step phases remain excluded. These are
+bounded numerical results, not a convergence-order proof, validation of the
+whole envelope or permission to change the live step. `refine.py` reproduces
+this separate receipt and exits zero when both candidates pass every case.
 
 The registered sources supply the balance/rate-law forms (RESOURCES-7.37),
 delay/lag (RESOURCES-7.32), numerical API (RESOURCES-7.48), and the separator

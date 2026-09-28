@@ -23,6 +23,13 @@ Named conservation, consequence and numerical checks have a new receipt;
 the earlier prototype, runtime, goldens and MOA bindings retain their contracts.
 See [the reference documentation](tools/g2-geometry/README.md).
 
+The 0.5 s and 0.25 s candidates fail the abrupt weir case's original accuracy
+limits despite conserving mass; their failed receipt remains explicit. A
+separate frozen refinement plan checks 0.125 s and 0.0625 s against the same
+refined SciPy reference and accepts both over all nine named cases. The normal
+PIC505/PV505 vent and parallel PSV-502 relief remain live requirements for later
+gas inventory integration; the offline external sink does not validate them.
+
 ### G2 stage-one offline composition prototype
 
 The convergence specification is rev 5 and records Anthony's option-B ruling:
