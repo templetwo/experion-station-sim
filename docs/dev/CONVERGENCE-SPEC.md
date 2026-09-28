@@ -5,9 +5,17 @@ Path at commit: docs/dev/CONVERGENCE-SPEC.md
 Working title: V3.2 / V4 CONVERGENCE SPEC
 Owner: Anthony Vasquez Sr. (github.com/templetwo, "The Temple of Two")
 Builder seats: Claude Code (HQ, lead/integrator), Codex, Grok
-Status: **rev 4**, 2026-09-13. Verified against the checkpoint; item 6 renamed after it was built; §3.1.6(d) reworded after W2 found it had no join key.
+Status: **rev 5**, 2026-09-27. Records the G2 option-B ruling and its first-stage boundary limit, with an isolated offline prototype. Historical verification remains tied to its named checkpoints; live plant physics is unchanged.
 
 **Revision history**
+- rev 5, 2026-09-27 — G2 option B approved in small stages: composition through
+  U3 → U4 and product inventory first, then shared cooling and recovery.
+  Hydraulics remains unopened; the first stage does not authorize replacing the
+  live U3 three-scalar boundary with a vector. Corrected §0.1's stale claim about
+  main and added the stage-one contract, offline composition kernel and SciPy
+  receipt. No live model equations changed.
+- rev 4, 2026-09-13 — §3.1.6(d) reworded after W2 found the proposed annotation
+  had no join key; the effect-column binding is the recorded resolution.
 - rev 1, 2026-09-03 — authored against the repository's public README. Proposal only.
 - rev 2, 2026-09-13 — every hook, function and token binding confirmed against checkpoint
   `516bef8` by the MacBook seat (claude-opus-5); five binding errors corrected in place, item 2
@@ -26,7 +34,15 @@ Status: **rev 4**, 2026-09-13. Verified against the checkpoint; item 6 renamed a
 
 ## 0. Provenance and separation
 
-0.1 Checkpoint. This spec is authored from checkpoint commit 516bef8f4a13bf5a6bfc7ff773863abd73887f28, the "release: v3.1.0" commit dated 2026-09-03. main has not moved since. Every file path in this document is a path that exists at that checkpoint unless it is marked "proposed". 
+0.1 Checkpoints. The original design and verification memo use commit
+516bef8f4a13bf5a6bfc7ff773863abd73887f28, the "release: v3.1.0" commit dated
+2026-09-03. Those historical line references remain receipts for that checkpoint,
+not claims about current main. For rev 5, simulator main was verified at
+`bfed001fc89d9beaa640b30a7886d5f16f61a31b` (PR #2 merged 2026-09-27), and the
+companion MOA evaluation is recorded at `68aae66752885e98986ecdc2a78ecdc962fa5386`.
+The G2 implementation starting point is that simulator merge; re-read live
+bindings before adding code. The original "main has not moved since" sentence
+was stale and is superseded by this checkpoint statement.
 **rev 2 status of the confirm-before-binding instruction.** Rev 1 told builders to confirm every function and hook name against the checkpoint before writing code, because rev 1 was authored against the repository's public README, CHANGELOG and dev-doc conventions and not against a live working tree. That pass has now been done in full at the checkpoint — `docs/dev/CONVERGENCE-SPEC-VERIFICATION.md`, file:line for every claim. It found five binding errors, all corrected in this revision. A builder no longer has to re-derive them. The standing rule does not lapse, though: **anything this spec names that the memo does not cover is still unconfirmed and is verified in the file before it is bound to.** The memo's §1 is what verified clean; its §2 is what moved.
 
 0.2 The two-lane rule. There are two lanes and they never cross. Lane one is this public repository: an independent training aid built by Anthony under MIT. Lane two is AIRCO (Air Company, New Britain, PA) work. Anything plant-specific, and anything made on company time, is AIRCO work in AIRCO systems and never enters this repository. MIT already permits AIRCO to use the public repository. Improvements made on company time stay in the company's copy. This spec adds nothing to lane two and takes nothing from it.
@@ -48,6 +64,12 @@ Status: **rev 4**, 2026-09-13. Verified against the checkpoint; item 6 renamed a
 - Stream A: seven structural items that make the process engine teach more without pretending to be a plant. Items 2, 3, 4, 6 and 7 are additive and ship as the v3.2 line. Items 1 and 5 change the dynamics of existing units and are therefore the gated v4 line.
 - Stream B: the advisory-only PIP coach grows an "observe arm" that is also a clean fixture for Anthony's other public repo, project-epistemic-bound (peb). This is a shadow-mode log plus a data contract, not a merge.
 - Stream C: a disciplined intake protocol for fidelity feedback from an expert colleague, governed by the repository's existing site-blind rules.
+
+Rev 5 broadens Stream A's v4 objective under G2 (§8.6) to conserved composition,
+product inventory, and subsequently finite cooling and recovery. This approval
+does not open items 1 and 5, authoritative C&E enforcement, or the deferred live
+U3 boundary rewrite. The first implementation slice is prepared in
+[G2-STAGE-ONE-CONTRACT.md](G2-STAGE-ONE-CONTRACT.md).
 
 1.3 What does not converge. The simulator core stays network-free (Rule 7). The coach stays advisory-only. The peb fixture is a decision for Anthony, not a done deal (section 5, section 8).
 
@@ -269,9 +291,16 @@ One caution from the 3.1.0 history, which a validator at this exact point must n
 
 ---
 
-## 4. Stream A gated line (v4): items 1 and 5
+## 4. Stream A v4: gated hydraulics and approved staged G2 scope
 
-This line changes the dynamics of existing units and therefore is not additive. It may only proceed when Anthony opens a v4 line (section 8). Under option A, v2 and v3 goldens are archived byte-for-byte before any re-capture, and v4 gets its own new golden set.
+The original hydraulics and multi-rate items below remain gated. G2's broader
+objective is approved with the narrower first-stage limits in §4.3 and §8.6.
+
+Items 1 and 5 (§4.1–§4.2) change the dynamics of existing units and therefore are
+not additive. They may proceed only when gate 8.1 opens. Under option A, v2 and
+v3 goldens are archived byte-for-byte before any re-capture, and v4 gets its own
+new golden set. This unopened hydraulics gate does not re-gate the approved G2
+scope in §4.3.
 
 ### 4.1 Item 1: pressure-driven flow network
 
@@ -296,6 +325,28 @@ This line changes the dynamics of existing units and therefore is not additive. 
 4.2.3 Migration. Same option-A discipline as item 1: archive first, re-capture as v4.
 
 4.2.4 Sources. Ascher & Petzold, Computer Methods for Ordinary Differential Equations and Differential-Algebraic Equations, SIAM, 1998 (ISBN 978-0-89871-412-8) for stiff/DAE integration; Gear & Wells, "Multirate linear multistep methods," BIT Numerical Mathematics 24(4) (1984) 484-502 (DOI 10.1007/BF01934907) for the multirate scheme. **Registered 2026-09-13 by W0**, before item 5 is built, as required: Ascher & Petzold = `RESOURCES-7.15`, Gear & Wells = `RESOURCES-7.16`. Both are CITED-NOT-HELD — citable for the concept, not for a number, until a copy is held (see §8.5).
+
+---
+
+### 4.3 G2: composition, product inventory, then cooling and recovery
+
+Anthony selected option B on 2026-09-27: broaden v4 in small stages. First comes
+conserved composition through the existing U3 → U4 lane and product inventory;
+shared cooling and recovery follow. The decisive consequence is loss of heating
+reducing conversion and eventually producing off-spec material.
+
+The first stage does not authorize a scalar-to-vector replacement of the live
+U3 boundary. The builder's sequence within that limit starts with an isolated,
+offline whole-lane reference model and validation contract, after selecting
+registered kinetics and checking the libraries. It must be labelled a prototype, not a repaired live
+plant. Any later use of component flow to drive live U4 partitioning, analyzers,
+or product qualification must declare the expanded interface, even if its data
+is stored in a shared ledger rather than `P.h`.
+
+See [G2-STAGE-ONE-CONTRACT.md](G2-STAGE-ONE-CONTRACT.md) for source prerequisites,
+oracle selection, stage boundaries, acceptance evidence, and integration limits.
+`tools/g2/` implements the offline mass-lump surrogate, one-way native replay and
+SciPy comparison. No live chemistry, thermodynamics or stepping method is changed.
 
 ---
 
@@ -396,7 +447,7 @@ These are deliberately not in this spec. Their absence is a decision, not an ove
 
 Each gate is listed with the prior ruling of the same shape, or a plain statement that none exists.
 
-8.1 Gate: open the v4 line (items 1 and 5, **and item 2's matrix-as-source-of-truth**). Prior ruling of the same shape: option A (goldens archived byte-for-byte before any re-capture; dynamics changes are gated, not additive). This gate is the direct application of that ruling. Anthony decides when v4 opens.
+8.1 Gate: pressure-driven flow and multi-rate stepping (items 1 and 5, **and item 2's matrix-as-source-of-truth**). **Still unopened after the G2 ruling.** Prior ruling of the same shape: option A (goldens archived byte-for-byte before any re-capture; dynamics changes are gated, not additive). Approval of G2's staged composition objective is not approval of these items.
 
 **Rev 2 amendment.** This gate gained a third item. Anthony ruled on 2026-09-13 that item 2 ships in v3.2 as an assertion layer with no runtime enforcement (§3.1.1), and that the matrix **becoming** the source of truth — actually driving the effects, replacing the interlock code in `stepU1`..`stepU4` — moves here, behind this gate, because it moves dynamics like items 1 and 5 do. Sequencing note: the v3.2 assertion layer is the groundwork for it, exactly as item 6 is the groundwork for item 1. By the time this gate opens, the matrix will have been asserted equal to the code across every scripted upset for a full season, which is the strongest possible starting position for making it authoritative.
 
@@ -410,7 +461,32 @@ Each gate is listed with the prior ruling of the same shape, or a plain statemen
 
 Rev 1 scoped this gate to three works (Karassik, Luyben 2002, Gear & Wells) and to items 1 and 5 only. Verification found that scope badly short on both axes. **The initial W0 source set** was unregistered, not just those three works; and they block **W2, W3, W4 and W5 as well**, not just the v4 line — item 2 needs IEC 61511 and CCPS, item 3 needs Law, Banks and five OTS papers, item 4 needs Seborg/Skogestad/Ziegler-Nichols/Cohen-Coon/Åström, item 7 needs Bloom. The count grew past rev 1's own Appendix A because Luyben is two distinct books, the Seborg **textbook** is a different work from the Henson/Seborg CSTR parameters already at RESOURCES §4.4, and the five OTS papers cited in §3.2.8 and §3.5.8 were never registered at all.
 
-The initial W0 set is registered in `docs/RESOURCES.md` **§7**, each entry with its own subsection and citable id. The current registry contains **44 sources**, **RESOURCES-7.1 through RESOURCES-7.44** (updated 2026-09-26). W0 entries were initially marked CITED-NOT-HELD: registered and identified, citable for the concept it is the standard reference for, **not** usable to justify a specific equation, default or numeric value until a copy is held and read. A builder who needs a number out of one of these sources must hold it first and change its status in the registry. Current HELD entries are RESOURCES-7.4 and RESOURCES-7.23–7.33 for their recorded read scopes; their read receipts are recorded there.
+The initial W0 set is registered in `docs/RESOURCES.md` **§7**, each entry with its own subsection and citable id. The current registry contains **48 sources**, **RESOURCES-7.1 through RESOURCES-7.48** (updated 2026-09-27). W0 entries were initially marked CITED-NOT-HELD: registered and identified, citable for the concept it is the standard reference for, **not** usable to justify a specific equation, default or numeric value until a copy is held and read. A builder who needs a number out of one of these sources must hold it first and change its status in the registry. Current HELD entries are RESOURCES-7.4, RESOURCES-7.23–7.33, the limited rate-law/balance material in RESOURCES-7.37, and the documentation scopes in RESOURCES-7.45–7.48; their exact read receipts are recorded there. SciPy execution is separately recorded in the G2 receipt; reading library documentation alone is not numerical validation.
+
+---
+
+8.6 G2 — **option B approved, 2026-09-27**, with first-stage limits.
+Shape: scope broadening of a gated version. Prior-decisions line: no exact ruling
+preceded this one; nearest was the 2026-09-13 addition of authoritative C&E to
+gate 8.1 because it changes dynamics, and the prohibition on inventing a U1 → U3
+connection. Anthony's direct instruction in the current session and the
+[review-desk ruling](https://thetempleoftwo.slack.com/archives/C0C4G9PMXQE/p1790485891507479)
+select option B in small stages: composition/product inventory, then cooling and
+recovery. The first stage does not authorize the live scalar-to-vector rewrite.
+The Stack thread `thread_20260927_010603_1369c3d7` still reads unresolved;
+reported proposals `82c77582` and `029bb832` concern recording this ruling.
+That administrative state does not erase the direct approval. No duplicate
+proposal or thread closure is made by this revision.
+
+8.7 G3 — **open**. Shape: golden impact of measurement changes. Prior decisions:
+additive discipline (§2.4) and the default against changing existing golden drills
+(§8.2). The merged projection-only TIC202 policy is the present behavior; this
+ruling does not authorize moving it into the controller's measurement path.
+
+8.8 G4 — **open**. Shape: licence/external dependency. Prior decisions: Rule 7
+keeps gateways in a sidecar; no licence ruling of this shape is recorded here.
+The registered Maker Edition material informs a future decision; no gateway is
+installed, activated or approved by G2.
 
 ---
 
@@ -420,7 +496,7 @@ The initial W0 set is registered in `docs/RESOURCES.md` **§7**, each entry with
 
 **"No dependencies" means the suite, and it is enforced against a genuinely clean machine.** A second seat ran `ff25cb9` on a machine with no Python packages and got **907 pass, 3 fail** — three coach tests failing on a missing `anthropic` module — while the same commit was green here, because this machine happens to have `anthropic` installed. That divergence is the failure: a test that fails on a clean machine is a gate firing on normal practice, which is the same error as a drill check that refuses ordinary operation. Fixed by making those tests **skip with a stated reason** when the package is absent.
 
-**The sidecar's requirements, stated here because this is where the no-dependencies rule lives.** The deterministic core and the whole test suite need **nothing but node 22** — no npm package, no Python package, no network. `tools/coach/` is an **optional sidecar** and is the only thing in the repo with further requirements:
+**The sidecar's requirements, stated here because this is where the no-dependencies rule lives.** The deterministic core and the native Node test suite need **nothing but node 22** — no npm package, no Python package, no network. The G2 offline tool and its separately invoked Python tests use an isolated environment pinned in `tools/g2/requirements.txt`; they are never production imports or prerequisites for the Node suite. `tools/coach/` is an **optional sidecar** with these further requirements:
 
 - **Python 3** for `serve.py`, always. It otherwise uses only the standard library.
 - **`COACH_PROVIDER` defaults to `auto`** (`tools/coach/serve.py:47`), and `auto` means **cloud first, local as the fallback** — `_provider()` resolves it to `anthropic` whenever *any* credential is discoverable (a station key, `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`, or an `ant auth login` profile) and only falls back to Ollama when none is. The file says so itself at `:46`: *"we swapped to api — the cloud is the default, local is the fallback."*
@@ -482,11 +558,16 @@ The reasoning is W1's, learned the hard way: a surface that tells an operator "t
 
 10.9 Deferred behind gate 8.1: W9 (item 1, pressure-driven flow network) and W10 (item 5, multi-rate stepping), each under option-A archive-then-recapture, on a v4 line.
 
+10.10 G2 stage one: follow [G2-STAGE-ONE-CONTRACT.md](G2-STAGE-ONE-CONTRACT.md).
+Library/source selection and an offline reference-model contract precede model
+code. The later live integration and boundary change require their own explicit
+scope; they are not inferred from the decision to prototype conserved composition.
+
 ---
 
 ## Appendix A: Sources verified
 
-**Rev 2: all of these were registered in `docs/RESOURCES.md` §7 by work item W0 on 2026-09-13. The registry now holds 44 sources, ids RESOURCES-7.1 through RESOURCES-7.44 (2026-09-26).** Cite the id, not this appendix — this list is the authoring record, §7 is the registry. Two corrections W0 made to this list: Luyben is two distinct books (7.1 and 7.2), and the Seborg **textbook** (7.3) is a different work from the Henson/Seborg CSTR parameters already registered at RESOURCES §4.4. Each §7 entry carries its own current HELD or CITED-NOT-HELD status and any read receipt; this appendix is not a status authority. A CITED-NOT-HELD entry is citable for a concept but not for a number.
+**Rev 2: all of these were registered in `docs/RESOURCES.md` §7 by work item W0 on 2026-09-13. The registry now holds 48 sources, ids RESOURCES-7.1 through RESOURCES-7.48 (2026-09-27).** Cite the id, not this appendix — this list is the authoring record, §7 is the registry. Two corrections W0 made to this list: Luyben is two distinct books (7.1 and 7.2), and the Seborg **textbook** (7.3) is a different work from the Henson/Seborg CSTR parameters already registered at RESOURCES §4.4. Each §7 entry carries its own current HELD or CITED-NOT-HELD status and any read receipt; this appendix is not a status authority. A CITED-NOT-HELD entry is citable for a concept but not for a number.
 
 Status key: VERIFIED (DOI/ISBN confirmed), VERIFIED (publisher/standards page), NOT VERIFIED.
 

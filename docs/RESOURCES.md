@@ -304,8 +304,9 @@ Seeded from the spec's Appendix A. The verification pass that produced this sect
 spec's own count low: it named fifteen absent sources, but Luyben is two distinct books, the
 Seborg **textbook** is a different work from the Henson/Seborg CSTR parameters already registered
 at §4.4, and the five operator-training-simulator papers cited in spec §3.2.8 and §3.5.8 were
-absent as well. W0 registered that initial set. The registry now contains 44 sources:
-the W0 entries plus the rev 2 map’s proposed sources, registered on 2026-09-26.
+absent as well. W0 registered that initial set. The registry now contains 48 sources:
+the W0 entries, the rev 2 map’s proposed sources registered on 2026-09-26, and
+four offline library candidates registered for G2 preparation on 2026-09-27.
 The observation and plausibility slice uses §7.23–§7.26; registration of the
 remaining candidates does not approve their gated implementation. The coverage
 table below maps every proposed entry to its stable id.
@@ -575,8 +576,8 @@ references in §7.23–§7.25 are its own freely accessible publications.
 ### 7.37 Fogler, Elements of Chemical Reaction Engineering (6th ed.)
 - Resource: H. Scott Fogler, Pearson, sixth edition; [publisher print listing](https://www.pearson.com/en-ca/subject-catalog/p/elements-of-chemical-reaction-engineering/P200000000249/9780135486399) confirms paperback ISBN **9780135486221**, published 2020. The listing also carries later electronic-package dates; they are not substituted for the print record.
 - Public companion: [University of Michigan sixth-edition site](https://public.websites.umich.edu/~elements/6e/index.html), including [chapter 12 summary](https://public.websites.umich.edu/~elements/6e/12chap/summary.html).
-- Status: VERIFIED (publisher edition/print ISBN). **CITED-NOT-HELD for textbook balances and kinetics.** Metadata and companion navigation/headings were checked 2026-09-26; the required fixed-bed derivation and textbook chapters were not read as an implementation source.
-- Proposed use: map concepts 6, 10, and 22, conserved component balances and reactor conversion behind G2. Synthetic components, kinetics, yields, and numerical parameters still need a declared mass-consistent basis.
+- Status: VERIFIED (publisher edition/print ISBN). **HELD for the public chapter 3 summary's textual first-order rate-law row and temperature/rate discussion**, read 2026-09-27 at [Rate Laws](https://public.websites.umich.edu/~elements/6e/03chap/summary.html). It states `-r_A = k*C_A` and first-order `k` units `s^-1`. The [Arrhenius equation image](https://public.websites.umich.edu/~elements/6e/03chap/images/arr.gif) was visually read the same day: `k = A exp(-E/RT)`, with temperature in Kelvin. The [chapter 1 balance image](https://public.websites.umich.edu/~elements/6e/01chap/images/lec1-1a.gif) was also visually read: in minus out plus generation equals accumulation. Its molar basis is adapted explicitly to synthetic mass yields in the offline prototype. **CITED-NOT-HELD for the textbook chapters, fixed-bed/energy derivations, and plant-specific kinetics.** Metadata and companion navigation were checked 2026-09-26. No example constants, reaction yields or activation energy were adopted.
+- Use: map concepts 6, 10, and 22. The G2 offline prototype declares its own mass-lump recipe in `tools/g2/recipe.json`; a well-mixed surrogate is not a validated fixed-bed reactor or real chemistry.
 
 ### 7.38 Rachford & Rice, flash vaporization calculation (1952)
 - Resource: H. H. Rachford Jr. and J. D. Rice, *Procedure for Use of Electronic Digital Computers in Calculating Flash Vaporization Hydrocarbon Equilibrium*, Journal of Petroleum Technology **4(10)** (1952). [DOI 10.2118/952327-G](https://doi.org/10.2118/952327-G).
@@ -643,3 +644,23 @@ directly held official numeric-code CSV; its historical annex remains unheld.
 | 19 | Cooling Tower Fundamentals | RESOURCES-7.41 |
 | 20 | IEC 61131-3 | RESOURCES-7.42 |
 | 21 | ISA-88 and ISA-TR106 | RESOURCES-7.43; RESOURCES-7.44 |
+
+### 7.45 Cantera 3.2.0, offline reactor-reference candidate
+- Resource: [tagged release](https://github.com/Cantera/cantera/releases/tag/v3.2.0), [BSD-3-Clause licence](https://raw.githubusercontent.com/Cantera/cantera/v3.2.0/License.txt).
+- **Status: VERIFIED; HELD for documentation scope only, read 2026-09-27.** [Phase models](https://cantera.org/3.2/yaml/phases.html), [species declarations](https://cantera.org/3.2/yaml/species.html), [mechanism construction](https://cantera.org/3.2/userguide/creating-mechanisms.html), [reactor equations](https://cantera.org/3.2/reference/reactors/controlreactor.html), and [reactor interactions](https://cantera.org/3.2/reference/reactors/interactions.html). No package or selected liquid-phase reactor combination was executed.
+- Proposed use: an offline consistency reference after species, thermodynamics and a kinetic mechanism are declared. Ideal-condensed phase support does not make undefined A/P/W/G labels a usable mechanism. Fixed-inventory reservoirs and imposed mass flow do not validate finite feed or pressure-driven equipment. Bundled combustion mechanisms are not a source for the proposed liquid chemistry. Software, mechanism and data provenance must be pinned separately. No runtime dependency is added.
+
+### 7.46 CoolProp 8.0.0, offline property-reference candidate
+- Resource: [tagged release](https://github.com/CoolProp/CoolProp/releases/tag/v8.0.0), [MIT licence](https://raw.githubusercontent.com/CoolProp/CoolProp/v8.0.0/LICENSE).
+- **Status: VERIFIED; HELD for documentation scope only, read 2026-09-27.** [Custom cubic fluids](https://coolprop.org/coolprop/Cubics.html#adding-your-own-fluids) and [mixture interaction parameters](https://coolprop.org/fluid_properties/Mixtures.html#estimating-binary-interaction-parameters). Documentation URLs are live, not immutable release artifacts; record the executed version in any future numerical receipt.
+- Proposed use: offline water/declared-fluid property checks. Custom fluids need justified critical properties, acentric factors and molar masses; estimated mixture interactions do not establish credible properties. This is not a kinetics library. No database or JavaScript/WASM binary is imported, and this candidate is not a standalone-page dependency.
+
+### 7.47 Caleb Bell et al., thermo 0.6.1, offline flash-reference candidate
+- Resource: [tagged release](https://github.com/CalebBell/thermo/releases/tag/v0.6.1), [MIT licence](https://raw.githubusercontent.com/CalebBell/thermo/v0.6.1/LICENSE.txt).
+- **Status: VERIFIED; HELD for documentation scope only, read 2026-09-27.** [Phase and flash tutorial](https://thermo.readthedocs.io/tutorial_phases_and_flash.html) and [chemical-package tutorial](https://thermo.readthedocs.io/chemical_package_tutorial.html). No flash was executed.
+- Proposed use: later offline equilibrium checks using explicitly identified constants/correlations and phase models with FlashVL/FlashVLN. Quote the provenance of selected constants; do not import its database into the simulator. Flash calculations do not supply a reaction rate or prove product conversion. Pin data independently from the software licence and version.
+
+### 7.48 SciPy 1.18.1, offline ODE reference
+- Resource: [tagged release](https://github.com/scipy/scipy/releases/tag/v1.18.1), [BSD-3-Clause licence](https://raw.githubusercontent.com/scipy/scipy/v1.18.1/LICENSE.txt), [solve_ivp API](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+- **Status: VERIFIED; HELD for the retrieved solve_ivp API, read 2026-09-27.** The retrieved API page was labelled 1.18.0; the checked and executed release is 1.18.1. The offline G2 comparison uses DOP853 with explicit event boundaries, tolerance refinement and a 2 s maximum reference step. NumPy 2.5.3 is pinned alongside SciPy in the isolated development environment; both executed versions and source/input hashes are in `tools/g2/receipts/stage-one.json`.
+- Proposed use: integrate explicitly supplied synthetic balances offline, after analytical limiting cases. Select DOP853 for a suitable nonstiff reference or Radau/BDF where stiffness warrants it; establish convergence with declared component-scaled tolerances. `t_eval` selects recorded samples, not internal integration steps; event boundaries need separate treatment. Solver agreement validates implementation of the declared equations, not the chemistry or the adequacy of the live 0.5 s step. No change to the runtime solver follows from registration.

@@ -1,0 +1,30 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-mass-lumps-v1",
+  "id": "synthetic-first-order-v1",
+  "basis": "Synthetic mass lumps; not molecular chemistry, HDO, or calibrated plant data",
+  "parameter_provenance": "All numerical model parameters and acceptance limits are Temple-set for this prototype; no source example constants are adopted",
+  "sources": ["RESOURCES-7.37", "RESOURCES-7.32", "RESOURCES-7.48"],
+  "components": ["A", "P", "W", "G"],
+  "units": {"mass": "kg", "time": "s", "temperature": "K", "feed": "kg/s"},
+  "feed_mass_fractions": [1.0, 0.0, 0.0, 0.0],
+  "feed_density_kg_m3": 800.0,
+  "kinetics": {"k_ref_s_inv": 0.08, "temperature_ref_k": 650.0, "activation_over_r_k": 5000.0, "mass_yields": [0.0, 0.78, 0.20, 0.02]},
+  "residence_s": {"reactor": 120.0, "separator": 60.0, "product": 600.0, "offspec": 900.0},
+  "partition": {
+    "product": [0.98, 0.995, 0.005, 0.001],
+    "water": [0.02, 0.005, 0.995, 0.0],
+    "gas": [0.0, 0.0, 0.0, 0.999]
+  },
+  "initial_mass_kg": {
+    "reactor": [12.0, 84.24, 21.6, 2.16],
+    "separator": [6.0, 42.12, 10.8, 1.08],
+    "product": [58.8, 419.094, 0.54, 0.0108],
+    "offspec": [0.0, 0.0, 0.0, 0.0]
+  },
+  "capacity_kg": {"reactor": 2500.0, "separator": 1250.0, "product": 12000.0, "offspec": 12000.0},
+  "quality": {"max_a_mass_fraction": 0.15, "max_w_mass_fraction": 0.002, "minimum_inventory_kg": 0.000001},
+  "analyzer": {"transport_delay_s": 15.0, "lag_s": 30.0, "sample_period_s": 5.0},
+  "envelope": {"temperature_k": [300.0, 800.0], "feed_kg_s": [0.0, 10.0], "activity": [0.0, 1.0], "divert_fraction": [0.0, 1.0]},
+  "tolerances": {"closure_abs_kg": 0.00000001, "closure_rel": 0.000000001, "reference_rtol": 0.0000000001, "reference_atol_kg": 0.000000000001, "reference_max_step_s": 2.0, "comparison_abs_kg": 0.00001, "comparison_rel": 0.000001}
+}
