@@ -1,12 +1,16 @@
 // @artifact production
 // Shared complete station semantics, extracted from the simulator at 3aad769.
 (function(root,factory){
-  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js"),"Plausibility":require("./plausibility.js")});
+  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js"),"Plausibility":require("./plausibility.js"),"ProductMeter":require("./product-meter.js"),"Composition":require("./composition.js"),"MaterialModel":require("./material-model.js"),"MaterialRecipe":require("./material-recipe.js")});
   else root.ESS.PlantCore=factory(root.ESS);
 })(typeof globalThis!=="undefined"?globalThis:this,function(ESS){
   "use strict";
   return function(Base){ return class PlantCore extends Base {
-  initSim(atTime){
+  initSim(atTime,options){
+    options=options||{};
+    if(options.materialMode && !['legacy','composition_mass_v1'].includes(options.materialMode)) throw Error('material_mode');
+    this.materialMode=options.materialMode||'legacy';
+    this.composition=null;
     const now = typeof atTime==='number'?atTime:0;
     const P = (o)=>Object.assign({kind:'pid',mode:'AUTO',modeAttr:'OPERATOR',T2:0,ophilm:100,oplolm:0,opexhi:105,opexlo:-5,safeop:0,shed:'SHEDHOLD',badPv:false,init:false,dec:1,tgtLo:null,tgtHi:null,pvtrack:false,_as:{}}, o);
     this.L = {
@@ -44,10 +48,21 @@
       AI509: {kind:'ind',tag:'AI509',desc:'V-502 WATER IN OIL DRAW',eu:'%',lo:0,hi:20,dec:2,pv:0.3,cm:'CM24_AI509',alm:{PVHI:[2,'High'],PVHH:[5,'Urgent']},tgtLo:0,tgtHi:1,_as:{}},
       AI510: {kind:'ind',tag:'AI510',desc:'V-502 OIL IN WATER DRAW',eu:'%',lo:0,hi:20,dec:2,pv:0.2,cm:'CM25_AI510',alm:{PVHI:[2,'High']},tgtLo:0,tgtHi:1,_as:{}}
     };
+    if(this.materialMode==='composition_mass_v1'){
+      for(const [tag,desc,eu,dec] of [
+        ['AI511','TK-503 UNCONVERTED A','MASS %',3],['AI512','TK-503 WATER','MASS %',3],['LI513','TK-503 PRODUCT TANK LEVEL','%',2]
+      ]) this.L[tag]={kind:'ind',tag,desc,eu,lo:0,hi:100,dec,pv:null,badPv:true,quality:'BAD',cm:'CM_'+tag,alm:{},_as:{}};
+    }
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
+    if(this.materialMode==='composition_mass_v1'){
+      this.composition=ESS.Composition.create(now);
+      this.syncMaterialGeometry();
+      this.syncCompositionMeasurements();
+    }
+    this.product=ESS.ProductMeter.create(this.P,options.mission);
     this.plausibility = ESS.Plausibility.create(this.P);
     // Architecture fault-engine state (V3-PLAN S2): instructor-scheduled engine faults
     // that carry no legacy P.faults flag of their own (none yet -- the twelve legacy
@@ -139,7 +154,32 @@
     if(topoProblems.length) throw new Error('TOPOLOGY CONTRACT VIOLATED — '+topoProblems.join('; '));
     this.publishCoach();
   }
+  // An opt-in material scan is transactional, including seeded noise and replay.
+  // Histories and saved snapshots are immutable records: copy their containers,
+  // not each old row, so rollback cost does not grow with snapshot depth.
+  captureScan(){
+    const copy=v=>{if(v===null||typeof v!=='object')return v;if(v instanceof Set)return new Set(v);if(Array.isArray(v))return v.map(copy);const o={};for(const k of Object.keys(v))o[k]=copy(v[k]);return o;};
+    const keys=['P','L','V','product','composition','materialMode','plausibility','events','msgs','eid','alarmLog','t0','seed','vLag','callouts','phaseSet','tadShed','_lastPhase','trainingRecords','mocCount','_lastADrill','tasksDone','disabledAssets','state','nextMessage','_plausibilityProductSample','_replayApplying'];
+    const fields={};for(const k of keys)fields[k]=copy(this[k]);
+    const instr={};for(const k of Object.keys(this.instr))instr[k]=(k==='ring'||k==='snapshots')?this.instr[k].slice():copy(this.instr[k]);
+    return {fields,instr,hist:Object.fromEntries(Object.entries(this.hist).map(([k,v])=>[k,v.slice()])),
+      alarms:this.alarmEngine.snapshot(),alarmEngine:this.alarmEngine,rand:this.rand,rand4:this.rand4,
+      randState:this.rand.getState(),rand4State:this.rand4.getState(),ceRec:this.ceRec,ce:this.ceRec?copy(this.ceRec.seen()):[],topo:this.topo};
+  }
+  rollbackScan(b){
+    for(const k of Object.keys(b.fields)){if(b.fields[k]===undefined)delete this[k];else this[k]=b.fields[k];}
+    this.instr=b.instr;this.hist=b.hist;this.alarmEngine=b.alarmEngine;this.alarmEngine.restore(b.alarms);
+    this.rand=b.rand;this.rand.setState(b.randState);this.rand4=b.rand4;this.rand4.setState(b.rand4State);
+    this.ceRec=b.ceRec;if(this.ceRec){this.ceRec.reset();for(const e of b.ce)this.ceRec.observe(e.src,e.cond,e.t);}
+    this.topo=b.topo;this._ctx=null;this._pidCtx=null;
+  }
   step(dt){
+    if(!this.composition)return this.advanceScan(dt);
+    if(dt!==0.5)throw Error('composition_fixed_dt_required');
+    const before=this.captureScan();
+    try{return this.advanceScan(dt);}catch(error){this.rollbackScan(before);throw error;}
+  }
+  advanceScan(dt){
     // Due replay entries are applied BEFORE P and L are captured. A replayed DRILL / ADRILL
     // entry rebuilds the plant (applyPreset -> initSim -> restoreSnapshot replaces this.P,
     // this.L and this.V wholesale); capturing first ran the rest of this step against the
@@ -160,7 +200,7 @@
     this.scan(dt);
     this.interlocks();
     const after=ESS.Plausibility.snapshot(P,this.V);
-    ESS.Plausibility.advance(this.plausibility,before,after,dt,ESS.Plausibility.u4FlowSample(before,after,this._plausibilityProductSample));
+    ESS.Plausibility.advance(this.plausibility,before,after,dt,this.composition?null:ESS.Plausibility.u4FlowSample(before,after,this._plausibilityProductSample),{materialMode:this.materialMode});
     this.alarmTick();
     this.valveWatch(dt);
     this.drillWatch(dt);
@@ -171,6 +211,7 @@
     if(!historyGap){
       for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>(this.historyLimit||7200)) h.shift(); }
     }
+    ESS.ProductMeter.advance(this.product,P,L,this._plausibilityProductSample,dt);
     this.backtrackTick();
     this.replayCheckDone();
   }
@@ -338,7 +379,7 @@
       'LIC504.PVHH':['AI509.PVHI','AI509.PVHH']   // the interface at the crest is the cause; water in the product draw is its consequence (U4-SEPARATOR-CONTRACT section 5)
     };
   }
-  histTags(){ return ['FI100','LIC101','FIC102','AI205','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','TI216','FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','TIC502','LIC503','LIC504','PIC505','AI509','AI510']; }
+  histTags(){ return ['FI100','LIC101','FIC102','AI205','TIC201','TIC202','TIC301','LIC401','PIC401','FIC211','TIC212','TIC213','PI214','LI215','TI216','FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','TIC502','LIC503','LIC504','PIC505','AI509','AI510'].concat(this.composition?['AI511','AI512','LI513']:[]); }
   addEvent(type,src,desc,oldV,newV,meta){ const m=meta||{}; this.events.unshift({id:this.eid++, t:this.P?this.P.t:0, type, src, desc, oldV:oldV===undefined?'':String(oldV), newV:newV===undefined?'':String(newV), lvl:m.lvl||this.state.sec, who:m.who||this.operName()}); if(this.events.length>600) this.events.length=600; }
   applyPhaseSet(key,silent){
     const set=this.phaseSets()[key]; if(!set) return;
@@ -367,13 +408,14 @@
       {id:'R-310',label:'R-310 FIXED BED',depth:2,unit:'U3',tags:['TI312','FIC313','R-310']},
       {id:'U4',label:'UNIT 04 SEPARATION',depth:1,unit:'U4'},
       {id:'E-502',label:'E-502 TRIM COOLER',depth:2,unit:'U4',tags:['TIC502','E-502']},
-      {id:'V-502',label:'V-502 WEIR SEPARATOR',depth:2,unit:'U4',tags:['LIC503','LIC504','PIC505','AI509','AI510','V-502']}
+      {id:'V-502',label:'V-502 WEIR SEPARATOR',depth:2,unit:'U4',tags:['LIC503','LIC504','PIC505','AI509','AI510','V-502']},
+      ...(this.L&&this.L.AI511?[{id:'TK-503',label:'TK-503 PRODUCT TANK',depth:2,unit:'U4',tags:['AI511','AI512','LI513','TK-503']}]:[])
     ];
   }
   unitOf(tag){
     if(['FIC211','TIC212','TIC213','PI214','LI215','TI216','M202','R-202','SCM202'].includes(tag)) return 'U2';
     if(['FIC310','TIC311','TI312','FIC313','TI314','TI315','AI316','R-310','H-310'].includes(tag)) return 'U3';
-    if(['TIC502','LIC503','LIC504','PIC505','AI509','AI510','V-502','E-502'].includes(tag)) return 'U4';
+    if(['TIC502','LIC503','LIC504','PIC505','AI509','AI510','AI511','AI512','LI513','TK-503','V-502','E-502'].includes(tag)) return 'U4';
     // U1 is listed like the others, not caught by "anything else in L": a tag added to the
     // database and to no unit list now returns null, Topology.build() records it as
     // unplaced, validate() reports it and initSim() refuses to start (Stage 1 foundation).
@@ -435,7 +477,44 @@
     // Observe the existing exact product-flow seam without changing model state or RNG.
     const ctx=this.modelCtx(), prior=ctx.productSample;
     ctx.productSample=sample=>{this._plausibilityProductSample=sample;if(prior)prior(sample);};
-    try{ESS.Models.stepU4(this.P,this.L,this.V,dt,ctx);}finally{ctx.productSample=prior;}
+    try{
+      if(this.composition){
+        const P=this.P,V=this.V,env=P.env,mag=P.mag;
+        const input={feed_kg_s:P.h.f*ESS.MaterialRecipe.geometry_basis.feed_density_kg_m3/3600,
+          temperature_k:P.h.bed+273.15,activity:env.catAct*(P.faults.bedact?mag.bedact:1),
+          water_valve:V.WV504.pos,product_valve:V.LV503.pos,gas_valve:V.PV505.pos,
+          weir_height_percent:env.weirH,divert_fraction:this.composition.divertFraction};
+        this.composition=ESS.Composition.advance(this.composition,input,dt,{AI511:this.L.AI511,AI512:this.L.AI512});
+        const a=ESS.MaterialModel.adapter(this.composition.material);
+        ESS.Models.stepU4Material(P,this.L,V,dt,ctx,a,ESS.MaterialRecipe.geometry_basis.liquid_specific_volume_m3_kg);
+        this.syncCompositionMeasurements();
+      }else ESS.Models.stepU4(this.P,this.L,this.V,dt,ctx);
+    }finally{ctx.productSample=prior;}
+  }
+  syncMaterialGeometry(){
+    const a=ESS.MaterialModel.adapter(this.composition.material),s=this.P.s;
+    s.hw=a.hWater;s.ho=a.hOil;s.h2=a.h2;s.pres=a.pressure;this.P.trips.psv502=a.reliefOpen;
+  }
+  syncCompositionMeasurements(){
+    if(!this.composition)return;
+    const points=ESS.Composition.measurements(this.composition);
+    for(const [tag,m] of Object.entries(points)){
+      // Active source faults remain authoritative over a valid analyzer sample.
+      const fault=ESS.FaultEngine.isActive(this.P.archFaults||ESS.FaultEngine.createState(),'OPEN_INPUT_BAD_QUALITY','AI-'+tag);
+      Object.assign(this.L[tag],m,{age_ms:m.ageMs});
+      if(fault){this.L[tag].badPv=true;this.L[tag].quality='BAD';this.L[tag].reason='SOURCE_FAULT';this.L[tag].statusCode=0x808C0000;this.L[tag].statusName='Bad_SensorFailure';}
+    }
+  }
+  resetAccounting(){
+    this.product=ESS.ProductMeter.create(this.P,this.product&&this.product.mission);
+    if(this.composition)this.composition=ESS.Composition.resetAccounting(this.composition);
+  }
+  setMaterialDiversion(fraction){
+    if(!this.composition||!Number.isFinite(fraction)||fraction<0||fraction>1)throw Error('material_diversion');
+    if(!this._replayApplying&&!this.instructorAllowed())return false;
+    this.composition.divertFraction=fraction;
+    this.journal('MATERIAL_DIVERT','TK-503',String(fraction),{instr:true});
+    return true;
   }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
   scan(dt){
@@ -653,6 +732,7 @@
       case 'MAG': this.setMagnitude(e.tag,e.arg); break;
       case 'VAR': this.setVariable(e.tag,e.arg); break;
       case 'SEED': this.setSeed(e.arg); break;
+      case 'MATERIAL_DIVERT': this.setMaterialDiversion(Number(e.arg)); break;
       case 'DRILL': {
         const d=this.drillDefs().find(x=>x.id===e.tag);
         if(!d){ this.replayRefuse('LEGACY DRILL IS UNKNOWN','journal names unknown legacy drill '+e.tag+'.'); break; }
@@ -875,7 +955,7 @@
   snapshotData(name,wall){
     const r=this.rand;
     try{
-      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,plausibility:this.plausibility,alarms:this.alarmEngine.snapshot(),
+      return ESS.Instructor.makeSnapshot({t:this.P.t,wall:wall||0,P:this.P,L:this.L,V:this.V,plausibility:this.plausibility,product:this.product,composition:this.composition,materialMode:this.materialMode,alarms:this.alarmEngine.snapshot(),
         eventsCount:this.events.length,journalSeq:this.instr.seq,tadShed:this.tadShed,phaseSet:this.phaseSet,disabledAssets:[...this.disabledAssets],
         seed:(r&&r.seed)||this.seed,randState:(r&&r.getState)?r.getState():null,randState4:(this.rand4&&this.rand4.getState)?this.rand4.getState():null,drill:this.drillData()},name);
     }catch(err){ this.instrNote('SNAPSHOT REFUSED — '+String(err.message).toUpperCase()); this.msgZone('SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE'); return null; }
@@ -1226,7 +1306,12 @@
   }
   resetLimitTimers(l){ for(const c in (l._am||{})){ const m=l._am[c]; m.onT=0; m.offT=0; } }
   restoreSnapshot(snap,why){
+    const validated=ESS.Instructor.validateSnapshot(snap),before=this.captureScan();
+    try{return this.applySnapshot(validated,why);}catch(error){this.rollbackScan(before);throw error;}
+  }
+  applySnapshot(snap,why){
     const I=ESS.Instructor;
+    this.materialMode=snap.materialMode;this.composition=I.clone(snap.composition);this.product=I.clone(snap.product);
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
     this.plausibility=snap.plausibility?I.clone(snap.plausibility):ESS.Plausibility.create(this.P);
     // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
@@ -1257,6 +1342,8 @@
     this._ctx=null; this._pidCtx=null; this.callouts={}; this.vLag={}; this._lastPhase=this.P.b.phase;
     // restoreSnapshot replaces this.L/this.V wholesale, so the cached graph must be rebuilt too.
     this.topo = ESS.Topology.build({L:this.L, V:this.V, assetTree:this.assetTree(), unitOf:(t)=>this.unitOf(t)});
+    for(const k of this.histTags())if(!this.hist[k])this.hist[k]=[];
+    for(const k of Object.keys(this.hist))if(!this.L[k])delete this.hist[k];
     const t=this.P.t;
     for(const k in this.hist){ const h=this.hist[k]; while(h.length&&h[h.length-1][0]>t) h.pop(); }
     this.events=this.events.filter(e=>e.t<=t); this.msgs=this.msgs.filter(m=>m.t<=t); this.alarmLog=this.alarmLog.filter(a=>a.t<=t);
@@ -1267,7 +1354,7 @@
   dofPreflight(what){
     if(this.replaying()) return true;
     if(typeof ESS==='undefined'||!ESS.BoundaryDof) return true;   // module absent: fail open, never block a drill
-    const r=ESS.BoundaryDof.check(this.P,this.L);
+    const r=ESS.BoundaryDof.check(this.P,this.L,this.composition);
     this.dofNotesRecord(what,r);
     if(r.ok) return true;
     const why=ESS.BoundaryDof.formatRefusal(r);

@@ -15,6 +15,25 @@ A browser-based, single-page training simulator that reproduces the conventions 
 | U3 | Two-pass fired heater (Badgwell form) with tube-skin temperatures and excess O2, fixed-bed reactor with quench | Nonlinear exotherm, trip avoidance |
 | U4 | Trim cooler and a two-chamber weir separator (Arnold & Stewart bucket-and-weir form): water on interface control, oil over the weir on level control, gas on pressure control, two draw-quality analysers, weir height settable live | Interface control, the weir as a slow handle, consequential alarms |
 
+The implemented plant has **three islands**: U1, U2, and U3 → U4. U1 does
+not supply U3. Default runs retain the legacy thermal and volume model.
+
+An optional **fresh composition run** is available in the instructor station:
+open `INSTR`, authenticate, and select **START FRESH COMPOSITION RUN**. This
+replaces the current run with declared synthetic A/P/W/G inventories and starts
+frozen. Use RUN to advance. U4 then displays receiving-tank A, water and level
+indicators; the instructor can route its liquid draw to product or off-spec.
+Normal vent PV505 and independent relief PSV-502 remove gas through separate
+mass ledgers. Product quality measurements have transport delay, lag and sample
+hold. Mass accounting and the historical analyzer-qualified volume proxy remain
+separate.
+
+This opt-in mode has prescribed native temperature and synthetic kinetics and
+gas compliance. It does not add validated chemistry, reaction-energy coupling,
+feed hydraulics or shared cooling. See the [integration contract](docs/dev/G2-LIVE-INTEGRATION-CONTRACT.md)
+and [declared recipe](tools/g2-live/recipe.json). Existing snapshots restore
+legacy mode; only new composition snapshots preserve component inventories.
+
 ## Run it
 - **Station + AI coach (one launch):** double-click `Launch Station.command`, or `python3 tools/coach/launch.py`. One browser window: the console, PIP the hover coach, and a live token stream in Ops Assistant. The default local model is the lightweight `granite4:1b`; set `COACH_MODEL` to use another installed Ollama model. The coach uses the cloud model whenever a credential exists and the local model otherwise (`COACH_PROVIDER=auto`, the default; a question the cloud refuses before answering is answered locally). For the cloud: `pip install anthropic`, sign in once with `ant auth login` (or export `ANTHROPIC_API_KEY`) on an org that has API credits; `COACH_PROVIDER=anthropic` forces cloud-only (`COACH_CLOUD_MODEL` defaults to `claude-opus-5`, `COACH_CLOUD_EFFORT` to `medium`), or enter the key at the station instead: Help → *PIP cloud credential…* (command `CLOUDKEY`, SUPV or above) hands it to the local sidecar for the session only; the page still only talks to the local sidecar, and the raw `.html` stays offline. Leave the Terminal open. The raw `.html` file cannot talk to a model (browsers block that); this launch is the together path.
 - **From this folder, no AI:** open `Launcher.dc.html` (or the simulator file directly) in a modern browser. Needs `support.js` and the `src/` folder beside the app; React is fetched from a CDN on first load.

@@ -125,6 +125,28 @@
     notBoundaries: ['P.Tcw', 'env.Tamb', 'env.catAct', 'P.faults.bedact', 'P.t', 'P.up'],
   };
 
+  // Opt-in G2 contract, authorized 2026-09-28. These packets are integrated kg
+  // crossing the same U3 -> U4 boundary, not the commanded heater feed volume.
+  // Thermal histories remain prescribed native inputs; no energy closure is claimed.
+  var COMPOSITION_PLANT_MAP = {
+    version:2,asOf:'2026-09-28',mode:'composition_mass_v1',
+    derivedFrom:'src/material-model.js and PlantCore.stepU4; G2-LIVE-INTEGRATION-CONTRACT',
+    units:PLANT_MAP.units,islands:ISLANDS,notBoundaries:PLANT_MAP.notBoundaries,
+    assertion:PLANT_MAP.assertion,
+    boundaries:[{id:'U3-U4',from:'U3',to:'U4',note:'conserved A/P/W/G transfer over a declared interval',vars:[
+      {name:'water',field:'material.lastInterval.stream.water',root:'composition',kind:'component_mass',eu:'KG',components:['A','P','W','G'],spec:'flow'},
+      {name:'oil',field:'material.lastInterval.stream.oil',root:'composition',kind:'component_mass',eu:'KG',components:['A','P','W','G'],spec:'flow'},
+      {name:'gas',field:'material.lastInterval.stream.gas',root:'composition',kind:'component_mass',eu:'KG',components:['A','P','W','G'],spec:'flow'},
+      {name:'Tpre',field:'h.pre',root:'P',kind:'temperature',eu:'DEG C',spec:'flow'},
+      {name:'Tbed',field:'h.bed',root:'P',kind:'temperature',eu:'DEG C',spec:'flow'}
+    ]}]
+  };
+  function plantMap(mode){
+    if(mode==='composition_mass_v1')return COMPOSITION_PLANT_MAP;
+    if(mode==null||mode==='legacy')return PLANT_MAP;
+    throw Error('material_mode');
+  }
+
   // ---------------------------------------------------------------- helpers
 
   function resolvePath(obj, path) {
@@ -143,7 +165,22 @@
 
   // ---------------------------------------------------------------- lane A: checkBoundaries
 
-  function checkBoundaries(P) {
+  function checkBoundaries(P, composition) {
+    if(composition){
+      var findings=[],unobserved=composition.material&&composition.material.lastInterval===null;
+      COMPOSITION_PLANT_MAP.boundaries[0].vars.forEach(function(v){
+        if(unobserved&&v.kind==='component_mass')return;
+        var value=resolvePath(v.root==='P'?P:composition,v.field);
+        var valid=v.kind==='component_mass'?Array.isArray(value)&&value.length===4&&value.every(function(x){return isFiniteNumber(x)&&x>=0;}):isFiniteNumber(value);
+        if(!valid)findings.push({code:'BOUNDARY_NOT_FINITE',severity:'refuse',detail:'Invalid composition boundary '+v.name,tags:[v.name]});
+      });
+      var stream=composition.material&&composition.material.lastInterval&&composition.material.lastInterval.stream;
+      if(!unobserved&&(!stream||stream.schema!=='g2-material-stream-v1'||!isFiniteNumber(stream.startMs)||!isFiniteNumber(stream.endMs)||stream.endMs<stream.startMs))
+        findings.push({code:'BOUNDARY_INTERVAL',severity:'refuse',detail:'Missing or invalid material interval',tags:['U3-U4']});
+      if(unobserved)findings.push({code:'BOUNDARY_UNOBSERVED',severity:'note',detail:'Fresh inventory; no material interval has advanced yet.',tags:['U3-U4']});
+      findings.push({code:'BOUNDARY_SPEC_STRUCTURAL',severity:'note',detail:'Integrated component packets on U3 -> U4; prescribed thermal inputs. This check does not validate kinetics, energy or hydraulics.',tags:['U3-U4']});
+      return {ok:!findings.some(function(f){return f.severity==='refuse';}),lane:'A',findings:findings,note:COMPOSITION_PLANT_MAP.boundaries[0].note};
+    }
     var findings = [];
     var allNames = [];
 
@@ -306,8 +343,8 @@
 
   // ---------------------------------------------------------------- both lanes
 
-  function check(P, L) {
-    var a = checkBoundaries(P);
+  function check(P, L, composition) {
+    var a = checkBoundaries(P, composition);
     var b = checkLoopSpec(L);
     return {
       ok: a.ok && b.ok,
@@ -328,6 +365,8 @@
 
   return {
     PLANT_MAP: PLANT_MAP,
+    COMPOSITION_PLANT_MAP: COMPOSITION_PLANT_MAP,
+    plantMap: plantMap,
     BOUNDARY_STREAMS: BOUNDARY_STREAMS,
     ISLANDS: ISLANDS,
     checkBoundaries: checkBoundaries,

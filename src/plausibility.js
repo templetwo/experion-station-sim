@@ -210,7 +210,7 @@
       Math.abs(ledger.covered_residual_m3) > ledger.tolerance_m3 || ledger.max_abs_interval_residual_m3 > ledger.tolerance_m3 ? 'outside_tolerance' : 'within_tolerance';
   }
 
-  function advance(observer, before, after, dt, flowSample) {
+  function advance(observer, before, after, dt, flowSample, context) {
     if (!finite(dt) || dt <= 0) throw Error('invalid_plausibility_dt');
     observer.end_sim_time_ms = after.t;
     observer.active = [];
@@ -229,6 +229,7 @@
     }
     checkEnvelopes(observer, before, after, dt);
     for (const [field, key] of LEVELS) {
+      if(context&&context.materialMode==='composition_mass_v1'&&field.startsWith('P.s.'))continue; // component geometry has explicit overflow, not these legacy clamps
       const value = field.startsWith('P.s.') ? after.s[key] : after[key];
       if (finite(value) && (value <= 0 || value >= 100)) {
         record(observer, { code: 'LEVEL_AT_BOUND', field, value_percent: value, bound_percent: value <= 0 ? 0 : 100,

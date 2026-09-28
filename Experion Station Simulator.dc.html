@@ -13,6 +13,11 @@
 <script src="./src/alarm-help.js"></script>
 <script src="./src/philosophy.js"></script>
 <script src="./src/process.js"></script>
+<script src="./src/product-meter.js"></script>
+<script src="./src/material-recipe.js"></script>
+<script src="./src/material-model.js"></script>
+<script src="./src/measurement.js"></script>
+<script src="./src/composition.js"></script>
 <script src="./src/instructor.js"></script>
 <script src="./src/training.js"></script>
 <script src="./src/dispatch.js"></script>
@@ -25,7 +30,6 @@
 <script src="./src/debrief.js"></script>
 <script src="./src/boundary-dof.js"></script>
 <script src="./src/cause-effect.js"></script>
-<script src="./src/measurement.js"></script>
 <script src="./src/plausibility.js"></script>
 <script src="./src/plant-core.js"></script>
 <script src="./support.js"></script>
@@ -566,6 +570,15 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   </sc-for>
   <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">LIC504 holds the water interface in chamber 1; LIC503 holds the oil level in chamber 2; PIC505 vents overhead. The weir is set from the instructor station (V-502 weir height). AI509 water in the product draw, AI510 oil in the water draw. PSV-502 lifts at 1100 kPa.</text>
 </svg>
+<sc-if value="{{ compositionBoard.on }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:8px 12px;background:#D4D0C8;border-top:1px solid #888;display:flex;gap:18px;align-items:center">
+    <div style="font-size:11px;font-weight:700">TK-503 RECEIVING PRODUCT<br /><span style="font-size:10px;font-weight:400">Synthetic composition mode</span></div>
+    <sc-for list="{{ compositionBoard.points }}" as="p" hint-placeholder-count="3">
+      <div style="cursor:pointer;font-size:11px" onClick="{{ p.click }}"><b>{{ p.label }}</b><br />{{ p.value }} {{ p.unit }}<br /><span style="font-size:10px">{{ p.quality }}</span></div>
+    </sc-for>
+    <div style="font-size:10px;max-width:250px">A and water limits: 15.000 and 0.200 mass %. Analyzer samples lag the material; readings alone do not certify the stored inventory.</div>
+  </div>
+</sc-if>
 </div>
 </sc-if>
 
@@ -962,6 +975,18 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <div style="font-size:10.5px;color:#55524c;margin-top:4px">Every random draw (measurement noise, drill timing) comes from this seed. Snapshots store the seed and the generator position, so a restore or a replay repeats the same run.</div>
       </div>
 
+      <div style="padding:10px;background:#D4D0C8;border:1px solid #9a968e;margin-bottom:10px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:6px">U3 → U4 MATERIAL MODE</div>
+        <div style="font-size:11px;margin-bottom:6px">{{ instr.material.note }}</div>
+        <button onClick="{{ instr.material.start }}" style="padding:4px 8px">START FRESH COMPOSITION RUN</button>
+        <sc-if value="{{ instr.material.on }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px;margin:8px 0">LV503 destination: {{ instr.material.route }}</div>
+          <button onClick="{{ instr.material.product }}">TO PRODUCT</button>
+          <button onClick="{{ instr.material.offspec }}">TO OFF-SPEC</button>
+          <div style="font-size:10px;margin-top:8px">Material truth · instructor only · kg (A / P / W / G)</div>
+          <sc-for list="{{ instr.material.rows }}" as="m" hint-placeholder-count="7"><div style="font-size:10px;margin-top:3px">{{ m.label }}: {{ m.value }}</div></sc-for>
+        </sc-if>
+      </div>
       <div style="background:#CFCFCB;border:2px solid;border-color:#FFFFFF #8a867e #8a867e #FFFFFF;padding:8px 10px">
         <div style="font-weight:700;font-size:12px;margin-bottom:6px">BACKTRACK</div>
         <div style="font-size:11.5px;margin-bottom:6px">{{ instr.back.count }} automatic snapshots, one every 30 s of sim time, covering the last {{ instr.back.spanT }} (oldest {{ instr.back.oldestT }}).</div>
@@ -1947,13 +1972,13 @@ class Component extends ESS.PlantCore(DCLogic) {
     archFilterLayer:'ALL', archStageNode:null, archStageFault:null,
     archStageDelay:'0', archStageDuration:'', archStageMode:'STEP', archStageRamp:'15', archStageMag:'' };
 
-  initSim(atTime){ return super.initSim(atTime===undefined?Date.now():atTime); }
+  initSim(atTime,options){ return super.initSim(atTime===undefined?Date.now():atTime,options); }
   remoteBoot(){
     // The authenticated parent owns HTTP, authority and timing. This frame only renders.
     this.initSim(0);this._remote=true;
     const send=call=>{window.parent.postMessage({type:'peb.command',call},window.location.origin);this.setState({msg:'COMMAND PENDING — WAITING FOR PEB RECEIPT',msgT:this.P.t});};
     const refused=()=>this.setState({msg:'GOVERNED MODE — USE THE AUTHENTICATED OPERATOR PANEL',msgT:this.P.t});
-    for(const name of ['initSim','step','tick','stepOnce','freeze','setSpeed','setSeed','restoreSnapshot','restoreSlot','backtrack','applyPreset','startReplay','replayToEnd','applyJournalEntry','setUpset','clearUpsets','injectFault','setVariable','setMagnitude','setArchFault','clearArchFault','scheduleArchFault','archFireFault','archClearNow','runCompoundScript','startDrill','startDrillFromMenu','startADrill','startADrillFromMenu','setHidden','setOos','disableAssetAlarms','setPriority','setTargetBand','setPvTrack','setCtlAction','resetLimitTimers','shelveAlarm','unshelveAlarm','commentAlarmKey','signAction','withSignature','dispatchTraining','openCloudKey','coachAsk','coachPing','coachBoot'])this[name]=refused;
+    for(const name of ['advanceScan','applySnapshot','rollbackScan','syncMaterialGeometry','syncCompositionMeasurements','startMaterialRun','setMaterialDiversion','resetAccounting','initSim','step','tick','stepOnce','freeze','setSpeed','setSeed','restoreSnapshot','restoreSlot','backtrack','applyPreset','startReplay','replayToEnd','applyJournalEntry','setUpset','clearUpsets','injectFault','setVariable','setMagnitude','setArchFault','clearArchFault','scheduleArchFault','archFireFault','archClearNow','runCompoundScript','startDrill','startDrillFromMenu','startADrill','startADrillFromMenu','setHidden','setOos','disableAssetAlarms','setPriority','setTargetBand','setPvTrack','setCtlAction','resetLimitTimers','shelveAlarm','unshelveAlarm','commentAlarmKey','signAction','withSignature','dispatchTraining','openCloudKey','coachAsk','coachPing','coachBoot'])this[name]=refused;
     this.coachWatch=()=>{};this.publishCoach=()=>{};this.ackKeys=keys=>{for(const key of keys){const a=this.alarmEngine.get(key);if(a&&!a.ack)this.ackAlarm(a);}};this.silence=()=>this.setState({silenced:true});
     this.instructorAllowed=()=>false;
     this.setMode=(tag,mode)=>send({operation:'loop.set',arguments:{target:tag,expected_mode:this.L[tag].mode,mode}});
@@ -1966,7 +1991,11 @@ class Component extends ESS.PlantCore(DCLogic) {
     this._remoteListener=event=>{
       if(event.origin!==window.location.origin||event.source!==window.parent||event.data?.type!=='peb.state')return;
       const b=event.data.board,s=b.station;if(!s)return;
+      const oldCatalog=Object.keys(this.L||{}).sort().join('|'),oldMode=this.materialMode;
       for(const key of ['L','P','V','hist','events','msgs','tadShed','phaseSet','vLag'])this[key]=s[key];
+      this.compositionPublic=b.composition||null;this.materialMode=b.composition?b.composition.mode:'legacy';
+      if(oldMode!==this.materialMode||oldCatalog!==Object.keys(this.L).sort().join('|'))
+        this.topo=ESS.Topology.build({L:this.L,V:this.V,assetTree:this.assetTree(),unitOf:t=>this.unitOf(t)});
       this.alarmEngine.restore(s.alarms);this._ctx=null;this._pidCtx=null;
       if(event.data.follow&&b.focus){const f=b.focus;if(/^U[1-4]$/.test(f.view))this.setState({unit:f.view,display:'graphic'});if(f.tag&&this.L[f.tag])this.openFp(f.tag);if(f.view==='ALARMS')this.setState({display:'alarms'});if(f.view==='TRENDS')this.setState({display:'trend'});if(f.view==='ARCH')this.setState({display:'arch'});if(f.view==='BATCH')this.setState({unit:'U2',display:'graphic'});}
       this.setState({tk:b.tick,blink:b.tick%2===0,coachStatus:'PEB GOVERNED',coachText:'PIP operations and authorization receipts appear in the parent activity panel.',coachLive:false});
@@ -2022,7 +2051,7 @@ class Component extends ESS.PlantCore(DCLogic) {
   coachProjection(){
     const S=this.state||{}, L=this.L||{}, E=this.alarmEngine;
     const recs=(E&&typeof E.list==='function')?E.list():[];
-    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; const m=ESS.Measurement.observe(l); return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:tag==='TIC202'?m.pv:this.coachRnd(m.pv),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:m.badPv,quality:m.quality,statusCode:m.statusCode,statusName:m.statusName,limit:m.limit,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
+    const pointRow=(tag)=>{ const l=L[tag]; if(!l) return null; const m=ESS.Measurement.observe(l); return {tag,desc:l.desc||'',eu:l.eu||'',kind:l.kind||'',pv:(tag==='TIC202'||['AI511','AI512','LI513'].includes(tag))?m.pv:this.coachRnd(m.pv),...(['AI511','AI512','LI513'].includes(tag)?{sourceTimeMs:l.sourceTimeMs,publishedTimeMs:l.publishedTimeMs,ageMs:l.ageMs,reason:l.reason}:{}),sp:this.coachRnd(l.sp),op:this.coachRnd(l.op),mode:l.mode||'',badPv:m.badPv,quality:m.quality,statusCode:m.statusCode,statusName:m.statusName,limit:m.limit,run:l.kind==='motor'?!!l.run:undefined,trip:l.kind==='motor'?!!l.trip:undefined}; };
     const alarmRow=(a)=>{
       if(!a) return null;
       const l=L[a.tag], m=l?ESS.Measurement.observe(l):null, h=ESS.AlarmHelp&&ESS.AlarmHelp.resolve(a.tag,a.cond,{prio:a.prio,eu:a.eu});
@@ -2556,7 +2585,11 @@ class Component extends ESS.PlantCore(DCLogic) {
   tick(){
     if(!this.L) this.initSim();
     const n=this.state.speed;
-    for(let i=0;i<n;i++) this.step(0.5);
+    try{for(let i=0;i<n;i++)this.step(0.5);}catch(error){
+      if(!this.composition)throw error;
+      this.setState({speed:0});this.msgZone('MATERIAL SCAN REFUSED — '+error.message);
+      this.instrNote('MATERIAL SCAN ROLLED BACK: '+error.message);
+    }
     if(this.state.msg && this.P.t-this.state.msgT>9000) this.state.msg='';
     const aud=(this.props.audible??true)&&this.state.aud;
     const top=this.hornTop();
@@ -2647,7 +2680,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     if(!P.trips.skin && L.TI315.alm.PVHI && skinHi>L.TI315.alm.PVHI[0]) out.push({id:'risk.skin',sev:'WARN',title:'H-310 tube skin high ('+Math.round(skinHi)+' °C)',why:'Tube metal is running hotter than its continuous rating — usually firing raised faster than the feed can absorb, or low flow through the passes. The fuel trips at the Urgent limit.',steps:[{t:'Reduce the TIC311 setpoint or, in MAN, lower the output.',go:gFp('TIC311')},{t:'Confirm FIC310 feed flow through the tubes.',go:gFp('FIC310')},{t:'Watch TI314 / TI315 against the outlet on TG05.',go:gTg('TG05')}]});
     if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
     if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned during FEED).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
-    for(const k in L){ const l=L[k]; if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here once the signal is repaired.'}]}); }
+    for(const k in L){ const l=L[k]; if(l.badPv&&['AI511','AI512','LI513'].includes(k)){out.push({id:'badpv.'+k,sev:'WARN',title:k+' reading unavailable',why:'No valid published sample is available. This indication does not establish product quality.',steps:[{t:'Read the sample quality and age on the Unit 04 board.',go:()=>{this.setUnit('U4');this.nav('graphic');}}]});continue;} if(l.badPv) out.push({id:'badpv.'+k,sev:'WARN',title:k+' PV is BAD — loop shed to MAN',why:'The transmitter signal failed. Shed option '+l.shed+' put the loop in MAN holding the last good output (crosshatch on the graphic).',steps:[{t:'Keep the loop in MAN; control on related measurements.',go:gFp(k)},{t:'Review the input on Point Detail.',go:gDet(k)},{t:'Have maintenance check the transmitter — the PV restores here once the signal is repaired.'}]}); }
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
@@ -2667,7 +2700,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     // Orientation (P2L-EXPANSION-SPEC section 2.2): the first three chips used to match no
     // keyword and fell straight through to the model, which had nothing to say either.
     {k:['looking at','what am i looking','this screen','what is this screen','which screen','what display','what screen'],t:'What am I looking at?',a:'The title bar names the display and the unit tabs say which unit you are on. UNIT 01 is receipt and conversion: TK-101 feed tank, R-201 stirred reactor, E-301 flash preheater and V-401 flash drum. UNIT 02 is the R-202 batch reactor under SCM202 sequence control. UNIT 03 is the H-310 fired heater and the R-310 fixed catalyst bed. A faceplate shows PV, SP and OP for one loop; the Alarm Summary lists what is abnormal. Help → Plant orientation (command PROCESS) explains what each unit makes and why its trip points are where they are.'},
-    {k:['plant make','does the plant','does this plant','what is made','the product','feedstock','what the plant','process description','orientation','overview'],t:'What does this plant make?',a:'A finished liquid hydrocarbon blendstock, from a crude oxygenate intermediate and hydrogen that arrive at the battery limit. Unit 01 condenses and dehydrates the intermediate over a catalyst and flashes light ends and reaction water overhead in V-401. Unit 03 finishes the crude liquid over a second catalyst with hydrogen. Unit 02 is a batch campaign reactor that shares the board but is not in that path. Water is a co-product of both reactions. The full orientation document is under Help → Plant orientation, command PROCESS.'},
+    {k:['plant make','does the plant','does this plant','what is made','the product','feedstock','what the plant','process description','orientation','overview'],t:'What does this plant make?',a:'This synthetic station has three process islands: Unit 01 and Unit 02 are independent; Unit 03 alone feeds Unit 04. Default legacy mode uses a draw-quality volume proxy. A fresh composition run adds conserved A/P/W/G mass lumps, receiving and off-spec tanks, and delayed product analyzers. These are declared synthetic components, not validated real chemistry. Open PROCESS for the model limits.'},
     {k:['drive this station','how do i drive','navigate','get around','command zone','command line','commands','which command','station'],t:'How do I drive this station?',a:'Type a display name or a tag in the command zone and press Enter: U1, U2, U3 for the unit graphics, ALM for the Alarm Summary, EVT for events, TRN for trends, KPI for alarm performance, ARCH for the signal path, PROCESS for the plant orientation, HELP for the keys. Typing a tag opens its Point Detail; clicking a tag on a graphic opens its faceplate. F1 silences, F2 acknowledges. The View menu and the display buttons do the same by mouse.'},
     {k:['op','output','invalid mode','man','change op'],t:'Why can I not change OP?',a:'OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'},
     {k:['sp','setpoint','rejected','limit','entry'],t:'SP entry rejected',a:'SP must be inside SPLOLM…SPHILM and the loop must be in AUTO (CAS setpoints are primary- or program-driven). Out-of-range entries are rejected with the limits shown in the Message Zone. Limits live on Point Detail → Loop Tune (ENGR to change).'},
@@ -2835,7 +2868,7 @@ class Component extends ESS.PlantCore(DCLogic) {
   // --- run control: FREEZE stops the clock (speed 0), STEP advances exactly one 0.5 s tick, RUN / 2 / 5 / 10 set the speed
   setSpeed(v){ this.setState({speed:v}); }
   freeze(){ this.setSpeed(0); }
-  stepOnce(){ if(this.state.speed!==0) this.setState({speed:0}); this.step(0.5); this.setState(s=>({tk:s.tk+1})); }
+  stepOnce(){ if(this.state.speed!==0)this.setState({speed:0});try{this.step(0.5);}catch(error){if(!this.composition)throw error;this.msgZone('MATERIAL SCAN REFUSED — '+error.message);this.instrNote('MATERIAL SCAN ROLLED BACK: '+error.message);}this.setState(s=>({tk:s.tk+1})); }
 
   // --- snapshots: the full process state (P, L, V, alarm records, interlock flags, seed and generator cursor)
   // Returns null (and tells the instructor) when the process state holds a non-finite number; such a snapshot could
@@ -3318,6 +3351,20 @@ class Component extends ESS.PlantCore(DCLogic) {
       ...(d.def.peak?[{k:'Peak value',v:this.fmt(m.peak,1),fg:'#000'}]:[])
     ];
   }
+  startMaterialRun(){
+    if(!this.instructorAllowed())return;
+    this.initSim(this.P.t,{materialMode:'composition_mass_v1'});
+    this.setState({speed:0,drill:null,entry:null,unit:'U4',display:'instr'});
+    this.instrLog('FRESH COMPOSITION RUN — DECLARED SYNTHETIC INVENTORIES; FROZEN');
+  }
+  compositionBoardView(){
+    if(!this.L.AI511)return {on:false,points:[]};
+    return {on:true,points:['AI511','AI512','LI513'].map(tag=>{
+      const l=this.L[tag],m=ESS.Measurement.observe(l);
+      return {label:tag+' '+(tag==='AI511'?'UNCONVERTED A':tag==='AI512'?'WATER':'LEVEL'),
+        value:m.pv===null?'—':this.fmt(m.pv,l.dec),unit:l.eu,quality:m.quality+(Number.isFinite(l.ageMs)?' · age '+(l.ageMs/1000).toFixed(1)+' s':''),click:()=>this.openFp(tag)};
+    })};
+  }
   // View model for the INSTRUCTOR display; {on:false} for anyone who is not the instructor, so no instructor data is rendered.
   instructorView(){
     const S=this.state, P=this.P, I=this.instr, X=ESS.Instructor;
@@ -3358,7 +3405,12 @@ class Component extends ESS.PlantCore(DCLogic) {
         magnitude:f.magnitude,activatedAt:f.activatedAt==null?'':this.fT(f.activatedAt)})):[];
     return {on:true,authT:I.auth?'INSTRUCTOR PASSWORD':'MNGR LEVEL',hiddenOn:I.hidden,hidden:chip(I.hidden?'HIDDEN UPSETS: ON':'HIDDEN UPSETS: OFF',I.hidden,()=>{this.setHidden(!I.hidden);bump();}),
       archTruth,archTruthEmpty:!archTruth.length,
-      plausibility:{note:'Read-only findings. Coolant pressure is assumed at '+((this.plausibility&&this.plausibility.options.coolant_pressure_mpa_abs)??0.101325)+' MPa absolute. Accounting covers the model’s separator liquid terms; composition and plant-wide mass closure are not modelled.',
+      material:{on:!!this.composition,
+        note:this.composition?'Conserved synthetic masses; prescribed native temperature. PV505 normal vent and PSV-502 relief have separate gas ledgers. Starting fresh replaces the current run.':'Legacy mode. Starting fresh creates declared component inventories and replaces the current run; no purity is inferred from legacy levels.',
+        start:()=>this.startMaterialRun(),route:this.composition&&this.composition.divertFraction===1?'OFF-SPEC':'PRODUCT',
+        product:()=>{this.setMaterialDiversion(0);bump();},offspec:()=>{this.setMaterialDiversion(1);bump();},
+        rows:this.composition?['Reactor','Water layer','Oil layer','Chamber 2','Product tank','Off-spec tank','Separator gas'].map((label,i)=>({label,value:this.composition.material.vector.slice(i*4,i*4+4).map(v=>v.toFixed(3)).join(' / ')})):[]},
+      plausibility:{note:'Read-only findings. Coolant pressure is assumed at '+((this.plausibility&&this.plausibility.options.coolant_pressure_mpa_abs)??0.101325)+' MPa absolute. '+(this.composition?'The legacy liquid ledger is incomplete in composition mode; component accounting is separate.':'Accounting covers the model’s separator liquid terms; composition and plant-wide mass closure are not modelled.'),
         empty:!this.plausibility||!this.plausibility.findings.length,
         rows:this.plausibility?this.plausibility.findings.slice(-12).reverse().map(f=>({code:f.code,t:this.fT(f.sim_time_ms),detail:f.detail})):[]},
       hiddenNote:I.hidden?'Injections leave no trace in the trainee displays: no journal entries, no System Status row; INSTR events mirrored before the switch were removed. The assistant still diagnoses from process symptoms.':'Upsets, snapshots and replays are mirrored into the station journal (source INSTR) and System Status lists active upsets; variables, magnitudes and the seed are never shown to the trainee.',
@@ -3984,7 +4036,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
       isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isG4:disp==='graphic'&&S.unit==='U4', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
       gvList, vlist, gfx, av, kpi, evR, evFilters, msgsR, msgsEmpty:this.msgs.length===0, tv, dpt, fps, dg, arch,
-      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, gv4, vl4, gfx4, asst, pal,
+      utabs, gv2, vl2, gfx2, batch, gv3, vl3, gfx3, gv4, vl4, gfx4, compositionBoard:this.compositionBoardView(), asst, pal,
       entryText:S.entryText, entryChange:(e)=>this.setState({entryText:e.target.value}),
       entryKey:(e)=>{ if(e.key==='Enter')this.commitEntry(); else if(e.key==='Escape')this.setState({entry:null}); else if(e.key==='ArrowUp'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)+1,2)});} else if(e.key==='ArrowDown'){e.preventDefault();this.setState({entryText:this.fmt(parseFloat(S.entryText||0)-1,2)});} },
       entryRef:(el)=>{ if(el&&document.activeElement!==el) el.focus(); },

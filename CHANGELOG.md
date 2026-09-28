@@ -4,6 +4,29 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### G2 optional live composition integration
+
+A fresh `composition_mass_v1` run integrates synthetic A/P/W/G balances through
+U3 → U4, separator layers/chamber, receiving product, off-spec and gas inventory.
+Liquid levels derive from component masses. Normal vent PV505 and parallel
+PSV-502 discharge have separate counters; the 1100/1000 kPa relief hysteresis is
+retained with explicitly synthetic constant gas compliance. Native temperature
+prescribes the reaction rate; this is not a coupled energy or property model.
+
+The receiving-tank indicators add unconverted A, water and level. Product truth
+and truth-qualified external dispatch remain instructor/evaluator-only, separate
+from delayed analyzer observations and the unchanged `quality_proxy_v1` volume
+contract. Core now owns exactly one meter advancement for both browser and
+Kernel. New snapshots/checkpoints carry both ledgers and complete analyzer
+state; legacy restores start without invented composition. Invalid new-mode
+scans and restores are transactional.
+
+Default drills retain legacy dynamics. New integration and reference evidence
+is versioned separately; historical capture tooling still rejects changed
+runtime bytes, and its positive tests use an explicitly archived baseline.
+Hydraulics, shared cooling, coupled reaction heat, MOA pins, G3 and G4 remain
+outside this increment.
+
 ### G2 offline compartment geometry reference
 
 The next offline reference lives separately in `tools/g2-geometry/`, building

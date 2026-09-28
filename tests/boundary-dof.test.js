@@ -50,8 +50,8 @@ test('module hygiene: pure UMD, no DOM/timers/randomness/clock; exact export sur
   }
   assert.deepEqual(
     Object.keys(BD).sort(),
-    ['PLANT_MAP', 'BOUNDARY_STREAMS', 'ISLANDS', 'check', 'checkBoundaries', 'checkLoopSpec', 'formatRefusal'].sort(),
-    'no export beyond the seven the contract names'
+    ['PLANT_MAP', 'COMPOSITION_PLANT_MAP', 'plantMap', 'BOUNDARY_STREAMS', 'ISLANDS', 'check', 'checkBoundaries', 'checkLoopSpec', 'formatRefusal'].sort(),
+    'legacy exports plus the two declared opt-in live-map exports'
   );
   assert.equal(typeof BD.checkBoundaries, 'function');
   assert.equal(typeof BD.checkLoopSpec, 'function');

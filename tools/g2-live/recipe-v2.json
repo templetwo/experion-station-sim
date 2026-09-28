@@ -1,0 +1,316 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-live-recipe-v2",
+  "id": "synthetic-live-compartments-v2",
+  "basis": "Synthetic A/P/W/G mass lumps, prescribed native temperature and feed; no chemical mechanism, energy balance, VLE, hydraulic network or gas thermophysical properties",
+  "geometry_basis_sha256": "9edc18952484d561921832b1c819fa3090035a5ad9bff47f81e70c2fd990b6e6",
+  "geometry_basis": {
+    "_artifact": "@artifact dev",
+    "schema": "g2-geometry-v1",
+    "id": "synthetic-compartment-mass-v1",
+    "basis": "Synthetic A/P/W/G mass lumps; prescribed temperature; no fixed-bed chemistry, VLE, gas pressure, hydraulics, or energy closure",
+    "sources": [
+      "RESOURCES-4.12",
+      "RESOURCES-7.37",
+      "RESOURCES-7.32",
+      "RESOURCES-7.48"
+    ],
+    "parameter_provenance": "Geometry and draw/weir coefficients copied from src/models.js PARAMS.U4 at 0d308ac (Temple-set, not physical calibration). All other numerical choices are newly declared synthetic assumptions or explicitly retained G2-v1 kinetic/analyzer choices.",
+    "components": [
+      "A",
+      "P",
+      "W",
+      "G"
+    ],
+    "units": {
+      "mass": "kg",
+      "time": "s",
+      "temperature": "K",
+      "volume": "m3",
+      "flow": "m3/h"
+    },
+    "feed_mass_fractions": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "feed_density_kg_m3": 800,
+    "liquid_specific_volume_m3_kg": [
+      0.00125,
+      0.00125,
+      0.001,
+      0
+    ],
+    "gas_disposition": "All G in reactor effluent goes to a declared external overhead sink; no separate downstream gas-phase inventory, pressure, vent-valve or PSV response is represented",
+    "phase_assignment": {
+      "water": [
+        0,
+        0,
+        1,
+        0
+      ],
+      "oil": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "gas": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "kinetics": {
+      "k_ref_s_inv": 0.08,
+      "temperature_ref_k": 650,
+      "activation_over_r_k": 5000,
+      "mass_yields": [
+        0,
+        0.78,
+        0.2,
+        0.02
+      ]
+    },
+    "reactor": {
+      "reference_holdup_kg": 1000,
+      "outlet_law": "component_out_kg_s = feed_kg_s * reactor_component_kg / reference_holdup_kg; zero feed isolates reactor material while reaction can continue"
+    },
+    "geometry": {
+      "area1_m3_per_percent": 0.12,
+      "area2_m3_per_percent": 0.07,
+      "water_draw_m3h": 18.86,
+      "product_draw_m3h": 68,
+      "weir_m3h_per_percent_1_5": 80,
+      "carry_band_percent": 10,
+      "thin_band_percent": 8
+    },
+    "capacity_m3": {
+      "chamber1": 12,
+      "chamber2": 7,
+      "product": 24,
+      "offspec": 24
+    },
+    "overflow_time_s": 5,
+    "availability_time_s": 2,
+    "tank_dispatch_time_s": {
+      "product": 600,
+      "offspec": 900
+    },
+    "initial_mass_kg": {
+      "reactor": [
+        100,
+        702,
+        180,
+        18
+      ],
+      "water": [
+        0,
+        0,
+        3000,
+        0
+      ],
+      "oil": [
+        360,
+        2520,
+        0,
+        0
+      ],
+      "chamber2": [
+        350,
+        2450,
+        0,
+        0
+      ],
+      "product": [
+        600,
+        4200,
+        0,
+        0
+      ],
+      "offspec": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "quality": {
+      "max_a_mass_fraction": 0.15,
+      "max_w_mass_fraction": 0.002,
+      "minimum_inventory_kg": 1e-06
+    },
+    "analyzer": {
+      "transport_delay_s": 15,
+      "lag_s": 30,
+      "sample_period_s": 5,
+      "location": "receiving product tank",
+      "basis": "mass fractions A and W"
+    },
+    "envelope": {
+      "feed_kg_s": [
+        0,
+        20
+      ],
+      "temperature_k": [
+        300,
+        800
+      ],
+      "activity": [
+        0,
+        2.1
+      ],
+      "water_valve": [
+        0,
+        1
+      ],
+      "product_valve": [
+        0,
+        1
+      ],
+      "weir_height_percent": [
+        30,
+        90
+      ],
+      "divert_fraction": [
+        0,
+        1
+      ]
+    },
+    "numerics": {
+      "candidate_step_s": 0.5,
+      "refined_step_s": 0.25,
+      "reference_rtol": 1e-09,
+      "reference_atol_kg": 1e-10,
+      "reference_max_step_s": 0.5,
+      "closure_abs_kg": 1e-07,
+      "closure_rel": 1e-09,
+      "comparison_abs_kg": 0.05,
+      "comparison_rel": 0.0001,
+      "negative_mass_tolerance_kg": 1e-09
+    },
+    "acceptance": {
+      "breach_hold_s": 30,
+      "baseline_hold_s": 60,
+      "minimum_heat_loss_conversion_drop": 0.1,
+      "minimum_flow_conversion_gain": 0.02,
+      "numerical_scope": "declared scenarios and discontinuity probes; tolerances chosen before implementation, not calibrated from observed results"
+    }
+  },
+  "input_domain": {
+    "feed_kg_s": [
+      0,
+      20
+    ],
+    "temperature_k": [
+      250,
+      2200
+    ],
+    "activity": [
+      0,
+      2.1
+    ],
+    "water_valve": [
+      0,
+      1
+    ],
+    "product_valve": [
+      0,
+      1
+    ],
+    "weir_height_percent": [
+      30,
+      90
+    ],
+    "divert_fraction": [
+      0,
+      1
+    ],
+    "gas_valve": [
+      0,
+      1
+    ]
+  },
+  "domain_provenance": "New numerical input domain declared before live equations. Native parameter bounds give bed temperature <=45+1175+600+273.15=2093.15 K and >=-10-5+273.15=258.15 K from bounded valve/ambient inputs; 250..2200 K encloses those synthetic bounds. This is not validated chemical kinetics and does not alter the old 800 K recipe or its rejected capture.",
+  "gas": {
+    "pressure_basis": "kPa absolute",
+    "compliance_kg_per_kpa": 0.037037037037037035,
+    "initial_mass_kg": 29.62962962962963,
+    "header_pressure_kpa": 100,
+    "reference_delta_pressure_kpa": 700,
+    "normal_capacity_kg_s": 0.4,
+    "relief_multiplier": 1.5,
+    "lift_kpa": 1100,
+    "reseat_kpa": 1000,
+    "availability_time_s": 2,
+    "provenance": "Synthetic continuity choices: nominal feed40 m3/h, conversion0.9 and G yield0.02 make0.16 kg/s, balanced by PV505=0.4 at800kPa. Compliance retains the nominal legacy pressure response; it is not density, ideal-gas validation, headspace displacement or flare sizing."
+  },
+  "integration": {
+    "maximum_step_s": 0.0625,
+    "maximum_reaction_number": 0.1,
+    "step_rule": "N=max(ceil(dt/maximum_step_s),ceil(dt*(k+feed_kg_s/reference_holdup_kg)/maximum_reaction_number)); N equal deterministic RK4 outer substeps. Bracket a relief threshold crossing inside each substep, localize with exactly32 bisections using RK4 from the unchanged pre-event vector, advance all108 fields to the crossing, switch latch, integrate the remainder. No pressure or mass projection.",
+    "reference_rtol": 1e-11,
+    "reference_atol_kg": 1e-12,
+    "reference_max_step_s": 0.03125,
+    "mass_abs_tolerance_kg": 0.05,
+    "mass_rel_tolerance": 0.0001,
+    "pressure_abs_tolerance_kpa": 2,
+    "relief_event_time_tolerance_s": 0.125,
+    "closure_abs_kg": 1e-07,
+    "closure_rel": 1e-09,
+    "negative_mass_tolerance_kg": 1e-09,
+    "event_bisections": 32,
+    "maximum_events_per_frame": 64,
+    "event_provenance": "Prospective solver-rule amendment after preserved v1 discrete-latch failure; physics constants, domains and comparison tolerances unchanged."
+  },
+  "interface": {
+    "mode": "composition_mass_v1",
+    "material_schema": "g2-material-state-v1",
+    "composition_schema": "g2-composition-v1",
+    "stream_schema": "g2-material-stream-v1",
+    "input_phase": "post-U3 before U4/PID/scan",
+    "frame_s": 0.5,
+    "legacy_default": true
+  },
+  "measurements": {
+    "AI511": {
+      "location": "receiving product tank TK-503",
+      "component": "A",
+      "unit": "MASS %",
+      "range": [
+        0,
+        100
+      ],
+      "decimals": 3
+    },
+    "AI512": {
+      "location": "receiving product tank TK-503",
+      "component": "W",
+      "unit": "MASS %",
+      "range": [
+        0,
+        100
+      ],
+      "decimals": 3
+    },
+    "LI513": {
+      "location": "receiving product tank TK-503",
+      "quantity": "liquid volume / declared capacity",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "decimals": 2
+    }
+  },
+  "failure_policy": "Reject out-of-domain or nonfinite inputs and invalid material state without partial material mutation; shared Core integration must rollback the entire attempted scan. No material-only freeze, silent temperature clamp or invented quality.",
+  "sources": [
+    "RESOURCES-4.12",
+    "RESOURCES-7.37",
+    "RESOURCES-7.32",
+    "RESOURCES-7.48"
+  ]
+}

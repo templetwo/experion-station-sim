@@ -43,7 +43,7 @@
   }
   const fields=['historyLimit','P','L','V','events','msgs','hist','eid','alarmLog','t0','seed','vLag','phaseSet','tadShed','_lastPhase','trainingRecords','mocCount','_lastADrill'];
   function capture(c){
-    const data={schema_version:'peb.plant.v1',tick:c.rtTick,nextMessage:c.nextMessage,fields:{},alarms:c.alarmEngine.snapshot(),rand:c.rand.getState(),rand4:c.rand4.getState(),tasksDone:[...c.tasksDone],disabledAssets:[...c.disabledAssets],drill:c.drillData(),product:c.product,plausibility:c.plausibility,revisions:c.revisions,focus:c.focus,ce:c.ceRec?c.ceRec.seen():[],instructor:{}};
+    const data={schema_version:'peb.plant.v2',materialMode:c.materialMode,composition:c.composition,tick:c.rtTick,nextMessage:c.nextMessage,fields:{},alarms:c.alarmEngine.snapshot(),rand:c.rand.getState(),rand4:c.rand4.getState(),tasksDone:[...c.tasksDone],disabledAssets:[...c.disabledAssets],drill:c.drillData(),product:c.product,plausibility:c.plausibility,revisions:c.revisions,focus:c.focus,ce:c.ceRec?c.ceRec.seen():[],instructor:{}};
     for(const k of fields)if(c[k]!==undefined)data.fields[k]=c[k];
     for(const k of ['hidden','seed','seq','journal','replay','log','runResetSeq'])data.instructor[k]=c.instr[k];
     // Drill scoring reads these semantic fields; screen selections and dialogs are absent.
@@ -52,17 +52,20 @@
   }
   function fresh(options){
     const c=new Plant();c.instr=Instructor.create({seed:options.seed||20260829});c.nextMessage=1;
-    c.initSim(options.sim_time_ms||0);c.rtTick=0;c.revisions={};c.focus={view:'U1',tag:null};
-    c.product=Meter.create(c.P,options.mission);c.plausibility=Plausibility.create(c.P,options.plausibility);return c;
+    c.initSim(options.sim_time_ms||0,{materialMode:options.materialMode,mission:options.mission});c.rtTick=0;c.revisions={};c.focus={view:'U1',tag:null};
+    c.plausibility=Plausibility.create(c.P,options.plausibility);return c;
   }
   function create(options){return capture(fresh(options||{}));}
   function restore(checkpoint){
-    if(checkpoint.schema_version!=='peb.plant.v1')throw Error('checkpoint_version');
-    const s=clone(checkpoint),c=fresh({seed:s.fields.seed,sim_time_ms:s.fields.t0});
+    if(!checkpoint||!['peb.plant.v1','peb.plant.v2'].includes(checkpoint.schema_version))throw Error('checkpoint_version');
+    const s=clone(checkpoint);
+    if(!s.fields||!s.fields.P||!s.fields.L||!s.fields.V||!Number.isFinite(s.fields.P.t))throw Error('checkpoint_process_state');
+    const accounting=Instructor.validateAccounting(s,s.fields.P,s.schema_version==='peb.plant.v1',s.fields.L);
+    const c=fresh({seed:s.fields.seed,sim_time_ms:s.fields.t0,materialMode:accounting.materialMode,mission:accounting.product.mission});
     Object.assign(c,s.fields);c.rtTick=s.tick;c.nextMessage=s.nextMessage;
     c.alarmEngine.restore(s.alarms);c.rand=Models.createRand(c.seed);c.rand.setState(s.rand);c.rand4=Models.createRand((c.seed^0x5eed4)>>>0);c.rand4.setState(s.rand4);
     c.tasksDone=new Set(s.tasksDone);c.disabledAssets=new Set(s.disabledAssets);Object.assign(c.instr,s.instructor);
-    c.state.drill=c.drillFromData(s.drill);Object.assign(c.state,s.exercise);c.product=s.product;c.plausibility=s.plausibility||Plausibility.create(c.P);c.revisions=s.revisions;c.focus=s.focus;
+    c.state.drill=c.drillFromData(s.drill);Object.assign(c.state,s.exercise);Object.assign(c,accounting);c.plausibility=s.plausibility||Plausibility.create(c.P);c.revisions=s.revisions;c.focus=s.focus;
     c.ceRec.reset();for(const e of s.ce)c.ceRec.observe(e.src,e.cond,e.t);
     c._ctx=null;c._pidCtx=null;c.topo=Topology.build({L:c.L,V:c.V,assetTree:c.assetTree(),unitOf:t=>c.unitOf(t)});
     return c;
@@ -83,10 +86,8 @@
     }
     c.state.oper='NATIVE';c.state.sec='OPER';
     const targets=[...Object.keys(c.L),'SCM202'];const before=Object.fromEntries(targets.map(t=>[t,signature(c,t)]));
-    const ctx=c.modelCtx();let sample=null;ctx.productSample=x=>{sample=x;};
     c.step(dt);c.rtTick++;c.state.tk=c.rtTick;
     for(const t of targets)if(before[t]!==signature(c,t))c.revisions[t]=(c.revisions[t]||0)+1;
-    Meter.advance(c.product,c.P,c.L,sample,dt);
     return {state:capture(c),outcomes};
   }
   return {create,restore,capture,advance,stable,clone,fields};
