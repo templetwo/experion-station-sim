@@ -1,0 +1,4 @@
+# @artifact dev
+# Separate optional offline environment; no runtime imports.
+numpy==2.5.3
+scipy==1.18.1
