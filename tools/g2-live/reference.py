@@ -4,8 +4,8 @@
 
 The legacy Python geometry derivative is imported by path, never modified.
 Gas pressure is the declared synthetic compliance law, not a property model.
-DOP853 locates continuous relief crossings; live RK4 changes latch only at its
-substep boundaries. Comparison therefore includes pressure and event time.
+DOP853 locates continuous relief crossings; live RK4 localizes each crossing with the separately declared
+fixed-count bisection rule. Comparison therefore includes pressure and event time.
 """
 from pathlib import Path
 import argparse
@@ -24,7 +24,7 @@ ROOT=HERE.parents[1]
 spec=importlib.util.spec_from_file_location('frozen_geometry_model', HERE.parent/'g2-geometry/model.py')
 legacy=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(legacy)
-RECIPE=json.loads((HERE/'recipe.json').read_text())
+RECIPE=json.loads((HERE/'recipe-v2.json').read_text())
 B=RECIPE['geometry_basis']; G=RECIPE['gas']; CFG=RECIPE['integration']
 INVENTORIES=legacy.INVENTORIES+('gas',)
 TRANSFERS=[dict(t) for t in legacy.TRANSFERS]+[
@@ -147,12 +147,18 @@ def compare(candidate,reference):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--out',type=Path);args=parser.parse_args()
+    if args.out and args.out.resolve() in {(HERE/'receipts/discrete-latch-v1.json').resolve(),(HERE/'receipts/live-v1.json').resolve(),(HERE/'recipe.json').resolve(),(HERE/'recipe-v2.json').resolve()}: raise ValueError('output may not overwrite preserved evidence or recipes')
     if digest(HERE.parent/'g2-geometry/recipe.json')!=RECIPE['geometry_basis_sha256']: raise ValueError('frozen geometry recipe changed')
     if json.loads((HERE.parent/'g2-geometry/recipe.json').read_text())!=B: raise ValueError('embedded geometry basis differs')
-    specs=cases(); capture=json.loads(subprocess.check_output(['node',str(HERE/'capture-material.cjs')],input=json.dumps(specs).encode(),cwd=ROOT))
-    receipt=dict(_artifact='@artifact dev',schema='g2-live-reference-receipt-v1',recipe_id=RECIPE['id'],scope='new live material equations over declared probes; no chemical/property/energy validation',
-                 versions=dict(python=platform.python_version(),numpy=np.__version__,scipy=scipy.__version__),integration=CFG,
-                 source_sha256={str(path.relative_to(ROOT)):digest(path) for path in (HERE/'recipe.json',HERE/'reference.py',HERE/'capture-material.cjs',ROOT/'src/material-model.js',ROOT/'src/material-recipe.js',HERE.parent/'g2-geometry/model.py')},cases={})
+    source_paths=(HERE/'recipe-v2.json',HERE/'reference.py',HERE/'capture-material.cjs',ROOT/'src/material-model.js',ROOT/'src/material-recipe.js',HERE.parent/'g2-geometry/model.py')
+    source_hashes={str(path.relative_to(ROOT)):digest(path) for path in source_paths}
+    if json.loads((HERE/'recipe-v2.json').read_text())!=RECIPE:raise ValueError('recipe changed after import')
+    specs=cases(); captured=json.loads(subprocess.check_output(['node',str(HERE/'capture-material.cjs')],input=json.dumps(specs).encode(),cwd=ROOT))
+    metadata=captured['metadata'];capture=captured['cases']
+    if metadata['recipe_id']!=RECIPE['id'] or metadata['recipe_sha256']!=source_hashes['tools/g2-live/recipe-v2.json'] or metadata['model_sha256']!=source_hashes['src/material-model.js']:raise ValueError('candidate recipe/model attestation mismatch')
+    receipt=dict(_artifact='@artifact dev',schema='g2-live-reference-receipt-v2',recipe_id=RECIPE['id'],scope='new live material equations over declared probes; no chemical/property/energy validation',
+                 versions=dict(python=platform.python_version(),numpy=np.__version__,scipy=scipy.__version__,node=metadata['node_version']),integration=CFG,candidate_attestation=metadata,
+                 source_sha256=source_hashes,cases={})
     for name,segments in specs.items():
         print('Reference '+name,flush=True)
         ref=simulate(segments);tight=simulate(segments,100);js=capture[name]
@@ -160,6 +166,8 @@ def main():
         result=dict(segments=segments,observations=len(ref['times']),comparison=comparison,reference_refinement=refinement,closure=ledgers,candidate_events=js['events'],reference_events=ref['events'])
         result['passed']=comparison['passed'] and refinement['passed'] and all(x['passed'] for x in ledgers.values());receipt['cases'][name]=result
         print(name, result['passed'],comparison,flush=True)
+    if source_hashes!={str(path.relative_to(ROOT)):digest(path) for path in source_paths}:raise ValueError('computational source changed during evaluation')
+    receipt['source_hashes_verified_after_run']=True
     receipt['passed']=all(c['passed'] for c in receipt['cases'].values())
     output=json.dumps(receipt,indent=2,allow_nan=False)+'\n'
     if args.out: args.out.parent.mkdir(parents=True,exist_ok=True);args.out.write_text(output)

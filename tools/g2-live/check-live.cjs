@@ -7,12 +7,14 @@ const ROOT=path.resolve(__dirname,'../..'),{load}=require('../logic-harness');
 const M=require('../../src/material-model'),C=require('../../src/composition');
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 function provenance(){
+ const recipePath='tools/g2-live/recipe-v2.json',recipeBytes=fs.readFileSync(path.join(ROOT,recipePath));
+ if(JSON.stringify(JSON.parse(recipeBytes))!==JSON.stringify(M.RECIPE))throw Error('Generated recipe does not match the active declared recipe.');
  const files=['Experion Station Simulator.dc.html',...fs.readdirSync(path.join(ROOT,'src')).filter(x=>x.endsWith('.js')&&x!=='model-id.js').sort().map(x=>'src/'+x)];
  const hash=crypto.createHash('sha256');for(const file of files){hash.update(file);hash.update('\0');hash.update(fs.readFileSync(path.join(ROOT,file)));hash.update('\0');}
  const model=hash.digest('hex');if(model!==require('../../src/model-id'))throw Error('Run build-dist.py before collecting live evidence.');
- const dirty=cp.spawnSync('git',['diff','--quiet','HEAD','--',...files],{cwd:ROOT});if(dirty.status!==0)throw Error('Commit production sources before collecting the live receipt.');
+ const dirty=cp.spawnSync('git',['diff','--quiet','HEAD','--',...files,recipePath,'tools/g2-live/check-live.cjs','tools/logic-harness.js'],{cwd:ROOT});if(dirty.status!==0)throw Error('Commit production and campaign sources before collecting the live receipt.');
  return {revision:cp.execFileSync('git',['rev-parse','HEAD'],{cwd:ROOT,encoding:'utf8'}).trim(),model_id:model,
-   recipe_sha256:sha(fs.readFileSync(path.join(__dirname,'recipe.json'))),campaign_sha256:sha(fs.readFileSync(__filename)),harness_sha256:sha(fs.readFileSync(path.join(ROOT,'tools/logic-harness.js'))),node:process.version};
+   recipe_path:recipePath,recipe_id:M.RECIPE.id,recipe_sha256:sha(recipeBytes),campaign_sha256:sha(fs.readFileSync(__filename)),harness_sha256:sha(fs.readFileSync(path.join(ROOT,'tools/logic-harness.js'))),node:process.version};
 }
 function boot(){const {Component}=load();const c=new Component({});c.historyLimit=600;c.initSim(0,{materialMode:'composition_mass_v1'});return c;}
 function fact(c){const t=C.truthProjection(c.composition);return {time_s:c.P.t/1000,bed_temperature_c:c.P.h.bed,

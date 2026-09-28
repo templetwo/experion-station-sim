@@ -85,3 +85,13 @@ baseline; their old tools continue to reject changed source bytes.
 The work remains on a separate integration branch while PR #4 preserves the
 offline geometry evidence. Review and merging are separate from building this
 authorized increment.
+
+## Subsequent numerical amendment
+
+The initial implementation and its failed relief accuracy result were committed
+at `fea4916`. That same commit froze the [event-localization amendment](G2-LIVE-EVENT-AMENDMENT.md)
+and [v2 recipe](../../tools/g2-live/recipe-v2.json) before implementation of the
+repair. The original recipe above remains the initial declaration, not the
+active recipe. V2 changes the numerical event rule only; its new evidence must
+stand on its own. See [live integration evidence](../../tools/g2-live/README.md)
+for active and preserved receipts.

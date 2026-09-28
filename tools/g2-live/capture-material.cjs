@@ -1,7 +1,11 @@
 // @artifact dev
 'use strict';
-const fs=require('node:fs');
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const M=require('../../src/material-model');
+const recipePath=path.join(__dirname,'recipe-v2.json'),recipeBytes=fs.readFileSync(recipePath);
+assert.deepEqual(M.RECIPE,JSON.parse(recipeBytes));
+const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+const metadata={recipe_id:M.RECIPE.id,recipe_sha256:sha(recipeBytes),model_sha256:sha(fs.readFileSync(path.join(__dirname,'../../src/material-model.js'))),node_version:process.version};
 const cases=JSON.parse(fs.readFileSync(0,'utf8')),output={};
 for(const [name,segments] of Object.entries(cases)){
   let state=M.create();const times=[0],states=[state.vector],events=[];let closureMax=0;
@@ -16,4 +20,4 @@ for(const [name,segments] of Object.entries(cases)){
   }
   output[name]={times,states,events,maximum_closure_kg:closureMax};
 }
-process.stdout.write(JSON.stringify(output));
+process.stdout.write(JSON.stringify({metadata,cases:output}));

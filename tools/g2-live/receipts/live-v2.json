@@ -1,0 +1,779 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-live-reference-receipt-v2",
+  "recipe_id": "synthetic-live-compartments-v2",
+  "scope": "new live material equations over declared probes; no chemical/property/energy validation",
+  "versions": {
+    "python": "3.14.6",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "node": "v22.23.2"
+  },
+  "integration": {
+    "maximum_step_s": 0.0625,
+    "maximum_reaction_number": 0.1,
+    "step_rule": "N=max(ceil(dt/maximum_step_s),ceil(dt*(k+feed_kg_s/reference_holdup_kg)/maximum_reaction_number)); N equal deterministic RK4 outer substeps. Bracket a relief threshold crossing inside each substep, localize with exactly32 bisections using RK4 from the unchanged pre-event vector, advance all108 fields to the crossing, switch latch, integrate the remainder. No pressure or mass projection.",
+    "reference_rtol": 1e-11,
+    "reference_atol_kg": 1e-12,
+    "reference_max_step_s": 0.03125,
+    "mass_abs_tolerance_kg": 0.05,
+    "mass_rel_tolerance": 0.0001,
+    "pressure_abs_tolerance_kpa": 2,
+    "relief_event_time_tolerance_s": 0.125,
+    "closure_abs_kg": 1e-07,
+    "closure_rel": 1e-09,
+    "negative_mass_tolerance_kg": 1e-09,
+    "event_bisections": 32,
+    "maximum_events_per_frame": 64,
+    "event_provenance": "Prospective solver-rule amendment after preserved v1 discrete-latch failure; physics constants, domains and comparison tolerances unchanged."
+  },
+  "candidate_attestation": {
+    "recipe_id": "synthetic-live-compartments-v2",
+    "recipe_sha256": "4c49731f1051d2525ba0580fd6145cd2ea1fc26e59078da59cf7fa7784d3a163",
+    "model_sha256": "82f3470171d8c078575435eb957e79cb6890044c9a0d37836831d490d1c97c30",
+    "node_version": "v22.23.2"
+  },
+  "source_sha256": {
+    "tools/g2-live/recipe-v2.json": "4c49731f1051d2525ba0580fd6145cd2ea1fc26e59078da59cf7fa7784d3a163",
+    "tools/g2-live/reference.py": "38ab8160b936bc7dd0c7a89852a9b562c7f40ebfc9c475d1e925cca82f2866c0",
+    "tools/g2-live/capture-material.cjs": "427790bf89c085f86358a0de7503debc0a2d762e34d33f5474f308a95037fc11",
+    "src/material-model.js": "82f3470171d8c078575435eb957e79cb6890044c9a0d37836831d490d1c97c30",
+    "src/material-recipe.js": "fbb7db0570101668b0d4332bc48c605a93aaac05b25a5c421cd71b6e3d7dbd4b",
+    "tools/g2-geometry/model.py": "c93ea7e7e36b9301816a2f8d80ad7ce2c81a80514809502a06ca64bc376b3dcd"
+  },
+  "cases": {
+    "nominal": {
+      "segments": [
+        {
+          "duration_s": 60,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 121,
+      "comparison": {
+        "maximum_mass_error_kg": 7.421322152367793e-07,
+        "maximum_mass_tolerance_fraction": 1.4841992082619571e-05,
+        "maximum_pressure_error_kpa": 0.0,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 2.8991236494801953e-11,
+        "maximum_mass_tolerance_fraction": 5.797993785460694e-10,
+        "maximum_pressure_error_kpa": 0.0,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 9.777068044058979e-12,
+          "maximum_component_residual_kg": 7.844391802791506e-12,
+          "maximum_total_residual_kg": 1.0402345651527867e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.3642420526593924e-11,
+          "maximum_component_residual_kg": 1.864464138634503e-11,
+          "maximum_total_residual_kg": 2.5067947717616335e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.3642420526593924e-11,
+          "maximum_component_residual_kg": 1.77351466845721e-11,
+          "maximum_total_residual_kg": 2.518163455533795e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "closed-normal-vent-relief-cycles": {
+      "segments": [
+        {
+          "duration_s": 300,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0
+          }
+        }
+      ],
+      "observations": 601,
+      "comparison": {
+        "maximum_mass_error_kg": 7.421326699841302e-07,
+        "maximum_mass_tolerance_fraction": 1.4841992198216488e-05,
+        "maximum_pressure_error_kpa": 8.394437145398115e-09,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 5.700826477550436e-10,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 6.366462912410498e-11,
+        "maximum_mass_tolerance_fraction": 5.791495101581012e-10,
+        "maximum_pressure_error_kpa": 7.865708084864309e-12,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 5.684341886080801e-13,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 3.055902197957039e-10,
+          "maximum_component_residual_kg": 2.7466739993542433e-10,
+          "maximum_total_residual_kg": 5.325802021616255e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 4.260982677806169e-10,
+          "maximum_component_residual_kg": 3.794866643147543e-10,
+          "maximum_total_residual_kg": 2.674340748853865e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 4.247340257279575e-10,
+          "maximum_component_residual_kg": 3.837499207293149e-10,
+          "maximum_total_residual_kg": 3.3004710076056654e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [
+        {
+          "time_s": 69.44444444446708,
+          "open": true,
+          "pressure": 1100.000000000061
+        },
+        {
+          "time_s": 76.31985194579465,
+          "open": false,
+          "pressure": 999.9999999998707
+        },
+        {
+          "time_s": 99.4680000939843,
+          "open": true,
+          "pressure": 1100.0000000000302
+        },
+        {
+          "time_s": 106.34340759531187,
+          "open": false,
+          "pressure": 999.9999999998416
+        },
+        {
+          "time_s": 129.49155574350152,
+          "open": true,
+          "pressure": 1100.000000000001
+        },
+        {
+          "time_s": 136.3669632448291,
+          "open": false,
+          "pressure": 999.9999999998154
+        },
+        {
+          "time_s": 159.5151113930333,
+          "open": true,
+          "pressure": 1100.0000000000377
+        },
+        {
+          "time_s": 166.39051889436087,
+          "open": false,
+          "pressure": 999.9999999998483
+        },
+        {
+          "time_s": 189.53866704255051,
+          "open": true,
+          "pressure": 1100.0000000000077
+        },
+        {
+          "time_s": 196.4140745438781,
+          "open": false,
+          "pressure": 999.9999999998211
+        },
+        {
+          "time_s": 219.5622226920823,
+          "open": true,
+          "pressure": 1100.0000000000434
+        },
+        {
+          "time_s": 226.43763019340986,
+          "open": false,
+          "pressure": 999.9999999998539
+        },
+        {
+          "time_s": 249.5857783415995,
+          "open": true,
+          "pressure": 1100.0000000000134
+        },
+        {
+          "time_s": 256.4611858429271,
+          "open": false,
+          "pressure": 999.9999999998261
+        },
+        {
+          "time_s": 279.6093339911313,
+          "open": true,
+          "pressure": 1100.0000000000487
+        },
+        {
+          "time_s": 286.48474149245885,
+          "open": false,
+          "pressure": 999.999999999859
+        }
+      ],
+      "reference_events": [
+        {
+          "time_s": 69.44444444441939,
+          "open": true,
+          "pressure": 1100.0
+        },
+        {
+          "time_s": 76.31985194573375,
+          "open": false,
+          "pressure": 1000.0000000000001
+        },
+        {
+          "time_s": 99.46800009387003,
+          "open": true,
+          "pressure": 1100.0
+        },
+        {
+          "time_s": 106.34340759518443,
+          "open": false,
+          "pressure": 999.9999999999999
+        },
+        {
+          "time_s": 129.49155574332076,
+          "open": true,
+          "pressure": 1100.0
+        },
+        {
+          "time_s": 136.36696324463514,
+          "open": false,
+          "pressure": 1000.0000000000001
+        },
+        {
+          "time_s": 159.5151113927715,
+          "open": true,
+          "pressure": 1100.0000000000002
+        },
+        {
+          "time_s": 166.39051889408591,
+          "open": false,
+          "pressure": 999.9999999999999
+        },
+        {
+          "time_s": 189.53866704222224,
+          "open": true,
+          "pressure": 1100.0
+        },
+        {
+          "time_s": 196.41407454353663,
+          "open": false,
+          "pressure": 1000.0000000000001
+        },
+        {
+          "time_s": 219.56222269167299,
+          "open": true,
+          "pressure": 1100.0000000000002
+        },
+        {
+          "time_s": 226.4376301929874,
+          "open": false,
+          "pressure": 999.9999999999999
+        },
+        {
+          "time_s": 249.58577834112373,
+          "open": true,
+          "pressure": 1100.0
+        },
+        {
+          "time_s": 256.4611858424381,
+          "open": false,
+          "pressure": 1000.0000000000001
+        },
+        {
+          "time_s": 279.6093339905744,
+          "open": true,
+          "pressure": 1099.9999999999998
+        },
+        {
+          "time_s": 286.48474149188877,
+          "open": false,
+          "pressure": 999.9999999999999
+        }
+      ],
+      "passed": true
+    },
+    "zero-feed-vent-down": {
+      "segments": [
+        {
+          "duration_s": 300,
+          "input": {
+            "feed_kg_s": 0,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 1
+          }
+        }
+      ],
+      "observations": 601,
+      "comparison": {
+        "maximum_mass_error_kg": 9.514788734676927e-08,
+        "maximum_mass_tolerance_fraction": 1.8888884879521278e-06,
+        "maximum_pressure_error_kpa": 2.56899295836277e-06,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 9.611369478079723e-10,
+        "maximum_mass_tolerance_fraction": 1.908029206041672e-08,
+        "maximum_pressure_error_kpa": 2.5950253945694612e-08,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 2.000888343900442e-11,
+          "maximum_component_residual_kg": 1.864464138634503e-11,
+          "maximum_total_residual_kg": 2.03927985609198e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.9099388737231493e-11,
+          "maximum_component_residual_kg": 2.142996891052462e-11,
+          "maximum_total_residual_kg": 2.0053736449199278e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 2.1827872842550278e-11,
+          "maximum_component_residual_kg": 2.3163693185779266e-11,
+          "maximum_total_residual_kg": 2.156363976268949e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "crest-carry-starvation": {
+      "segments": [
+        {
+          "duration_s": 10,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0,
+            "product_valve": 0.5,
+            "weir_height_percent": 30,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        },
+        {
+          "duration_s": 20,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 1,
+            "product_valve": 0.5,
+            "weir_height_percent": 90,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        },
+        {
+          "duration_s": 20,
+          "input": {
+            "feed_kg_s": 0,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 1,
+            "product_valve": 1,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 101,
+      "comparison": {
+        "maximum_mass_error_kg": 0.012600180309163989,
+        "maximum_mass_tolerance_fraction": 0.08441793065746626,
+        "maximum_pressure_error_kpa": 9.592326932761353e-14,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 1.5962405086611398e-07,
+        "maximum_mass_tolerance_fraction": 1.0694562620849445e-06,
+        "maximum_pressure_error_kpa": 1.9184653865522705e-13,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 6.366462912410498e-12,
+          "maximum_component_residual_kg": 6.579625733138528e-12,
+          "maximum_total_residual_kg": 9.064332617825244e-12,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 3.353761712787673e-11,
+          "maximum_component_residual_kg": 2.992806003021542e-11,
+          "maximum_total_residual_kg": 2.6898594462920755e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 3.399236447876319e-11,
+          "maximum_component_residual_kg": 2.3135271476348862e-11,
+          "maximum_total_residual_kg": 2.6606050695932026e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "maximum-temperature-activity-feed": {
+      "segments": [
+        {
+          "duration_s": 15,
+          "input": {
+            "feed_kg_s": 20,
+            "temperature_k": 2200,
+            "activity": 2.1,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 31,
+      "comparison": {
+        "maximum_mass_error_kg": 1.0486473911441863e-09,
+        "maximum_mass_tolerance_fraction": 2.0966542695391452e-08,
+        "maximum_pressure_error_kpa": 6.52278231427772e-12,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 1.546140993013978e-11,
+        "maximum_mass_tolerance_fraction": 6.51581966902431e-11,
+        "maximum_pressure_error_kpa": 1.3429257705865894e-12,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 3.61524143954739e-11,
+          "maximum_component_residual_kg": 3.097966327914037e-11,
+          "maximum_total_residual_kg": 2.708588908717502e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.1823431123048067e-11,
+          "maximum_component_residual_kg": 7.673861546209082e-12,
+          "maximum_total_residual_kg": 4.779288076406374e-12,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 8.640199666842818e-12,
+          "maximum_component_residual_kg": 1.3301360013429075e-11,
+          "maximum_total_residual_kg": 1.0360601265801961e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "minimum-temperature-zero-activity": {
+      "segments": [
+        {
+          "duration_s": 30,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 250,
+            "activity": 0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 61,
+      "comparison": {
+        "maximum_mass_error_kg": 7.421163612728043e-07,
+        "maximum_mass_tolerance_fraction": 1.4841678157360512e-05,
+        "maximum_pressure_error_kpa": 9.592326932761353e-13,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 2.955857780762017e-11,
+        "maximum_mass_tolerance_fraction": 5.845149099778234e-10,
+        "maximum_pressure_error_kpa": 1.7266188478970435e-12,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 6.821210263296962e-12,
+          "maximum_component_residual_kg": 1.3983481039758772e-11,
+          "maximum_total_residual_kg": 1.3482548411047901e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 7.73070496506989e-12,
+          "maximum_component_residual_kg": 1.0118128557223827e-11,
+          "maximum_total_residual_kg": 9.49818002027314e-12,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.546140993013978e-11,
+          "maximum_component_residual_kg": 1.432454155292362e-11,
+          "maximum_total_residual_kg": 9.297451697420911e-12,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "heater-loss-restoration": {
+      "segments": [
+        {
+          "duration_s": 30,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        },
+        {
+          "duration_s": 90,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 450,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        },
+        {
+          "duration_s": 60,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 361,
+      "comparison": {
+        "maximum_mass_error_kg": 7.421322152367793e-07,
+        "maximum_mass_tolerance_fraction": 1.4841992082619571e-05,
+        "maximum_pressure_error_kpa": 7.127098911041685e-11,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 3.637978807091713e-11,
+        "maximum_mass_tolerance_fraction": 5.797993785460694e-10,
+        "maximum_pressure_error_kpa": 3.645084234449314e-12,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 8.412825991399586e-11,
+          "maximum_component_residual_kg": 8.702727427589707e-11,
+          "maximum_total_residual_kg": 1.1664269550237805e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.8349055608268827e-10,
+          "maximum_component_residual_kg": 1.8599166651256382e-10,
+          "maximum_total_residual_kg": 2.156603784442268e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.8417267710901797e-10,
+          "maximum_component_residual_kg": 1.8059154172078706e-10,
+          "maximum_total_residual_kg": 1.5984014112291334e-10,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    },
+    "blocked-and-diverted-product": {
+      "segments": [
+        {
+          "duration_s": 30,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 0.0,
+            "gas_valve": 0.4
+          }
+        },
+        {
+          "duration_s": 30,
+          "input": {
+            "feed_kg_s": 8.88888888888889,
+            "temperature_k": 650.0,
+            "activity": 1.0,
+            "water_valve": 0.45,
+            "product_valve": 0.5,
+            "weir_height_percent": 55.0,
+            "divert_fraction": 1,
+            "gas_valve": 0.4
+          }
+        }
+      ],
+      "observations": 121,
+      "comparison": {
+        "maximum_mass_error_kg": 7.421326699841302e-07,
+        "maximum_mass_tolerance_fraction": 1.4841990025188714e-05,
+        "maximum_pressure_error_kpa": 0.0,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "reference_refinement": {
+        "maximum_mass_error_kg": 3.0468072509393096e-11,
+        "maximum_mass_tolerance_fraction": 5.809090673277025e-10,
+        "maximum_pressure_error_kpa": 0.0,
+        "event_sequence_matches": true,
+        "maximum_event_time_error_s": 0,
+        "passed": true
+      },
+      "closure": {
+        "candidate": {
+          "passed": true,
+          "maximum_local_residual_kg": 9.777068044058979e-12,
+          "maximum_component_residual_kg": 8.171241461241152e-12,
+          "maximum_total_residual_kg": 8.04489808103881e-12,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.3642420526593924e-11,
+          "maximum_component_residual_kg": 1.5205614545266144e-11,
+          "maximum_total_residual_kg": 2.8453683853513212e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        },
+        "refined_reference": {
+          "passed": true,
+          "maximum_local_residual_kg": 1.1198153515579179e-11,
+          "maximum_component_residual_kg": 1.5859313862165436e-11,
+          "maximum_total_residual_kg": 1.4150458582662395e-11,
+          "nonnegative": true,
+          "external_bound_passed": true
+        }
+      },
+      "candidate_events": [],
+      "reference_events": [],
+      "passed": true
+    }
+  },
+  "source_hashes_verified_after_run": true,
+  "passed": true
+}

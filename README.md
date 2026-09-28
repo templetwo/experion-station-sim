@@ -31,7 +31,10 @@ separate.
 This opt-in mode has prescribed native temperature and synthetic kinetics and
 gas compliance. It does not add validated chemistry, reaction-energy coupling,
 feed hydraulics or shared cooling. See the [integration contract](docs/dev/G2-LIVE-INTEGRATION-CONTRACT.md)
-and [declared recipe](tools/g2-live/recipe.json). Existing snapshots restore
+and [active v2 recipe](tools/g2-live/recipe-v2.json). The
+[event amendment](docs/dev/G2-LIVE-EVENT-AMENDMENT.md) preserves the first
+candidate's failed numerical check and declares the relief timing repair.
+Existing legacy snapshots restore
 legacy mode; only new composition snapshots preserve component inventories.
 
 ## Run it

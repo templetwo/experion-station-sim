@@ -115,18 +115,36 @@
       AI512:record(o.held?rounded(o.held.w*100,3):null,o.held!==null,o.sourceTimeMs,o.publishedTimeMs,t),
       LI513:record(level,true,t,t,t,level>100?'HIGH':level<0?'LOW':'NONE')};
   }
+  function explicitSample(p){
+    return p&&typeof p.quality==='string'&&['GOOD','UNCERTAIN','BAD','STALE','UNKNOWN','ERROR'].includes(p.quality.toUpperCase())&&
+      typeof p.badPv==='boolean'&&Number.isFinite(p.sourceTimeMs)&&p.sourceTimeMs>=0&&Number.isFinite(p.publishedTimeMs)&&p.publishedTimeMs>=0&&
+      Number.isInteger(p.statusCode)&&p.statusCode>=0&&p.statusCode<=0xFFFFFFFF;
+  }
   function visibleRecord(tag,own,published,nowMs){
-    const p=published===undefined?{...own,tag}:published&&published[tag];
-    if(!p)return {...own,pv:null,badPv:true,quality:'BAD',reason:'NO_VALID_SAMPLE',statusCode:0x80000000,statusName:'Bad'};
+    const p=published===undefined?{...own,tag}:published&&published[tag],complete=explicitSample(p);
     const m=Measurement.observe({...p,tag});
-    const source=Number.isFinite(p.sourceTimeMs)?p.sourceTimeMs:own.sourceTimeMs;
-    const publication=Number.isFinite(p.publishedTimeMs)?p.publishedTimeMs:own.publishedTimeMs;
-    const age=nowMs-publication;
-    const expired=age<0||age>PERIOD_MS||source>publication;
+    const source=p&&Number.isFinite(p.sourceTimeMs)?p.sourceTimeMs:null;
+    const publication=p&&Number.isFinite(p.publishedTimeMs)?p.publishedTimeMs:null;
+    const age=publication===null?null:nowMs-publication;
+    const expired=!complete||age<0||age>PERIOD_MS||source>publication||(own.badPv&&!m.badPv);
     return {pv:expired?null:m.pv,badPv:expired||m.badPv,quality:expired?'BAD':m.quality,
       reason:expired?'SAMPLE_UNAVAILABLE':m.quality==='GOOD'?null:(p.reason||m.statusName||'NO_VALID_SAMPLE'),
       statusCode:expired?0x80000000:m.statusCode,statusName:expired?'Bad':m.statusName,limit:expired?'NONE':m.limit,
-      sourceTimeMs:source,publishedTimeMs:publication,ageMs:Math.max(0,nowMs-source),publicationAgeMs:Math.max(0,age)};
+      sourceTimeMs:source,publishedTimeMs:publication,ageMs:source===null?null:Math.max(0,nowMs-source),publicationAgeMs:age===null?null:Math.max(0,age)};
+  }
+  // Restore may retain a manual/native quality downgrade, never a new value,
+  // fabricated sample clock or upgrade over the stateful analyzer's validity.
+  function validateMeasurements(state,points){
+    const own=measurements(state),severity={GOOD:0,UNCERTAIN:1,BAD:2};
+    for(const tag of TAGS){
+      const p=points&&points[tag],expected=own[tag];
+      if(!explicitSample(p))fail('published_sample_metadata');
+      const actual=Measurement.observe({...p,tag});
+      if(p.sourceTimeMs!==expected.sourceTimeMs||p.publishedTimeMs!==expected.publishedTimeMs||p.ageMs!==expected.ageMs||p.publicationAgeMs!==expected.publicationAgeMs)fail('published_sample_clock');
+      if(severity[actual.quality]<severity[expected.quality]||
+        (p.pv!==expected.pv&&!(actual.quality==='BAD'&&p.pv===null)))fail('published_sample_value');
+    }
+    return points;
   }
   function observed(state,published){
     const own=measurements(state),result={};
@@ -168,5 +186,5 @@
     return {formula_version:MODE,material:Material.truth(state.material),quality:quality(state.material),
       dispatch:dispatchProjection(state.accounting.truth,state.accounting,false)};
   }
-  return {create,advance,validateState,validate:validateState,measurements,publicProjection,truthProjection,resetAccounting};
+  return {create,advance,validateState,validate:validateState,validateMeasurements,measurements,publicProjection,truthProjection,resetAccounting};
 });

@@ -103,8 +103,8 @@
     if(s.schema!==RECIPE.interface.stream_schema||s.startMs!==interval.startMs||s.endMs!==interval.endMs)throw Error('invalid stream interval');
     for(const phase of ['water','oil','gas']){vector4(s[phase]);if(s[phase].some((v,i)=>v!==interval.transfers['reactor_'+phase][i]))throw Error('stream transfer mismatch');}
     if(!Array.isArray(interval.reliefEvents))throw Error('invalid relief events');
-    let prev=interval.startMs;
-    for(const event of interval.reliefEvents){exactKeys(event,['timeMs','open','pressure'],'relief event');finite(event.timeMs,'EVENT');finite(event.pressure,'PRESSURE');if(event.timeMs<prev||event.timeMs>timeMs||event.pressure<0||typeof event.open!=='boolean')throw Error('invalid relief event');prev=event.timeMs;}
+    let prev=interval.startMs,previousOpen=null;
+    for(const event of interval.reliefEvents){exactKeys(event,['timeMs','open','pressure'],'relief event');finite(event.timeMs,'EVENT');finite(event.pressure,'PRESSURE');if(event.timeMs<prev||event.timeMs>timeMs||event.pressure<0||typeof event.open!=='boolean')throw Error('invalid relief event');if(previousOpen===event.open||(event.open?event.pressure<G.lift_kpa:event.pressure>=G.reseat_kpa))throw Error('inconsistent relief event');prev=event.timeMs;previousOpen=event.open;}
   }
   function validateState(state){
     exactKeys(state,['schema','recipeId','timeMs','vector','reliefOpen','lastInterval'],'material state');
@@ -112,7 +112,9 @@
     finite(state.timeMs,'TIME');if(state.timeMs<0||typeof state.reliefOpen!=='boolean')throw Error('invalid material time or latch');
     checkVector(state.vector);validateInterval(state.lastInterval,state.timeMs);
     if(state.lastInterval){for(const t of TRANSFERS)for(let c=0;c<4;c++)if(state.lastInterval.transfers[t.name][c]>state.vector[t.offset+c]+N.negative_mass_tolerance_kg)throw Error('interval exceeds cumulative transfer');
-      const g=state.lastInterval.generation;if(g[0]>N.negative_mass_tolerance_kg||g.slice(1).some(v=>v<-N.negative_mass_tolerance_kg)||g.slice(1).some((v,i)=>Math.abs(v+B.kinetics.mass_yields[i+1]*g[0])>N.closure_abs_kg+N.closure_rel*Math.max(1,Math.abs(g[0]))))throw Error('invalid interval generation');
+      const g=state.lastInterval.generation;if(g.some((v,c)=>Math.abs(v)>Math.abs(state.vector[28+c])+N.negative_mass_tolerance_kg))throw Error('interval exceeds cumulative generation');
+      const tail=state.lastInterval.reliefEvents.at(-1);if(tail&&tail.open!==state.reliefOpen)throw Error('relief event tail does not match latch');
+      if(g[0]>N.negative_mass_tolerance_kg||g.slice(1).some(v=>v<-N.negative_mass_tolerance_kg)||g.slice(1).some((v,i)=>Math.abs(v+B.kinetics.mass_yields[i+1]*g[0])>N.closure_abs_kg+N.closure_rel*Math.max(1,Math.abs(g[0]))))throw Error('invalid interval generation');
     }else if(state.vector.some((v,i)=>v!==(i<28?INITIAL[i]:0)))throw Error('missing material interval');
     if(!closureVector(state.vector).passed)throw Error('MATERIAL_CLOSURE_FAILED');
     return state;
@@ -124,11 +126,34 @@
     const count=Math.max(Math.ceil(dtSeconds/N.maximum_step_s),Math.ceil(dtSeconds*(k+input.feed_kg_s/B.reactor.reference_holdup_kg)/N.maximum_reaction_number));
     if(!Number.isSafeInteger(count)||count<1)throw Error('invalid subdivision count');
     const h=dtSeconds/count;let y=state.vector.slice(),open=state.reliefOpen;const events=[];
-    function latch(timeMs){const pressure=y[27]/G.compliance_kg_per_kpa;let next=open;if(!open&&pressure>=G.lift_kpa)next=true;else if(open&&pressure<G.reseat_kpa)next=false;if(next!==open){open=next;events.push({timeMs,open,pressure});}}
+    function crossed(vector){const pressure=vector[27]/G.compliance_kg_per_kpa;return open?pressure<G.reseat_kpa:pressure>=G.lift_kpa;}
+    function latch(timeMs){
+      if(!crossed(y))return;
+      if(events.length>=N.maximum_events_per_frame)throw Error('MATERIAL_EVENT_LIMIT');
+      open=!open;events.push({timeMs,open,pressure:y[27]/G.compliance_kg_per_kpa});
+    }
+    function rk4(start,step){
+      const a=derivative(start,input,open,k),b=derivative(start.map((v,i)=>v+step*a[i]/2),input,open,k),c=derivative(start.map((v,i)=>v+step*b[i]/2),input,open,k),d=derivative(start.map((v,i)=>v+step*c[i]),input,open,k);
+      return checkVector(start.map((v,i)=>v+step/6*(a[i]+2*b[i]+2*c[i]+d[i])));
+    }
     latch(state.timeMs);
     for(let j=0;j<count;j++){
-      const a=derivative(y,input,open,k),b=derivative(y.map((v,i)=>v+h*a[i]/2),input,open,k),c=derivative(y.map((v,i)=>v+h*b[i]/2),input,open,k),d=derivative(y.map((v,i)=>v+h*c[i]),input,open,k);
-      y=y.map((v,i)=>v+h/6*(a[i]+2*b[i]+2*c[i]+d[i]));checkVector(y);latch(j===count-1?endMs:state.timeMs+(j+1)*h*1000);
+      let elapsed=0;
+      while(elapsed<h){
+        const remaining=h-elapsed,trial=rk4(y,remaining);
+        if(!crossed(trial)){y=trial;elapsed=h;continue;}
+        // Each trial advances every field from the same pre-event vector. The
+        // high endpoint always satisfies the strict reseat/non-strict lift.
+        let low=0,high=remaining;
+        for(let iteration=0;iteration<N.event_bisections;iteration++){
+          const middle=(low+high)/2;
+          if(crossed(rk4(y,middle)))high=middle;else low=middle;
+        }
+        if(!(high>0)||elapsed+high===elapsed)throw Error('MATERIAL_EVENT_NO_PROGRESS');
+        y=rk4(y,high);elapsed+=high;
+        const timeMs=elapsed===h?(j===count-1?endMs:state.timeMs+(j+1)*h*1000):state.timeMs+(j*h+elapsed)*1000;
+        latch(timeMs);
+      }
     }
     const transfers=Object.fromEntries(TRANSFERS.map(t=>[t.name,y.slice(t.offset,t.offset+4).map((v,i)=>v-state.vector[t.offset+i])])),generation=y.slice(28,32).map((v,i)=>v-state.vector[28+i]);
     const lastInterval={startMs:state.timeMs,endMs,transfers,generation,stream:{schema:RECIPE.interface.stream_schema,startMs:state.timeMs,endMs,water:transfers.reactor_water.slice(),oil:transfers.reactor_oil.slice(),gas:transfers.reactor_gas.slice()},reliefEvents:events};

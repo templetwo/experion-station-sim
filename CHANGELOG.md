@@ -12,6 +12,11 @@ Liquid levels derive from component masses. Normal vent PV505 and parallel
 PSV-502 discharge have separate counters; the 1100/1000 kPa relief hysteresis is
 retained with explicitly synthetic constant gas compliance. Native temperature
 prescribes the reaction rate; this is not a coupled energy or property model.
+The graphic shows the normal overhead outlet and a separate relief path to
+flare. The first live numerical candidate failed repeated relief-cycle timing;
+its exact source and failed receipt remain archived. A prospective v2 solver
+amendment localizes relief events without changing physical parameters or
+acceptance margins.
 
 The receiving-tank indicators add unconverted A, water and level. Product truth
 and truth-qualified external dispatch remain instructor/evaluator-only, separate

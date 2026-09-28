@@ -132,3 +132,47 @@ test('subject and coach preserve analyzer precision, mass units and both ages wi
  assert.equal(cp.pv,l.pv);assert.equal(cp.unit,'MASS %');assert.equal(cp.age_sim_ms,18500);assert.equal(cp.publication_age_sim_ms,3500);
  assert.equal(JSON.stringify(c).includes('inventories'),false);
 });
+
+test('missing publication metadata cannot borrow observer timestamps or source quality',()=>{
+ const A=controlled(()=>[100,900,0,0]),s=run(A,A.create(),30);
+ for(const key of ['sourceTimeMs','publishedTimeMs','quality','badPv','statusCode']){
+  const points=copy(A.measurements(s));delete points.AI511[key];
+  const pub=A.publicProjection(s,points).measurements.AI511;
+  assert.equal(pub.pv,null,key);assert.equal(pub.quality,'BAD',key);
+  const next=A.advance(s,INPUT,.5,points);assert.equal(next.accounting.coveredMs,0,key);
+  assert.equal(next.accounting.observed.unknown,next.accounting.observed.gross,key);
+ }
+ const initial=A.create(),points=copy(A.measurements(initial));
+ for(const tag of ['AI511','AI512'])Object.assign(points[tag],{pv:0,badPv:false,quality:'GOOD',statusCode:0});
+ assert.equal(A.publicProjection(initial,points).measurements.AI511.quality,'BAD');
+ assert.equal(A.advance(initial,INPUT,.5,points).accounting.observed.qualified,0);
+});
+
+test('restore rejects invented startup samples, altered held values and clocks in both entrypoints',()=>{
+ const K=require('../src/plant-kernel'),I=require('../src/instructor');
+ const initial=K.create({materialMode:'composition_mass_v1'});
+ for(const mutate of [p=>{delete p.sourceTimeMs;},p=>{delete p.publishedTimeMs;},p=>{delete p.quality;},
+  p=>Object.assign(p,{pv:0,badPv:false,quality:'GOOD',statusCode:0})]){
+  const forged=copy(initial);mutate(forged.fields.L.AI511);const before=copy(forged);
+  assert.throws(()=>K.restore(forged),/published_sample/);assert.deepEqual(forged,before);
+ }
+ const c=K.restore(initial);for(let i=0;i<37;i++)c.step(.5);
+ for(const mutate of [p=>{p.pv=0;},p=>{p.sourceTimeMs++;},p=>{p.ageMs=0;},p=>{delete p.publicationAgeMs;}]){
+  const snapshot=copy(c.snapshotData('corrupt-publication'));mutate(snapshot.L.AI511);
+  assert.throws(()=>I.validateSnapshot(snapshot),/published_sample/);
+ }
+});
+
+test('truthful manual quality downgrades and badPv-only injection survive restore and exclude coverage',()=>{
+ const K=require('../src/plant-kernel'),I=require('../src/instructor');
+ let s=K.create({materialMode:'composition_mass_v1'});for(let i=0;i<37;i++)s=K.advance(s,.5,[]).state;
+ for(const mutate of [p=>{p.badPv=true;},p=>{p.quality='UNCERTAIN';},p=>{p.quality='BAD';p.pv=null;},
+  p=>{p.statusCode=Measurement.STATUS.Bad_SensorFailure;p.quality='BAD';p.badPv=true;}]){
+  const candidate=copy(s);mutate(candidate.fields.L.AI511);const c=K.restore(candidate);
+  I.validateSnapshot(copy(c.snapshotData('quality-downgrade')));
+  const next=K.advance(candidate,.5,[]).state;
+  assert.equal(next.composition.accounting.coveredMs,s.composition.accounting.coveredMs);
+  assert.ok(next.composition.accounting.observed.unknown>s.composition.accounting.observed.unknown);
+  assert.ok(next.composition.accounting.truth.qualified>s.composition.accounting.truth.qualified);
+ }
+});

@@ -106,6 +106,7 @@
       if (!object(L) || ['AI511', 'AI512', 'LI513'].some(function (tag) {
         return !object(L[tag]) || L[tag].tag !== tag || L[tag].kind !== 'ind' || L[tag].eu !== (tag === 'LI513' ? '%' : 'MASS %');
       })) throw Error('composition_points');
+      Composition.validateMeasurements(src.composition,L);
       composition = clone(src.composition);
     } else if (L && ['AI511', 'AI512', 'LI513'].some(function (tag) { return Object.prototype.hasOwnProperty.call(L, tag); })) {
       throw Error('legacy_composition_points');

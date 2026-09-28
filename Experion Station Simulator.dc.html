@@ -539,8 +539,12 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <path d="M1196,620 H1300" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
   <polygon points="1294,615 1304,620 1294,625" fill="#4a4a4a"></polygon>
   <text x="1310" y="624" style="font:700 10px Tahoma;fill:#4a4a4a">PRODUCT</text>
-  <path d="M1060,240 V220 H1120" style="stroke:#55524c;stroke-width:1.5;fill:none;stroke-dasharray:3,3"></path>
-  <text x="1124" y="224" style="font:700 10px Tahoma;fill:#55524c">PSV-502 · 1100 KPA</text>
+  <path d="M1060,240 V160 H1174 M1206,160 H1310" style="stroke:#4a4a4a;stroke-width:2.5;fill:none"></path>
+  <polygon points="1174,149 1174,171 1190,160 1206,149 1206,171 1190,160" fill="{{ gfx4.reliefFill }}" stroke="#3a3a3a" stroke-width="1.6"></polygon>
+  <path d="M1190,149 V144 L1184,141 L1196,137 L1184,133 L1196,129 H1184" style="stroke:#3a3a3a;stroke-width:1.5;fill:none"></path>
+  <polygon points="1304,155 1314,160 1304,165" fill="#4a4a4a"></polygon>
+  <text x="1116" y="188" style="font:700 10px Tahoma;fill:#55524c">PSV-502 · 1100 KPA</text>
+  <text x="1320" y="164" style="font:700 10px Tahoma;fill:#4a4a4a">FLARE</text>
   <text x="560" y="120" style="font:700 15px Tahoma;fill:#CC0000;opacity:{{ gfx4.psvOp }}">{{ gfx4.psvT }}</text>
   <sc-for list="{{ vl4 }}" as="v" hint-placeholder-count="4">
     <g transform="translate({{ v.x }},{{ v.y }}) rotate({{ v.rot }})">
@@ -3933,6 +3937,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       oY:ypx(h1).toFixed(1), oH:Math.max(0,ypx(s4.hw)-ypx(h1)).toFixed(1),
       o2Y:ypx(s4.h2).toFixed(1), o2H:(560-ypx(s4.h2)).toFixed(1),
       overOp:s4.qover>0.05?Math.min(1,0.3+s4.qover/20):0,
+      reliefFill:P.trips.psv502?'#4a4a4a':'#FFFFFF',
       psvOp:P.trips.psv502?(blink?1:0.25):0, psvT:P.trips.psv502?'▲ PSV-502 LIFTED — VENTING TO FLARE':''};
     const gfx3={tripOp:fuelOff?(blink?1:0.25):0, flameOp:fuelOff?0.08:(blink?0.95:0.6), bedGlow:Math.max(0,Math.min(0.4,(P.h.bed-380)/250)),
       tripT:P.trips.bed?'▲ FUEL TRIP — BED OVERTEMP':(P.trips.skin?'▲ FUEL TRIP — TUBE SKIN OVERTEMP':'')};
