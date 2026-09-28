@@ -1,10 +1,11 @@
 <!-- @artifact dev -->
 # G2 next increment: inventory ownership and integration design
 
-2026-09-28. **Design and candidate recipe; no geometry kernel or runtime implementation yet.**
+2026-09-28. **Offline geometry reference implemented; live integration remains unbuilt.**
 The offline prototype was reviewed at `368c159597104ebdfb6cd18700587a47d529da67`
 and merged through [PR #3](https://github.com/templetwo/experion-station-sim/pull/3)
-as `0d308ace8799e34f14284ae6d688bb6b89b14df5`. This draft starts from that merge.
+as `0d308ace8799e34f14284ae6d688bb6b89b14df5`. This design starts from that merge;
+the design and candidate recipe were committed as `0b62c34` before implementation.
 Runtime file/line receipts below apply to both commits: their application, `src/`
 and standalone bytes are unchanged from `bfed001`.
 
@@ -65,9 +66,8 @@ conversion benefit has not been demonstrated.
 
 Preserve `tools/g2/` and its receipt as the v1 record. The new development
 location is **`tools/g2-geometry/`**, with candidate recipe schema
-**`g2-geometry-v1`**. Only the recipe and offline dependency pins are present at
-this checkpoint; equations, capture adapter, tests and a new receipt remain to
-be built. A new result must name its own recipe and source hashes. Do not
+**`g2-geometry-v1`**. The new equations, capture adapter, tests and receipt are
+separate from the first prototype. Each result names its recipe and source hashes. Do not
 overwrite the old receipt, its expected timings or native pin.
 
 ## Candidate recipe recorded before implementation
@@ -100,7 +100,31 @@ validated physical properties or a live-promotion approval:
 The isolated SciPy/NumPy pins are recorded in
 [requirements.txt](../../tools/g2-geometry/requirements.txt). There is no new
 package in the standalone. The user requested this groundwork be committed
-before further implementation; the next change must build on this checkpoint.
+before further implementation; this increment builds on that checkpoint.
+
+## Offline geometry result and numerical limit
+
+The new [reference](../../tools/g2-geometry/README.md) integrates six component
+inventories, signed reaction generation and seventeen transfer counters. Closure
+includes local compartment balances and external discharge bounds. Overflow
+has an explicit reject destination; material truth and analyzer coverage are
+reported separately. The native capture preserves both pre-scan and post-U3
+inputs without feeding anything back into the live simulator.
+
+The [original geometry receipt](../../tools/g2-geometry/receipts/geometry-v1.json)
+retains a failed candidate: RK4 at 0.5 s and 0.25 s exceed the precommitted
+numerical tolerance in the abrupt crest/carry/starvation case. The 0.5 s maximum
+inventory difference is about 1.142 kg; the finer candidate still differs by
+about 0.353 kg. All component/total closure and consequence checks pass, and
+the other eight assessed cases pass their numerical comparisons. This does
+not approve 0.5 s as the live composition integration step.
+
+The native activity-step reaches about 808.3 K, outside the frozen 800 K
+envelope. Both scan-phase replays are explicitly not assessed. Rejecting them
+is evidence about input validity, not a composition result. A separately
+declared [refinement plan](../../tools/g2-geometry/refinement-plan.json) tests
+0.125 s and 0.0625 s with the same equations, cases and error margins. It is
+exploratory numerical work, not an opening of live multi-rate stepping.
 
 ## MOA review: separate bindings and separate experiments
 
@@ -342,7 +366,8 @@ API. RESOURCES-4.12 registers the separator arrangement/weir basis. These source
 do not supply the new calibration or missing gas constitutive model. New source
 claims must be registered and read before use, under the existing discipline.
 
-This checkpoint contains the design, a candidate numerical recipe and offline
-dependency pins. It adds no geometry equations, runtime component state, live
-boundary, analyzer, meter, checkpoint, golden or external evaluator. Numerical
-acceptance of the new recipe remains pending execution of the planned tests.
+The original `0b62c34` checkpoint contained the design, candidate recipe and
+offline dependency pins. This increment adds the separate reference and its
+evidence. It adds no runtime component state, live boundary, analyzer, meter,
+checkpoint, golden or external evaluator. Live promotion remains the explicit
+interface/ownership decision above, after reviewing the numerical limits.

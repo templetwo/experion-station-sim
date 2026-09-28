@@ -1,0 +1,14 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-geometry-refinement-plan-v1",
+  "basis_recipe_sha256": "9edc18952484d561921832b1c819fa3090035a5ad9bff47f81e70c2fd990b6e6",
+  "basis_receipt": "receipts/geometry-v1.json",
+  "motivation": "The initial campaign found that 0.5 s and 0.25 s RK4 exceed the unchanged recipe tolerance in the crest/carry/starvation case. Preserve that failed candidate result; test the next two binary step refinements without changing equations, scenarios or acceptance margins.",
+  "status": "exploratory numerical supplement; not a new live stepping decision",
+  "steps_s": [0.125, 0.0625],
+  "cases": ["heat-loss-and-recovery", "reduced-feed", "zero-feed", "blocked-product-outlet", "crest-carry-and-starvation", "diversion", "activity-loss", "native-heater-loss-pre", "native-heater-loss-post_u3"],
+  "observation_grid_s": 0.5,
+  "reference": {"method": "DOP853", "rtol_divisor": 100, "atol_divisor": 100, "max_step": "unchanged recipe reference_max_step_s"},
+  "acceptance": "For every case and each tested step, compare all 96 state fields against the refined reference on the common 0.5 s observation grid using the original absolute/relative limits; require closure on every computed state, no error findings, and the original consequence checks. Report each step separately. Do not select or authorize a live integration step.",
+  "excluded": "Native activity-step remains outside the 800 K envelope and is not reassessed by changing time step. No physics, density, kinetic, quality, capacity, envelope or error-margin changes."
+}
