@@ -35,9 +35,9 @@
 //   speeds()                     [1, 2, 5, 10]
 //   RING_MS, RING_SPAN_MS, SLOTS, JOURNAL_CAP, DEFAULT_SEED
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else (root.ESS = root.ESS || {}).Instructor = factory();
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./product-meter'), require('./composition'), require('./material-model'));
+  else (root.ESS = root.ESS || {}).Instructor = factory(root.ESS.ProductMeter, root.ESS.Composition, root.ESS.MaterialModel);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Meter, Composition, Material) {
   'use strict';
 
   var RING_MS = 30000;            // backtrack spacing, sim ms
@@ -84,7 +84,63 @@
   // V3-PLAN §4 snapshot v3. New records carry schemaVersion. v2 records in the wild
   // carry NO version marker at all; restore MUST key on absence of the field, never
   // on `schemaVersion < 3` (undefined < 3 is false, which would skip migration).
-  var SCHEMA_VERSION = '3.0';
+  var SCHEMA_VERSION = '3.1';
+
+  function object(value) { return value && typeof value === 'object' && !Array.isArray(value); }
+  function finite(value) { return typeof value === 'number' && Number.isFinite(value); }
+
+  // Shared by browser snapshot restore and Kernel checkpoint restore. Returns
+  // detached data; legacy records explicitly restore legacy mode, never purity.
+  function validateAccounting(src, P, legacy, L) {
+    var mode = legacy ? 'legacy' : src.materialMode;
+    if (mode !== 'legacy' && mode !== 'composition_mass_v1') throw Error('material_mode');
+    if (!legacy && mode === 'legacy' && src.composition !== null) throw Error('legacy_composition_state');
+    var composition = null;
+    if (mode === 'composition_mass_v1') {
+      if (!object(src.composition)) throw Error('missing_composition_state');
+      Composition.validateState(src.composition);
+      if (src.composition.material.timeMs !== P.t) throw Error('composition_process_clock');
+      var geometry = Material.adapter(src.composition.material);
+      if (!object(P.s) || !object(P.trips) || P.s.hw !== geometry.hWater || P.s.ho !== geometry.hOil ||
+          P.s.h2 !== geometry.h2 || P.s.pres !== geometry.pressure || P.trips.psv502 !== geometry.reliefOpen) throw Error('composition_process_geometry');
+      if (!object(L) || ['AI511', 'AI512', 'LI513'].some(function (tag) {
+        return !object(L[tag]) || L[tag].tag !== tag || L[tag].kind !== 'ind' || L[tag].eu !== (tag === 'LI513' ? '%' : 'MASS %');
+      })) throw Error('composition_points');
+      Composition.validateMeasurements(src.composition,L);
+      composition = clone(src.composition);
+    } else if (L && ['AI511', 'AI512', 'LI513'].some(function (tag) { return Object.prototype.hasOwnProperty.call(L, tag); })) {
+      throw Error('legacy_composition_points');
+    }
+    var product = src.product;
+    if (product == null && legacy) product = Meter.create(P);
+    if (!object(product) || product.formula_version !== 'quality_proxy_v1') throw Error('product_meter_version');
+    var bad = nonFinitePath(product, 'product');
+    if (bad) throw Error('non-finite value at ' + bad);
+    var fields = ['start', 'end', 'draw', 'gross', 'qualified', 'off_band', 'unknown',
+      'eligible_ms', 'covered_ms', 'continuous_ms', 'inventory_start', 'inventory_current'];
+    if (fields.some(function (key) { return !finite(product[key]) || (key !== 'start' && key !== 'end' && product[key] < 0); }) ||
+        product.start > product.end || product.end !== P.t || product.eligible_ms !== product.end - product.start || product.covered_ms > product.eligible_ms ||
+        product.continuous_ms > product.eligible_ms ||
+        Math.abs(product.gross - product.qualified - product.off_band - product.unknown) > 1e-9 * Math.max(1, product.gross)) throw Error('product_meter_state');
+    if (!object(product.mission) || ['minimum_continuity_rate_m3h_milli', 'max_quality_percent_milli', 'max_quality_age_ms']
+        .some(function (key) { return !finite(product.mission[key]) || product.mission[key] < 0; })) throw Error('product_meter_mission');
+    if (!Array.isArray(product.samples) || product.samples.some(function (row, i, rows) {
+      return !Array.isArray(row) || row.length !== 3 || row.some(function (x) { return !finite(x); }) ||
+        row[0] < product.start || row[0] > product.end || row[1] < 0 || row[2] < 0 || (i > 0 && row[0] <= rows[i - 1][0]);
+    })) throw Error('product_meter_samples');
+    return { materialMode: mode, composition: composition, product: clone(product) };
+  }
+
+  function validateSnapshot(snap) {
+    if (!object(snap) || (snap.schemaVersion !== undefined && snap.schemaVersion !== '3.0' && snap.schemaVersion !== SCHEMA_VERSION)) throw Error('snapshot_version');
+    if (!object(snap.P) || !object(snap.L) || !object(snap.V) || !finite(snap.t) || snap.P.t !== snap.t) throw Error('snapshot_process_state');
+    var bad = nonFinitePath(snap, 'snapshot');
+    if (bad) throw Error('non-finite value at ' + bad);
+    var normalized = clone(snap);
+    var accounting = validateAccounting(snap, snap.P, snap.schemaVersion !== SCHEMA_VERSION, snap.L);
+    Object.assign(normalized, accounting);
+    return normalized;
+  }
 
   function architectureFromProcess(P) {
     P = P || {};
@@ -100,9 +156,11 @@
   }
 
   function makeSnapshot(src, name) {
-    var bad = nonFinitePath({ P: src.P, L: src.L, V: src.V }, '');
+    var bad = nonFinitePath({ P: src.P, L: src.L, V: src.V, product: src.product, composition: src.composition, plausibility: src.plausibility }, '');
     if (bad) throw new Error('non-finite value at ' + bad);
     var ess = (typeof globalThis !== 'undefined' && globalThis.ESS) || null;
+    var accounting = validateAccounting({ materialMode: src.materialMode || 'legacy', composition: src.composition == null ? null : src.composition,
+      product: src.product == null ? Meter.create(src.P) : src.product }, src.P, false, src.L);
     return {
       schemaVersion: SCHEMA_VERSION,
       modelId: src.modelId != null ? src.modelId : (ess && ess.MODEL_ID) || null,
@@ -111,6 +169,7 @@
       randState4: src.randState4 == null ? null : src.randState4,   // Unit 04's own seeded stream (U4-SEPARATOR-CONTRACT rule 0.2)
       P: clone(src.P), L: clone(src.L), V: clone(src.V),
       plausibility: src.plausibility ? clone(src.plausibility) : null,
+      product: accounting.product, composition: accounting.composition, materialMode: accounting.materialMode,
       alarms: clone(src.alarms), eventsCount: src.eventsCount || 0, journalSeq: src.journalSeq == null ? null : src.journalSeq,
       tadShed: !!src.tadShed, phaseSet: src.phaseSet || null,
       disabledAssets: Array.isArray(src.disabledAssets) ? src.disabledAssets.slice() : [],
@@ -251,6 +310,7 @@
       case 'UPSET': body = 'INSTR UPSET ' + e.tag + ' ' + e.arg; break;
       case 'MAG': body = 'INSTR MAGNITUDE ' + e.tag + ' = ' + e.arg; break;
       case 'VAR': body = 'INSTR VARIABLE ' + e.tag + ' = ' + e.arg; break;
+      case 'MATERIAL_DIVERT': body = 'INSTR ROUTE ' + e.tag + ' ' + (e.arg === 0 ? 'PRODUCT' : e.arg === 1 ? 'OFF-SPEC' : String(Number(e.arg) * 100) + '% OFF-SPEC'); break;
       case 'SEED': body = 'INSTR SEED ' + e.arg; break;
       case 'DRILL': body = 'INSTR DRILL ' + e.tag + ' ARMED'; break;
       case 'DRILLEND': body = 'INSTR DRILL ' + e.tag + ' ENDED'; break;
@@ -358,6 +418,7 @@
 
   return {
     create: create, resetRun: resetRun, clone: clone, makeSnapshot: makeSnapshot,
+    validateSnapshot: validateSnapshot, validateAccounting: validateAccounting,
     SCHEMA_VERSION: SCHEMA_VERSION, architectureFromProcess: architectureFromProcess,
     replayRefusal: replayRefusal,
     pushRing: pushRing, ringPick: ringPick, trimAfter: trimAfter,

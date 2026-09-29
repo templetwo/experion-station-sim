@@ -7,9 +7,12 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
-const { captureNative } = require('../tools/g2-geometry/capture-native.cjs');
-const { provenance } = require('../tools/g2/capture-native.cjs');
-const { load } = require('../tools/logic-harness.js');
+const archive = require('../tools/g2-history/archive.cjs').materialize();
+test.after(() => archive.cleanup());
+const historical = name => path.join(archive.root, name);
+const { captureNative } = require(historical('tools/g2-geometry/capture-native.cjs'));
+const { provenance } = require(historical('tools/g2/capture-native.cjs'));
+const { load } = require(historical('tools/logic-harness.js'));
 const hashFile = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const FRAME_KEYS = ['bed_temperature_c', 'effective_activity', 'flow_m3h', 'product_valve_position', 'water_valve_position', 'weir_height_percent'];
 
@@ -17,10 +20,10 @@ function checkShape(trace) {
   assert.deepEqual(Object.keys(trace).sort(), ['events', 'intervals', 'scenario', 'schema', 'source']);
   assert.equal(trace.schema, 'g2-geometry-native-v1');
   assert.equal(trace.source.step_s, 0.5);
-  assert.equal(trace.source.model_id, require('../src/model-id.js'));
+  assert.equal(trace.source.model_id, require(historical('src/model-id.js')));
   assert.equal(trace.source.revision, provenance().revision);
-  assert.equal(trace.source.provenance_dependency_sha256, hashFile(path.resolve(__dirname, '../tools/g2/capture-native.cjs')));
-  assert.equal(trace.source.capture_script_sha256, hashFile(path.resolve(__dirname, '../tools/g2-geometry/capture-native.cjs')));
+  assert.equal(trace.source.provenance_dependency_sha256, hashFile(historical('tools/g2/capture-native.cjs')));
+  assert.equal(trace.source.capture_script_sha256, hashFile(historical('tools/g2-geometry/capture-native.cjs')));
   assert.deepEqual(Object.keys(trace.source.evidence_phases).sort(), ['post_u3', 'pre']);
   assert.equal(trace.intervals.length, 6000);
   for (const [tick, row] of trace.intervals.entries()) {
@@ -106,7 +109,7 @@ test('post-U3 valve frames match the actual preceding native stroke, not the nex
 });
 
 test('geometry capture CLI works without Git and rejects invalid scenarios/options', () => {
-  const script = path.resolve(__dirname, '../tools/g2-geometry/capture-native.cjs');
+  const script = historical('tools/g2-geometry/capture-native.cjs');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'g2-geometry-capture-'));
   try {
     const outfile = path.join(directory, 'trace.json');
@@ -120,4 +123,8 @@ test('geometry capture CLI works without Git and rejects invalid scenarios/optio
     }
     assert.throws(() => captureNative({ scenario: 'activity-loss' }), /Unknown scenario/);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('historical geometry adapter refuses the changed live runtime', () => {
+  assert.throws(() => require('../tools/g2-geometry/capture-native.cjs').captureNative(), /Native runtime code/);
 });

@@ -46,7 +46,7 @@
       var m = Measurement.observe(l);
       points.push({
         tag: tag,
-        pv: tag === 'TIC202' ? m.pv : round(m.pv),
+        pv: ['TIC202','AI511','AI512','LI513'].includes(tag) ? m.pv : round(m.pv),
         sp: round(l.sp),
         op: round(l.op),
         mode: l.mode || '',
@@ -54,7 +54,11 @@
         quality: m.quality,
         statusCode: m.statusCode,
         statusName: m.statusName,
-        limit: m.limit
+        limit: m.limit,
+        ...(['AI511','AI512','LI513'].includes(tag)&&Number.isFinite(l.publishedTimeMs)?{
+          unit:l.eu||'',sample_sim_time_ms:l.publishedTimeMs,sample_source_time_ms:l.sourceTimeMs,
+          age_sim_ms:Math.max(0,(c.P?c.P.t:l.publishedTimeMs)-l.sourceTimeMs),publication_age_sim_ms:Math.max(0,(c.P?c.P.t:l.publishedTimeMs)-l.publishedTimeMs),reason:m.quality==='GOOD'?null:l.reason||m.statusName
+        }:{})
       });
     });
     var selected = null;

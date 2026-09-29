@@ -1,0 +1,670 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-manual-forensic-v1",
+  "scope": "Read-only synthetic UI observation reproduction; not a new accepted numerical campaign or retuning.",
+  "source_hashes_verified_before_and_after": true,
+  "source": {
+    "revision": "5e8f97cb1f21533a4f4bf976e40c60549fcee8de",
+    "model_id": "de95d858805150a438b3d4dcacf7f6926da2cc51aecda639daba26bd84b10853",
+    "production_file_count": 31,
+    "probe_sha256": "ec255b2ef94fb0bc04350e7ae543d69a1cd43836d4aa54b0dd0cdd9581e84f91",
+    "harness_sha256": "ccd88cd6b8f6fe05c0752b0f0d3152d10fad27c0d72f28cae8e149f6a5627917",
+    "recipe_id": "synthetic-live-compartments-v2",
+    "recipe_sha256": "4c49731f1051d2525ba0580fd6145cd2ea1fc26e59078da59cf7fa7784d3a163",
+    "node": "v22.23.2"
+  },
+  "heater": {
+    "commands": [
+      {
+        "time_s": 600,
+        "mode": "MAN",
+        "op": 0
+      },
+      {
+        "time_s": 1800,
+        "mode": "AUTO",
+        "retained_sp_c": 320
+      }
+    ],
+    "duration_s": 3000,
+    "frame_s": 0.5,
+    "points": [
+      {
+        "time_s": 0,
+        "TIC311_c": 320,
+        "pre_c": 320,
+        "bed_c": 380,
+        "OP_percent": 40,
+        "integral": 40,
+        "conversion": 0.9,
+        "AI511_mass_percent": null,
+        "truth_a_mass_percent": 12.5,
+        "LI513_percent": 25,
+        "product_m3": 6,
+        "oil_m3": 3.6,
+        "chamber2_m3": 3.5,
+        "product_component_kg": [
+          600,
+          4200,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": null,
+          "product_dispatch": null,
+          "diversion": null,
+          "offspec_dispatch": null
+        }
+      },
+      {
+        "time_s": 60,
+        "TIC311_c": 319.87343754948046,
+        "pre_c": 319.7487068509955,
+        "bed_c": 378.799098211049,
+        "OP_percent": 40.179266209688755,
+        "integral": 40.01584638454479,
+        "conversion": 0.9022238823848168,
+        "AI511_mass_percent": 12.5,
+        "truth_a_mass_percent": 12.499923084978889,
+        "LI513_percent": 24.79,
+        "product_m3": 5.948858081686156,
+        "oil_m3": 3.6686263818313702,
+        "chamber2_m3": 3.4193079611154307,
+        "product_component_kg": [
+          594.882147716256,
+          4164.204317632669,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 32.3694627249867,
+          "product_dispatch": 35.69453376769904,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 300,
+        "TIC311_c": 319.7217012897455,
+        "pre_c": 319.8944055172005,
+        "bed_c": 377.80203292796557,
+        "OP_percent": 41.15156746180186,
+        "integral": 40.0742490478097,
+        "conversion": 0.9010050554860167,
+        "AI511_mass_percent": 12.495,
+        "truth_a_mass_percent": 12.49333856134595,
+        "LI513_percent": 23.85,
+        "product_m3": 5.723443098495855,
+        "oil_m3": 3.68165738252697,
+        "chamber2_m3": 3.4355537665869504,
+        "product_component_kg": [
+          572.0392989288608,
+          4006.7151798678224,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 31.183318791883433,
+          "product_dispatch": 34.341974483145236,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 600,
+        "TIC311_c": 319.9819499463149,
+        "pre_c": 319.93935644331657,
+        "bed_c": 377.95480064819264,
+        "OP_percent": 39.996463980167775,
+        "integral": 40.10037989963464,
+        "conversion": 0.9011433346883992,
+        "AI511_mass_percent": 12.476,
+        "truth_a_mass_percent": 12.471946882896976,
+        "LI513_percent": 22.99,
+        "product_m3": 5.518029022603396,
+        "oil_m3": 3.6918764830269364,
+        "chamber2_m3": 3.498244961786539,
+        "product_component_kg": [
+          550.5645189455478,
+          3863.8586991371685,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 31.424157529057652,
+          "product_dispatch": 33.10887597911483,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 900,
+        "TIC311_c": 100.07836502491458,
+        "pre_c": 100.06635466645433,
+        "bed_c": 95.24700028961159,
+        "OP_percent": 0,
+        "integral": -43.984326995017085,
+        "conversion": 0.11454172896344561,
+        "AI511_mass_percent": 12.929,
+        "truth_a_mass_percent": 13.298180812396328,
+        "LI513_percent": 22.8,
+        "product_m3": 5.471074938018379,
+        "oil_m3": 3.9206701012148266,
+        "chamber2_m3": 3.5849802841161496,
+        "product_component_kg": [
+          582.0427501115075,
+          3794.8172003031955,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 33.66045593151125,
+          "product_dispatch": 32.826101981797365,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 1200,
+        "TIC311_c": 99.86697636144413,
+        "pre_c": 100.06448974311529,
+        "bed_c": 95.06384462842395,
+        "OP_percent": 0,
+        "integral": -44.026604727711174,
+        "conversion": 0.03024247345645603,
+        "AI511_mass_percent": 19.262,
+        "truth_a_mass_percent": 20.926353311814893,
+        "LI513_percent": 23.52,
+        "product_m3": 5.6437891046219315,
+        "oil_m3": 4.237056396295929,
+        "chamber2_m3": 3.6174429639059325,
+        "product_component_kg": [
+          944.8313985655199,
+          3570.1998851320254,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 36.79614546315248,
+          "product_dispatch": 33.861512037495,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 1500,
+        "TIC311_c": 100.22916207789586,
+        "pre_c": 100.06169988132226,
+        "bed_c": 95.06428628833262,
+        "OP_percent": 0,
+        "integral": -43.95416758442083,
+        "conversion": 0.024759234915453177,
+        "AI511_mass_percent": 33.041,
+        "truth_a_mass_percent": 35.44730725106674,
+        "LI513_percent": 24.66,
+        "product_m3": 5.919464924332049,
+        "oil_m3": 4.409020472171325,
+        "chamber2_m3": 3.594816002742788,
+        "product_component_kg": [
+          1678.6327354776852,
+          3056.9392039879535,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 38.99282226221521,
+          "product_dispatch": 35.515340813167995,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 1800,
+        "TIC311_c": 100.26337802034871,
+        "pre_c": 100.07016861938939,
+        "bed_c": 95.06657711730055,
+        "OP_percent": 0,
+        "integral": -43.94732439593026,
+        "conversion": 0.02440091111353304,
+        "AI511_mass_percent": 49.21,
+        "truth_a_mass_percent": 51.57607172693525,
+        "LI513_percent": 25.86,
+        "product_m3": 6.206619321518151,
+        "oil_m3": 4.430771028145873,
+        "chamber2_m3": 3.5693992190356356,
+        "product_component_kg": [
+          2560.9043464672186,
+          2404.391110747302,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 40.530307824810734,
+          "product_dispatch": 37.238344500317,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 1860,
+        "TIC311_c": 134.66820019989257,
+        "pre_c": 134.6518795613477,
+        "bed_c": 110.9816305752767,
+        "OP_percent": 9.020612192710258,
+        "integral": -27.048007321944702,
+        "conversion": 0.026828126209967218,
+        "AI511_mass_percent": 52.32,
+        "truth_a_mass_percent": 54.61087403180284,
+        "LI513_percent": 26.08,
+        "product_m3": 6.259714095089495,
+        "oil_m3": 4.428209881724404,
+        "chamber2_m3": 3.5586529442906234,
+        "product_component_kg": [
+          2734.7876633762644,
+          2272.9836126953314,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 40.63950511189251,
+          "product_dispatch": 37.557000410874934,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2100,
+        "TIC311_c": 244.69263400288628,
+        "pre_c": 244.82422346558752,
+        "bed_c": 229.40580356564533,
+        "OP_percent": 25.985599165801265,
+        "integral": 11.659588372794557,
+        "conversion": 0.359453689442489,
+        "AI511_mass_percent": 63.528,
+        "truth_a_mass_percent": 65.37340233348374,
+        "LI513_percent": 26.76,
+        "product_m3": 6.423563334563788,
+        "oil_m3": 4.365902564765828,
+        "chamber2_m3": 3.499133774163541,
+        "product_component_kg": [
+          3359.4415222804237,
+          1779.4091453706071,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 40.22049425468322,
+          "product_dispatch": 38.540680241225346,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2400,
+        "TIC311_c": 293.9429174744913,
+        "pre_c": 293.95859047914087,
+        "bed_c": 313.1997249354016,
+        "OP_percent": 35.93940856608123,
+        "integral": 30.1285466001526,
+        "conversion": 0.7840268830488848,
+        "AI511_mass_percent": 72.749,
+        "truth_a_mass_percent": 73.48882576611393,
+        "LI513_percent": 26.93,
+        "product_m3": 6.464369941913748,
+        "oil_m3": 4.0340209095227,
+        "chamber2_m3": 3.438356683454937,
+        "product_component_kg": [
+          3800.4716507920275,
+          1371.0243027389704,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 38.275747380172106,
+          "product_dispatch": 38.78643241581995,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2580,
+        "TIC311_c": 306.2223972410779,
+        "pre_c": 306.09015717784644,
+        "bed_c": 339.368355244391,
+        "OP_percent": 37.192948851917,
+        "integral": 34.76434408092697,
+        "conversion": 0.8453835404715433,
+        "AI511_mass_percent": 74.29,
+        "truth_a_mass_percent": 74.21512120533839,
+        "LI513_percent": 26.77,
+        "product_m3": 6.424041325888035,
+        "oil_m3": 3.7731541113164937,
+        "chamber2_m3": 3.445370437793067,
+        "product_component_kg": [
+          3814.088045031066,
+          1325.1450156793614,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 37.56357291034146,
+          "product_dispatch": 38.54465666660235,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2700,
+        "TIC311_c": 310.85796104971723,
+        "pre_c": 310.8461297538544,
+        "bed_c": 350.9008816517909,
+        "OP_percent": 37.36152621520607,
+        "integral": 36.58239438227076,
+        "conversion": 0.865433868049259,
+        "AI511_mass_percent": 73.565,
+        "truth_a_mass_percent": 73.00015838164812,
+        "LI513_percent": 26.62,
+        "product_m3": 6.389653013567191,
+        "oil_m3": 3.597473387645234,
+        "chamber2_m3": 3.456107002788422,
+        "product_component_kg": [
+          3731.5654559534414,
+          1380.1569549003113,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 37.28353105345559,
+          "product_dispatch": 38.338357517380246,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2820,
+        "TIC311_c": 313.9874129794503,
+        "pre_c": 313.94151227390046,
+        "bed_c": 359.19057859409565,
+        "OP_percent": 39.61572747520868,
+        "integral": 37.78362072412029,
+        "conversion": 0.8778092592069664,
+        "AI511_mass_percent": 71.621,
+        "truth_a_mass_percent": 70.64928025024864,
+        "LI513_percent": 26.47,
+        "product_m3": 6.353758895516908,
+        "oil_m3": 3.4308649058375953,
+        "chamber2_m3": 3.461971209556719,
+        "product_component_kg": [
+          3591.1079428150742,
+          1491.8991735984516,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 37.00807254559367,
+          "product_dispatch": 38.12301786595708,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2856,
+        "TIC311_c": 314.78829762364967,
+        "pre_c": 314.67195696139004,
+        "bed_c": 361.172914328843,
+        "OP_percent": 38.91300602279541,
+        "integral": 38.05711794695623,
+        "conversion": 0.8806031195850004,
+        "AI511_mass_percent": 70.859,
+        "truth_a_mass_percent": 69.76103211365924,
+        "LI513_percent": 26.43,
+        "product_m3": 6.342364552343296,
+        "oil_m3": 3.3838094259909157,
+        "chamber2_m3": 3.462167182229365,
+        "product_component_kg": [
+          3539.599177700438,
+          1534.2924641741995,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 36.88970439585319,
+          "product_dispatch": 38.05467265108382,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 2880,
+        "TIC311_c": 315.16884083036064,
+        "pre_c": 315.1051060676175,
+        "bed_c": 362.3870028318154,
+        "OP_percent": 38.30220338159157,
+        "integral": 38.221144943864815,
+        "conversion": 0.8822685181019427,
+        "AI511_mass_percent": 70.267,
+        "truth_a_mass_percent": 69.12867056872095,
+        "LI513_percent": 26.39,
+        "product_m3": 6.334620980667502,
+        "oil_m3": 3.3533630259408644,
+        "chamber2_m3": 3.4617421510986714,
+        "product_component_kg": [
+          3503.2314156021744,
+          1564.465368931827,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 36.81078631152741,
+          "product_dispatch": 38.008224751085436,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      },
+      {
+        "time_s": 3000,
+        "TIC311_c": 316.77086397475915,
+        "pre_c": 316.73746195343676,
+        "bed_c": 367.314966751228,
+        "OP_percent": 39.642077911833255,
+        "integral": 38.86396151260893,
+        "conversion": 0.8886655309508604,
+        "AI511_mass_percent": 66.962,
+        "truth_a_mass_percent": 65.57131031062052,
+        "LI513_percent": 26.22,
+        "product_m3": 6.291785596241947,
+        "oil_m3": 3.214056891084751,
+        "chamber2_m3": 3.4546797672705836,
+        "product_component_kg": [
+          3300.4850059125856,
+          1732.9434710809721,
+          0,
+          0
+        ],
+        "instant_flow_m3h": {
+          "product_transfer": 36.339666799931365,
+          "product_dispatch": 37.75130169332988,
+          "diversion": 0,
+          "offspec_dispatch": 0
+        }
+      }
+    ],
+    "intervals": [
+      {
+        "start_s": 0,
+        "end_s": 600,
+        "product_inventory_delta_m3": -0.4819709773966041,
+        "flows": {
+          "product_transfer": {
+            "mass_kg": 4203.80376927533,
+            "volume_m3": 5.2547547115941615,
+            "mean_volume_rate_m3h": 31.52852826956497
+          },
+          "product_dispatch": {
+            "mass_kg": 4589.380551192582,
+            "volume_m3": 5.736725688990727,
+            "mean_volume_rate_m3h": 34.420354133944365
+          },
+          "diversion": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          },
+          "offspec_dispatch": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          }
+        }
+      },
+      {
+        "start_s": 600,
+        "end_s": 1800,
+        "product_inventory_delta_m3": 0.6885902989147548,
+        "flows": {
+          "product_transfer": {
+            "mass_kg": 9695.409752369103,
+            "volume_m3": 12.11926219046138,
+            "mean_volume_rate_m3h": 36.357786571384146
+          },
+          "product_dispatch": {
+            "mass_kg": 9144.537513237277,
+            "volume_m3": 11.430671891546595,
+            "mean_volume_rate_m3h": 34.292015674639785
+          },
+          "diversion": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          },
+          "offspec_dispatch": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          }
+        }
+      },
+      {
+        "start_s": 1800,
+        "end_s": 2580,
+        "product_inventory_delta_m3": 0.21742200436988401,
+        "flows": {
+          "product_transfer": {
+            "mass_kg": 6835.329570111054,
+            "volume_m3": 8.544161962638817,
+            "mean_volume_rate_m3h": 39.43459367371762
+          },
+          "product_dispatch": {
+            "mass_kg": 6661.391966615304,
+            "volume_m3": 8.32673995826913,
+            "mean_volume_rate_m3h": 38.43110749970368
+          },
+          "diversion": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          },
+          "offspec_dispatch": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          }
+        }
+      },
+      {
+        "start_s": 2580,
+        "end_s": 2856,
+        "product_inventory_delta_m3": -0.08167677354473835,
+        "flows": {
+          "product_transfer": {
+            "mass_kg": 2283.9878914012497,
+            "volume_m3": 2.8549848642515623,
+            "mean_volume_rate_m3h": 37.238933011976904
+          },
+          "product_dispatch": {
+            "mass_kg": 2349.3293102369735,
+            "volume_m3": 2.9366616377962167,
+            "mean_volume_rate_m3h": 38.304282232124564
+          },
+          "diversion": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          },
+          "offspec_dispatch": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          }
+        }
+      },
+      {
+        "start_s": 2856,
+        "end_s": 3000,
+        "product_inventory_delta_m3": -0.05057895610134899,
+        "flows": {
+          "product_transfer": {
+            "mass_kg": 1172.5893029643066,
+            "volume_m3": 1.4657366287053832,
+            "mean_volume_rate_m3h": 36.64341571763458
+          },
+          "product_dispatch": {
+            "mass_kg": 1213.0524678454003,
+            "volume_m3": 1.5163155848067504,
+            "mean_volume_rate_m3h": 37.90788962016876
+          },
+          "diversion": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          },
+          "offspec_dispatch": {
+            "mass_kg": 0,
+            "volume_m3": 0,
+            "mean_volume_rate_m3h": 0
+          }
+        }
+      }
+    ],
+    "AI511_peak": {
+      "value_mass_percent": 74.29,
+      "time_s": 2575
+    },
+    "first_TIC311_within_5C_s": 2869,
+    "last_TIC311_outside_5C_s": 2880.5,
+    "maximum_local_closure_residual_kg": 1.0368239600211382e-9
+  },
+  "u3_parity": {
+    "frames": 6000,
+    "fields": "P.h; FIC310,TIC311,FIC313,TI312,TI314,TI315,AI316 PV/SP/OP/MODE/I; FV310,FV311,QV313 valve objects; clock",
+    "first_mismatch_s": null,
+    "legacy_sha256": "077d7fe1b3d546443a750370633cac4cff104baf84411988cbce94357f27c647",
+    "composition_sha256": "077d7fe1b3d546443a750370633cac4cff104baf84411988cbce94357f27c647"
+  },
+  "offspec_decay": {
+    "setup": "Separate fresh composition run; TO OFF-SPEC at0s; TO PRODUCT at300s; sample at600s",
+    "decay_interval_s": 300,
+    "dispatch_time_constant_s": 900,
+    "before_component_kg": [
+      225.10003453387293,
+      1578.2510531091327,
+      0,
+      0
+    ],
+    "after_component_kg": [
+      161.29122275476112,
+      1130.866295498756,
+      0,
+      0
+    ],
+    "external_dispatch_component_kg": [
+      63.808811779111686,
+      447.38475761038524,
+      0,
+      0
+    ],
+    "remaining_mass_fraction": 0.7165313105737925,
+    "expected_exp_minus_t_over_tau": 0.7165313105737893,
+    "closure": true
+  }
+}

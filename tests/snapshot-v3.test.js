@@ -46,10 +46,10 @@ function realV2Snapshot(c) {
 // ==================================================== 1. THE SHAPE
 
 test('snapshot v3: the v2 shape is pinned and carries no version marker', async (t) => {
-  await t.test('makeSnapshot emits schemaVersion 3.0 on new records', () => {
+  await t.test('makeSnapshot emits schemaVersion 3.1 on new records', () => {
     const c = boot();
     const snap = c.snapshotData('x');
-    assert.equal(snap.schemaVersion, '3.0');
+    assert.equal(snap.schemaVersion, '3.1');
     assert.equal('architecture' in snap, true,
       'v3 snapshots carry a top-level architecture view; restore still keys v2 on ABSENCE');
     assert.equal('version' in snap, false);

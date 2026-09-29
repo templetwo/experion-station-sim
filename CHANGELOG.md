@@ -4,6 +4,51 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### G2 optional live composition integration
+
+Live Diagnosis now follows alarm state for alarm-backed urgency. Suppressed
+symptoms appear as labelled context under their cause; shelved/out-of-service
+records and returned alarms receive separate context/review treatment.
+Acknowledged active alarms remain visible, and the generic fallback covers
+only alarms without specific guidance. Alarm-engine counts are shown separately
+from diagnosis counts. See [presentation policy v1](docs/dev/LIVE-DIAGNOSIS-PRESENTATION-V1.md).
+
+Manual-check follow-up: Live Diagnosis now covers V-502 relief, valid PIC505
+high-pressure observations and otherwise unhandled active alarms. A no-rule
+result no longer asserts that all plant conditions are normal. Composition-mode
+relief return entries now use the localized reseat pressure instead of retaining
+the earlier lift value. Frame-end pressure can already have risen again after
+reseat; the solver thresholds and physical trajectories are unchanged. The
+instructor routing panel explains both tanks' continuous outlets. See
+[the follow-up record](docs/dev/G2-MANUAL-CHECK-FOLLOWUP.md) for the reproduced
+level balance and unchanged native heater recovery.
+
+A fresh `composition_mass_v1` run integrates synthetic A/P/W/G balances through
+U3 → U4, separator layers/chamber, receiving product, off-spec and gas inventory.
+Liquid levels derive from component masses. Normal vent PV505 and parallel
+PSV-502 discharge have separate counters; the 1100/1000 kPa relief hysteresis is
+retained with explicitly synthetic constant gas compliance. Native temperature
+prescribes the reaction rate; this is not a coupled energy or property model.
+The graphic shows the normal overhead outlet and a separate relief path to
+flare. The first live numerical candidate failed repeated relief-cycle timing;
+its exact source and failed receipt remain archived. A prospective v2 solver
+amendment localizes relief events without changing physical parameters or
+acceptance margins.
+
+The receiving-tank indicators add unconverted A, water and level. Product truth
+and truth-qualified external dispatch remain instructor/evaluator-only, separate
+from delayed analyzer observations and the unchanged `quality_proxy_v1` volume
+contract. Core now owns exactly one meter advancement for both browser and
+Kernel. New snapshots/checkpoints carry both ledgers and complete analyzer
+state; legacy restores start without invented composition. Invalid new-mode
+scans and restores are transactional.
+
+Default drills retain legacy dynamics. New integration and reference evidence
+is versioned separately; historical capture tooling still rejects changed
+runtime bytes, and its positive tests use an explicitly archived baseline.
+Hydraulics, shared cooling, coupled reaction heat, MOA pins, G3 and G4 remain
+outside this increment.
+
 ### G2 offline compartment geometry reference
 
 The next offline reference lives separately in `tools/g2-geometry/`, building

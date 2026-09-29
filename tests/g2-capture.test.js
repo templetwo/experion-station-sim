@@ -6,7 +6,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
-const { captureNative, provenance, BASE_REVISION } = require('../tools/g2/capture-native.cjs');
+const archive = require('../tools/g2-history/archive.cjs').materialize();
+test.after(() => archive.cleanup());
+const historical = name => path.join(archive.root, name);
+const { captureNative, provenance, BASE_REVISION } = require(historical('tools/g2/capture-native.cjs'));
+const baselineModelId = require(historical('src/model-id.js'));
 
 test('native heat-loss capture uses repeatable operator controls and only the declared input fields', () => {
   const originalNow = Date.now;
@@ -21,7 +25,7 @@ test('native heat-loss capture uses repeatable operator controls and only the de
   assert.equal(first.schema, 'g2-native-input-v1');
   assert.equal(first.source.revision, BASE_REVISION);
   assert.match(first.source.revision_scope, /other dev\/documentation files may differ/);
-  assert.equal(first.source.model_id, require('../src/model-id.js'));
+  assert.equal(first.source.model_id, baselineModelId);
   assert.equal(first.source.step_s, 0.5);
   assert.equal(first.samples.length, 6001);
   for (const [tick, row] of first.samples.entries()) {
@@ -45,7 +49,7 @@ test('native heat-loss capture uses repeatable operator controls and only the de
 });
 
 test('capture CLI supports an output file and rejects ambiguous arguments', () => {
-  const script = path.resolve(__dirname, '../tools/g2/capture-native.cjs');
+  const script = historical('tools/g2/capture-native.cjs');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'g2-capture-test-'));
   try {
     const outfile = path.join(directory, 'trace.json');
@@ -61,7 +65,7 @@ test('capture CLI supports an output file and rejects ambiguous arguments', () =
 });
 
 test('provenance accepts a Git-free export and rejects changed runtime, stamp and harness bytes', () => {
-  const root = path.resolve(__dirname, '..');
+  const root = archive.root;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'g2-provenance-test-'));
   try {
     fs.mkdirSync(path.join(directory, 'src'));
@@ -72,7 +76,7 @@ test('provenance accepts a Git-free export and rejects changed runtime, stamp an
     ];
     for (const file of files) fs.copyFileSync(path.join(root, file), path.join(directory, file));
     assert.equal(fs.existsSync(path.join(directory, '.git')), false);
-    assert.equal(provenance(directory).model_id, require('../src/model-id.js'));
+    assert.equal(provenance(directory).model_id, baselineModelId);
     for (const [file, message] of [
       ['src/models.js', /Native runtime code/],
       ['src/model-id.js', /Native runtime code/],
@@ -86,4 +90,10 @@ test('provenance accepts a Git-free export and rejects changed runtime, stamp an
     }
     assert.equal(provenance(directory).revision, BASE_REVISION);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('historical source pin refuses the changed live runtime', () => {
+  const live = require('../tools/g2/capture-native.cjs');
+  assert.throws(() => live.provenance(), /Native runtime code/);
+  assert.throws(() => live.captureNative(), /Native runtime code/);
 });

@@ -675,18 +675,28 @@
     const cap = c.Cg * vpos(V, 'PV505', 0.4) + (P.trips.psv502 ? c.Cg * 1.5 : 0);
     const qgOut = cap * Math.sqrt(Math.max(s.pres - c.Pdown, 0) / 700);
     s.pres = clamp(s.pres + c.kP * (qgIn - qgOut) * dt, 0, 1500);
-    if (s.pres >= c.psvSet && !P.trips.psv502) {
-      P.trips.psv502 = true;
-      raiseTrip(ctx, 'V-502', 'PSV LIFT', s.pres, 'KPA', 'SEPARATOR RELIEF — VENTING TO FLARE');
-    }
-    if (P.trips.psv502 && s.pres < c.psvReset) { P.trips.psv502 = false; ctx.clear('V-502', 'PSV LIFT'); }
+    if (s.pres >= c.psvSet) separatorRelief(P,ctx,true,s.pres);
+    if (P.trips.psv502 && s.pres < c.psvReset) separatorRelief(P,ctx,false,s.pres);
     return qwOut;
+  }
+
+  // One annunciation path for the same relief protection in both model modes.
+  function separatorRelief(P,ctx,open,pressure,localized=false){
+    if(open&&!P.trips.psv502){
+      P.trips.psv502=true;
+      raiseTrip(ctx, 'V-502', 'PSV LIFT', pressure, 'KPA', 'SEPARATOR RELIEF — VENTING TO FLARE');
+    }else if(!open&&P.trips.psv502){
+      P.trips.psv502=false;
+      // A localized material event owns its transition pressure. Legacy scans
+      // keep their historical alarm-value behavior when no such event is given.
+      if(localized)ctx.clear('V-502','PSV LIFT',pressure);else ctx.clear('V-502','PSV LIFT');
+    }
   }
 
   // The four noise draws happen whether or not the points exist, so the rand4 cursor
   // advances the same way on a tag database that predates Unit 04. A missing point is
   // simply not written -- Models.step stays callable with the v2 L.
-  function measureU4(P, L, dt, n4, qwOut) {
+  function measureU4(P, L, dt, n4, qwOut, drawQuality) {
     const s = sepOf(P);
     const nT = n4(0.3), nH2 = n4(0.2), nHw = n4(0.2), nP = n4(2);
     if (L.TIC502) L.TIC502.pv = s.Tin + nT;
@@ -697,11 +707,11 @@
     // (the clean product is never reported as bone dry), on a 30 s analyser lag.
     if (L.AI509) {
       const prev = Number.isFinite(L.AI509.pv) ? L.AI509.pv : 0.3;
-      L.AI509.pv = lag(prev, Math.max(0.3, 100 * s.wcarry / Math.max(s.qover + s.wcarry, 0.01)), 30, dt);
+      L.AI509.pv = lag(prev, Math.max(0.3, drawQuality ? drawQuality.waterInProduct : 100 * s.wcarry / Math.max(s.qover + s.wcarry, 0.01)), 30, dt);
     }
     if (L.AI510) {
       const prev = Number.isFinite(L.AI510.pv) ? L.AI510.pv : 0.2;
-      L.AI510.pv = lag(prev, Math.max(0.2, 100 * s.ocarry / Math.max(qwOut, 0.01)), 30, dt);
+      L.AI510.pv = lag(prev, Math.max(0.2, drawQuality ? drawQuality.oilInWater : 100 * s.ocarry / Math.max(qwOut, 0.01)), 30, dt);
     }
   }
 
@@ -709,6 +719,30 @@
     const n4 = noise4Fn(ctx);
     const qwOut = separator(P, L, V, dt, ctx);
     measureU4(P, L, dt, n4, qwOut);
+  }
+
+  // Opt-in conserved material adapter. Masses and integrated transfers are owned by
+  // MaterialModel (RESOURCES-7.37 balance form, synthetic recipe); this layer only
+  // supplies native cooler dynamics, trip annunciation and existing indications.
+  function stepU4Material(P,L,V,dt,ctx,a,specificVolume){
+    const s=sepOf(P),c=PARAMS.U4,t=a.lastInterval.transfers;
+    const volume=m=>m.reduce((sum,x,i)=>sum+x*specificVolume[i],0);
+    const rate=name=>volume(t[name])*3600/dt;
+    const draw=t.product_transfer.map((x,i)=>x+t.diversion[i]);
+    const water=t.water_draw.map((x,i)=>x+t.oil_underflow[i]);
+    const Thot=.5*(P.h.pre+P.h.bed);
+    s.Tin=lag(s.Tin,Math.max(30,Thot-c.coolK*vpos(V,'TV502',.6)),c.tauT,dt);
+    s.hw=a.hWater;s.ho=a.hOil;s.h2=a.h2;s.pres=a.pressure;
+    s.wcarry=rate('water_carry');s.ocarry=rate('oil_underflow');s.qover=rate('oil_weir');
+    for(const event of a.lastInterval.reliefEvents||[]){
+      separatorRelief(P,ctx,event.open,event.pressure,true);
+    }
+    P.trips.psv502=a.reliefOpen;
+    if(ctx.productSample)ctx.productSample({draw_rate_m3h:volume(draw)*3600/dt,dt_s:dt});
+    measureU4(P,L,dt,noise4Fn(ctx),volume(water)*3600/dt,{
+      waterInProduct:volume(draw)>0?100*draw[2]*specificVolume[2]/volume(draw):0,
+      oilInWater:volume(water)>0?100*(water[0]*specificVolume[0]+water[1]*specificVolume[1])/volume(water):0
+    });
   }
 
   // ---------------------------------------------------------------- combined
@@ -722,5 +756,5 @@
     stepU4(P, L, V, dt, ctx);
   }
 
-  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, stepU4, step, PARAMS, MODEL_VALVES };
+  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, stepU4, stepU4Material, step, PARAMS, MODEL_VALVES };
 });

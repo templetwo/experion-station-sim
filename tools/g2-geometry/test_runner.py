@@ -21,11 +21,20 @@ class RunnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.recipe = load_recipe()
+        # Historical inputs come only from the SHA-verified archived runtime.
+        # The unchanged capture adapters deliberately refuse today's live model.
+        archive = HERE.parent / "g2-history/archive.cjs"
         cls.trace = json.loads(subprocess.check_output(
-            ["node", str(HERE / "capture-native.cjs")], cwd=HERE.parent.parent))
+            ["node", str(archive), "--capture", "geometry"], cwd=HERE.parent.parent))
         cls.activity_trace = json.loads(subprocess.check_output(
-            ["node", str(HERE / "capture-native.cjs"), "--scenario", "activity-step"],
+            ["node", str(archive), "--capture", "geometry", "--scenario", "activity-step"],
             cwd=HERE.parent.parent))
+        expected = {key: cls.trace["source"][key] for key in (
+            "revision", "model_id", "model_stamp_sha256", "harness_sha256",
+            "provenance_dependency_sha256", "capture_script_sha256")}
+        cls.source_patch = patch.object(runner, "verified_native_source", return_value=expected)
+        cls.source_patch.start()
+        cls.addClassCleanup(cls.source_patch.stop)
 
     def test_native_phases_preserve_declared_units_and_full_grid(self):
         for phase in ("pre", "post_u3"):
