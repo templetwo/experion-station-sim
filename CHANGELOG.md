@@ -4,6 +4,32 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### G2 offline compartment geometry reference
+
+The next offline reference lives separately in `tools/g2-geometry/`, building
+on the design and candidate recipe committed before implementation. Component
+masses own the two chamber-1 layers, chamber 2, receiving product and off-spec
+inventory. Levels derive from declared synthetic specific volumes. Each transfer
+has one integrated component ledger; product-tank dispatch is external output
+and the LV503-equivalent transfer is internal. Shared withdrawal limits and
+declared overflow sinks replace silent truncation in this reference only.
+
+The reactor surrogate now uses a reference holdup so residence varies with feed.
+Truth-qualified dispatch remains separate from delayed analyzer coverage.
+The new capture records both pre-scan and post-U3 inputs, including effective
+catalyst activity. A native activity-step exceeds the committed temperature
+envelope and remains not assessed; the envelope is not widened to admit it.
+Named conservation, consequence and numerical checks have a new receipt;
+the earlier prototype, runtime, goldens and MOA bindings retain their contracts.
+See [the reference documentation](tools/g2-geometry/README.md).
+
+The 0.5 s and 0.25 s candidates fail the abrupt weir case's original accuracy
+limits despite conserving mass; their failed receipt remains explicit. A
+separate frozen refinement plan checks 0.125 s and 0.0625 s against the same
+refined SciPy reference and accepts both over all nine named cases. The normal
+PIC505/PV505 vent and parallel PSV-502 relief remain live requirements for later
+gas inventory integration; the offline external sink does not validate them.
+
 ### G2 stage-one offline composition prototype
 
 The convergence specification is rev 5 and records Anthony's option-B ruling:

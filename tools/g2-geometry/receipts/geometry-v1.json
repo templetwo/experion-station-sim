@@ -1,0 +1,6088 @@
+{
+  "_artifact": "@artifact dev",
+  "schema": "g2-geometry-receipt-v1",
+  "groundwork_revision": "0b62c3407436873818f29fed964bb58fc7322a89",
+  "scope": "offline synthetic geometry reference only; no live component, energy, pressure, checkpoint, PLANT_MAP or MOA change",
+  "versions": {
+    "python": "3.14.6",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "files_sha256": {
+    "model.py": "c93ea7e7e36b9301816a2f8d80ad7ce2c81a80514809502a06ca64bc376b3dcd",
+    "observation.py": "48c1128244acc27ac2110844169898c4b92debb9cb40198244aa78d9f6e3506a",
+    "recipe.json": "9edc18952484d561921832b1c819fa3090035a5ad9bff47f81e70c2fd990b6e6",
+    "requirements.txt": "e2dca9113f1b31e8b06538e95b05e7e94749944f911409a5ec65a032dbae83c7",
+    "run.py": "b9f79c3abd6560ca4336efb2fe7047aa93f6450b53e7a6255ce2a0ddfc6116f8",
+    "capture-native.cjs": "6ec294607c0a526589faa57aeb05714e11058c262a8d1ac3fde49c1c563b44ba"
+  },
+  "preserved_stage_one_receipt_sha256": "562c42c6f06e7925ec3b9934c23f777d9fe445bd57ad7bf99c86b3d38451d175",
+  "numerics": {
+    "candidate_step_s": 0.5,
+    "refined_step_s": 0.25,
+    "reference_rtol": 1e-09,
+    "reference_atol_kg": 1e-10,
+    "reference_max_step_s": 0.5,
+    "closure_abs_kg": 1e-07,
+    "closure_rel": 1e-09,
+    "comparison_abs_kg": 0.05,
+    "comparison_rel": 0.0001,
+    "negative_mass_tolerance_kg": 1e-09
+  },
+  "reference_refinement": {
+    "rtol": 1.0000000000000001e-11,
+    "atol_kg": 1e-12
+  },
+  "classification": "truth and analyzer coverage are separate; more qualified output is not an acceptance target",
+  "prescribed_segments": {
+    "heat-loss-and-recovery": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 1200,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 450,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 3600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "reduced-feed": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 1200,
+        "input": {
+          "feed_kg_s": 4.444444444444445,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "zero-feed": [
+      {
+        "duration_s": 900,
+        "input": {
+          "feed_kg_s": 0,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "blocked-product-outlet": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 1200,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "crest-carry-and-starvation": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0,
+          "product_valve": 0.5,
+          "weir_height_percent": 30,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 1,
+          "product_valve": 0.5,
+          "weir_height_percent": 90,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 0,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 1,
+          "product_valve": 1,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "diversion": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 1
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ],
+    "activity-loss": [
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 1200,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 0.35,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      },
+      {
+        "duration_s": 600,
+        "input": {
+          "feed_kg_s": 8.88888888888889,
+          "temperature_k": 650.0,
+          "activity": 1.0,
+          "water_valve": 0.45,
+          "product_valve": 0.5,
+          "weir_height_percent": 55.0,
+          "divert_fraction": 0.0
+        }
+      }
+    ]
+  },
+  "native_captures": {
+    "heater-loss": {
+      "sha256": "ae0ff772e10493ca3cec7e43677b4ae79b114c44245a9bb4dd34a71c2687543e",
+      "source": {
+        "revision": "bfed001fc89d9beaa640b30a7886d5f16f61a31b",
+        "revision_scope": "application page, src/*.js and tools/logic-harness.js; other dev/documentation files may differ",
+        "model_id": "670f49e40c2b3395735e85b3bd09205f77f4a0598c955959f061f1d18810c832",
+        "model_stamp_sha256": "5a1d16ec067c22dae4a4fd0f90e3e76ad95a49963e5309129f230297d79b969d",
+        "step_s": 0.5,
+        "node_version": "v22.23.2",
+        "harness_sha256": "ccd88cd6b8f6fe05c0752b0f0d3152d10fad27c0d72f28cae8e149f6a5627917",
+        "capture_script_sha256": "6ec294607c0a526589faa57aeb05714e11058c262a8d1ac3fde49c1c563b44ba",
+        "provenance_dependency_sha256": "3cea8148835d52530aaca74beb2df2305b3eb5f6c2488c97bdecd80028928ed8",
+        "evidence_phases": {
+          "pre": "interval start after listed commands, before Core.step and valve stroke",
+          "post_u3": "immediately after native Core.stepU3, after U1 valve stroke and U3 state update, before U4, PID, alarms and scheduled-fault activation"
+        },
+        "seed": 20260829
+      },
+      "events": [
+        {
+          "time_s": 600,
+          "action": "setMode",
+          "tag": "TIC311",
+          "mode": "MAN"
+        },
+        {
+          "time_s": 600,
+          "action": "storeEntry",
+          "tag": "TIC311",
+          "parameter": "OP",
+          "value": 0,
+          "unit": "%"
+        },
+        {
+          "time_s": 1800,
+          "action": "setMode",
+          "tag": "TIC311",
+          "mode": "AUTO",
+          "retained_sp_c": 320
+        }
+      ],
+      "provenance": "fresh capture with runtime/harness bytes independently verified"
+    },
+    "activity-step": {
+      "sha256": "0150781b8a4de37ab85eb18e82e8391ccb913de119216e371da3d5f6b68ebe17",
+      "source": {
+        "revision": "bfed001fc89d9beaa640b30a7886d5f16f61a31b",
+        "revision_scope": "application page, src/*.js and tools/logic-harness.js; other dev/documentation files may differ",
+        "model_id": "670f49e40c2b3395735e85b3bd09205f77f4a0598c955959f061f1d18810c832",
+        "model_stamp_sha256": "5a1d16ec067c22dae4a4fd0f90e3e76ad95a49963e5309129f230297d79b969d",
+        "step_s": 0.5,
+        "node_version": "v22.23.2",
+        "harness_sha256": "ccd88cd6b8f6fe05c0752b0f0d3152d10fad27c0d72f28cae8e149f6a5627917",
+        "capture_script_sha256": "6ec294607c0a526589faa57aeb05714e11058c262a8d1ac3fde49c1c563b44ba",
+        "provenance_dependency_sha256": "3cea8148835d52530aaca74beb2df2305b3eb5f6c2488c97bdecd80028928ed8",
+        "evidence_phases": {
+          "pre": "interval start after listed commands, before Core.step and valve stroke",
+          "post_u3": "immediately after native Core.stepU3, after U1 valve stroke and U3 state update, before U4, PID, alarms and scheduled-fault activation"
+        },
+        "seed": 20260829
+      },
+      "events": [
+        {
+          "time_s": 600,
+          "action": "setMagnitude",
+          "key": "bedact",
+          "value": 1.35
+        },
+        {
+          "time_s": 600,
+          "action": "setUpset",
+          "key": "bedact",
+          "on": true
+        },
+        {
+          "time_s": 1800,
+          "action": "setUpset",
+          "key": "bedact",
+          "on": false
+        }
+      ],
+      "provenance": "fresh capture with runtime/harness bytes independently verified"
+    }
+  },
+  "cases": {
+    "heat-loss-and-recovery": {
+      "closure": {
+        "total_residual_kg": 6.994696377660148e-09,
+        "component_residual_kg": [
+          7.122437750695099e-09,
+          -1.993839759961702e-09,
+          1.1793872545240447e-09,
+          1.2789769243681803e-13
+        ],
+        "maximum_abs_component_residual_kg": 7.12675785052852e-09,
+        "maximum_abs_total_residual_kg": 7.001972335274331e-09,
+        "maximum_abs_inventory_residual_kg": 5.257277280179551e-09,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            1.82626536116004e-09,
+            -2.546585164964199e-11,
+            -4.547473508864641e-12,
+            1.1368683772161603e-13
+          ],
+          "water": [
+            0.0,
+            0.0,
+            1.183707354357466e-09,
+            0.0
+          ],
+          "oil": [
+            5.257277280179551e-09,
+            -1.8630998965818435e-09,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            7.787548383930698e-12,
+            -2.59660737356171e-10,
+            0.0,
+            0.0
+          ],
+          "product": [
+            3.3082869776990265e-11,
+            1.5370460459962487e-10,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 2.433227853954923,
+          "oil": 4.232508379289014,
+          "chamber1": 6.665736233243937,
+          "chamber2": 3.2062978039802474,
+          "product": 5.4433108555521805,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 20.27689878295769,
+          "ho": 35.27090316074178,
+          "h1": 55.54780194369947,
+          "h2": 45.80425434257496
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.1409214765843929,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": 979.0,
+      "analyzer_offspec_first_sustained_s": 1025.0,
+      "truth_requalified_first_sustained_s": 5094.5,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 9726.053223281708,
+        "off_band_kg": 30422.564694211433,
+        "unknown_kg": 0.0,
+        "gross_kg": 40148.61791749309,
+        "sum_residual_kg": -5.093170329928398e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 40148.61791749306,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          48000.00000000708,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          7296.080410410071,
+          0.0
+        ],
+        "reactor_oil": [
+          11519.597947960732,
+          28454.713600592837,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          729.6080410409569
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          7862.852556453964,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          11455.634284285814,
+          28012.67056083315,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          11481.036104576287,
+          28222.23049735873,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          11467.37258195844,
+          28681.245335534648,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9629760307346125,
+              "oil": 3.7020011159701243,
+              "chamber1": 6.664977146704737,
+              "chamber2": 3.2281005080323517,
+              "product": 5.685607636406303,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.69146692278844,
+              "ho": 30.850009299751036,
+              "h1": 55.54147622253947,
+              "h2": 46.1157215433193
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1249559501227115,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.124962664388669,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.24894496545505185,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.697351135024726,
+              "oil": 3.9700866201291776,
+              "chamber1": 6.6674377551539035,
+              "chamber2": 3.2638200783889,
+              "product": 5.5929437550038905,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.47792612520605,
+              "ho": 33.084055167743145,
+              "h1": 55.5619812929492,
+              "h2": 46.626001119841426
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1374725602172395,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.13275153341107349,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.22765939865809448,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.7776400464633846,
+              "oil": 4.891290577917648,
+              "chamber1": 6.668930624381032,
+              "chamber2": 3.4887630578460933,
+              "product": 5.589137106781913,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 14.813667053861538,
+              "ho": 40.7607548159804,
+              "h1": 55.574421869841935,
+              "h2": 49.839472254944184
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.44531246593918566,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.4277352232253773,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        },
+        {
+          "time_s": 2100.0,
+          "reactor_converted_mass_fraction": 0.8999999999982364,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.855622394271078,
+              "oil": 4.811037628356936,
+              "chamber1": 6.6666600226280135,
+              "chamber2": 3.4408699318412084,
+              "product": 5.608416646037535,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 15.463519952258983,
+              "ho": 40.091980236307805,
+              "h1": 55.55550018856679,
+              "h2": 49.155284740588684
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.5340497306542674,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.524820466579477,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2085.0
+          }
+        },
+        {
+          "time_s": 5400.0,
+          "reactor_converted_mass_fraction": 0.8999999999999998,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.433227853954923,
+              "oil": 4.232508379289014,
+              "chamber1": 6.665736233243937,
+              "chamber2": 3.2062978039802474,
+              "product": 5.4433108555521805,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 20.27689878295769,
+              "ho": 35.27090316074178,
+              "h1": 55.54780194369947,
+              "h2": 45.80425434257496
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1409214765843929,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.14205282531914537,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 5385.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.0001303897788602626,
+          "maximum_abs_all_state_error_kg": 0.00013038977910519167,
+          "maximum_tolerance_fraction": 0.0026071577701460573,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.5329533198382705e-09,
+          "maximum_abs_all_state_error_kg": 1.5329533198382705e-09,
+          "maximum_tolerance_fraction": 3.063968824170084e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039131181358243,
+          "maximum_abs_all_state_error_kg": 0.00013039131181358243,
+          "maximum_tolerance_fraction": 0.0026071884098263108,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348720272493665e-05,
+          "maximum_abs_all_state_error_kg": 2.348720272493665e-05,
+          "maximum_tolerance_fraction": 0.0004697234830393393,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 6.994696377660148e-09,
+          "component_residual_kg": [
+            7.122437750695099e-09,
+            -1.993839759961702e-09,
+            1.1793872545240447e-09,
+            1.2789769243681803e-13
+          ],
+          "maximum_abs_component_residual_kg": 7.12675785052852e-09,
+          "maximum_abs_total_residual_kg": 7.001972335274331e-09,
+          "maximum_abs_inventory_residual_kg": 5.257277280179551e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.82626536116004e-09,
+              -2.546585164964199e-11,
+              -4.547473508864641e-12,
+              1.1368683772161603e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.183707354357466e-09,
+              0.0
+            ],
+            "oil": [
+              5.257277280179551e-09,
+              -1.8630998965818435e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              7.787548383930698e-12,
+              -2.59660737356171e-10,
+              0.0,
+              0.0
+            ],
+            "product": [
+              3.3082869776990265e-11,
+              1.5370460459962487e-10,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 6.901132110215258e-09,
+          "component_residual_kg": [
+            7.066560669954924e-09,
+            -2.0037305148434825e-09,
+            1.135163074650336e-09,
+            3.623767952376511e-13
+          ],
+          "maximum_abs_component_residual_kg": 7.067072260724672e-09,
+          "maximum_abs_total_residual_kg": 6.9056795837241225e-09,
+          "maximum_abs_inventory_residual_kg": 5.227320798439905e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.7898855730891228e-09,
+              -2.1827872842550278e-11,
+              0.0,
+              3.410605131648481e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.1350493878126144e-09,
+              0.0
+            ],
+            "oil": [
+              5.2265818339947145e-09,
+              -2.0327206584624946e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              5.786660040030256e-11,
+              1.5506884665228426e-10,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -9.43600753089413e-12,
+              -1.0504663805477321e-10,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 6.926029527676292e-09,
+          "component_residual_kg": [
+            7.09577818724938e-09,
+            -2.0637571651604958e-09,
+            1.202693056256976e-09,
+            1.5631940186722204e-13
+          ],
+          "maximum_abs_component_residual_kg": 7.10350889221445e-09,
+          "maximum_abs_total_residual_kg": 6.926256901351735e-09,
+          "maximum_abs_inventory_residual_kg": 5.3186681725492235e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.7826096154749393e-09,
+              -3.637978807091713e-11,
+              -9.094947017729282e-13,
+              1.1368683772161603e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.203261490445584e-09,
+              0.0
+            ],
+            "oil": [
+              5.3186681725492235e-09,
+              -1.9267645257059485e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              3.183231456205249e-11,
+              1.6643753042444587e-10,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -3.717559593496844e-11,
+              -2.6784618967212737e-10,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": -1.704506757960189e-08,
+          "component_residual_kg": [
+            -1.702957774796232e-08,
+            7.3000592237804085e-09,
+            -2.5316921892226674e-09,
+            7.354117315117037e-13
+          ],
+          "maximum_abs_component_residual_kg": 1.702957774796232e-08,
+          "maximum_abs_total_residual_kg": 1.704506757960189e-08,
+          "maximum_abs_inventory_residual_kg": 2.2308086045086384e-08,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              -2.2308086045086384e-08,
+              3.637978807091713e-12,
+              -2.637534635141492e-11,
+              6.821210263296962e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -2.5056579033844173e-09,
+              0.0
+            ],
+            "oil": [
+              5.148024229129078e-09,
+              7.4069248512387276e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              8.316192179336213e-11,
+              4.3655745685100555e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              4.945377440890297e-11,
+              -1.5552359400317073e-10,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "heat_loss_conversion_drop": 0.6723406013419055,
+      "consequence_checks": {
+        "baseline_qualified": true,
+        "conversion_drop": true,
+        "receiving_inventory_offspec": true,
+        "analyzer_later": true,
+        "contamination_at_heat_restore": true,
+        "off_band_dispatch_retained": true
+      },
+      "passed": true
+    },
+    "reduced-feed": {
+      "closure": {
+        "total_residual_kg": 8.631104719825089e-10,
+        "component_residual_kg": [
+          4.063167580170557e-10,
+          -4.94765117764473e-10,
+          -3.979039320256561e-12,
+          3.410605131648481e-13
+        ],
+        "maximum_abs_component_residual_kg": 4.94765117764473e-10,
+        "maximum_abs_total_residual_kg": 8.640199666842818e-10,
+        "maximum_abs_inventory_residual_kg": 5.175024853087962e-10,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            3.8562575355172157e-10,
+            1.9099388737231493e-11,
+            -2.9558577807620168e-12,
+            3.410605131648481e-13
+          ],
+          "water": [
+            0.0,
+            0.0,
+            -1.1368683772161603e-12,
+            0.0
+          ],
+          "oil": [
+            1.836042429204099e-11,
+            -5.175024853087962e-10,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            -6.0822458181064576e-12,
+            8.640199666842818e-12,
+            0.0,
+            0.0
+          ],
+          "product": [
+            7.617018127348274e-12,
+            -5.4569682106375694e-12,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 2.1394248915856355,
+          "oil": 4.497744342317963,
+          "chamber1": 6.637169233903599,
+          "chamber2": 0.6632916387829085,
+          "product": 3.436584303794002,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 17.82854076321363,
+          "ho": 37.481202852649695,
+          "h1": 55.309743615863326,
+          "h2": 9.475594839755836
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.10920887974220564,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": null,
+      "analyzer_offspec_first_sustained_s": null,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 12101.539967836654,
+        "off_band_kg": 0.0,
+        "unknown_kg": 0.0,
+        "gross_kg": 12101.53996783663,
+        "sum_residual_kg": -2.3646862246096134e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 12101.539967836654,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          10666.666666667541,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          1970.0277008310266,
+          0.0
+        ],
+        "reactor_oil": [
+          816.5281625115596,
+          7683.108033240475,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          197.00277008312133
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          2830.602809245392,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          878.6388945656975,
+          6902.801827332466,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          1182.334746166893,
+          8868.472664704941,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          1482.0903286012929,
+          10619.449639235338,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9629760307346125,
+              "oil": 3.7020011159701243,
+              "chamber1": 6.664977146704737,
+              "chamber2": 3.2281005080323517,
+              "product": 5.685607636406303,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.69146692278844,
+              "ho": 30.850009299751036,
+              "h1": 55.54147622253947,
+              "h2": 46.1157215433193
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1249559501227115,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.124962664388669,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.9473684210521602,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.7282433447429133,
+              "oil": 3.907737853518771,
+              "chamber1": 6.635981198261684,
+              "chamber2": 1.9346377074812287,
+              "product": 5.322798665072375,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.735361206190944,
+              "ho": 32.56448211265642,
+              "h1": 55.299843318847365,
+              "h2": 27.63768153544612
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12450164193068392,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12465659281922546,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.9473684210526314,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.1394248915856355,
+              "oil": 4.497744342317963,
+              "chamber1": 6.637169233903599,
+              "chamber2": 0.6632916387829085,
+              "product": 3.436584303794002,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 17.82854076321363,
+              "ho": 37.481202852649695,
+              "h1": 55.309743615863326,
+              "h2": 9.475594839755836
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.10920887974220564,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.11038545740138841,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.0001303897788602626,
+          "maximum_abs_all_state_error_kg": 0.00013038977910519167,
+          "maximum_tolerance_fraction": 0.0026071577701460573,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.5329533198382705e-09,
+          "maximum_abs_all_state_error_kg": 1.5329533198382705e-09,
+          "maximum_tolerance_fraction": 3.063968824170084e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039131181358243,
+          "maximum_abs_all_state_error_kg": 0.00013039131181358243,
+          "maximum_tolerance_fraction": 0.0026071884098263108,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348720272493665e-05,
+          "maximum_abs_all_state_error_kg": 2.348720272493665e-05,
+          "maximum_tolerance_fraction": 0.0004697234830393393,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 8.631104719825089e-10,
+          "component_residual_kg": [
+            4.063167580170557e-10,
+            -4.94765117764473e-10,
+            -3.979039320256561e-12,
+            3.410605131648481e-13
+          ],
+          "maximum_abs_component_residual_kg": 4.94765117764473e-10,
+          "maximum_abs_total_residual_kg": 8.640199666842818e-10,
+          "maximum_abs_inventory_residual_kg": 5.175024853087962e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              3.8562575355172157e-10,
+              1.9099388737231493e-11,
+              -2.9558577807620168e-12,
+              3.410605131648481e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -1.1368683772161603e-12,
+              0.0
+            ],
+            "oil": [
+              1.836042429204099e-11,
+              -5.175024853087962e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -6.0822458181064576e-12,
+              8.640199666842818e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              7.617018127348274e-12,
+              -5.4569682106375694e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 8.085407898761332e-10,
+          "component_residual_kg": [
+            3.8971847970969975e-10,
+            -5.32054400537163e-10,
+            -2.6716406864579767e-11,
+            2.7711166694643907e-13
+          ],
+          "maximum_abs_component_residual_kg": 5.32054400537163e-10,
+          "maximum_abs_total_residual_kg": 8.085407898761332e-10,
+          "maximum_abs_inventory_residual_kg": 5.129550117999315e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              3.7834979593753815e-10,
+              1.3642420526593924e-11,
+              -5.9117155615240335e-12,
+              2.8421709430404007e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -2.0691004465334117e-11,
+              0.0
+            ],
+            "oil": [
+              1.659827830735594e-11,
+              -5.129550117999315e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -1.7053025658242404e-13,
+              -2.523847797419876e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -4.718003765447065e-12,
+              -7.73070496506989e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 8.913048077374697e-10,
+          "component_residual_kg": [
+            3.949480742448941e-10,
+            -4.943103704135865e-10,
+            6.139089236967266e-12,
+            2.8421709430404007e-13
+          ],
+          "maximum_abs_component_residual_kg": 4.943103704135865e-10,
+          "maximum_abs_total_residual_kg": 8.922143024392426e-10,
+          "maximum_abs_inventory_residual_kg": 5.165929906070232e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              3.765308065339923e-10,
+              4.547473508864641e-12,
+              -3.410605131648481e-12,
+              2.8421709430404007e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              9.549694368615746e-12,
+              0.0
+            ],
+            "oil": [
+              1.63140612130519e-11,
+              -5.165929906070232e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              1.1368683772161603e-13,
+              2.5011104298755527e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              1.9326762412674725e-12,
+              1.546140993013978e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 1.1204974725842476e-09,
+          "component_residual_kg": [
+            2.124124875990674e-09,
+            -5.175024853087962e-10,
+            -3.9267433749046177e-10,
+            -3.055333763768431e-13
+          ],
+          "maximum_abs_component_residual_kg": 2.124124875990674e-09,
+          "maximum_abs_total_residual_kg": 1.1223164619877934e-09,
+          "maximum_abs_inventory_residual_kg": 2.2882886696606874e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.2882886696606874e-09,
+              -2.000888343900442e-11,
+              4.18367562815547e-11,
+              -3.126388037344441e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -4.3451109377201647e-10,
+              0.0
+            ],
+            "oil": [
+              -1.738271748763509e-10,
+              -5.19321474712342e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              7.048583938740194e-12,
+              -1.7280399333685637e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              3.467448550509289e-12,
+              3.9108272176235914e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "reduced_feed_conversion_gain": 0.04736842105263139,
+      "consequence_checks": {
+        "conversion_gain": true
+      },
+      "passed": true
+    },
+    "zero-feed": {
+      "closure": {
+        "total_residual_kg": -7.275957614183426e-12,
+        "component_residual_kg": [
+          0.0,
+          -6.366462912410498e-12,
+          -9.094947017729282e-13,
+          1.9984014443252818e-15
+        ],
+        "maximum_abs_component_residual_kg": 1.3642420526593924e-11,
+        "maximum_abs_total_residual_kg": 1.3642420526593924e-11,
+        "maximum_abs_inventory_residual_kg": 1.1368683772161603e-11,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            1.5631940186722204e-13,
+            1.4210854715202004e-14,
+            6.004086117172847e-13,
+            1.9984014443252818e-15
+          ],
+          "water": [
+            0.0,
+            0.0,
+            -1.5916157281026244e-12,
+            0.0
+          ],
+          "oil": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            -5.115907697472721e-13,
+            -2.2737367544323206e-12,
+            0.0,
+            0.0
+          ],
+          "product": [
+            4.547473508864641e-13,
+            -4.092726157978177e-12,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 1.6872721479549448,
+          "oil": 3.6,
+          "chamber1": 5.287272147954945,
+          "chamber2": 4.498083261164863e-40,
+          "product": 2.5712518126180295,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 14.060601232957874,
+          "ho": 30.000000000000004,
+          "h1": 44.06060123295788,
+          "h2": 6.425833230235518e-39
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.12499999999999975,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": null,
+      "analyzer_offspec_first_sustained_s": null,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 5542.998549905578,
+        "off_band_kg": 0.0,
+        "unknown_kg": 0.0,
+        "gross_kg": 5542.998549905582,
+        "sum_residual_kg": 3.637978807091713e-12,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 5542.998549905578,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_oil": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          1312.7278520450568,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          350.0000000000005,
+          2450.0000000000023,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          692.8748187381976,
+          4850.123731167385,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 1.0,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.0831645517616306,
+              "oil": 3.6,
+              "chamber1": 5.683164551761631,
+              "chamber2": 0.1269841269844727,
+              "product": 4.1017192026353815,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 17.35970459801359,
+              "ho": 30.000000000000004,
+              "h1": 47.35970459801359,
+              "h2": 1.8140589569210384
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12499999999999965,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 1.0,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.6872721479549448,
+              "oil": 3.6,
+              "chamber1": 5.287272147954945,
+              "chamber2": 4.498083261164863e-40,
+              "product": 2.5712518126180295,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 14.060601232957874,
+              "ho": 30.000000000000004,
+              "h1": 44.06060123295788,
+              "h2": 6.425833230235518e-39
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12499999999999975,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12499999999999994,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 7.372317213594215e-06,
+          "maximum_abs_all_state_error_kg": 7.372317213594215e-06,
+          "maximum_tolerance_fraction": 0.0001473284209612188,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 5.666606739396229e-09,
+          "maximum_abs_all_state_error_kg": 5.666606739396229e-09,
+          "maximum_tolerance_fraction": 1.1324388835758361e-07,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 7.366650606854819e-06,
+          "maximum_abs_all_state_error_kg": 7.366650606854819e-06,
+          "maximum_tolerance_fraction": 0.00014721517707452835,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.9857659681886695e-06,
+          "maximum_abs_all_state_error_kg": 2.9857660592824686e-06,
+          "maximum_tolerance_fraction": 5.970807043730835e-05,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": -7.275957614183426e-12,
+          "component_residual_kg": [
+            0.0,
+            -6.366462912410498e-12,
+            -9.094947017729282e-13,
+            1.9984014443252818e-15
+          ],
+          "maximum_abs_component_residual_kg": 1.3642420526593924e-11,
+          "maximum_abs_total_residual_kg": 1.3642420526593924e-11,
+          "maximum_abs_inventory_residual_kg": 1.1368683772161603e-11,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.5631940186722204e-13,
+              1.4210854715202004e-14,
+              6.004086117172847e-13,
+              1.9984014443252818e-15
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -1.5916157281026244e-12,
+              0.0
+            ],
+            "oil": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -5.115907697472721e-13,
+              -2.2737367544323206e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              4.547473508864641e-13,
+              -4.092726157978177e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 2.000888343900442e-11,
+          "component_residual_kg": [
+            -5.684341886080801e-13,
+            1.9099388737231493e-11,
+            9.094947017729282e-13,
+            3.197442310920451e-14
+          ],
+          "maximum_abs_component_residual_kg": 2.000888343900442e-11,
+          "maximum_abs_total_residual_kg": 2.000888343900442e-11,
+          "maximum_abs_inventory_residual_kg": 1.9099388737231493e-11,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              5.684341886080802e-14,
+              -2.7000623958883807e-13,
+              8.455458555545192e-13,
+              3.197442310920451e-14
+            ],
+            "water": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "oil": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              6.821210263296962e-13,
+              9.094947017729282e-13,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -1.2505552149377763e-12,
+              1.8189894035458565e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 7.275957614183426e-12,
+          "component_residual_kg": [
+            7.958078640513122e-13,
+            6.366462912410498e-12,
+            2.2737367544323206e-13,
+            1.3766765505351941e-14
+          ],
+          "maximum_abs_component_residual_kg": 7.275957614183426e-12,
+          "maximum_abs_total_residual_kg": 1.000444171950221e-11,
+          "maximum_abs_inventory_residual_kg": 9.549694368615746e-12,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.9895196601282805e-13,
+              -1.7053025658242404e-13,
+              4.156675004196586e-13,
+              1.3766765505351941e-14
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -2.2737367544323206e-13,
+              0.0
+            ],
+            "oil": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              2.2737367544323206e-13,
+              -2.2737367544323206e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              3.410605131648481e-13,
+              8.185452315956354e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": -2.000888343900442e-11,
+          "component_residual_kg": [
+            -3.524291969370097e-12,
+            -1.7280399333685637e-11,
+            6.821210263296962e-13,
+            1.0658141036401503e-14
+          ],
+          "maximum_abs_component_residual_kg": 2.091837814077735e-11,
+          "maximum_abs_total_residual_kg": 2.3646862246096134e-11,
+          "maximum_abs_inventory_residual_kg": 2.4101609596982598e-11,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              4.263256414560601e-13,
+              3.751665644813329e-12,
+              4.334310688136611e-13,
+              1.0658141036401503e-14
+            ],
+            "water": [
+              0.0,
+              0.0,
+              2.2737367544323206e-13,
+              0.0
+            ],
+            "oil": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              4.547473508864641e-13,
+              -4.547473508864641e-13,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -4.376943252282217e-12,
+              -2.0463630789890885e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "consequence_checks": {
+        "no_feed": true,
+        "isolated_reactor_discharge": true,
+        "downstream_inventory_drains": true
+      },
+      "passed": true
+    },
+    "blocked-product-outlet": {
+      "closure": {
+        "total_residual_kg": 2.299429979757406e-09,
+        "component_residual_kg": [
+          2.22303242480848e-09,
+          1.5415935195051134e-09,
+          3.4515323932282627e-10,
+          0.0
+        ],
+        "maximum_abs_component_residual_kg": 2.22303242480848e-09,
+        "maximum_abs_total_residual_kg": 2.3012489691609517e-09,
+        "maximum_abs_inventory_residual_kg": 2.4556356947869062e-09,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            2.4556356947869062e-09,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "water": [
+            0.0,
+            0.0,
+            3.4515323932282627e-10,
+            0.0
+          ],
+          "oil": [
+            -2.3180746211437508e-10,
+            1.4856595953460783e-09,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            5.172751116333529e-12,
+            -4.547473508864641e-12,
+            0.0,
+            0.0
+          ],
+          "product": [
+            -6.764366844436154e-12,
+            5.95719029661268e-11,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [
+        {
+          "code": "CAPACITY_EXCEEDED",
+          "severity": "note",
+          "inventory": "chamber2",
+          "maximum_volume_m3": 7.044352691975585,
+          "capacity_m3": 7,
+          "maximum_excess_volume_m3": 0.04435269197558522,
+          "overflow_transfers": [
+            "chamber2_overflow"
+          ],
+          "overflow_counter_kg": 5471.2634974500625,
+          "policy": "finite-time overflow to external_reject; capacity is a threshold, never a hard clamp"
+        }
+      ],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 2.882890550121373,
+          "oil": 3.782196982013593,
+          "chamber1": 6.665087532134966,
+          "chamber2": 4.996882753065369,
+          "product": 4.865781756592948,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 24.02408791767811,
+          "ho": 31.51830818344661,
+          "h1": 55.54239610112472,
+          "h2": 71.38403932950527
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.12473177988365187,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": null,
+      "analyzer_offspec_first_sustained_s": null,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 11202.180642545674,
+        "off_band_kg": 0.0,
+        "unknown_kg": 0.0,
+        "gross_kg": 11202.1806425457,
+        "sum_residual_kg": 2.546585164964199e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 11202.180642545674,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          21333.333333335562,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          3840.000000000325,
+          0.0
+        ],
+        "reactor_oil": [
+          2133.333333333106,
+          14976.000000001492,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          383.99999999999216
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          3957.109449878607,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          2116.0537768059794,
+          14847.52197091649,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          1284.9427979412908,
+          9009.863249878821,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          1399.408702721105,
+          9802.771939824595,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          682.5911730604836,
+          4788.6723243895785,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9629760307346125,
+              "oil": 3.7020011159701243,
+              "chamber1": 6.664977146704737,
+              "chamber2": 3.2281005080323517,
+              "product": 5.685607636406303,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.69146692278844,
+              "ho": 30.850009299751036,
+              "h1": 55.54147622253947,
+              "h2": 46.1157215433193
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1249559501227115,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.124962664388669,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9466645290743387,
+              "oil": 3.718334985627205,
+              "chamber1": 6.6649995147015435,
+              "chamber2": 5.885099971708597,
+              "product": 3.4484953505767058,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.555537742286155,
+              "ho": 30.98612488022671,
+              "h1": 55.54166262251287,
+              "h2": 84.07285673869424
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12495595012271157,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12495595045989848,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.90521905410294,
+              "oil": 3.7598375582050747,
+              "chamber1": 6.665056612308015,
+              "chamber2": 7.044352691975585,
+              "product": 0.7694633198453015,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.21015878419117,
+              "ho": 31.331979651708956,
+              "h1": 55.54213843590013,
+              "h2": 100.63360988536549
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12495595012271188,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12495595012271195,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        },
+        {
+          "time_s": 2100.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.893581348829677,
+              "oil": 3.771491365010024,
+              "chamber1": 6.665072713839701,
+              "chamber2": 5.8532499240794085,
+              "product": 3.4715882826015108,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.113177906913975,
+              "ho": 31.42909470841687,
+              "h1": 55.542272615330845,
+              "h2": 83.61785605827725
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12475669533904589,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12476389465653567,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2085.0
+          }
+        },
+        {
+          "time_s": 2400.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.882890550121373,
+              "oil": 3.782196982013593,
+              "chamber1": 6.665087532134966,
+              "chamber2": 4.996882753065369,
+              "product": 4.865781756592948,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.02408791767811,
+              "ho": 31.51830818344661,
+              "h1": 55.54239610112472,
+              "h2": 71.38403932950527
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12473177988365187,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12473448287722734,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2385.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.002119117607435328,
+          "maximum_abs_all_state_error_kg": 0.002119117607435328,
+          "maximum_tolerance_fraction": 0.012163834989905482,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 0.00019568662355595734,
+          "maximum_abs_all_state_error_kg": 0.0001956966616489808,
+          "maximum_tolerance_fraction": 0.0003700299825668577,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.0019234309838793706,
+          "maximum_abs_all_state_error_kg": 0.0019234309838793706,
+          "maximum_tolerance_fraction": 0.012163848921930811,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.0004881439635937568,
+          "maximum_abs_all_state_error_kg": 0.0004881439635937568,
+          "maximum_tolerance_fraction": 0.004972479964826222,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 2.299429979757406e-09,
+          "component_residual_kg": [
+            2.22303242480848e-09,
+            1.5415935195051134e-09,
+            3.4515323932282627e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 2.22303242480848e-09,
+          "maximum_abs_total_residual_kg": 2.3012489691609517e-09,
+          "maximum_abs_inventory_residual_kg": 2.4556356947869062e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.4556356947869062e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.4515323932282627e-10,
+              0.0
+            ],
+            "oil": [
+              -2.3180746211437508e-10,
+              1.4856595953460783e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              5.172751116333529e-12,
+              -4.547473508864641e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -6.764366844436154e-12,
+              5.95719029661268e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 2.1866526367375627e-09,
+          "component_residual_kg": [
+            2.208423666161252e-09,
+            1.4656507119070739e-09,
+            3.10592440655455e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 2.2133122001832817e-09,
+          "maximum_abs_total_residual_kg": 2.1879031919525005e-09,
+          "maximum_abs_inventory_residual_kg": 2.444721758365631e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.4410837795585394e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.10592440655455e-10,
+              0.0
+            ],
+            "oil": [
+              -2.183924152632244e-10,
+              1.501121005276218e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -9.208633855450898e-12,
+              -2.7284841053187847e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -3.240074875066057e-12,
+              -3.2741809263825417e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 2.2503172658616677e-09,
+          "component_residual_kg": [
+            2.218882855231641e-09,
+            1.4956640370655805e-09,
+            3.36058292305097e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 2.2199628801899962e-09,
+          "maximum_abs_total_residual_kg": 2.253727870993316e-09,
+          "maximum_abs_inventory_residual_kg": 2.448359737172723e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.444721758365631e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.36058292305097e-10,
+              0.0
+            ],
+            "oil": [
+              -2.2498625185107812e-10,
+              1.4842953532934189e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -3.410605131648481e-12,
+              3.0468072509393096e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              1.1937117960769683e-12,
+              -1.9099388737231493e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 3.047261998290196e-09,
+          "component_residual_kg": [
+            3.049990482395515e-09,
+            -1.2487362255342305e-09,
+            6.029949872754514e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 3.05107050735387e-09,
+          "maximum_abs_total_residual_kg": 3.047261998290196e-09,
+          "maximum_abs_inventory_residual_kg": 3.4124241210520267e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              3.4124241210520267e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              6.029949872754514e-10,
+              0.0
+            ],
+            "oil": [
+              -3.511786417220719e-10,
+              -1.3114913599565625e-09,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -3.922195901395753e-12,
+              7.548806024715304e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -4.149569576838985e-12,
+              -1.2732925824820995e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "consequence_checks": {
+        "closed_draw_stops": true,
+        "declared_overflow": true
+      },
+      "passed": true
+    },
+    "crest-carry-and-starvation": {
+      "closure": {
+        "total_residual_kg": 3.765308065339923e-10,
+        "component_residual_kg": [
+          2.7853275241795927e-10,
+          -1.291482476517558e-10,
+          -7.639755494892597e-11,
+          6.039613253960852e-14
+        ],
+        "maximum_abs_component_residual_kg": 2.7969804250460584e-10,
+        "maximum_abs_total_residual_kg": 3.965396899729967e-10,
+        "maximum_abs_inventory_residual_kg": 2.7466739993542433e-10,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            2.7284841053187847e-10,
+            -9.094947017729282e-12,
+            -1.1368683772161603e-12,
+            5.684341886080802e-14
+          ],
+          "water": [
+            0.0,
+            0.0,
+            -7.503331289626658e-11,
+            0.0
+          ],
+          "oil": [
+            1.7053025658242404e-12,
+            -1.2505552149377763e-10,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            -7.958078640513122e-13,
+            -7.275957614183426e-12,
+            -4.547473508864641e-13,
+            0.0
+          ],
+          "product": [
+            3.410605131648481e-12,
+            1.1823431123048067e-11,
+            5.684341886080802e-14,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 0.6964008209521175,
+          "oil": 4.453112315804457,
+          "chamber1": 5.149513136756575,
+          "chamber2": 1.4763755059194152e-76,
+          "product": 2.7360182864222438,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 5.803340174600979,
+          "ho": 37.10926929837048,
+          "h1": 42.912609472971454,
+          "h2": 2.1091078655991644e-75
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": false,
+        "a_mass_fraction": 0.11835888487782012,
+        "w_mass_fraction": 0.051836426931210926
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": false,
+      "truth_offspec_first_sustained_s": 117.0,
+      "analyzer_offspec_first_sustained_s": 160.0,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 958.6083654773435,
+        "off_band_kg": 12902.469518579112,
+        "unknown_kg": 0.0,
+        "gross_kg": 13861.077884056467,
+        "sum_residual_kg": 1.2732925824820995e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 13861.077884056447,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          10666.666666666957,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          1919.9999999999252,
+          0.0
+        ],
+        "reactor_oil": [
+          1066.666666666682,
+          7487.999999999775,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          192.00000000000762
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          3594.0018005775496,
+          0.0
+        ],
+        "oil_underflow": [
+          3.6099618196320686,
+          25.34193193096847,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          629.5973784703331,
+          0.0
+        ],
+        "oil_weir": [
+          978.8559744335784,
+          6864.368945838836,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          1328.8559744335791,
+          9314.368945838844,
+          629.5973784703335,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          1667.0763718765613,
+          11679.05306145197,
+          514.9484507279345,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.33040262152967,
+              "oil": 0.3366063948999683,
+              "chamber1": 3.6670090164296383,
+              "chamber2": 5.409236347414927,
+              "product": 6.809747671092999,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 27.753355179413916,
+              "ho": 2.805053290833069,
+              "h1": 30.558408470246984,
+              "h2": 77.27480496307038
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.12063652235239697,
+            "w_mass_fraction": 0.034361350815555046
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.1211279624937027,
+            "w_mass_fraction": 0.030492769854769272,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.6986892331414785,
+              "oil": 3.0099397282332614,
+              "chamber1": 5.70862896137474,
+              "chamber2": 2.460306183286716,
+              "product": 6.4135003278083165,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.489076942845653,
+              "ho": 25.082831068610513,
+              "h1": 47.571908011456166,
+              "h2": 35.14723118981023
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.1183656217895683,
+            "w_mass_fraction": 0.0522410716342515
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.11861401033426659,
+            "w_mass_fraction": 0.050285407951608393,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 1.0,
+          "geometry": {
+            "volumes_m3": {
+              "water": 0.6964008209521175,
+              "oil": 4.453112315804457,
+              "chamber1": 5.149513136756575,
+              "chamber2": 1.4763755059194152e-76,
+              "product": 2.7360182864222438,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 5.803340174600979,
+              "ho": 37.10926929837048,
+              "h1": 42.912609472971454,
+              "h2": 2.1091078655991644e-75
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.11835888487782012,
+            "w_mass_fraction": 0.051836426931210926
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.11835888419504592,
+            "w_mass_fraction": 0.05183643259878277,
+            "sample_source_time_s": 1785.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 1.141768057445006,
+          "maximum_abs_all_state_error_kg": 1.141768057445006,
+          "maximum_tolerance_fraction": 7.649569621020018,
+          "passed": false
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 3.781166287808446e-05,
+          "maximum_abs_all_state_error_kg": 3.7811670154042076e-05,
+          "maximum_tolerance_fraction": 0.00023987343056174127,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 1.141737202493914,
+          "maximum_abs_all_state_error_kg": 1.141737202493914,
+          "maximum_tolerance_fraction": 7.649363046657192,
+          "passed": false
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.35329454405518845,
+          "maximum_abs_all_state_error_kg": 0.35329454405518845,
+          "maximum_tolerance_fraction": 2.366986009446722,
+          "passed": false
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 3.765308065339923e-10,
+          "component_residual_kg": [
+            2.7853275241795927e-10,
+            -1.291482476517558e-10,
+            -7.639755494892597e-11,
+            6.039613253960852e-14
+          ],
+          "maximum_abs_component_residual_kg": 2.7969804250460584e-10,
+          "maximum_abs_total_residual_kg": 3.965396899729967e-10,
+          "maximum_abs_inventory_residual_kg": 2.7466739993542433e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.7284841053187847e-10,
+              -9.094947017729282e-12,
+              -1.1368683772161603e-12,
+              5.684341886080802e-14
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -7.503331289626658e-11,
+              0.0
+            ],
+            "oil": [
+              1.7053025658242404e-12,
+              -1.2505552149377763e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -7.958078640513122e-13,
+              -7.275957614183426e-12,
+              -4.547473508864641e-13,
+              0.0
+            ],
+            "product": [
+              3.410605131648481e-12,
+              1.1823431123048067e-11,
+              5.684341886080802e-14,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 3.765308065339923e-10,
+          "component_residual_kg": [
+            3.019522409886122e-10,
+            -1.2460077414289117e-10,
+            -7.503331289626658e-11,
+            -4.192202140984591e-13
+          ],
+          "maximum_abs_component_residual_kg": 3.036575435544364e-10,
+          "maximum_abs_total_residual_kg": 3.8562575355172157e-10,
+          "maximum_abs_inventory_residual_kg": 2.9831426218152046e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.9831426218152046e-10,
+              -1.000444171950221e-11,
+              4.547473508864641e-13,
+              -4.263256414560601e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -7.457856554538012e-11,
+              0.0
+            ],
+            "oil": [
+              4.604316927725449e-12,
+              -1.3278622645884752e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -7.958078640513122e-13,
+              2.1827872842550278e-11,
+              4.547473508864641e-13,
+              0.0
+            ],
+            "product": [
+              -1.7053025658242404e-13,
+              -3.183231456205249e-12,
+              -1.8047785488306545e-12,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 3.8562575355172157e-10,
+          "component_residual_kg": [
+            2.9126567824278027e-10,
+            -1.227817847393453e-10,
+            -6.230038707144558e-11,
+            -3.268496584496461e-13
+          ],
+          "maximum_abs_component_residual_kg": 2.944489096989855e-10,
+          "maximum_abs_total_residual_kg": 4.1382008930668235e-10,
+          "maximum_abs_inventory_residual_kg": 2.837623469531536e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.837623469531536e-10,
+              1.8189894035458565e-12,
+              4.547473508864641e-13,
+              -3.126388037344441e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -6.45741238258779e-11,
+              0.0
+            ],
+            "oil": [
+              1.7621459846850485e-12,
+              -1.20508047984913e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -2.1600499167107046e-12,
+              2.8194335754960775e-11,
+              1.3642420526593924e-12,
+              0.0
+            ],
+            "product": [
+              7.73070496506989e-12,
+              -3.228706191293895e-11,
+              1.4210854715202004e-13,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 1.2614691513590515e-09,
+          "component_residual_kg": [
+            1.1430074664531276e-09,
+            8.767528925091028e-10,
+            1.646185410209e-10,
+            -6.750155989720952e-14
+          ],
+          "maximum_abs_component_residual_kg": 1.1450538295321167e-09,
+          "maximum_abs_total_residual_kg": 1.2714735930785537e-09,
+          "maximum_abs_inventory_residual_kg": 1.2569216778501868e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.2569216778501868e-09,
+              -4.547473508864641e-12,
+              -2.5011104298755527e-12,
+              -5.684341886080802e-14
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.687112671788782e-10,
+              0.0
+            ],
+            "oil": [
+              -1.1579004421946593e-10,
+              8.712959242984653e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              3.410605131648481e-13,
+              -3.2741809263825417e-11,
+              1.2505552149377763e-12,
+              0.0
+            ],
+            "product": [
+              1.1368683772161603e-12,
+              4.274625098332763e-11,
+              -2.9558577807620168e-12,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "consequence_checks": {
+        "water_carries": true,
+        "oil_underflows": true,
+        "oil_crosses_weir": true
+      },
+      "passed": false
+    },
+    "diversion": {
+      "closure": {
+        "total_residual_kg": 1.2321379472268745e-09,
+        "component_residual_kg": [
+          1.2520331438281573e-09,
+          5.099991540191695e-10,
+          1.2005330063402653e-10,
+          0.0
+        ],
+        "maximum_abs_component_residual_kg": 1.2520331438281573e-09,
+        "maximum_abs_total_residual_kg": 1.2339569366304204e-09,
+        "maximum_abs_inventory_residual_kg": 1.3660610420629382e-09,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            1.3660610420629382e-09,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "water": [
+            0.0,
+            0.0,
+            1.2005330063402653e-10,
+            0.0
+          ],
+          "oil": [
+            -1.0760459190350957e-10,
+            5.238689482212067e-10,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            1.8758328224066645e-12,
+            2.2282620193436742e-11,
+            0.0,
+            0.0
+          ],
+          "product": [
+            -7.617018127348274e-12,
+            -2.4101609596982598e-11,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            -1.3073986337985843e-12,
+            -1.1141310096718371e-11,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 2.90521905410294,
+          "oil": 3.7598375582050747,
+          "chamber1": 6.665056612308015,
+          "chamber2": 3.109737885548505,
+          "product": 4.151954825348117,
+          "offspec": 2.0222974299316445
+        },
+        "levels_percent": {
+          "hw": 24.21015878419117,
+          "ho": 31.331979651708956,
+          "h1": 55.54213843590013,
+          "h2": 44.424826936407214
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.12476243231452767,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": null,
+      "analyzer_offspec_first_sustained_s": null,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 10174.309936593547,
+        "off_band_kg": 0.0,
+        "unknown_kg": 0.0,
+        "gross_kg": 10174.309936593525,
+        "sum_residual_kg": -2.1827872842550278e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 10174.309936593547,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          16000.00000000126,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          2880.000000000107,
+          0.0
+        ],
+        "reactor_oil": [
+          1599.999999999894,
+          11232.000000000531,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          288.00000000001125
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          2974.780945897047,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          1584.941346185898,
+          11119.188607250051,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          1085.5305697558824,
+          7610.343227116105,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          539.1709524255277,
+          3781.294895699606,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          1271.1241834595132,
+          8903.185753134012,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          337.28339842487907,
+          2365.3445057549516,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9629760307346125,
+              "oil": 3.7020011159701243,
+              "chamber1": 6.664977146704737,
+              "chamber2": 3.2281005080323517,
+              "product": 5.685607636406303,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.69146692278844,
+              "ho": 30.850009299751036,
+              "h1": 55.54147622253947,
+              "h2": 46.1157215433193
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1249559501227115,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.124962664388669,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9466645290743387,
+              "oil": 3.718334985627205,
+              "chamber1": 6.6649995147015435,
+              "chamber2": 3.1759009896227335,
+              "product": 3.4484953505767058,
+              "offspec": 2.303401213367144
+            },
+            "levels_percent": {
+              "hw": 24.555537742286155,
+              "ho": 30.98612488022671,
+              "h1": 55.54166262251287,
+              "h2": 45.370014137467614
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12495595012271157,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12495595045989848,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.90521905410294,
+              "oil": 3.7598375582050747,
+              "chamber1": 6.665056612308015,
+              "chamber2": 3.109737885548505,
+              "product": 4.151954825348117,
+              "offspec": 2.0222974299316445
+            },
+            "levels_percent": {
+              "hw": 24.21015878419117,
+              "ho": 31.331979651708956,
+              "h1": 55.54213843590013,
+              "h2": 44.424826936407214
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12476243231452767,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12476840789440909,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.0001303897788602626,
+          "maximum_abs_all_state_error_kg": 0.00013038977910519167,
+          "maximum_tolerance_fraction": 0.0026071577701460573,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.5329533198382705e-09,
+          "maximum_abs_all_state_error_kg": 1.5329533198382705e-09,
+          "maximum_tolerance_fraction": 3.063968824170084e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039131181358243,
+          "maximum_abs_all_state_error_kg": 0.00013039131181358243,
+          "maximum_tolerance_fraction": 0.0026071884098263108,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348720272493665e-05,
+          "maximum_abs_all_state_error_kg": 2.348720272493665e-05,
+          "maximum_tolerance_fraction": 0.0004697234830393393,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 1.2321379472268745e-09,
+          "component_residual_kg": [
+            1.2520331438281573e-09,
+            5.099991540191695e-10,
+            1.2005330063402653e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 1.2520331438281573e-09,
+          "maximum_abs_total_residual_kg": 1.2339569366304204e-09,
+          "maximum_abs_inventory_residual_kg": 1.3660610420629382e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.3660610420629382e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.2005330063402653e-10,
+              0.0
+            ],
+            "oil": [
+              -1.0760459190350957e-10,
+              5.238689482212067e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              1.8758328224066645e-12,
+              2.2282620193436742e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -7.617018127348274e-12,
+              -2.4101609596982598e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              -1.3073986337985843e-12,
+              -1.1141310096718371e-11,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 1.1850715964101255e-09,
+          "component_residual_kg": [
+            1.254960579899489e-09,
+            4.772573447553441e-10,
+            9.913492249324918e-11,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 1.2584564501594286e-09,
+          "maximum_abs_total_residual_kg": 1.1889369488926604e-09,
+          "maximum_abs_inventory_residual_kg": 1.3642420526593924e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.3606040738523006e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              9.913492249324918e-11,
+              0.0
+            ],
+            "oil": [
+              -1.0982148523908108e-10,
+              5.475158104673028e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              7.219114195322618e-12,
+              -4.638422979041934e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -3.865352482534945e-12,
+              -2.3646862246096134e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              1.3358203432289883e-12,
+              6.821210263296962e-13,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 1.271700966753997e-09,
+          "component_residual_kg": [
+            1.2479688393796096e-09,
+            5.620677256956697e-10,
+            1.0413714335300028e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 1.2479688393796096e-09,
+          "maximum_abs_total_residual_kg": 1.271700966753997e-09,
+          "maximum_abs_inventory_residual_kg": 1.3587850844487548e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.3587850844487548e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.0413714335300028e-10,
+              0.0
+            ],
+            "oil": [
+              -1.085140866052825e-10,
+              5.657057045027614e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              1.1368683772161603e-12,
+              -4.547473508864641e-13,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -4.547473508864641e-12,
+              -2.7284841053187847e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              1.2789769243681803e-12,
+              -9.094947017729282e-13,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 2.1177584130782634e-09,
+          "component_residual_kg": [
+            2.0880861484329216e-09,
+            -3.342393029015511e-11,
+            3.778950485866517e-10,
+            0.0
+          ],
+          "maximum_abs_component_residual_kg": 2.088313522108365e-09,
+          "maximum_abs_total_residual_kg": 2.118440534104593e-09,
+          "maximum_abs_inventory_residual_kg": 2.319211489520967e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.319211489520967e-09,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.778950485866517e-10,
+              0.0
+            ],
+            "oil": [
+              -2.340243554499466e-10,
+              -7.321432349272072e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -3.922195901395753e-12,
+              7.73070496506989e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              7.389644451905042e-12,
+              2.955857780762017e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              -5.115907697472721e-13,
+              2.9558577807620168e-12,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "consequence_checks": {
+        "offspec_tank_receives": true,
+        "offspec_dispatch": true,
+        "internal_product_draw_stops_during_diversion": true
+      },
+      "passed": true
+    },
+    "activity-loss": {
+      "closure": {
+        "total_residual_kg": 2.2735093807568774e-09,
+        "component_residual_kg": [
+          2.431079337839037e-09,
+          4.733919922728091e-10,
+          -4.348521542851813e-11,
+          -2.476241434123949e-12
+        ],
+        "maximum_abs_component_residual_kg": 2.43198883254081e-09,
+        "maximum_abs_total_residual_kg": 2.2735093807568774e-09,
+        "maximum_abs_inventory_residual_kg": 2.3392203729599714e-09,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            2.3392203729599714e-09,
+            2.1827872842550278e-11,
+            4.547473508864641e-12,
+            -2.5011104298755527e-12
+          ],
+          "water": [
+            0.0,
+            0.0,
+            -4.8203219193965197e-11,
+            0.0
+          ],
+          "oil": [
+            9.492850949754938e-11,
+            4.065441316924989e-10,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            2.1600499167107046e-12,
+            -6.366462912410498e-12,
+            0.0,
+            0.0
+          ],
+          "product": [
+            -6.0254023992456496e-12,
+            5.2295945351943374e-11,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 2.6705350227912423,
+          "oil": 3.994852411839081,
+          "chamber1": 6.665387434630324,
+          "chamber2": 3.159973885653856,
+          "product": 5.413670896633205,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 22.254458523260354,
+          "ho": 33.29043676532567,
+          "h1": 55.54489528858603,
+          "h2": 45.142484080769364
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": false,
+        "a_mass_fraction": 0.22447147049367303,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": 1231.5,
+      "analyzer_offspec_first_sustained_s": 1280.0,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 9367.823872809184,
+        "off_band_kg": 8493.13530806831,
+        "unknown_kg": 0.0,
+        "gross_kg": 17860.959180877486,
+        "sum_residual_kg": -7.275957614183426e-12,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 17860.959180877493,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          21333.333333335562,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          3543.251270140762,
+          0.0
+        ],
+        "reactor_oil": [
+          3617.0769826294045,
+          13818.679953549541,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          354.32512701407984
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          3872.7162473495678,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          3445.0336660537687,
+          13674.841340653411,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          3267.5023607197,
+          14124.393537464399,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          2895.3306271708607,
+          14965.628553706629,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9629760307346125,
+              "oil": 3.7020011159701243,
+              "chamber1": 6.664977146704737,
+              "chamber2": 3.2281005080323517,
+              "product": 5.685607636406303,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.69146692278844,
+              "ho": 30.850009299751036,
+              "h1": 55.54147622253947,
+              "h2": 46.1157215433193
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1249559501227115,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.124962664388669,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.759038347076237,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.8808589675552314,
+              "oil": 3.7846882392494905,
+              "chamber1": 6.665547206804722,
+              "chamber2": 3.199035732453201,
+              "product": 5.583672240288183,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.00715806296026,
+              "ho": 31.539068660412422,
+              "h1": 55.54622672337268,
+              "h2": 45.70051046361716
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.1289034948774829,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12751572416930823,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.7590361445783145,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.655515473892119,
+              "oil": 4.010349279322099,
+              "chamber1": 6.665864753214219,
+              "chamber2": 3.190070477514896,
+              "product": 5.447482987772004,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.12929561576766,
+              "ho": 33.419577327684166,
+              "h1": 55.548872943451826,
+              "h2": 45.57243539306994
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.20359018100272644,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.1994558616330677,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        },
+        {
+          "time_s": 2100.0,
+          "reactor_converted_mass_fraction": 0.8999999999996302,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.6620054810505493,
+              "oil": 4.003394230253943,
+              "chamber1": 6.6653997113044925,
+              "chamber2": 3.172862941586226,
+              "product": 5.429626309456134,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.183379008754578,
+              "ho": 33.36161858544953,
+              "h1": 55.544997594204105,
+              "h2": 45.3266134512318
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.22379326147183104,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.22185367346036391,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2085.0
+          }
+        },
+        {
+          "time_s": 2400.0,
+          "reactor_converted_mass_fraction": 0.8999999999999997,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.6705350227912423,
+              "oil": 3.994852411839081,
+              "chamber1": 6.665387434630324,
+              "chamber2": 3.159973885653856,
+              "product": 5.413670896633205,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.254458523260354,
+              "ho": 33.29043676532567,
+              "h1": 55.54489528858603,
+              "h2": 45.142484080769364
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.22447147049367303,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.22541180110771403,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2385.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.0001303897788602626,
+          "maximum_abs_all_state_error_kg": 0.00013038977910519167,
+          "maximum_tolerance_fraction": 0.0026071577701460573,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.5329533198382705e-09,
+          "maximum_abs_all_state_error_kg": 1.5329533198382705e-09,
+          "maximum_tolerance_fraction": 3.063968824170084e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039131181358243,
+          "maximum_abs_all_state_error_kg": 0.00013039131181358243,
+          "maximum_tolerance_fraction": 0.0026071884098263108,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348720272493665e-05,
+          "maximum_abs_all_state_error_kg": 2.348720272493665e-05,
+          "maximum_tolerance_fraction": 0.0004697234830393393,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 2.2735093807568774e-09,
+          "component_residual_kg": [
+            2.431079337839037e-09,
+            4.733919922728091e-10,
+            -4.348521542851813e-11,
+            -2.476241434123949e-12
+          ],
+          "maximum_abs_component_residual_kg": 2.43198883254081e-09,
+          "maximum_abs_total_residual_kg": 2.2735093807568774e-09,
+          "maximum_abs_inventory_residual_kg": 2.3392203729599714e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.3392203729599714e-09,
+              2.1827872842550278e-11,
+              4.547473508864641e-12,
+              -2.5011104298755527e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -4.8203219193965197e-11,
+              0.0
+            ],
+            "oil": [
+              9.492850949754938e-11,
+              4.065441316924989e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              2.1600499167107046e-12,
+              -6.366462912410498e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -6.0254023992456496e-12,
+              5.2295945351943374e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": 2.2329231796902604e-09,
+          "component_residual_kg": [
+            2.4147084332071245e-09,
+            4.1541170503478497e-10,
+            -5.2580162446247414e-11,
+            -2.476241434123949e-12
+          ],
+          "maximum_abs_component_residual_kg": 2.4147084332071245e-09,
+          "maximum_abs_total_residual_kg": 2.2329231796902604e-09,
+          "maximum_abs_inventory_residual_kg": 2.3392203729599714e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.3392203729599714e-09,
+              1.4551915228366852e-11,
+              2.2737367544323206e-12,
+              -2.5011104298755527e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -5.502442945726216e-11,
+              0.0
+            ],
+            "oil": [
+              8.060396794462577e-11,
+              3.701643436215818e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -2.3874235921539366e-12,
+              -1.6370904631912708e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -3.410605131648481e-12,
+              4.774847184307873e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 2.252022568427492e-09,
+          "component_residual_kg": [
+            2.4369910534005612e-09,
+            4.538378561846912e-10,
+            -4.9396930990042165e-11,
+            -2.014388655879884e-12
+          ],
+          "maximum_abs_component_residual_kg": 2.438582669128664e-09,
+          "maximum_abs_total_residual_kg": 2.252022568427492e-09,
+          "maximum_abs_inventory_residual_kg": 2.3501343093812466e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              2.3501343093812466e-09,
+              3.092281986027956e-11,
+              0.0,
+              -1.9895196601282805e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -4.956746124662459e-11,
+              0.0
+            ],
+            "oil": [
+              9.231371222995222e-11,
+              4.0108716348186135e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              2.2737367544323206e-13,
+              2.9558577807620168e-12,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -5.002220859751105e-12,
+              1.8189894035458565e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 3.024524630745873e-09,
+          "component_residual_kg": [
+            1.947910277522169e-09,
+            -5.754827725468203e-10,
+            2.7921487344428897e-10,
+            1.8474111129762605e-13
+          ],
+          "maximum_abs_component_residual_kg": 1.948251338035334e-09,
+          "maximum_abs_total_residual_kg": 3.0249793780967593e-09,
+          "maximum_abs_inventory_residual_kg": 1.8480932340025902e-09,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.8480932340025902e-09,
+              6.184563972055912e-11,
+              -3.8198777474462986e-11,
+              1.7053025658242404e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.1741365091875196e-10,
+              0.0
+            ],
+            "oil": [
+              1.1164047464262694e-10,
+              -6.316440703812987e-10,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -3.751665644813329e-12,
+              -1.318767317570746e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -5.9117155615240335e-12,
+              8.185452315956354e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "consequence_checks": {
+        "conversion_falls": true
+      },
+      "passed": true
+    },
+    "native-heater-loss-pre": {
+      "closure": {
+        "total_residual_kg": -7.16227077646181e-11,
+        "component_residual_kg": [
+          -6.366462912410498e-11,
+          -3.228706191293895e-11,
+          1.77351466845721e-11,
+          1.2434497875801753e-12
+        ],
+        "maximum_abs_component_residual_kg": 8.185452315956354e-11,
+        "maximum_abs_total_residual_kg": 9.822542779147625e-11,
+        "maximum_abs_inventory_residual_kg": 1.2801137927453965e-10,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            -5.820766091346741e-11,
+            -2.7284841053187847e-11,
+            5.9117155615240335e-12,
+            1.2505552149377763e-12
+          ],
+          "water": [
+            0.0,
+            0.0,
+            1.1823431123048067e-11,
+            0.0
+          ],
+          "oil": [
+            -2.9558577807620168e-12,
+            6.684786058031023e-11,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            5.002220859751105e-12,
+            -1.2755663192365319e-10,
+            0.0,
+            0.0
+          ],
+          "product": [
+            -6.821210263296962e-12,
+            5.502442945726216e-11,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 1.4954176436285271,
+          "oil": 5.171945428102953,
+          "chamber1": 6.66736307173148,
+          "chamber2": 3.55471249891929,
+          "product": 5.74307072884962,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 12.461813696904393,
+          "ho": 43.099545234191275,
+          "h1": 55.56135893109567,
+          "h2": 50.781607127418425
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": false,
+        "a_mass_fraction": 0.6880464630960017,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": 1007.0,
+      "analyzer_offspec_first_sustained_s": 1050.0,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 7690.555450284945,
+        "off_band_kg": 15059.755862379807,
+        "unknown_kg": 0.0,
+        "gross_kg": 22750.31131266481,
+        "sum_residual_kg": 5.820766091346741e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 22750.311312664773,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          26668.065377152496,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          2565.428308900252,
+          0.0
+        ],
+        "reactor_oil": [
+          13840.923832651264,
+          10005.170404711023,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          256.5428308900247
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          4070.010665271713,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          12708.187895104604,
+          9880.349999775257,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          11507.829965050798,
+          11036.937930693754,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          8946.63036321468,
+          13803.680949450129,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9011434190277963,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.964440214905072,
+              "oil": 3.700546018035533,
+              "chamber1": 6.664986232940605,
+              "chamber2": 3.276335485944951,
+              "product": 5.665123458280394,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.703668457542268,
+              "ho": 30.837883483629444,
+              "h1": 55.54155194117171,
+              "h2": 46.80479265635644
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12470875236899431,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12474813074028593,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.11495271977801302,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.7132805825871382,
+              "oil": 3.954554319662021,
+              "chamber1": 6.66783490224916,
+              "chamber2": 3.2829517341344743,
+              "product": 5.596850261319504,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.610671521559485,
+              "ho": 32.95461933051684,
+              "h1": 55.56529085207633,
+              "h2": 46.89931048763534
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.13320970194682677,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12944654427362712,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.024401026506702617,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.5210260783832987,
+              "oil": 5.149010567089735,
+              "chamber1": 6.670036645473034,
+              "chamber2": 3.5885469839649837,
+              "product": 5.632027840486468,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 12.675217319860824,
+              "ho": 42.90842139241446,
+              "h1": 55.58363871227529,
+              "h2": 51.264956913785475
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.495550147721635,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.47318039452714966,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        },
+        {
+          "time_s": 2100.0,
+          "reactor_converted_mass_fraction": 0.3583645844582065,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.2478475198677401,
+              "oil": 5.4216933644718415,
+              "chamber1": 6.669540884339582,
+              "chamber2": 3.673804474664736,
+              "product": 5.689461460462464,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 10.398729332231168,
+              "ho": 45.18077803726535,
+              "h1": 55.57950736949652,
+              "h2": 52.48292106663908
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.6297195148511963,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.6112871975966999,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2085.0
+          }
+        },
+        {
+          "time_s": 3000.0,
+          "reactor_converted_mass_fraction": 0.8886444083343583,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.4954176436285271,
+              "oil": 5.171945428102953,
+              "chamber1": 6.66736307173148,
+              "chamber2": 3.55471249891929,
+              "product": 5.74307072884962,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 12.461813696904393,
+              "ho": 43.099545234191275,
+              "h1": 55.56135893109567,
+              "h2": 50.781607127418425
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.6880464630960017,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.6981117544134786,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2985.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039035502515617,
+          "maximum_abs_all_state_error_kg": 0.00013039115647831,
+          "maximum_tolerance_fraction": 0.0026071853182551142,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.4360921340994537e-09,
+          "maximum_abs_all_state_error_kg": 1.4369050047036147e-09,
+          "maximum_tolerance_fraction": 2.8736843601714316e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039177019891213,
+          "maximum_abs_all_state_error_kg": 0.00013039257227043244,
+          "maximum_tolerance_fraction": 0.0026072136271721833,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348725820411346e-05,
+          "maximum_abs_all_state_error_kg": 2.3487284791099544e-05,
+          "maximum_tolerance_fraction": 0.0004697251354537469,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": -7.16227077646181e-11,
+          "component_residual_kg": [
+            -6.366462912410498e-11,
+            -3.228706191293895e-11,
+            1.77351466845721e-11,
+            1.2434497875801753e-12
+          ],
+          "maximum_abs_component_residual_kg": 8.185452315956354e-11,
+          "maximum_abs_total_residual_kg": 9.822542779147625e-11,
+          "maximum_abs_inventory_residual_kg": 1.2801137927453965e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              -5.820766091346741e-11,
+              -2.7284841053187847e-11,
+              5.9117155615240335e-12,
+              1.2505552149377763e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.1823431123048067e-11,
+              0.0
+            ],
+            "oil": [
+              -2.9558577807620168e-12,
+              6.684786058031023e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              5.002220859751105e-12,
+              -1.2755663192365319e-10,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -6.821210263296962e-12,
+              5.502442945726216e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": -1.1505107977427542e-10,
+          "component_residual_kg": [
+            -2.2737367544323206e-11,
+            -1.2505552149377763e-10,
+            -1.0231815394945443e-11,
+            -1.3855583347321954e-13
+          ],
+          "maximum_abs_component_residual_kg": 1.2732925824820995e-10,
+          "maximum_abs_total_residual_kg": 2.1373125491663814e-10,
+          "maximum_abs_inventory_residual_kg": 1.000444171950221e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              0.0,
+              -5.638867150992155e-11,
+              -1.8189894035458565e-11,
+              -1.1368683772161603e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              7.958078640513122e-12,
+              0.0
+            ],
+            "oil": [
+              5.88897819397971e-11,
+              -1.8189894035458565e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -3.1604940886609256e-11,
+              3.1604940886609256e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -5.1386450650170445e-11,
+              -8.185452315956354e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 7.526068657170981e-11,
+          "component_residual_kg": [
+            1.546140993013978e-10,
+            -4.9112713895738125e-11,
+            2.2737367544323206e-11,
+            -1.2896350654045818e-12
+          ],
+          "maximum_abs_component_residual_kg": 1.546140993013978e-10,
+          "maximum_abs_total_residual_kg": 9.43600753089413e-11,
+          "maximum_abs_inventory_residual_kg": 1.4551915228366852e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.4551915228366852e-10,
+              7.639755494892597e-11,
+              -8.185452315956354e-12,
+              -1.3073986337985843e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              3.069544618483633e-11,
+              0.0
+            ],
+            "oil": [
+              4.001776687800884e-11,
+              -3.228706191293895e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              1.1368683772161603e-12,
+              -2.864908310584724e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -3.228706191293895e-11,
+              -6.548361852765083e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 5.2295945351943374e-11,
+          "component_residual_kg": [
+            -1.8189894035458565e-12,
+            2.1373125491663814e-11,
+            1.5916157281026244e-11,
+            -9.450218385609332e-13
+          ],
+          "maximum_abs_component_residual_kg": 8.185452315956354e-11,
+          "maximum_abs_total_residual_kg": 8.776623872108757e-11,
+          "maximum_abs_inventory_residual_kg": 1.3005774235352874e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              5.275069270282984e-11,
+              5.4569682106375694e-12,
+              -7.73070496506989e-12,
+              -9.663381206337363e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              2.3419488570652902e-11,
+              0.0
+            ],
+            "oil": [
+              -8.458300726488233e-11,
+              -2.2737367544323206e-12,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              2.5920599000528455e-11,
+              -1.4097167877480388e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              5.9117155615240335e-12,
+              3.183231456205249e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "heat_loss_conversion_drop": 0.8767423925210936,
+      "consequence_checks": {
+        "baseline_qualified": true,
+        "conversion_drop": true,
+        "receiving_inventory_offspec": true,
+        "analyzer_later": true,
+        "contamination_at_heat_restore": true,
+        "off_band_dispatch_retained": true
+      },
+      "passed": true
+    },
+    "native-heater-loss-post_u3": {
+      "closure": {
+        "total_residual_kg": 7.73070496506989e-12,
+        "component_residual_kg": [
+          -2.000888343900442e-11,
+          2.8194335754960775e-11,
+          -4.547473508864641e-12,
+          1.2505552149377763e-12
+        ],
+        "maximum_abs_component_residual_kg": 5.275069270282984e-11,
+        "maximum_abs_total_residual_kg": 3.637978807091713e-11,
+        "maximum_abs_inventory_residual_kg": 8.776623872108757e-11,
+        "inventory_component_residual_kg": {
+          "reactor": [
+            -6.002665031701326e-11,
+            -2.000888343900442e-11,
+            5.9117155615240335e-12,
+            1.2505552149377763e-12
+          ],
+          "water": [
+            0.0,
+            0.0,
+            -1.0459189070388675e-11,
+            0.0
+          ],
+          "oil": [
+            7.503331289626658e-12,
+            3.3651303965598345e-11,
+            0.0,
+            0.0
+          ],
+          "chamber2": [
+            1.8189894035458565e-12,
+            -7.003109203651547e-11,
+            0.0,
+            0.0
+          ],
+          "product": [
+            2.955857780762017e-11,
+            8.412825991399586e-11,
+            0.0,
+            0.0
+          ],
+          "offspec": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "external_mass_bound_passed": true,
+        "maximum_external_mass_bound_excess_kg": 0.0,
+        "passed": true
+      },
+      "findings": [],
+      "initial_geometry": {
+        "volumes_m3": {
+          "water": 3.0,
+          "oil": 3.6,
+          "chamber1": 6.6,
+          "chamber2": 3.5,
+          "product": 6.0,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 25.0,
+          "ho": 30.000000000000004,
+          "h1": 55.0,
+          "h2": 49.99999999999999
+        }
+      },
+      "final_geometry": {
+        "volumes_m3": {
+          "water": 1.4956300369746978,
+          "oil": 5.171732303590757,
+          "chamber1": 6.667362340565456,
+          "chamber2": 3.554626026657523,
+          "product": 5.743054880061371,
+          "offspec": 0.0
+        },
+        "levels_percent": {
+          "hw": 12.463583641455815,
+          "ho": 43.097769196589645,
+          "h1": 55.56135283804546,
+          "h2": 50.78037180939318
+        }
+      },
+      "initial_quality": {
+        "valid": true,
+        "qualified": true,
+        "a_mass_fraction": 0.125,
+        "w_mass_fraction": 0.0
+      },
+      "final_quality": {
+        "valid": true,
+        "qualified": false,
+        "a_mass_fraction": 0.6879273798307116,
+        "w_mass_fraction": 0.0
+      },
+      "minimum_inventory_component_kg": 0.0,
+      "baseline_qualified": true,
+      "truth_offspec_first_sustained_s": 1006.5,
+      "analyzer_offspec_first_sustained_s": 1050.0,
+      "truth_requalified_first_sustained_s": null,
+      "requalification_search": "only after a sustained breach, and no earlier than the declared 1800 s heat/activity restoration time",
+      "dispatch": {
+        "qualified_kg": 7686.855384215047,
+        "off_band_kg": 15063.72366032026,
+        "unknown_kg": 0.0,
+        "gross_kg": 22750.57904453529,
+        "sum_residual_kg": -1.4551915228366852e-11,
+        "classification_step_s": 0.5,
+        "classification_rule": "integrated external product dispatch, classified by left-end receiving-tank truth; analyzer coverage reported separately"
+      },
+      "analyzer_dispatch_coverage": {
+        "valid_kg": 22750.57904453527,
+        "unknown_kg": 0.0
+      },
+      "integrated_transfers_component_kg": {
+        "feed": [
+          26668.06669187319,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reactor_water": [
+          0.0,
+          0.0,
+          2565.4155264456012,
+          0.0
+        ],
+        "reactor_oil": [
+          13840.989059645213,
+          10005.120553137884,
+          0.0,
+          0.0
+        ],
+        "reactor_gas": [
+          0.0,
+          0.0,
+          0.0,
+          256.54155264455966
+        ],
+        "water_draw": [
+          0.0,
+          0.0,
+          4069.785489470914,
+          0.0
+        ],
+        "oil_underflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_carry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_weir": [
+          12709.111760797568,
+          9879.612009112881,
+          0.0,
+          0.0
+        ],
+        "product_transfer": [
+          11509.481445085927,
+          11035.541503498573,
+          0.0,
+          0.0
+        ],
+        "diversion": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_dispatch": [
+          8948.837688394216,
+          13801.741356141072,
+          0.0,
+          0.0
+        ],
+        "offspec_dispatch": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "water_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "oil_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chamber2_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "product_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offspec_overflow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "checkpoints": [
+        {
+          "time_s": 0.0,
+          "reactor_converted_mass_fraction": 0.9,
+          "geometry": {
+            "volumes_m3": {
+              "water": 3.0,
+              "oil": 3.6,
+              "chamber1": 6.6,
+              "chamber2": 3.5,
+              "product": 6.0,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 25.0,
+              "ho": 30.000000000000004,
+              "h1": 55.0,
+              "h2": 49.99999999999999
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.125,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 0.0
+          }
+        },
+        {
+          "time_s": 600.0,
+          "reactor_converted_mass_fraction": 0.9011433346883988,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.9644392814181897,
+              "oil": 3.700547507720633,
+              "chamber1": 6.664986789138823,
+              "chamber2": 3.2763056024192276,
+              "product": 5.665173803028558,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 24.703660678484916,
+              "ho": 30.83789589767194,
+              "h1": 55.54155657615686,
+              "h2": 46.8043657488461
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.12470934733455165,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.12474867840328686,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 585.0
+          }
+        },
+        {
+          "time_s": 900.0,
+          "reactor_converted_mass_fraction": 0.1145417289748839,
+          "geometry": {
+            "volumes_m3": {
+              "water": 2.7126144917584725,
+              "oil": 3.9552229355947235,
+              "chamber1": 6.667837427353196,
+              "chamber2": 3.2831553494234913,
+              "product": 5.596928071924416,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 22.60512076465394,
+              "ho": 32.96019112995603,
+              "h1": 55.56531189460997,
+              "h2": 46.902219277478444
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": true,
+            "a_mass_fraction": 0.13326507760002113,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.1294844465120859,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 885.0
+          }
+        },
+        {
+          "time_s": 1800.0,
+          "reactor_converted_mass_fraction": 0.024400911113536927,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.5204714628517992,
+              "oil": 5.149564870285073,
+              "chamber1": 6.670036333136872,
+              "chamber2": 3.5887393442770277,
+              "product": 5.632167985659226,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 12.670595523764995,
+              "ho": 42.91304058570894,
+              "h1": 55.583636109473936,
+              "h2": 51.26770491824325
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.4957917145214161,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.4734260067423536,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 1785.0
+          }
+        },
+        {
+          "time_s": 2100.0,
+          "reactor_converted_mass_fraction": 0.359453689439037,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.2476443896943865,
+              "oil": 5.421893628059943,
+              "chamber1": 6.669538017754329,
+              "chamber2": 3.6738754370121054,
+              "product": 5.689597786507093,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 10.397036580786555,
+              "ho": 45.18244690049952,
+              "h1": 55.579483481286076,
+              "h2": 52.48393481445864
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.6299136891578735,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.6114910795155641,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2085.0
+          }
+        },
+        {
+          "time_s": 3000.0,
+          "reactor_converted_mass_fraction": 0.8886655309387695,
+          "geometry": {
+            "volumes_m3": {
+              "water": 1.4956300369746978,
+              "oil": 5.171732303590757,
+              "chamber1": 6.667362340565456,
+              "chamber2": 3.554626026657523,
+              "product": 5.743054880061371,
+              "offspec": 0.0
+            },
+            "levels_percent": {
+              "hw": 12.463583641455815,
+              "ho": 43.097769196589645,
+              "h1": 55.56135283804546,
+              "h2": 50.78037180939318
+            }
+          },
+          "product_truth": {
+            "valid": true,
+            "qualified": false,
+            "a_mass_fraction": 0.6879273798307116,
+            "w_mass_fraction": 0.0
+          },
+          "analyzer": {
+            "valid": true,
+            "a_mass_fraction": 0.6980026726749405,
+            "w_mass_fraction": 0.0,
+            "sample_source_time_s": 2985.0
+          }
+        }
+      ],
+      "numerics": {
+        "rk4_vs_reference": {
+          "maximum_abs_inventory_error_kg": 0.0001303892372561677,
+          "maximum_abs_all_state_error_kg": 0.00013039003597294097,
+          "maximum_tolerance_fraction": 0.0026071629346304482,
+          "passed": true
+        },
+        "reference_refinement": {
+          "maximum_abs_inventory_error_kg": 1.4370016288012266e-09,
+          "maximum_abs_all_state_error_kg": 1.4371050877093339e-09,
+          "maximum_tolerance_fraction": 2.8740845086841367e-08,
+          "passed": true
+        },
+        "rk4_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 0.00013039065152042895,
+          "maximum_abs_all_state_error_kg": 0.00013039145048884815,
+          "maximum_tolerance_fraction": 0.002607191218029683,
+          "passed": true
+        },
+        "half_step_vs_refined_reference": {
+          "maximum_abs_inventory_error_kg": 2.348725865886081e-05,
+          "maximum_abs_all_state_error_kg": 2.348728451153151e-05,
+          "maximum_tolerance_fraction": 0.00046972512986220594,
+          "passed": true
+        }
+      },
+      "closure_by_method": {
+        "candidate": {
+          "total_residual_kg": 7.73070496506989e-12,
+          "component_residual_kg": [
+            -2.000888343900442e-11,
+            2.8194335754960775e-11,
+            -4.547473508864641e-12,
+            1.2505552149377763e-12
+          ],
+          "maximum_abs_component_residual_kg": 5.275069270282984e-11,
+          "maximum_abs_total_residual_kg": 3.637978807091713e-11,
+          "maximum_abs_inventory_residual_kg": 8.776623872108757e-11,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              -6.002665031701326e-11,
+              -2.000888343900442e-11,
+              5.9117155615240335e-12,
+              1.2505552149377763e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -1.0459189070388675e-11,
+              0.0
+            ],
+            "oil": [
+              7.503331289626658e-12,
+              3.3651303965598345e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              1.8189894035458565e-12,
+              -7.003109203651547e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              2.955857780762017e-11,
+              8.412825991399586e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "reference": {
+          "total_residual_kg": -1.8894752429332584e-10,
+          "component_residual_kg": [
+            -1.355147105641663e-10,
+            -2.3646862246096134e-11,
+            -1.2278178473934531e-11,
+            7.140954494389007e-13
+          ],
+          "maximum_abs_component_residual_kg": 1.9190338207408786e-10,
+          "maximum_abs_total_residual_kg": 2.3305801732931286e-10,
+          "maximum_abs_inventory_residual_kg": 1.4915713109076023e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              -1.1459633242338896e-10,
+              2.1827872842550278e-11,
+              1.8189894035458565e-12,
+              7.389644451905042e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              -1.3869794202037156e-11,
+              0.0
+            ],
+            "oil": [
+              -9.549694368615746e-12,
+              4.547473508864641e-13,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -5.6843418860808015e-11,
+              -1.0686562745831907e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              4.4565240386873484e-11,
+              -3.54702933691442e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "refined_reference": {
+          "total_residual_kg": 6.161826604511589e-11,
+          "component_residual_kg": [
+            7.09405867382884e-11,
+            1.2732925824820995e-11,
+            1.9554136088117957e-11,
+            3.765876499528531e-13
+          ],
+          "maximum_abs_component_residual_kg": 1.127773430198431e-10,
+          "maximum_abs_total_residual_kg": 1.2755663192365319e-10,
+          "maximum_abs_inventory_residual_kg": 1.2732925824820995e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              1.2187229003757238e-10,
+              2.546585164964199e-11,
+              8.640199666842818e-12,
+              3.979039320256561e-13
+            ],
+            "water": [
+              0.0,
+              0.0,
+              1.0913936421275139e-11,
+              0.0
+            ],
+            "oil": [
+              -5.661604518536478e-11,
+              1.2732925824820995e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              7.435119186993688e-11,
+              -3.54702933691442e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              -6.775735528208315e-11,
+              9.549694368615746e-12,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        },
+        "half_step": {
+          "total_residual_kg": 4.1382008930668235e-11,
+          "component_residual_kg": [
+            7.275957614183426e-12,
+            2.000888343900442e-11,
+            -5.6843418860808015e-12,
+            -1.1297629498585593e-12
+          ],
+          "maximum_abs_component_residual_kg": 1.1641532182693481e-10,
+          "maximum_abs_total_residual_kg": 1.0663825378287584e-10,
+          "maximum_abs_inventory_residual_kg": 1.3005774235352874e-10,
+          "inventory_component_residual_kg": {
+            "reactor": [
+              5.275069270282984e-11,
+              1.2732925824820995e-11,
+              -8.185452315956354e-12,
+              -1.1368683772161603e-12
+            ],
+            "water": [
+              0.0,
+              0.0,
+              2.7284841053187847e-12,
+              0.0
+            ],
+            "oil": [
+              -5.002220859751105e-11,
+              -2.0463630789890885e-11,
+              0.0,
+              0.0
+            ],
+            "chamber2": [
+              -4.774847184307873e-12,
+              -2.3874235921539366e-11,
+              0.0,
+              0.0
+            ],
+            "product": [
+              8.185452315956354e-12,
+              5.184119800105691e-11,
+              0.0,
+              0.0
+            ],
+            "offspec": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "external_mass_bound_passed": true,
+          "maximum_external_mass_bound_excess_kg": 0.0,
+          "passed": true
+        }
+      },
+      "heat_loss_conversion_drop": 0.8767424235748619,
+      "consequence_checks": {
+        "baseline_qualified": true,
+        "conversion_drop": true,
+        "receiving_inventory_offspec": true,
+        "analyzer_later": true,
+        "contamination_at_heat_restore": true,
+        "off_band_dispatch_retained": true
+      },
+      "passed": true
+    }
+  },
+  "rejected_cases": {
+    "native-activity-step-pre": {
+      "status": "not_assessed",
+      "reason": "pre interval 1273.5 s: MODEL_OUT_OF_ENVELOPE: temperature_k=800.0602889256523, allowed [300, 800]",
+      "interpretation": "capture is evidence of native inputs outside the committed recipe; no geometry trajectory or composition consequence is claimed",
+      "temperature_range_k": [
+        561.3016880971884,
+        808.3160680604358
+      ]
+    },
+    "native-activity-step-post_u3": {
+      "status": "not_assessed",
+      "reason": "post_u3 interval 1273 s: MODEL_OUT_OF_ENVELOPE: temperature_k=800.0602889256523, allowed [300, 800]",
+      "interpretation": "capture is evidence of native inputs outside the committed recipe; no geometry trajectory or composition consequence is claimed",
+      "temperature_range_k": [
+        561.3016880971884,
+        808.3160680604358
+      ]
+    }
+  },
+  "phase_comparisons": {
+    "heater-loss": {
+      "meaning": "different one-way input timings, not a numerical pass/fail or a new live interface",
+      "maximum_inventory_difference_kg": 2.530030930930593,
+      "final_inventory_difference_kg": 0.8586386990259598,
+      "proposed_future_phase": "post_u3, immediately before U4, subject to live-interface review"
+    }
+  },
+  "reproduce": "python -B tools/g2-geometry/run.py --out tools/g2-geometry/receipts/geometry-v1.json (pinned offline environment)",
+  "acceptance_scope": "passed covers assessed cases only; rejected captures remain explicitly not assessed",
+  "passed": false
+}
