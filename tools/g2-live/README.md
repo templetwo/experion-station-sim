@@ -6,6 +6,11 @@ the user's observations, diagnosis/journal fixes, and the explanations for
 level reversal, tank discharge and slow native heater recovery. Its fixes do
 not relabel the pinned acceptance runs below.
 
+The subsequent [Live Diagnosis presentation policy v1](../../docs/dev/LIVE-DIAGNOSIS-PRESENTATION-V1.md)
+keeps suppressed pressure symptoms as labelled context under the relief alarm,
+with alarm counts separate from diagnosis guidance. Its prospective checks do
+not extend the historical process receipts.
+
 This increment makes the synthetic U3 → U4 material lane available in a fresh
 `composition_mass_v1` run. U1 and U2 remain independent. It adds no MOA consumer,
 hydraulic network, shared cooling, coupled reaction energy or property package.

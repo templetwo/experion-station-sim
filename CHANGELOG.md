@@ -6,6 +6,13 @@ All notable changes to the simulator. Semantic versioning.
 
 ### G2 optional live composition integration
 
+Live Diagnosis now follows alarm state for alarm-backed urgency. Suppressed
+symptoms appear as labelled context under their cause; shelved/out-of-service
+records and returned alarms receive separate context/review treatment.
+Acknowledged active alarms remain visible, and the generic fallback covers
+only alarms without specific guidance. Alarm-engine counts are shown separately
+from diagnosis counts. See [presentation policy v1](docs/dev/LIVE-DIAGNOSIS-PRESENTATION-V1.md).
+
 Manual-check follow-up: Live Diagnosis now covers V-502 relief, valid PIC505
 high-pressure observations and otherwise unhandled active alarms. A no-rule
 result no longer asserts that all plant conditions are normal. Composition-mode

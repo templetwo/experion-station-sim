@@ -1879,6 +1879,8 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <div style="margin:4px 8px;font-size:10.5px;color:#55524c">No matching topic. Press Enter to ask the coach.</div>
     </sc-if>
     <div style="padding:8px 8px 2px 8px;font-size:10px;font-weight:700;color:#55524c;border-top:1px solid #B6B6B2;margin-top:6px">LIVE DIAGNOSIS</div>
+    <div style="padding:2px 8px;font-size:10px;color:#55524c">{{ asst.alarmCounts }}</div>
+    <div style="padding:0 8px 4px;font-size:10px;color:#55524c">{{ asst.alarmContextCounts }}</div>
     <sc-for list="{{ asst.issues }}" as="i" hint-placeholder-count="3">
       <div style="margin:4px 8px;background:#D4D0C8;border:1px solid #9a968e">
         <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer" onClick="{{ i.click }}">
@@ -2665,10 +2667,18 @@ class Component extends ESS.PlantCore(DCLogic) {
   diagnose(){
     const P=this.P,L=this.L,V=this.V,S=this.state,out=[];
     // Public alarm lifecycle per alerta ISA-18.2 (RESOURCES-2.5, RESOURCES-2.9).
-    // Returned/unacknowledged records describe events, not still-active trips.
+    // Presentation policy: alarm urgency follows UNACK/ACKED annunciation;
+    // suppression is retained as labelled context, never silently undone here.
     const alarmRecords=this.alarmEngine.list().slice().sort(this.alarmEngine.compare);
-    const liveAlarms=alarmRecords.filter(a=>a.live);
-    const liveAlarm=(tag,cond)=>liveAlarms.find(a=>a.tag===tag&&a.cond===cond);
+    const announced=alarmRecords.filter(a=>a.live&&(a.state==='UNACK'||a.state==='ACKED'));
+    const context=alarmRecords.filter(a=>['DSUPR','SHLVD','OOSRV'].includes(a.state));
+    const returned=alarmRecords.filter(a=>a.state==='RTNUN');
+    const counts=this.alarmEngine.counts(),covered=new Set(),groupedContext=new Set();
+    const alarmKey=a=>a.key||a.tag+'.'+a.cond;
+    const liveAlarm=(tag,cond)=>announced.find(a=>a.tag===tag&&a.cond===cond);
+    const recordLabel=a=>a.tag+' '+a.cond+' ('+a.state+(a.state==='DSUPR'&&a.suppressedBy?'; suppressed by '+a.suppressedBy:'')+')';
+    const bannerText='Alarm banner: '+counts.total+' active — '+counts.Urgent+' Urgent, '+counts.High+' High, '+counts.Low+' Low, '+counts.Journal+' Journal; '+counts.unack+' unacknowledged (including returned records).';
+    const contextText='Informational context: '+context.filter(a=>a.state==='DSUPR').length+' suppressed, '+context.filter(a=>a.state==='SHLVD').length+' shelved, '+context.filter(a=>a.state==='OOSRV').length+' out of service.';
     const gFp=(tag)=>()=>{ this.setState({display:'graphic'}); this.openFp(tag); };
     const gDet=(tag)=>()=>this.nav('detail',tag);
     const gAlm=()=>this.nav('alarms');
@@ -2700,21 +2710,53 @@ class Component extends ESS.PlantCore(DCLogic) {
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
-    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!l.badPv&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=Object.keys(l.alm).some(c=>l._as[c]); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
+    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&ESS.Measurement.observe(l).quality==='GOOD'&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=announced.some(a=>a.tag===k); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
     for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.slave&&l.init) out.push({id:'init.'+k,sev:'INFO',title:k+' in INITMAN — cascade broken',why:'Its secondary '+l.slave+' is not in CAS, so the primary is initialized and tracks for a bumpless return.',steps:[{t:'Return '+l.slave+' to CAS when ready.',go:gFp(l.slave)}]}); }
-    const un=this.alarmEngine.counts().unack;
-    if(un>=6) out.push({id:'flood',sev:'WARN',title:'Alarm flood — '+un+' unacknowledged',why:'Do not blind-acknowledge. Triage by priority: Urgent first, then High. Look for a common cause.',steps:[{t:'Silence the horn (F1).'},{t:'Work the summary Urgent-first.',go:()=>gAlm()},{t:'Check for a common cause: pump, air, cooling.'}]});
+    const un=counts.unack;
+    if(un>=6) out.push({id:'flood',sev:announced.length?'WARN':'INFO',title:'Alarm acknowledgement backlog — '+un+' unacknowledged',why:'The count includes returned alarms awaiting acknowledgement. Review active alarms by priority and returned records for recovery; acknowledgement does not establish recovery.',steps:[{t:'Review active and returned records in the Alarm Summary.',go:gAlm}]});
     if(airLoss) out.push({id:'air',sev:'URGENT',title:'Instrument air loss suspected — '+lagging.length+' valves not following their outputs',why:'Several control valves have stopped following their controllers at once and sit at their fail positions; a common cause (instrument air) is far more likely than several valve failures. Controllers are ineffective until air returns.',steps:[{t:'Recognize the common cause — do not chase individual loops.'},{t:'Note which valves failed open vs closed on the graphics.'},{t:'Triage alarms by priority.',go:()=>gAlm()}]});
     if(L.PIC401.mode==='MAN'&&P.drumP>700) out.push({id:'man401',sev:'WARN',title:'PIC401 in MAN while pressure rises',why:'The vent will not move in MAN.',steps:[{t:'Put PIC401 back in AUTO.',go:gFp('PIC401')}]});
     for(const mt of ['P101','M202']){ const m=L[mt]; if(!m.trip&&!m.run&&m.lock>0) out.push({id:'lock.'+mt,sev:'INFO',title:(mt==='P101'?'P-101':'M-202')+' restart lockout — '+Math.ceil(m.lock)+' s remaining',why:'A lockout timer protects the motor after a stop or trip.',steps:[{t:'Wait for the lockout, then START from the faceplate.',go:gFp(mt)}]}); }
-    // Keep a summary even when no specific diagnosis covers a visible alarm.
-    // Listing a condition is not an assertion that its retained PV is trustworthy.
-    if(liveAlarms.length) out.push({id:'alarms.active',sev:liveAlarms.some(a=>a.prio==='Urgent')?'URGENT':'WARN',title:'Active alarm summary — '+liveAlarms.length+' condition'+(liveAlarms.length===1?'':'s'),why:liveAlarms.slice(0,3).map(a=>a.tag+' '+a.cond+' ('+a.state+')').join('; ')+(liveAlarms.length>3?'; additional conditions in Alarm Summary.':'.')+' These are active alarm records; verify current measurement quality and response before concluding recovery.',steps:[{t:'Review the Alarm Summary by priority, including acknowledged or suppressed conditions.',go:gAlm}]});
-    else if(alarmRecords.length) out.push({id:'alarms.review',sev:'INFO',title:'Alarm records require review',why:'No listed alarm condition is currently active. Returned alarms may still await acknowledgement, or alarm coverage may be shelved, suppressed or out of service. This is not proof that every process condition is normal.',steps:[{t:'Review record states and current indications in the Alarm Summary.',go:gAlm}]});
+    // Explicit alarm-backed cards only. Predictive risks and measurement-quality
+    // diagnoses remain independent; this is not a blanket filter over old rules.
+    const alarmCards={'trip.psv502':['V-502.PSV LIFT'],'pressure.505':['PIC505.PVHI','PIC505.PVHH'],
+      'trip.rx':['R-201.HI TEMP TRIP'],'trip.b':['R-202.HI TEMP TRIP'],'trip.bed':['R-310.HI TEMP TRIP'],
+      'trip.ovf':['TK-101.HIHI TRIP'],'trip.skin':['H-310.TUBE SKIN TRIP'],'trip.psv':['V-401.PSV LIFT'],
+      'shed.tad':['TI216.PVHH'],'mtrip.P101':['P101.TRIP'],'mtrip.M202':['M202.TRIP'],'o2.low':['AI316.PVLO']};
+    const alarmIssues=[],cardAlarms=new Map();
+    for(let i=out.length-1;i>=0;i--){
+      const item=out[i],keys=alarmCards[item.id];
+      if(!keys)continue;
+      const matches=alarmRecords.filter(a=>keys.includes(alarmKey(a))),active=announced.filter(a=>keys.includes(alarmKey(a)));
+      if(matches.length&&!active.length){out.splice(i,1);continue;}
+      if(!active.length)continue;
+      active.forEach(a=>covered.add(alarmKey(a)));cardAlarms.set(item.id,active.map(alarmKey));alarmIssues.unshift(item);
+      const children=context.filter(a=>a.state==='DSUPR'&&active.some(parent=>a.suppressedBy===alarmKey(parent)));
+      if(children.length){children.forEach(a=>groupedContext.add(alarmKey(a)));item.why+=' Informational suppressed context: '+children.map(recordLabel).join('; ')+'.';}
+    }
+    // The fallback retains severity for uncovered UNACK/ACKED records only;
+    // it does not repeat the urgency of a cause already given its own card.
+    const uncovered=announced.filter(a=>!covered.has(alarmKey(a)));
+    const summaryFor=records=>{
+      const children=context.filter(a=>a.state==='DSUPR'&&records.some(parent=>a.suppressedBy===alarmKey(parent)));
+      return {id:'alarms.active',sev:records.some(a=>a.prio==='Urgent')?'URGENT':records.some(a=>a.prio!=='Journal')?'WARN':'INFO',title:'Additional active alarm records — '+records.length+' condition'+(records.length===1?'':'s'),why:bannerText+' '+contextText+' '+records.slice(0,3).map(recordLabel).join('; ')+(records.length>3?'; additional conditions in Alarm Summary.':'.')+(children.length?' Informational suppressed context: '+children.map(recordLabel).join('; ')+'.':'')+' Verify current measurement quality and response before concluding recovery.',steps:[{t:'Review uncovered active alarm records by priority in the Alarm Summary.',go:gAlm}]};
+    };
+    if(uncovered.length) out.push(summaryFor(uncovered));
+    else if(alarmIssues.length)alarmIssues[0].why+=' '+bannerText+' '+contextText;
+    const ungrouped=context.filter(a=>!groupedContext.has(alarmKey(a)));
+    if(ungrouped.length) out.push({id:'alarms.context',sev:'INFO',title:'Suppressed, shelved or out-of-service alarm context',why:bannerText+' '+contextText+' '+ungrouped.slice(0,4).map(recordLabel).join('; ')+(ungrouped.length>4?'; more context in Alarm Summary.':'.')+' These records do not annunciate; suppression does not establish recovery.',steps:[{t:'Review record states in the suppressed, shelved and out-of-service summary views.',go:gAlm}]});
+    if(returned.length) out.push({id:'alarms.review',sev:'INFO',title:'Returned alarms awaiting acknowledgement — '+returned.length,why:returned.slice(0,3).map(recordLabel).join('; ')+'. Returned alarms may still await acknowledgement. Review recovery evidence; these records are not active alarm conditions.',steps:[{t:'Review returned records and current indications in the Alarm Summary.',go:gAlm}]});
     const sevR={URGENT:2,WARN:1,INFO:0};
-    out.sort((a,b)=>sevR[b.sev]-sevR[a.sev]);
+    const sortIssues=(a,b)=>sevR[b.sev]-sevR[a.sev]||(a.id==='alarms.active'?-1:b.id==='alarms.active'?1:0);
+    out.sort(sortIssues);
     if(!out.length) out.push({id:'ok',sev:'INFO',title:'No configured diagnosis matched',why:'No current diagnosis rule or listed alarm requires a message. This does not establish that every loop or process condition is normal; review the board and trends.',steps:[{t:'Review trends for slow drift.',go:gTg('TG01')},{t:'Start a scored drill.',go:()=>this.setState({dlg:{type:'drills'}})}]});
-    return out.slice(0,8);
+    const uncoveredBy=items=>{const keys=new Set(items.flatMap(item=>cardAlarms.get(item.id)||[]));return announced.filter(a=>!keys.has(alarmKey(a)));};
+    const visible=out.slice(0,8);
+    if(!uncoveredBy(visible).length)return visible;
+    // A card cut by the display limit does not count as presented evidence.
+    // Reserve one slot for all alarms absent from the seven retained cards.
+    const specific=out.filter(item=>item.id!=='alarms.active').slice(0,7);
+    return specific.concat(summaryFor(uncoveredBy(specific))).sort(sortIssues);
   }
   topics(){ return [
     // Orientation (P2L-EXPANSION-SPEC section 2.2): the first three chips used to match no
@@ -3964,6 +4006,8 @@ class Component extends ESS.PlantCore(DCLogic) {
     const qq=S.assistQ.trim().toLowerCase();
     const hits=qq.length>2?this.topics().map(t3=>({t3,score:t3.k.reduce((s3,kw)=>s3+(qq.includes(kw)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>({t:x.t3.t,a:x.t3.a})):[];
     const asst={on:S.assist, close:setS({assist:false}), cloudKey:()=>this.openCloudKey(), issues, q:S.assistQ,
+      alarmCounts:'Alarm banner: '+counts.total+' active · '+counts.unack+' unacknowledged (includes returned)',
+      alarmContextCounts:'Context: '+E.suppressed().length+' suppressed · '+E.shelved().length+' shelved · '+E.oosList().length+' out of service',
       qChange:(e)=>this.setState({assistQ:e.target.value}),
       qKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.coachAsk('ask', this.state.assistQ); } },
       chips:["What am I looking at?","What does this plant make?","How do I drive this station?","Why can't I change OP?","SP entry rejected","What is INITMAN?","PV shows crosshatch","How do I shelve an alarm?","Pump won't start","What do alarm colors mean?","Reactor runaway"].map(c3=>({label:c3,cb:()=>{ this.setState({assistQ:c3}); this.coachAsk('ask', c3); }})),

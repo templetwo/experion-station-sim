@@ -1,11 +1,12 @@
 // @artifact dev
-// Operator-visible diagnosis coverage; no process or controller changes.
+// Prospective suppression presentation policy after fd8b6f4; historical receipts stay unchanged.
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const {load}=require('../tools/logic-harness');
 function boot(materialMode='legacy'){const {Component}=load();const c=new Component({});c.initSim(0,{materialMode});return c;}
 const issue=(c,id)=>c.diagnose().find(x=>x.id===id);
 const live=(c,tag,cond)=>c.alarmEngine.list().find(a=>a.tag===tag&&a.cond===cond&&a.live);
+const announced=a=>a&&a.live&&['UNACK','ACKED'].includes(a.state);
 function closeVent(c){c.setMode('PIC505','MAN');assert.equal(c.storeEntry('PIC505','OP',0),true);}
 
 test('fresh composition vent closure diagnoses every lift and pressure alarm between repeated reseats',()=>{
@@ -19,9 +20,12 @@ test('fresh composition vent closure diagnoses every lift and pressure alarm bet
    if(!previous){lifts++;c.ackAlarm(relief);assert.ok(issue(c,'trip.psv502'),'ACKED relief remains active');}
    if(!renderChecked){assert.ok(c.renderVals().asst.issues.some(x=>/PSV-502 lifted/.test(x.title)));renderChecked=true;}
   }else if(previous){returns++;assert.equal(issue(c,'trip.psv502'),undefined,'a returned alarm must not claim the relief remains lifted');}
-  if(high){
+  if(announced(high)){
    const pressure=messages.find(x=>x.id==='pressure.505');assert.ok(pressure);
    assert.match(pressure.why,/MAN|held at 0\.0%/);assert.match(pressure.why,/not adjust automatically/);
+  }else if(high){
+   assert.equal(issue(c,'pressure.505'),undefined,'suppression must not be re-annunciated by diagnosis');
+   assert.match(JSON.stringify(messages),/PIC505 .*DSUPR.*suppressed by V-502\.PSV LIFT/);
   }
   if(relief||high)assert.ok(!messages.some(x=>x.id==='ok'));
   previous=!!relief;
@@ -33,15 +37,19 @@ test('legacy separator relief uses the same visible alarm diagnosis',()=>{
  const c=boot();closeVent(c);
  for(let i=0;i<1600&&!live(c,'V-502','PSV LIFT');i++)c.step(.5);
  assert.ok(live(c,'V-502','PSV LIFT'));assert.ok(issue(c,'trip.psv502'));
- assert.ok(issue(c,'pressure.505'));assert.equal(issue(c,'ok'),undefined);
+ assert.equal(issue(c,'pressure.505'),undefined,'PIC505 children are suppressed by the active relief');
+ assert.match(issue(c,'trip.psv502').why,/PIC505 .*DSUPR.*suppressed by V-502\.PSV LIFT/);
+ assert.equal(issue(c,'ok'),undefined);
 });
 
-test('otherwise unhandled active alarms retain summary coverage when acknowledged or shelved',()=>{
+test('otherwise unhandled alarms retain urgency after ACK and become labelled INFO when shelved',()=>{
  const c=boot();c.raiseA('LIC503','PVHI','High',90,'%', 'CHAMBER LEVEL HIGH');
  let row=live(c,'LIC503','PVHI');assert.ok(row);
  const assertCovered=()=>{const x=issue(c,'alarms.active');assert.ok(x);assert.match(x.why,/LIC503 PVHI/);assert.equal(issue(c,'ok'),undefined);};
  assertCovered();c.ackAlarm(row);assert.equal(row.state,'ACKED');assertCovered();
- c.alarmEngine.shelve(row,60000,'test visible shelf',c.P.t);assert.equal(row.state,'SHLVD');assertCovered();
+ c.alarmEngine.shelve(row,{durationMs:60000,reason:'test visible shelf',t:c.P.t});assert.equal(row.state,'SHLVD');
+ assert.equal(issue(c,'alarms.active'),undefined);const context=issue(c,'alarms.context');assert.equal(context.sev,'INFO');
+ assert.match(context.why,/LIC503 PVHI \(SHLVD\)/);assert.equal(issue(c,'ok'),undefined);
 });
 
 test('returned alarms get review guidance without being called active process conditions',()=>{
