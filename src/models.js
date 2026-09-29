@@ -681,11 +681,16 @@
   }
 
   // One annunciation path for the same relief protection in both model modes.
-  function separatorRelief(P,ctx,open,pressure){
+  function separatorRelief(P,ctx,open,pressure,localized=false){
     if(open&&!P.trips.psv502){
       P.trips.psv502=true;
       raiseTrip(ctx, 'V-502', 'PSV LIFT', pressure, 'KPA', 'SEPARATOR RELIEF — VENTING TO FLARE');
-    }else if(!open&&P.trips.psv502){P.trips.psv502=false;ctx.clear('V-502','PSV LIFT');}
+    }else if(!open&&P.trips.psv502){
+      P.trips.psv502=false;
+      // A localized material event owns its transition pressure. Legacy scans
+      // keep their historical alarm-value behavior when no such event is given.
+      if(localized)ctx.clear('V-502','PSV LIFT',pressure);else ctx.clear('V-502','PSV LIFT');
+    }
   }
 
   // The four noise draws happen whether or not the points exist, so the rand4 cursor
@@ -730,7 +735,7 @@
     s.hw=a.hWater;s.ho=a.hOil;s.h2=a.h2;s.pres=a.pressure;
     s.wcarry=rate('water_carry');s.ocarry=rate('oil_underflow');s.qover=rate('oil_weir');
     for(const event of a.lastInterval.reliefEvents||[]){
-      separatorRelief(P,ctx,event.open,event.pressure);
+      separatorRelief(P,ctx,event.open,event.pressure,true);
     }
     P.trips.psv502=a.reliefOpen;
     if(ctx.productSample)ctx.productSample({draw_rate_m3h:volume(draw)*3600/dt,dt_s:dt});

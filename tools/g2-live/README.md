@@ -1,6 +1,11 @@
 <!-- @artifact dev -->
 # Optional live material integration
 
+The [manual-check follow-up](../../docs/dev/G2-MANUAL-CHECK-FOLLOWUP.md) records
+the user's observations, diagnosis/journal fixes, and the explanations for
+level reversal, tank discharge and slow native heater recovery. Its fixes do
+not relabel the pinned acceptance runs below.
+
 This increment makes the synthetic U3 → U4 material lane available in a fresh
 `composition_mass_v1` run. U1 and U2 remain independent. It adds no MOA consumer,
 hydraulic network, shared cooling, coupled reaction energy or property package.

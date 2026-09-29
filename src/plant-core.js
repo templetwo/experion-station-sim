@@ -439,7 +439,7 @@
     if(this._ctx) return this._ctx;
     this._ctx={
       raise:(src,cond,prio,val,eu,desc)=>this.raiseA(src,cond,prio,val,eu,desc),
-      clear:(src,cond)=>this.clearA(src,cond),
+      clear:(src,cond,val)=>val===undefined?this.clearA(src,cond):this.clearA(src,cond,val),
       tripMotor:(tag,why)=>this.tripMotor(tag,why),
       addEvent:(type,src,desc,oldV,newV)=>this.addEvent(type,src,desc,oldV,newV),
       rand:()=>this.rand(),

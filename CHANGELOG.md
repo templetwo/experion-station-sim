@@ -6,6 +6,16 @@ All notable changes to the simulator. Semantic versioning.
 
 ### G2 optional live composition integration
 
+Manual-check follow-up: Live Diagnosis now covers V-502 relief, valid PIC505
+high-pressure observations and otherwise unhandled active alarms. A no-rule
+result no longer asserts that all plant conditions are normal. Composition-mode
+relief return entries now use the localized reseat pressure instead of retaining
+the earlier lift value. Frame-end pressure can already have risen again after
+reseat; the solver thresholds and physical trajectories are unchanged. The
+instructor routing panel explains both tanks' continuous outlets. See
+[the follow-up record](docs/dev/G2-MANUAL-CHECK-FOLLOWUP.md) for the reproduced
+level balance and unchanged native heater recovery.
+
 A fresh `composition_mass_v1` run integrates synthetic A/P/W/G balances through
 U3 → U4, separator layers/chamber, receiving product, off-spec and gas inventory.
 Liquid levels derive from component masses. Normal vent PV505 and parallel
