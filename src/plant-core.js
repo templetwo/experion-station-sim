@@ -1,7 +1,7 @@
 // @artifact production
 // Shared complete station semantics, extracted from the simulator at 3aad769.
 (function(root,factory){
-  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js"),"Plausibility":require("./plausibility.js"),"ProductMeter":require("./product-meter.js"),"Composition":require("./composition.js"),"MaterialModel":require("./material-model.js"),"MaterialRecipe":require("./material-recipe.js")});
+  if(typeof module === "object" && module.exports) module.exports=factory({"AlarmHelp":require("./alarm-help.js"),"BoundaryDof":require("./boundary-dof.js"),"Dispatch":require("./dispatch.js"),"Pid":require("./pid.js"),"Palette":require("./palette.js"),"SignalPath":require("./signal-path.js"),"Philosophy":require("./philosophy.js"),"Instructor":require("./instructor.js"),"CauseEffect":require("./cause-effect.js"),"Debrief":require("./debrief.js"),"AlarmEngine":require("./alarm-engine.js"),"Models":require("./models.js"),"DrillArch":require("./drill-arch.js"),"Kpi":require("./kpi.js"),"FaultEngine":require("./fault-engine.js"),"Training":require("./training.js"),"Process":require("./process.js"),"Topology":require("./topology.js"),"UpsetBridge":require("./upset-bridge.js"),"Plausibility":require("./plausibility.js"),"ProductMeter":require("./product-meter.js"),"Composition":require("./composition.js"),"MaterialModel":require("./material-model.js"),"MaterialRecipe":require("./material-recipe.js"),"Measurement":require("./measurement.js")});
   else root.ESS.PlantCore=factory(root.ESS);
 })(typeof globalThis!=="undefined"?globalThis:this,function(ESS){
   "use strict";
@@ -52,6 +52,13 @@
       for(const [tag,desc,eu,dec] of [
         ['AI511','TK-503 UNCONVERTED A','MASS %',3],['AI512','TK-503 WATER','MASS %',3],['LI513','TK-503 PRODUCT TANK LEVEL','%',2]
       ]) this.L[tag]={kind:'ind',tag,desc,eu,lo:0,hi:100,dec,pv:null,badPv:true,quality:'BAD',cm:'CM_'+tag,alm:{},_as:{}};
+      // Synthetic quality warning policy v1: use the existing recipe limits,
+      // not a new material qualification. No automatic trip or diversion.
+      // Limit/lifecycle forms: RESOURCES-2.5, RESOURCES-2.6, RESOURCES-2.9.
+      const quality=ESS.MaterialRecipe.geometry_basis.quality;
+      for(const [tag,limit] of [['AI511',quality.max_a_mass_fraction*100],['AI512',quality.max_w_mass_fraction*100]]){
+        Object.assign(this.L[tag],{alm:{PVHI:[limit,'High']},almDb:0,almDelay:0,tgtLo:0,tgtHi:limit});
+      }
     }
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
@@ -517,15 +524,40 @@
     return true;
   }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
+  productAnalyzerObservation(tag){
+    // Public sample evidence only. Do not consult material truth to raise or
+    // clear a warning, or to decide whether a retained alarm implies recovery.
+    const l=this.L[tag]||{},m=ESS.Measurement.observe(l),now=this.P.t;
+    const source=l.sourceTimeMs,publication=l.publishedTimeMs;
+    const analyzer=ESS.MaterialRecipe.geometry_basis.analyzer;
+    const period=analyzer.sample_period_s*1000,delay=analyzer.transport_delay_s*1000;
+    const clocks=Number.isFinite(source)&&Number.isFinite(publication)&&source>=0&&source<=publication&&publication<=now;
+    const ages={sourceTimeMs:source,publishedTimeMs:publication,
+      ageMs:clocks?now-source:null,publicationAgeMs:clocks?now-publication:null};
+    const complete=typeof l.quality==='string'&&typeof l.badPv==='boolean'&&
+      Number.isInteger(l.statusCode)&&l.statusCode>=0&&l.statusCode<=0xFFFFFFFF;
+    if(!complete||!clocks||ages.publicationAgeMs>period||ages.ageMs>delay+period){
+      return {...ages,pv:null,badPv:true,quality:'BAD',statusCode:0x80000000,statusName:'Bad',limit:'NONE',reason:'SAMPLE_UNAVAILABLE'};
+    }
+    return {...m,...ages,reason:m.quality==='GOOD'?null:(l.reason||m.statusName)};
+  }
   scan(dt){
     if(dt==null) dt=0.5;
     const L=this.L, E=this.alarmEngine;
     for(const k in L){ const l=L[k];
       if(!l._am) l._am={};
+      const observed=(k==='AI511'||k==='AI512')?this.productAnalyzerObservation(k):null;
+      if(observed&&observed.quality!=='GOOD'){
+        // Unknown evidence is neither a new breach nor proof of recovery.
+        // Retain the prior condition; unknown time cannot satisfy an on-delay.
+        for(const memo of Object.values(l._am)){memo.onT=0;memo.offT=0;}
+        continue;
+      }
       for(const cond in l.alm){
         const [tp,prio]=l.alm[cond];
         const isLo=cond==='PVLO'||cond==='PVLL';
-        const v=cond==='DEVHI'?(l.pv-l.sp):l.pv;
+        const pv=observed?observed.pv:l.pv;
+        const v=cond==='DEVHI'?(pv-l.sp):pv;
         const memo=l._am[cond]||(l._am[cond]={raw:false,active:false,onT:0,offT:0});
         const act=E.evaluateLimit({pv:v,trip:tp,kind:isLo?'LO':'HI',deadband:this.almDeadband(l),onDelaySec:this.almDelay(l),dt,memo}).active;
         if(act && !l._as[cond]) this.raiseA(l.tag,cond,prio,l.pv,l.eu,l.desc);

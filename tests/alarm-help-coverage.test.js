@@ -4,8 +4,8 @@
 // src/alarm-help.js resolve() returns a polite generic paragraph for any key it has no
 // authored entry for, so the product can quietly ship fifty new alarms with twelve help
 // entries and nothing goes red -- the exact way an expansion gets wider and shallower.
-// Coverage is 100 % today (65 entries against every configured, discrete and equipment
-// condition). This file makes that an explicit, derived assertion in both directions:
+// Coverage spans both legacy and composition modes, against configured, discrete and equipment
+// conditions. This file makes that an explicit, derived assertion in both directions:
 // every condition the runtime can raise has authored prose, and every authored key is a
 // condition the runtime can raise (prose for a deleted alarm is drift, not coverage).
 //
@@ -35,7 +35,10 @@ function inventory() {
   const keys = new Set();
   const why = {};
   const put = (tag, cond, src) => { const k = tag + '.' + cond; keys.add(k); why[k] = src; };
-  for (const tag in c.L) for (const cond in c.L[tag].alm) put(tag, cond, 'configured in this.L');
+  for (const materialMode of ['legacy', 'composition_mass_v1']) {
+    const station = new Component({}); station.initSim(1700000000000, {materialMode});
+    for (const tag in station.L) for (const cond in station.L[tag].alm) put(tag, cond, 'configured in this.L (' + materialMode + ')');
+  }
   // U2 state-based limits: a phase set can ADD a condition the IDLE database does not carry
   // (FIC211.PVLO is live only in FEED, LI215.PVLO from HEATUP on), so every non-null
   // condition of every phase set is raisable too.
@@ -61,6 +64,7 @@ test('ALARM-HELP COVERAGE GATE', async (t) => {
     assert.ok([...keys].some((k) => why[k].startsWith('src/models.js raiseTrip')), 'no equipment trips parsed from models.js');
     assert.ok([...keys].some((k) => why[k].startsWith('app page raiseA')), 'no discrete alarms parsed from the page');
     assert.ok(keys.has('FIC102.BADPV'), 'the xmtr upset target was not derived');
+    assert.ok(keys.has('AI511.PVHI') && keys.has('AI512.PVHI'), 'composition receiving-product warnings were not derived');
     assert.ok(keys.has('FIC211.PVLO') && why['FIC211.PVLO'].startsWith('phase set'), 'the FEED-only monomer flow low alarm was not derived from the phase sets');
   });
 
