@@ -430,6 +430,16 @@
       'Hydrocarbon is leaving with the process water: an environmental excursion downstream of this board, not a process upset on the separator.',
       'The water layer in chamber 1 is thin (LIC504 low), so the water draw is pulling oil under the interface; WV-504 open too far; less water arriving from Unit 03.',
       'Raise the interface: close WV-504 down (LIC504 to AUTO at 25 %, or MAN with a lower output) and check the Unit 03 feed if the water make has fallen. AI510 lags the interface by about 30 s, so read LIC504 for the recovery.'),
+    // Synthetic receiving-product warning policy v1; declared limits from the
+    // recipe, not a safety trip. Standard HI warning includes equality.
+    'AI511.PVHI': e('Review promptly; synthetic quality warning',
+      'The delayed receiving-tank analyzer is at or above the unconverted-A warning limit. Stored product may be off-spec; a reading at the limit alone does not establish failure of the material specification.',
+      'Reduced conversion after loss of heater duty, low bed temperature or reduced catalyst activity; contaminated inventory remaining during recovery. The analyzer does not identify the cause by itself.',
+      'Check sample quality and age, then review TIC311 and TI312. Consider manually selecting TO OFF-SPEC in the instructor material-routing panel to protect further receiving-tank input. Routing does not clean existing inventory or stop its outlet; verify recovery before returning to product. No automatic trip or diversion follows this warning.'),
+    'AI512.PVHI': e('Review promptly; synthetic quality warning',
+      'The delayed receiving-tank analyzer is at or above the water warning limit. Stored product may be off-spec; a reading at the limit alone does not establish failure of the material specification.',
+      'Water carry-over from the separator, changed interface or weir operation, or previously contaminated receiving inventory. The tank sample is delayed and is not a current assay of the incoming draw.',
+      'Check sample quality and age, then review LIC504, AI509 and separator operation. Consider manually selecting TO OFF-SPEC in the instructor material-routing panel. Diversion does not clean existing receiving inventory; both tank outlets continue. No automatic trip or diversion follows this warning.'),
     'V-502.PSV LIFT': e(RT.now,
       'Relief to flare until the pressure falls below 1000 KPA; separator gas is going to the flare header and the event must be reported.',
       'Separator pressure reached 1100 KPA because PIC505 could not vent enough gas: PV-505 closed or stuck, PIC505 left in MAN, or a hot inlet making more gas than design.',

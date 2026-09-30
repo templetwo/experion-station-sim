@@ -497,6 +497,18 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="flex:1"></div>
   <div style="font-size:10px;color:#6a665e">TRIM COOLER · TWO-CHAMBER WEIR SEPARATOR · GAS / OIL / WATER</div>
 </div>
+<sc-if value="{{ compositionBoard.on }}" hint-placeholder-val="{{ false }}">
+  <div class="ess-composition-board" style="padding:8px 12px;background:#D4D0C8;border-bottom:1px solid #888;display:flex;flex-wrap:wrap;flex-shrink:0;gap:8px 18px;align-items:center">
+    <div style="font-size:11px;font-weight:700">TK-503 RECEIVING PRODUCT<br /><span style="font-size:10px;font-weight:400">Synthetic composition mode</span></div>
+    <sc-for list="{{ compositionBoard.points }}" as="p" hint-placeholder-count="3">
+      <div style="cursor:pointer;font-size:11px;min-width:115px" onClick="{{ p.click }}"><b>{{ p.label }}</b><br />{{ p.value }} {{ p.unit }}<br /><span style="font-size:10px">{{ p.quality }}</span></div>
+    </sc-for>
+    <div style="font-size:10px;flex:1 1 250px;max-width:360px">A and water limits: 15.000 and 0.200 mass %. Analyzer samples lag the material; readings alone do not certify the stored inventory.</div>
+    <sc-if value="{{ compositionBoard.warningsMissing }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:10px;font-weight:700;flex-basis:100%">Quality warnings not configured in this saved run; start a fresh composition run to enable them.</div>
+    </sc-if>
+  </div>
+</sc-if>
 <svg viewBox="0 0 1420 720" style="width:100%;flex:1;min-height:0;user-select:none" preserveAspectRatio="xMidYMid meet">
   <defs>
     <pattern id="hatch4" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
@@ -574,15 +586,6 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   </sc-for>
   <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">LIC504 holds the water interface in chamber 1; LIC503 holds the oil level in chamber 2; PIC505 vents overhead. The weir is set from the instructor station (V-502 weir height). AI509 water in the product draw, AI510 oil in the water draw. PSV-502 lifts at 1100 kPa.</text>
 </svg>
-<sc-if value="{{ compositionBoard.on }}" hint-placeholder-val="{{ false }}">
-  <div style="padding:8px 12px;background:#D4D0C8;border-top:1px solid #888;display:flex;gap:18px;align-items:center">
-    <div style="font-size:11px;font-weight:700">TK-503 RECEIVING PRODUCT<br /><span style="font-size:10px;font-weight:400">Synthetic composition mode</span></div>
-    <sc-for list="{{ compositionBoard.points }}" as="p" hint-placeholder-count="3">
-      <div style="cursor:pointer;font-size:11px" onClick="{{ p.click }}"><b>{{ p.label }}</b><br />{{ p.value }} {{ p.unit }}<br /><span style="font-size:10px">{{ p.quality }}</span></div>
-    </sc-for>
-    <div style="font-size:10px;max-width:250px">A and water limits: 15.000 and 0.200 mass %. Analyzer samples lag the material; readings alone do not certify the stored inventory.</div>
-  </div>
-</sc-if>
 </div>
 </sc-if>
 
@@ -2691,6 +2694,24 @@ class Component extends ESS.PlantCore(DCLogic) {
     const highPressure=liveAlarm('PIC505','PVHH')||liveAlarm('PIC505','PVHI');
     if(liveAlarm('V-502','PSV LIFT')) out.push({id:'trip.psv502',sev:'URGENT',title:'V-502 relief alarm active — PSV-502 lifted',why:'The active PSV LIFT alarm reports the independent relief path operating. Reseating alone does not establish stable pressure control.',steps:[{t:'Silence and acknowledge the alarm; acknowledgement does not close the relief.',go:gAlm},{t:'Check PIC505 measurement quality, mode and output before adjusting the normal vent.',go:gFp('PIC505')},{t:'With valid pressure indication, verify the setpoint and restore normal vent control; confirm PV-505 follows its demand.',go:gFp('PIC505')},{t:'Watch the pressure trend and alarm returns for repeated lift/reseat cycles.',go:gTg('TG06')}]});
     if(highPressure&&pressure&&pressure.quality==='GOOD') out.push({id:'pressure.505',sev:highPressure.prio==='Urgent'?'URGENT':'WARN',title:'V-502 pressure high — PIC505 '+L.PIC505.mode,why:'PIC505 indicates '+this.fmt(pressure.pv,L.PIC505.dec)+' '+L.PIC505.eu+' with '+highPressure.cond+' active. '+(L.PIC505.mode==='MAN'?'Its output is held at '+this.fmt(L.PIC505.op,1)+'%; it will not adjust automatically to pressure.':'Check whether normal vent demand and valve response are sufficient.'),steps:[{t:'Check the PIC505 setpoint, mode and output; with valid indication restore AUTO or adjust the normal vent demand.',go:gFp('PIC505')},{t:'Confirm pressure falls and stays controlled; a momentary relief reseat is not recovery.',go:gTg('TG06')}]});
+    // Product-quality guidance uses published samples and alarm records only.
+    // The shared observer checks the declared analyzer clocks; material masses,
+    // fault state and the current routing choice are not diagnosis evidence.
+    const productWarnings=['AI511','AI512'].map(tag=>({tag,alarm:liveAlarm(tag,'PVHI'),sample:this.productAnalyzerObservation(tag)}))
+      .filter(item=>item.alarm&&item.sample.quality==='GOOD'&&Number.isFinite(item.sample.pv));
+    if(productWarnings.length){
+      const hasA=productWarnings.some(item=>item.tag==='AI511'),hasWater=productWarnings.some(item=>item.tag==='AI512');
+      const evidence=productWarnings.map(item=>{const l=L[item.tag],limit=l.alm&&l.alm.PVHI;
+        return item.tag+' '+this.fmt(item.sample.pv,l.dec)+' '+l.eu+' ('+item.alarm.state+(limit&&Number.isFinite(limit[0])?'; warning limit '+this.fmt(limit[0],l.dec)+' '+l.eu:'')+')';}).join('; ');
+      const steps=[{t:'Review the active product-quality warning and its current sample quality and age.',go:gDet(productWarnings[0].tag)}];
+      if(hasA)steps.push({t:'Investigate heater operation and bed temperature using TIC311, TI312 and the U3 trend; this tank reading alone does not identify the cause.',go:gTg('TG05')});
+      if(hasWater)steps.push({t:'Investigate separator interface, oil level and draw quality using LIC504, LIC503 and AI509.',go:gTg('TG06')});
+      steps.push({t:'Consider manual TO OFF-SPEC routing in the instructor panel to limit further product-tank contamination; opening the panel does not change routing.',go:()=>this.openInstructor()},
+        {t:'Routing changes incoming flow only. Retained contaminated inventory does not clear by routing; follow delayed receiving-tank readings and verify recovery before returning to product.'});
+      out.push({id:'quality.product',sev:productWarnings.some(item=>item.alarm.prio==='Urgent')?'URGENT':productWarnings.some(item=>item.alarm.prio!=='Journal')?'WARN':'INFO',
+        title:'TK-503 product-quality warning — '+productWarnings.map(item=>item.tag).join(' / '),
+        why:evidence+'. A PVHI warning activates at or above its quality warning limit. These are delayed receiving-tank samples, not an immediate assay of the separator outlet or proof that all stored inventory is acceptable. No automatic diversion or trip is requested by this warning.',steps});
+    }
     if(P.trips.rx) out.push({id:'trip.rx',sev:'URGENT',title:'R-201 high-temperature trip active',why:'The reactor exceeded 185 °C and the trip closed feed valve FV-102. It resets below 160 °C.',steps:[{t:'Silence and acknowledge the trip alarms.',go:()=>gAlm()},{t:'Verify maximum cooling — TIC202 in CAS, TV-202 open.',go:gFp('TIC202')},{t:'Watch TIC201 fall on trend TG01.',go:gTg('TG01')},{t:'Re-establish feed slowly after the trip clears.',go:gFp('FIC102')}]});
     if(P.trips.batch) out.push({id:'trip.b',sev:'URGENT',title:'R-202 batch overtemp trip',why:'Batch temperature reached 110 °C. Monomer feed is cut and the jacket driven full cold until T < 70 °C.',steps:[{t:'Acknowledge alarms; confirm monomer feed is zero.',go:gFp('FIC211')},{t:'Keep the agitator running for heat removal.',go:gFp('M202')},{t:'The sequence resumes in COOL when the trip clears.'}]});
     if(P.trips.bed) out.push({id:'trip.bed',sev:'URGENT',title:'R-310 bed overtemp trip — fuel shut off',why:'The hotspot reached 480 °C; fuel gas is isolated until the bed cools below 400 °C.',steps:[{t:'Acknowledge; verify quench flow is available.',go:gFp('FIC313')},{t:'Lower the TIC311 SP before relight to avoid a repeat.',go:gFp('TIC311')}]});
@@ -2706,7 +2727,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     if(!P.trips.skin && L.TI315.alm.PVHI && skinHi>L.TI315.alm.PVHI[0]) out.push({id:'risk.skin',sev:'WARN',title:'H-310 tube skin high ('+Math.round(skinHi)+' °C)',why:'Tube metal is running hotter than its continuous rating — usually firing raised faster than the feed can absorb, or low flow through the passes. The fuel trips at the Urgent limit.',steps:[{t:'Reduce the TIC311 setpoint or, in MAN, lower the output.',go:gFp('TIC311')},{t:'Confirm FIC310 feed flow through the tubes.',go:gFp('FIC310')},{t:'Watch TI314 / TI315 against the outlet on TG05.',go:gTg('TG05')}]});
     if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
     if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned during FEED).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
-    for(const k in L){ const l=L[k],m=ESS.Measurement.observe(l); if(m.quality!=='GOOD') out.push({id:(m.badPv?'badpv.':'uncertain.')+k,sev:'WARN',title:k+(m.badPv?' reading unavailable':' reading uncertain'),why:'The published PV is '+m.quality+'. It does not establish the current process condition or the cause of the measurement problem.',steps:[{t:'Review measurement quality and available sample age on Point Detail.',go:gDet(k)},{t:l.kind==='pid'?'Check the actual loop mode and compare independent indications before changing output.':'Compare related indications and trends before judging recovery.',go:gFp(k)}]}); }
+    for(const k in L){ const l=L[k],m=(k==='AI511'||k==='AI512')?this.productAnalyzerObservation(k):ESS.Measurement.observe(l); if(m.quality!=='GOOD') out.push({id:(m.badPv?'badpv.':'uncertain.')+k,sev:'WARN',title:k+(m.badPv?' reading unavailable':' reading uncertain'),why:'The published PV is '+m.quality+(m.reason==='SAMPLE_UNAVAILABLE'?' because its sample timing or metadata is unavailable or stale':'')+'. It does not establish the current process condition or the cause of the measurement problem.',steps:[{t:'Review measurement quality and available sample age on Point Detail.',go:gDet(k)},{t:l.kind==='pid'?'Check the actual loop mode and compare independent indications before changing output.':'Compare related indications and trends before judging recovery.',go:gFp(k)}]}); }
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
@@ -2719,7 +2740,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     for(const mt of ['P101','M202']){ const m=L[mt]; if(!m.trip&&!m.run&&m.lock>0) out.push({id:'lock.'+mt,sev:'INFO',title:(mt==='P101'?'P-101':'M-202')+' restart lockout — '+Math.ceil(m.lock)+' s remaining',why:'A lockout timer protects the motor after a stop or trip.',steps:[{t:'Wait for the lockout, then START from the faceplate.',go:gFp(mt)}]}); }
     // Explicit alarm-backed cards only. Predictive risks and measurement-quality
     // diagnoses remain independent; this is not a blanket filter over old rules.
-    const alarmCards={'trip.psv502':['V-502.PSV LIFT'],'pressure.505':['PIC505.PVHI','PIC505.PVHH'],
+    const alarmCards={'trip.psv502':['V-502.PSV LIFT'],'pressure.505':['PIC505.PVHI','PIC505.PVHH'],'quality.product':productWarnings.map(item=>item.tag+'.PVHI'),
       'trip.rx':['R-201.HI TEMP TRIP'],'trip.b':['R-202.HI TEMP TRIP'],'trip.bed':['R-310.HI TEMP TRIP'],
       'trip.ovf':['TK-101.HIHI TRIP'],'trip.skin':['H-310.TUBE SKIN TRIP'],'trip.psv':['V-401.PSV LIFT'],
       'shed.tad':['TI216.PVHH'],'mtrip.P101':['P101.TRIP'],'mtrip.M202':['M202.TRIP'],'o2.low':['AI316.PVLO']};
@@ -3421,10 +3442,10 @@ class Component extends ESS.PlantCore(DCLogic) {
   }
   compositionBoardView(){
     if(!this.L.AI511)return {on:false,points:[]};
-    return {on:true,points:['AI511','AI512','LI513'].map(tag=>{
-      const l=this.L[tag],m=ESS.Measurement.observe(l);
+    return {on:true,warningsMissing:['AI511','AI512'].some(tag=>!this.L[tag]||!this.L[tag].alm||!this.L[tag].alm.PVHI),points:['AI511','AI512','LI513'].map(tag=>{
+      const l=this.L[tag],m=tag==='LI513'?ESS.Measurement.observe(l):this.productAnalyzerObservation(tag);
       return {label:tag+' '+(tag==='AI511'?'UNCONVERTED A':tag==='AI512'?'WATER':'LEVEL'),
-        value:m.pv===null?'—':this.fmt(m.pv,l.dec),unit:l.eu,quality:m.quality+(Number.isFinite(l.ageMs)?' · age '+(l.ageMs/1000).toFixed(1)+' s':''),click:()=>this.openFp(tag)};
+        value:m.pv===null?'—':this.fmt(m.pv,l.dec),unit:l.eu,quality:m.quality+(Number.isFinite(m.ageMs)?' · age '+(m.ageMs/1000).toFixed(1)+' s':tag==='LI513'&&Number.isFinite(l.ageMs)?' · age '+(l.ageMs/1000).toFixed(1)+' s':''),click:()=>this.openFp(tag)};
     })};
   }
   // View model for the INSTRUCTOR display; {on:false} for anyone who is not the instructor, so no instructor data is rendered.

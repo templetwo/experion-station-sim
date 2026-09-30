@@ -6,6 +6,13 @@ All notable changes to the simulator. Semantic versioning.
 
 ### G2 optional live composition integration
 
+Fresh composition runs now warn when valid receiving-tank analyzer samples
+reach the existing A or water limits. Live Diagnosis suggests checking the
+process and considering manual off-spec routing; it neither changes the route
+nor treats unavailable samples as recovery. Restored runs keep their saved
+alarm settings. The receiving-product panel wraps above the U4 drawing to keep
+its explanation clear of PIP. See [quality warning policy v1](docs/dev/PRODUCT-QUALITY-WARNING-V1.md).
+
 Live Diagnosis now follows alarm state for alarm-backed urgency. Suppressed
 symptoms appear as labelled context under their cause; shelved/out-of-service
 records and returned alarms receive separate context/review treatment.
