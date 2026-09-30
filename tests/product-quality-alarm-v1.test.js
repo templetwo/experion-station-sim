@@ -97,10 +97,13 @@ test('quality guidance follows ACK, shelf, suppression and OOS lifecycle without
 test('quality guidance distinguishes analyzer identities and routes only by an explicit later operator action',()=>{
   const c=board();sample(c,'AI511',16);sample(c,'AI512',.3);c.scan(.5);
   const card=issue(c);assert.match(card.title,/AI511 \/ AI512/);assert.match(card.why,/delayed receiving-tank samples/);
-  assert.ok(card.steps.some(s=>/TIC311, TI312/.test(s.t)));assert.ok(card.steps.some(s=>/LIC504, LIC503 and AI509/.test(s.t)));
-  const go=card.steps.find(s=>/Consider manual TO OFF-SPEC/.test(s.t)).go;
-  const before=physical(c);go();assert.deepEqual(physical(c),before);assert.equal(c.state.dlg.type,'logon');
-  c.instr.auth=true;go();assert.equal(c.state.display,'instr');assert.deepEqual(physical(c),before);
+  const text=JSON.stringify(card);for(const tag of ['TIC311','TI312','LIC504','LIC503','AI509'])assert.ok(text.includes(tag));
+  // Guidance v2 removes the trainee's inaccessible routing GO. The v1 alarm
+  // and manual-routing contract is unchanged; prospective wording checks live
+  // in product-quality-guidance-v2.test.js rather than its historical receipt.
+  const route=card.steps.find(s=>/TO OFF-SPEC/.test(s.t));assert.ok(route);assert.equal(route.go,undefined);
+  const before=physical(c);assert.equal(c.setMaterialDiversion(1),false);assert.deepEqual(physical(c),before);
+  c.instr.auth=true;
   assert.equal(c.setMaterialDiversion(1),true);assert.equal(c.composition.divertFraction,1);
   assert.deepEqual(c.composition.material,before.composition.material,'routing does not clean current inventory');
 });

@@ -503,7 +503,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
     <sc-for list="{{ compositionBoard.points }}" as="p" hint-placeholder-count="3">
       <div style="cursor:pointer;font-size:11px;min-width:115px" onClick="{{ p.click }}"><b>{{ p.label }}</b><br />{{ p.value }} {{ p.unit }}<br /><span style="font-size:10px">{{ p.quality }}</span></div>
     </sc-for>
-    <div style="font-size:10px;flex:1 1 250px;max-width:360px">A and water limits: 15.000 and 0.200 mass %. Analyzer samples lag the material; readings alone do not certify the stored inventory.</div>
+    <div class="ess-composition-limits" style="font-size:10px;flex:1 1 250px;max-width:420px">A and water limits: 15.000 and 0.200 mass %. AI511 / AI512 sample the receiving tank, not the incoming stream. While diverted, they cannot establish incoming-stream recovery.<br />AI509 is a draw-water proxy in volume %, with a 0.30% minimum indication; do not compare it directly with the tank's 0.200 mass % limit.</div>
     <sc-if value="{{ compositionBoard.warningsMissing }}" hint-placeholder-val="{{ false }}">
       <div style="font-size:10px;font-weight:700;flex-basis:100%">Quality warnings not configured in this saved run; start a fresh composition run to enable them.</div>
     </sc-if>
@@ -586,6 +586,10 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   </sc-for>
   <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">LIC504 holds the water interface in chamber 1; LIC503 holds the oil level in chamber 2; PIC505 vents overhead. The weir is set from the instructor station (V-502 weir height). AI509 water in the product draw, AI510 oil in the water draw. PSV-502 lifts at 1100 kPa.</text>
 </svg>
+<div class="ess-pip-dock" style="flex:none;display:flex;align-items:center;gap:8px;padding:3px 8px;background:#C4C1BA;border-top:1px solid #9a968e;font-size:10px;min-height:28px">
+  <button class="ess-pip-dock-button" title="{{ pal.title }}" onClick="{{ pal.click }}" style="flex:none;font:700 10px Tahoma,Verdana,sans-serif;color:#1a1a1a;background:#FFE000;border:2px solid #3c3c3c;padding:3px 8px;cursor:pointer">{{ pal.tag }}</button>
+  <div title="{{ pal.dockText }}" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#55524c">{{ pal.dockText }}</div>
+</div>
 </div>
 </sc-if>
 
@@ -1912,6 +1916,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 </div>
 </sc-if>
 
+<sc-if value="{{ pal.floating }}" hint-placeholder-val="{{ true }}">
 <div class="ess-pip" data-mood="{{ pal.mood }}" style="right:{{ pal.right }}" title="{{ pal.title }}" onClick="{{ pal.click }}">
   <sc-if value="{{ pal.thinkOn }}" hint-placeholder-val="{{ false }}">
     <div class="ess-pip-cloud">
@@ -1944,6 +1949,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   </svg>
   <div class="ess-pip-tag">{{ pal.tag }}</div>
 </div>
+</sc-if>
 
 </div>
 
@@ -2705,9 +2711,10 @@ class Component extends ESS.PlantCore(DCLogic) {
         return item.tag+' '+this.fmt(item.sample.pv,l.dec)+' '+l.eu+' ('+item.alarm.state+(limit&&Number.isFinite(limit[0])?'; warning limit '+this.fmt(limit[0],l.dec)+' '+l.eu:'')+')';}).join('; ');
       const steps=[{t:'Review the active product-quality warning and its current sample quality and age.',go:gDet(productWarnings[0].tag)}];
       if(hasA)steps.push({t:'Investigate heater operation and bed temperature using TIC311, TI312 and the U3 trend; this tank reading alone does not identify the cause.',go:gTg('TG05')});
-      if(hasWater)steps.push({t:'Investigate separator interface, oil level and draw quality using LIC504, LIC503 and AI509.',go:gTg('TG06')});
-      steps.push({t:'Consider manual TO OFF-SPEC routing in the instructor panel to limit further product-tank contamination; opening the panel does not change routing.',go:()=>this.openInstructor()},
-        {t:'Routing changes incoming flow only. Retained contaminated inventory does not clear by routing; follow delayed receiving-tank readings and verify recovery before returning to product.'});
+      if(hasWater)steps.push({t:'Investigate separator interface and oil level using LIC504 and LIC503, and the AI509 draw-water trend. AI509 is a volume % proxy with a 0.30% minimum indication; it is not directly comparable to the receiving-tank mass % limit.',go:gTg('TG06')});
+      steps.push({t:'Ask the instructor to consider manual TO OFF-SPEC routing to limit further product-tank contamination. Routing is instructor-only; no automatic diversion follows this warning.'},
+        {t:'Diversion changes incoming flow only; the receiving tank keeps draining. Its retained composition does not clean up by draining, and delayed AI511 / AI512 tank readings cannot establish whether the incoming stream has recovered while diverted.'},
+        {t:'Review heater and bed temperature, feed flow and separator operation with the instructor, and allow retained separator material to flush. Normal temperatures or elapsed time alone do not prove acceptable product. There is no incoming-stream unconverted-A analyzer; ask the instructor to review recovery before any return to product.'});
       out.push({id:'quality.product',sev:productWarnings.some(item=>item.alarm.prio==='Urgent')?'URGENT':productWarnings.some(item=>item.alarm.prio!=='Journal')?'WARN':'INFO',
         title:'TK-503 product-quality warning — '+productWarnings.map(item=>item.tag).join(' / '),
         why:evidence+'. A PVHI warning activates at or above its quality warning limit. These are delayed receiving-tank samples, not an immediate assay of the separator outlet or proof that all stored inventory is acceptable. No automatic diversion or trip is requested by this warning.',steps});
@@ -4046,6 +4053,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       }))};
     const palThink=!!(S.coachMood==='think'||(S.coachThink&&S.coachThink.length));
     const pal={
+      floating:!(this.effDisplay()==='graphic'&&S.unit==='U4'),
       mood:(S.coachMood==='think'||S.coachMood==='talk')?S.coachMood:(!S.coachLive?'off':(counts.unack?'alarm':'idle')),
       right:S.assist?'322px':'18px',
       click:()=>this.coachPalClick(),
@@ -4054,6 +4062,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       thinkHas:!!(S.coachThink&&String(S.coachThink).trim()),
       thinkWait:S.coachMood==='think'&&!(S.coachThink&&String(S.coachThink).trim()),
       think:S.coachThink||'',
+      dockText:palThink?(S.coachThink||'Thinking…'):'Open the Ops Assistant',
       tag:S.coachLive?(S.coachMood==='think'?'PIP · THINK':(S.coachMood==='talk'?'PIP · TALK':'PIP')):'PIP · OFF'
     };
     // dialogs

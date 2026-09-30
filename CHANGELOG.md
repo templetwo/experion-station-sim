@@ -6,6 +6,13 @@ All notable changes to the simulator. Semantic versioning.
 
 ### G2 optional live composition integration
 
+Product-quality advice now asks the trainee to request instructor routing
+review and explains why the diverted receiving tank cannot establish incoming
+stream recovery. Heater recovery and flushing time are not product-release
+criteria. The U4 board distinguishes AI509's draw-water volume proxy from
+AI512's tank mass percentage. PIP has a reserved U4 footer instead of floating
+over the product label. See [guidance supplement v2](docs/dev/PRODUCT-QUALITY-GUIDANCE-V2.md).
+
 Fresh composition runs now warn when valid receiving-tank analyzer samples
 reach the existing A or water limits. Live Diagnosis suggests checking the
 process and considering manual off-spec routing; it neither changes the route
