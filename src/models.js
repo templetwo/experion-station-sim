@@ -457,14 +457,16 @@
   // ---------------------------------------------------------------- unit 2
   function sequence(P, L, dt, ctx) {
     const b = P.b;
-    b.pt += dt;
+    if (!b.held) b.pt += dt;
     const setPh = (ph) => { b.phase = ph; b.pt = 0; ctx.addEvent('SYSTEM', 'SCM202', 'PHASE → ' + ph, '', ''); };
-    if (b.phase === 'CHARGE') { b.lvl += 0.5 * dt; if (b.lvl >= 40) { L.TIC212.mode = 'AUTO'; L.TIC212.sp = 80; setPh('HEATUP'); } }
-    else if (b.phase === 'HEATUP') { if (b.T >= 76) setPh('FEED'); }
-    else if (b.phase === 'FEED') { if (b.lvl >= 75) setPh('REACT'); }
-    else if (b.phase === 'REACT') { if (b.Cm <= 2) { L.TIC212.sp = 40; setPh('COOL'); } }
-    else if (b.phase === 'COOL') { if (b.T <= 45) setPh('DRAIN'); }
-    else if (b.phase === 'DRAIN') { b.lvl = Math.max(10, b.lvl - 0.8 * dt); if (b.lvl <= 10) { L.TIC212.mode = 'MAN'; L.TIC212.op = 8; setPh('IDLE'); } }
+    if (!b.held) {
+      if (b.phase === 'CHARGE') { b.lvl += 0.5 * dt; if (b.lvl >= 40) { L.TIC212.mode = 'AUTO'; L.TIC212.sp = 80; setPh('HEATUP'); } }
+      else if (b.phase === 'HEATUP') { if (b.T >= 76) setPh('FEED'); }
+      else if (b.phase === 'FEED') { if (b.lvl >= 75) setPh('REACT'); }
+      else if (b.phase === 'REACT') { if (b.Cm <= 2) { L.TIC212.sp = 40; setPh('COOL'); } }
+      else if (b.phase === 'COOL') { if (b.T <= 45) setPh('DRAIN'); }
+      else if (b.phase === 'DRAIN') { b.lvl = Math.max(10, b.lvl - 0.8 * dt); if (b.lvl <= 10) { L.TIC212.mode = 'MAN'; L.TIC212.op = 8; setPh('IDLE'); } }
+    }
     const seqOn = b.phase !== 'IDLE';
     if (b.phase === 'FEED') L.FIC211.sp = (b.held || P.trips.batch) ? 0 : 20; else if (seqOn) L.FIC211.sp = 0;
     L.FIC211.modeAttr = (b.phase === 'FEED' && !b.held) ? 'PROGRAM' : 'OPERATOR';

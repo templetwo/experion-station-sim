@@ -196,7 +196,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
 
 <div style="display:flex;align-items:center;gap:6px;padding:3px 4px;border-bottom:2px solid #9a968e;user-select:none">
   <div style="font-size:11px;color:#3c3c3c">Command:</div>
-  <input value="{{ cmdVal }}" onChange="{{ onCmd }}" onKeyDown="{{ onCmdKey }}" spellcheck="false" style="width:170px;padding:3px 5px;font-size:12px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
+  <input value="{{ cmdVal }}" onChange="{{ onCmd }}" onKeyDown="{{ onCmdKey }}" onFocus="{{ onCmdFocus }}" spellcheck="false" style="width:170px;padding:3px 5px;font-size:12px;background:#FFFFFF;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;outline:none" />
   <div style="width:270px;padding:4px 6px;background:#C9C5BD;border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:11px;color:#7a1a00;font-weight:700;height:24px;overflow:hidden;white-space:nowrap">{{ msgTxt }}</div>
   <div style="flex:1;display:flex;align-items:center;padding:0 6px;background:{{ al.bg }};color:{{ al.fg }};border:2px solid;border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E;font-size:12px;font-weight:700;height:24px;overflow:hidden;white-space:nowrap;cursor:pointer" onClick="{{ al.click }}">{{ al.txt }}</div>
   <div style="display:flex;gap:3px;align-items:center;font-size:10px;font-weight:700">
@@ -1957,7 +1957,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:{{ ledSrv }};border:1px solid #55524c"></div>SRV A</div>
   <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:{{ ledCee }};border:1px solid #55524c"></div>C300-SIM CEE</div>
   <div style="color:#55524c">|</div><div style="font-weight:700">STN01</div>
-  <div style="color:#55524c">ASSET: UNIT 01</div>
+  <div style="color:#55524c">ASSET: {{ assetLabel }}</div>
   <div style="color:#55524c">|</div><div style="font-weight:700;color:{{ cUnFg }}">UNACK {{ cUn }}</div><div style="color:#55524c">OOS {{ cOos }}</div>
   <sc-if value="{{ msgOn }}" hint-placeholder-val="{{ false }}"><div style="cursor:pointer;padding:1px 8px;font-weight:700;background:{{ msgBg }};color:{{ msgFg }};border:1px solid #7a1a00" onClick="{{ msgGo }}">MSG {{ cMsg }}</div></sc-if>
   <sc-if value="{{ disOn }}" hint-placeholder-val="{{ false }}"><div style="padding:1px 8px;font-weight:700;background:#C08000;color:#000000;border:1px solid #6E4000" title="{{ disT }}">ALARMS DISABLED: {{ cDis }}</div></sc-if>
@@ -4125,8 +4125,8 @@ class Component extends ESS.PlantCore(DCLogic) {
       themeClass:this.themeClass(),
       showBadge:this.props.showBadge??true, hcol:HC, cnts,
       menus, tbtns, closeMenus:()=>{if(S.menu)this.setState({menu:null});},
-      cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();},
-      msgTxt:S.msg, al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
+      cmdVal:S.cmd, onCmd:(e)=>this.setState({cmd:e.target.value}), onCmdKey:(e)=>{if(e.key==='Enter')this.parseCmd();}, onCmdFocus:()=>{ if(S.entry) this.setState({entry:null}); },
+      msgTxt:S.msg, assetLabel:({U1:'UNIT 01',U2:'UNIT 02',U3:'UNIT 03',U4:'UNIT 04'}[S.unit]||'UNIT 01'), al, cU:cnt('Urgent'), cH:cnt('High'), cL:cnt('Low'), cUn:counts.unack, cUnFg:counts.unack?'#A00000':'#3c3c3c', cOos:E.oos().length,
       cMsg:pend, msgOn:pend>0, msgBg:pend>0&&blink?'#7a1a00':'transparent', msgFg:pend>0&&blink?'#FFFFFF':'#7a1a00', msgGo:()=>this.nav('msgs'),
       disOn:this.disabledAssets.size>0, cDis:E.list().filter(r=>this.isDisabledRec(r)).length, disT:[...this.disabledAssets].join(', '), evTitle, mocCount:this.mocCount,
       isG1:disp==='graphic'&&S.unit==='U1', isG2:disp==='graphic'&&S.unit==='U2', isG3:disp==='graphic'&&S.unit==='U3', isG4:disp==='graphic'&&S.unit==='U4', isAlarms:disp==='alarms', isEvents:disp==='events', isMsgs:disp==='msgs', isTrend:disp==='trend', isDetail:disp==='detail', isSys:disp==='sys', isKpi:disp==='kpi', isArch:disp==='arch', isInstr:disp==='instr'&&instr.on, instr,
