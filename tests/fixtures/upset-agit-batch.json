@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-agit-batch",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 300,
-  "endStateDigest": "c5e824184f3d4517a56996ade24791a01bc7bb3e0d4b56afc78951165ed389a8",
+  "endStateDigest": "1390fb5fd97db41c3032f0a0594269037f58fb8cdb59cf690521868bc832ddcb",
   "alarmSequenceDigest": "342bc8296368c5aeb2f2f513a9e141e6319c390ecc86c1662fb986f3f084a0df",
   "alarmSeq": [
     "M202:TRIP:Urgent",
@@ -19,5 +19,5 @@
   "phase": "FEED",
   "driftOff": 0,
   "countsAlarms": 4,
-  "countsEvents": 19
+  "countsEvents": 20
 }

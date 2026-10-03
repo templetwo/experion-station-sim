@@ -523,7 +523,14 @@
     this.journal('MATERIAL_DIVERT','TK-503',String(fraction),{instr:true});
     return true;
   }
-  pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
+  pids(dt){
+    const ctx=this.pidCtx();
+    const L=this.L;
+    if(L.P101 && !L.P101.run && L.FIC102){
+      L.FIC102.init=true; L.FIC102.op=Math.min(L.FIC102.op,20); L.FIC102.I=L.FIC102.op-L.FIC102.K*ESS.Pid.loopError(L.FIC102); L.FIC102.lastPv=L.FIC102.pv;
+    }
+    for(const k of this.pidOrder()) ESS.Pid.stepPid(L[k],dt,ctx);
+  }
   productAnalyzerObservation(tag){
     // Public sample evidence only. Do not consult material truth to raise or
     // clear a warning, or to decide whether a retained alarm implies recovery.
@@ -720,7 +727,7 @@
   }
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
   instrNote(txt){ ESS.Instructor.logAdd(this.instr,this.P.t,txt); }
-  fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
+  fmt(v,dec){ if(v==null||isNaN(v)) return '—'; const s=Number(v).toFixed(dec); return s==='-0.0'||s==='-0.00'||s==='-0.000'?s.substring(1):s; }
   phaseSets(){
     const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
     return {
@@ -1113,8 +1120,10 @@
     const p=ESS.Instructor.presets().find(x=>x.id===id); if(!p) return;
     const o=opts||{}, replay=o.preserveReplay?this.instr.replay:null;
     this.instr.replay=null;
+    const preserveEvents=this.events||[], preserveMsgs=this.msgs||[], preserveAlarmLog=this.alarmLog||[], preserveT0=this.t0||0;
     if(this.state.drill) this.setState({drill:null});   // an armed drill must not inject during the run-forward below
     this.initSim(typeof o.baseTime==='number'?o.baseTime:undefined);
+    this.events=preserveEvents; this.msgs=preserveMsgs; this.alarmLog=preserveAlarmLog; this.t0=preserveT0;
     if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
     if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
     if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }

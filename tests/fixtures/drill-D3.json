@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D3",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 720.5,
-  "endStateDigest": "53b577d82737fd2bdb7bb77363b1e92af7fe5a8f3db0ddbe42c89c39e0488b7d",
+  "endStateDigest": "222544002eadbc256b2cb6f93d7c062fe7eb4912f6f4fdf2afd85bf86a0a6bf0",
   "alarmSequenceDigest": "547456c0f42efa8072ee9878c87b9e0ffea570ba5593308d023929cabbc14735",
   "drillId": "D3",
   "stepCap": 12000,

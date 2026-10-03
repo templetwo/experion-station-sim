@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (A-drill fixture; see tests/drill-arch-fixtures.test.js)",
   "fixture": "ARCH_A4",
-  "model": "c8440c43b8194bc82e98334d8e16aebab3a2686fcafeb1ecc36f3b36ae471bca",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 65,
   "drillId": "A4",

@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-bedact",
-  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 600,
   "endStateDigest": "9a3f4e4508da9dd81b45bc0c674ae675e26124bfccc21182bc2bbbceda6531dc",

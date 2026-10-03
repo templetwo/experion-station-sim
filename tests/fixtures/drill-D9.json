@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D9",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 720.5,
   "endStateDigest": "699d26e2a193a1394a298d37c9836df3c276809bae7761b4273c61e7f8a1aab9",
