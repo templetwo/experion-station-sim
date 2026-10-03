@@ -244,11 +244,12 @@ test('TIC201 DEVHI scans from PV-SP with its own deadband and stays quiet at bas
   for (let i = 0; i < 1200; i++) c.step(0.5);
   assert.equal(c.alarms.length, 0, 'no alarms in 10 sim-minutes of steady state');
   const l = c.L.TIC201;
-  l.pv = l.sp + 20; c.scan(0.5);
+  // a tick runs the models, then measure(), then the scan: writing the model's pv by hand needs the transmitter's report in between
+  l.pv = l.sp + 20; c.measure(); c.scan(0.5);
   assert.equal(rec(c, 'TIC201.DEVHI').state, 'UNACK');
-  l.pv = l.sp + 14; c.scan(0.5);
+  l.pv = l.sp + 14; c.measure(); c.scan(0.5);
   assert.equal(rec(c, 'TIC201.DEVHI').active, true, 'inside the deadband the alarm holds');
-  l.pv = l.sp; c.scan(0.5);
+  l.pv = l.sp; c.measure(); c.scan(0.5);
   assert.equal(rec(c, 'TIC201.DEVHI').state, 'RTNUN');
 });
 

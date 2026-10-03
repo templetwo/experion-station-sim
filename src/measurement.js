@@ -1,6 +1,6 @@
 // @artifact production
-// Transmitter reporting for every analog point. From 3.2.0 the observed value is intended to feed
-// the controllers and the alarm scan (plant-core will write it to l.pvObs; stage S1, Task 3): a
+// Transmitter reporting for every analog point. From 3.2.0 the observed value feeds the
+// controllers and the alarm scan (plant-core measure() writes it to l.pvObs every tick): a
 // controller cannot see what the transmitter cannot send. Anthony's decision,
 // docs/dev/CREDIBILITY-PASS-SPEC.md §2.4. observe() itself stays pure and never mutates the point.
 (function (root, factory) {

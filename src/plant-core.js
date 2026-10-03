@@ -203,6 +203,7 @@
     this.stepU2(dt);
     this.stepU3(dt);
     this.stepU4(dt);
+    this.measure();
     this.pids(dt);
     this.scan(dt);
     this.interlocks();
@@ -216,7 +217,7 @@
     const historyGap=ESS.FaultEngine.listActive(P.archFaults||ESS.FaultEngine.createState())
       .some(f=>f.faultId==='HISTORIAN_GAP');
     if(!historyGap){
-      for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, l.pv, l.sp??0, l.op??0]); if(h.length>(this.historyLimit||7200)) h.shift(); }
+      for(const k of this.histTags()){ const l=L[k]; const h=this.hist[k]; h.push([P.t, ESS.Pid.pvOf(l), l.sp??0, l.op??0]); if(h.length>(this.historyLimit||7200)) h.shift(); }
     }
     ESS.ProductMeter.advance(this.product,P,L,this._plausibilityProductSample,dt);
     this.backtrackTick();
@@ -523,6 +524,18 @@
     this.journal('MATERIAL_DIVERT','TK-503',String(fraction),{instr:true});
     return true;
   }
+  // The observed value of every analog point, once per tick, after the models write pv and before
+  // the controllers and the alarm scan read it (spec §2.3). Raw pv stays the model's: several
+  // equations read their own points (FIC102's transmitter fault, the U4 analyzers). A reading with
+  // no finite value (BAD) keeps the raw pv in pvObs, so the shed path reads what it always read.
+  measure(){
+    const L=this.L;
+    for(const k in L){ const l=L[k];
+      if(l.kind!=='pid'&&l.kind!=='ind') continue;
+      const m=ESS.Measurement.observe(l);
+      l.obs=m; l.pvObs=Number.isFinite(m.pv)?m.pv:l.pv;
+    }
+  }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
   productAnalyzerObservation(tag){
     // Public sample evidence only. Do not consult material truth to raise or
@@ -556,12 +569,12 @@
       for(const cond in l.alm){
         const [tp,prio]=l.alm[cond];
         const isLo=cond==='PVLO'||cond==='PVLL';
-        const pv=observed?observed.pv:l.pv;
+        const pv=observed?observed.pv:ESS.Pid.pvOf(l);
         const v=cond==='DEVHI'?(pv-l.sp):pv;
         const memo=l._am[cond]||(l._am[cond]={raw:false,active:false,onT:0,offT:0});
         const act=E.evaluateLimit({pv:v,trip:tp,kind:isLo?'LO':'HI',deadband:this.almDeadband(l),onDelaySec:this.almDelay(l),dt,memo}).active;
-        if(act && !l._as[cond]) this.raiseA(l.tag,cond,prio,l.pv,l.eu,l.desc);
-        if(!act && l._as[cond]) this.clearA(l.tag,cond,l.pv);
+        if(act && !l._as[cond]) this.raiseA(l.tag,cond,prio,pv,l.eu,l.desc);
+        if(!act && l._as[cond]) this.clearA(l.tag,cond,pv);
         l._as[cond]=act;
       }
     }

@@ -27,9 +27,11 @@ test('actual archived v1 checkpoints resume explicit legacy operation without in
   let current=K.capture(K.restore(old));
   assert.equal(current.materialMode,'legacy');assert.equal(current.composition,null);
   assert.deepEqual(current.product,old.product);
+  // The archived kernel predates the observed value: obs and pvObs are derived each scan (spec §2.3), not state it could carry.
+  const bare=L=>Object.fromEntries(Object.entries(L).map(([tag,{obs,pvObs,...point}])=>[tag,point]));
   for(let tick=0;tick<12;tick++){
     old=OldK.advance(old,.5,[]).state;current=K.advance(current,.5,[]).state;
-    for(const key of ['P','L','V'])assert.deepEqual(current.fields[key],old.fields[key]);
+    for(const key of ['P','L','V'])assert.deepEqual(key==='L'?bare(current.fields.L):current.fields[key],old.fields[key]);
     assert.deepEqual(current.product,old.product);
     assert.equal(current.rand,old.rand);assert.equal(current.rand4,old.rand4);
   }

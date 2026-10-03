@@ -539,7 +539,8 @@ test('the ALARM HELP button ticks its coverage task and the signature dialog res
 test('a deadband or on-delay store on a point with active alarms keeps them standing: no RTN / re-raise pair, no new horn', () => {
   const c = boot('ENGR');
   run(c, 2);
-  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  // a tick runs the models, then measure(), then the scan: writing the model's pv by hand needs the transmitter's report in between
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.measure(); c.scan(0.5); }
   const st = () => c.alarms.filter((a) => a.tag === 'TIC301').map((a) => a.cond + ':' + a.state).sort().join();
   assert.equal(st(), 'PVHH:UNACK,PVHI:UNACK');
   c.ackPage();
@@ -547,20 +548,20 @@ test('a deadband or on-delay store on a point with active alarms keeps them stan
   const n0 = rtn(), log0 = c.alarmLog.length;
   c.setState({ silenced: true });
   c.storeEntry('TIC301', 'ALMDELAY', 30);
-  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.measure(); c.scan(0.5); }
   assert.equal(st(), 'PVHH:ACKED,PVHI:ACKED', 'still standing and acknowledged');
   assert.equal(rtn(), n0, 'no RTN / ALARM journal lines'); assert.equal(c.alarmLog.length, log0); assert.equal(c.state.silenced, true, 'no new horn');
   assert.equal(c.L.TIC301.almDelay, 30);
   c.storeEntry('TIC301', 'ALMDB', 25);
-  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  for (let i = 0; i < 4; i++) { c.L.TIC301.pv = 300; c.measure(); c.scan(0.5); }
   assert.equal(st(), 'PVHH:ACKED,PVHI:ACKED'); assert.equal(rtn(), n0);
   assert.equal(cfgEvents(c).filter((e) => /ALARM (DEADBAND|ON-DELAY) CHANGE/.test(e.desc)).length, 2, 'both CONFIG rows');
   // the new values apply to future evaluations: after the PV returns, the next alarm waits the new 30 s
-  c.L.TIC301.pv = 170; for (let i = 0; i < 4; i++) c.scan(0.5);   // PVHI trips at 200: 170 is under trip minus the new 25 deadband
+  c.L.TIC301.pv = 170; c.measure(); for (let i = 0; i < 4; i++) c.scan(0.5);   // PVHI trips at 200: 170 is under trip minus the new 25 deadband
   assert.equal(st(), '', 'acknowledged alarms return straight to NORM');
-  for (let i = 0; i < 20; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  for (let i = 0; i < 20; i++) { c.L.TIC301.pv = 300; c.measure(); c.scan(0.5); }
   assert.ok(!c.alarms.some((a) => a.tag === 'TIC301' && a.active), 'not yet: 10 s of a 30 s delay');
-  for (let i = 0; i < 44; i++) { c.L.TIC301.pv = 300; c.scan(0.5); }
+  for (let i = 0; i < 44; i++) { c.L.TIC301.pv = 300; c.measure(); c.scan(0.5); }
   assert.ok(c.alarms.some((a) => a.tag === 'TIC301' && a.active), 'after 30 s');
 });
 
