@@ -113,7 +113,7 @@ Alarm record (963): `{ id, key:'SRC.COND', t, tag, cond, prio, val, eu, desc, ac
 Priorities Urgent/High/Low/Journal (Journal = event only). Scan conditions PVHI, PVHH, PVLO, PVLL, DEVHI; motor TRIP; CMDFAIL ad hoc; trip alarms raised from models with equipment tags TK-101, R-201, V-401, R-202, R-310. Flash: `almSty(a)` 1479–1484 (unacked+active alternate; acked steady; RTN-unacked inverse blink). Horn in tick 982–986 (Urgent double 880 Hz, High 640, Low 460 every 4th tick). Shelve auto-acks + silences + writes message; unshelve re-arms horn if still active.
 
 ### 2.8 Drills (1249–1339)
-Def: `{id,name,fault,rel:[tags],act,stable:'contain'|'alarms'|'restore',peak?,needBatch?,when?,q,opts:[4],a}`; `'restore'` (D4 only, spec CR11) is `'alarms'` plus the feed back, meaning FIC102 in CAS or its output and flow both at 40 or more, and LIC101 under 80 %. Metrics `d.m = {tAlarm,tSil,tAck,tAct,tStable,trip,peak}`. Grades (1762): ≥85 PROFICIENT, ≥65 COMPETENT, else NEEDS PRACTICE.
+Def: `{id,name,fault,rel:[tags],act,stable:'contain'|'alarms'|'restore',peak?,needBatch?,when?,q,opts:[4],a}`; `'restore'` (D4 only, spec CR11) is `'alarms'` plus the feed back, meaning FIC102 in CAS with LIC101 not in MAN, or its output and flow both at 40 or more, and LIC101 under 80 %. Metrics `d.m = {tAlarm,tSil,tAck,tAct,tStable,trip,peak}`. Grades (1762): ≥85 PROFICIENT, ≥65 COMPETENT, else NEEDS PRACTICE.
 
 ### 2.9 Instructor (1739–1742)
 11 fault checkboxes (xmtr, surge, pump, cool, stick, vap, air, rxn, foul, agit, bedact), speed chips [0,1,2,5], RESET PROCESS → initSim().

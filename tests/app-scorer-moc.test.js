@@ -711,33 +711,70 @@ test('D4: doing nothing still fails, and cutting feed without restoring it does 
 });
 
 // D4 ends STABILIZED only when its alarms are quiet and acknowledged, the feed is back and TK-101 is under its 80 % high
-// level (spec CR11). "Feed back" is FIC102 in CAS, or its output at 40 % or more with the flow at 40 m3/h or more. Each
-// clause is pinned on its own, on hand-set state so no trajectory is involved. FIC102 reads about 60 m3/h at the nominal
-// feed and 26 to 30 with the output cut to 20 %, the flow creeping up as TK-101 fills, so the flow alone cannot tell a cut
-// feed from a restored one: the output has to be asked too.
-function d4Verdict(mode, op, flow, tank) {
+// level (spec CR11). "Feed back" is FIC102 in CAS with LIC101 in control (LIC101 in MAN is not drawing the tank down), or
+// FIC102's output at 40 % or more with its flow at 40 m3/h or more (CR11b). Each clause is pinned on its own, on hand-set
+// state so no trajectory is involved, one fresh plant per case. FIC102 reads about 60 m3/h at the nominal feed and 26 to 30
+// with the output cut to 20 %, the flow creeping up as TK-101 fills, so the flow alone cannot tell a cut feed from a restored
+// one: the output has to be asked too. A shelved related alarm counts as quiet, as in every other drill.
+// `alarm`: 'standing' raises a related alarm, acknowledges it and leaves it active; 'shelved' then shelves it; 'unrelated'
+// does the same on equipment outside the drill's related list. `seen` sets what the FIC102 and LIC101 transmitters report
+// apart from the model's pv: observe() leaves the two equal at these values, so only a hand-set pvObs shows which one the
+// rule reads (it reads the observed value, spec §2.3).
+const STABLE_ALARM = { D2: ['LIC101', 'PVHI'], D4: ['TIC201', 'PVHI'], unrelated: ['TIC301', 'PVHI'] };
+function stableVerdict(id, { mode = 'CAS', op = 50, flow = 60, tank = 50, lic = 'AUTO', ack = true, alarm = null, seen = {} } = {}) {
   const c = boot('OPER');
   run(c, 10);
   assert.equal(c.alarms.length, 0, 'a quiet plant');
-  const def = c.drillDefs().find((d) => d.id === 'D4');
-  assert.equal(def.stable, 'restore');
-  c.setState({ drill: { def, t0: c.P.t, ti: c.P.t, injected: true, m: { tAlarm: c.P.t, tAck: c.P.t }, stableFor: 0 } });
-  Object.assign(c.L.FIC102, { mode, op, pv: flow }); c.L.LIC101.pv = tank; c.measure();
+  const def = c.drillDefs().find((d) => d.id === id);
+  c.setState({ drill: { def, t0: c.P.t, ti: c.P.t, injected: true, m: ack ? { tAlarm: c.P.t, tAck: c.P.t } : { tAlarm: c.P.t }, stableFor: 0 } });
+  Object.assign(c.L.FIC102, { mode, op, pv: flow }); Object.assign(c.L.LIC101, { mode: lic, pv: tank }); c.measure();
+  if (seen.flow !== undefined) c.L.FIC102.pvObs = seen.flow;
+  if (seen.tank !== undefined) c.L.LIC101.pvObs = seen.tank;
+  if (alarm) {
+    const [tag, cond] = STABLE_ALARM[alarm === 'unrelated' ? alarm : id], key = tag + '.' + cond;
+    c.raiseA(tag, cond, 'High', 170, 'DEG C', 'related alarm');
+    c.ackAlarm(key);
+    assert.ok(c.alarmEngine.active().some((a) => a.key === key && !a.shelved), 'the related alarm stands, acknowledged');
+    if (alarm === 'shelved') { assert.ok(c.shelveAlarm(key, 5, 'TEST')); assert.ok(c.alarmEngine.active().some((a) => a.key === key && a.shelved), 'shelved, still live'); }
+  }
   for (let i = 0; i < 240; i++) { c.drillWatch(0.5); if (!c.state.drill) return c.state.dlg.drill.reason; }
   return 'RUNNING';
 }
+const d4Verdict = (opts) => stableVerdict('D4', opts);
 test('D4 stabilises only once the feed is restored: acknowledged, quiet alarms alone do not end it', () => {
-  assert.equal(d4Verdict('MAN', 20, 28, 79), 'RUNNING', 'output cut to 20 %, flow at its cut level, tank under 80 %: the feed clause alone holds the drill');
-  assert.equal(d4Verdict('MAN', 20, 45, 50), 'RUNNING', 'flow 45 but the output still cut to 20 %: not restored');
-  assert.equal(d4Verdict('MAN', 60, 20, 50), 'RUNNING', 'output 60 % but no flow behind it: not restored');
-  assert.equal(d4Verdict('CAS', 20, 20, 50), 'STABILIZED', 'returned to CAS: restored whatever the numbers read');
-  assert.equal(d4Verdict('MAN', 60, 60, 50), 'STABILIZED', 'output 60 % and flow 60: restored');
-  assert.equal(d4Verdict('MAN', 40, 40, 50), 'STABILIZED', 'output 40 % and flow 40 are the lowest that count as restored');
-  assert.equal(d4Verdict('MAN', 39.9, 60, 50), 'RUNNING', 'output just under 40 %: not restored');
-  assert.equal(d4Verdict('MAN', 60, 39.9, 50), 'RUNNING', 'flow just under 40: not restored');
-  assert.equal(d4Verdict('MAN', 60, 60, 79.9), 'STABILIZED', 'the tank just under 80 % is under');
-  assert.equal(d4Verdict('CAS', 50, 60, 80), 'RUNNING', 'feed restored but TK-101 at its 80 % high level: not yet');
-  assert.equal(d4Verdict('MAN', 60, 60, 85), 'RUNNING', 'feed restored but TK-101 above its 80 % high level: not yet');
+  assert.equal(boot().drillDefs().find((d) => d.id === 'D4').stable, 'restore');
+  // the feed clause
+  assert.equal(d4Verdict({ mode: 'MAN', op: 20, flow: 28, tank: 79 }), 'RUNNING', 'output cut to 20 %, flow at its cut level, tank under 80 %: the feed clause alone holds the drill');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 20, flow: 45 }), 'RUNNING', 'flow 45 but the output still cut to 20 %: not restored');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 20 }), 'RUNNING', 'output 60 % but no flow behind it: not restored');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 60 }), 'STABILIZED', 'output 60 % and flow 60: restored');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 40, flow: 40 }), 'STABILIZED', 'output 40 % and flow 40 are the lowest that count as restored');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 39.9, flow: 60 }), 'RUNNING', 'output just under 40 %: not restored');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 39.9 }), 'RUNNING', 'flow just under 40: not restored');
+  assert.equal(d4Verdict({ mode: 'CAS', op: 20, flow: 20 }), 'STABILIZED', 'returned to CAS with LIC101 in AUTO: restored whatever the numbers read');
+  assert.equal(d4Verdict({ mode: 'CAS', op: 20, flow: 28, tank: 79, lic: 'MAN' }), 'RUNNING', 'FIC102 in CAS but LIC101 parked in MAN at a low output is not drawing the tank down');
+  assert.equal(d4Verdict({ mode: 'CAS', op: 60, flow: 60, lic: 'MAN' }), 'STABILIZED', 'LIC101 in MAN only disqualifies the CAS route: output and flow at 60 are restored all the same');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 20, seen: { flow: 60 } }), 'STABILIZED', 'the rule reads the flow the transmitter reports, not the model flow');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 60, seen: { flow: 20 } }), 'RUNNING', 'a model flow of 60 behind a transmitter reading 20 is not restored');
+  // the level clause
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 60, tank: 79.9 }), 'STABILIZED', 'the tank just under 80 % is under');
+  assert.equal(d4Verdict({ mode: 'CAS', tank: 80 }), 'RUNNING', 'feed restored but TK-101 at its 80 % high level: not yet');
+  assert.equal(d4Verdict({ mode: 'MAN', op: 60, flow: 60, tank: 85 }), 'RUNNING', 'feed restored but TK-101 above its 80 % high level: not yet');
+  assert.equal(d4Verdict({ mode: 'CAS', tank: 85, seen: { tank: 50 } }), 'STABILIZED', 'the rule reads the level the transmitter reports, not the model level');
+  assert.equal(d4Verdict({ mode: 'CAS', tank: 50, seen: { tank: 85 } }), 'RUNNING', 'a transmitter reading 85 holds the drill whatever the model level');
+  // the alarm clause
+  assert.equal(d4Verdict({ ack: false }), 'RUNNING', 'no acknowledgement: the trainee has not touched an alarm');
+  assert.equal(d4Verdict({ alarm: 'standing' }), 'RUNNING', 'a related alarm acknowledged but still standing: not quiet');
+  assert.equal(d4Verdict({ alarm: 'shelved' }), 'STABILIZED', 'the same alarm shelved counts as quiet, as in every other drill');
+  assert.equal(d4Verdict({ alarm: 'unrelated' }), 'STABILIZED', 'an alarm standing on unrelated equipment does not hold the drill');
+});
+test("the default 'alarms' stability reads the same alarm rule as D4's 'restore'", () => {
+  assert.equal(boot().drillDefs().find((d) => d.id === 'D2').stable, 'alarms');
+  assert.equal(stableVerdict('D2'), 'STABILIZED', 'acknowledged and quiet');
+  assert.equal(stableVerdict('D2', { ack: false }), 'RUNNING', 'no acknowledgement');
+  assert.equal(stableVerdict('D2', { alarm: 'standing' }), 'RUNNING', 'a related alarm acknowledged but still standing');
+  assert.equal(stableVerdict('D2', { alarm: 'shelved' }), 'STABILIZED', 'the same alarm shelved counts as quiet');
+  assert.equal(stableVerdict('D2', { alarm: 'unrelated' }), 'STABILIZED', 'an alarm standing on unrelated equipment does not hold the drill');
 });
 
 test('drill trip lists: the drill equipment decides the trip criterion; a drill without a list owns every trip; the scorer deducts and caps other trips', () => {

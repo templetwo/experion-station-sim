@@ -609,11 +609,14 @@
     if((m.tAlarm||(def.proactive&&m.tAct)) && !m.tStable){
       let ok=false;
       const proactive=!!def.proactive&&!!m.tAct&&(!m.tAlarm||m.tAct<m.tAlarm);
+      // acknowledged, and no related alarm standing (a shelved one counts as quiet): the alarm part of 'alarms' and of 'restore'
+      const quiet=()=>m.tAck&&!this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved);
       if(proactive){ ok=!m.trip&&!this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved)&&def.proactive.check(this); }
       else if(def.stable==='contain'){ ok = L.FIC102.mode==='MAN' && !this.alarmEngine.unacked().some(x=>def.rel.includes(x.tag)); }
-      // 'restore': the drill's lesson is the restored feed (FIC102 back in CAS, or output and flow at 40 or more); quiet alarms alone no longer end D4 (spec CR11)
-      else if(def.stable==='restore'){ ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved) && (L.FIC102.mode==='CAS' || (L.FIC102.op>=40 && ESS.Pid.pvOf(L.FIC102)>=40)) && L.LIC101.pv<80; }
-      else { ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved); }
+      // 'restore': the drill's lesson is the restored feed, so quiet alarms alone no longer end D4 (spec CR11): FIC102 back in CAS with
+      // LIC101 in control (in MAN it is not drawing the tank down), or its output and flow at 40 or more, and the tank under 80 %; the flow and the level are read as observed values
+      else if(def.stable==='restore'){ ok = quiet() && ((L.FIC102.mode==='CAS'&&L.LIC101.mode!=='MAN') || (L.FIC102.op>=40 && ESS.Pid.pvOf(L.FIC102)>=40)) && ESS.Pid.pvOf(L.LIC101)<80; }
+      else { ok = quiet(); }
       d.stableFor = ok ? d.stableFor+dt : 0;
       const stableNeed=proactive?def.proactive.holdSec:60;
       if(d.stableFor>=stableNeed){ m.tStable=P.t; this.endDrill('STABILIZED'); return; }

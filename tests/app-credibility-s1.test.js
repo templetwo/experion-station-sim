@@ -21,7 +21,7 @@ function run(c, seconds, until) { for (let i = 0; i < seconds * 2; i++) { c.step
 // Jacket cooling lost by the operator's own hand: TIC202 to MAN, OP 0, exactly the playtest's D7 repro.
 function loseCooling(c) { c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 0); }
 
-test('D7: the jacket transmitter saturates at its reporting limit and the cascade primary sees the saturated value', () => {
+test('D7: the jacket transmitter saturates at its reporting limit and the loop record tracks the observed value', () => {
   const c = boot(4, 'OPER');
   loseCooling(c);
   assert.ok(run(c, 1800, () => c.L.TIC202.pv > 110), 'the jacket model exceeded 110 C');
