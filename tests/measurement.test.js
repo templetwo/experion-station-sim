@@ -11,11 +11,24 @@ test('TIC202 keeps both nominal endpoints Good and reports excursions through th
       pv, badPv: false, quality: 'GOOD', statusCode: 0, statusName: 'Good', limit: 'NONE'
     });
   }
+  // Beyond nominal but inside the window the transmitter still reports the value: Good with the
+  // DataValue limit bit, so a tiny overshoot never reads as uncertain (ruling R8, spec §2.2).
+  for (const [input, limit, code] of [
+    [-0.001, 'LOW', 0x00000500],
+    [-1.2499, 'LOW', 0x00000500],
+    [100.001, 'HIGH', 0x00000600],
+    [103.1249, 'HIGH', 0x00000600]
+  ]) {
+    assert.deepEqual(Measurement.observe({tag: 'TIC202', pv: input}), {
+      pv: input, badPv: false, quality: 'GOOD', statusCode: code, statusName: 'Good', limit
+    });
+    assert.equal(code >>> 30, 0, 'good severity');
+    assert.equal((code >>> 10) & 3, 1, 'DataValue InfoType makes LimitBits meaningful');
+  }
+  // At or beyond a window edge the value is clamped to the edge and reads uncertain.
   for (const [input, pv, limit, code] of [
     [-Number.MAX_VALUE, -1.25, 'LOW', 0x40940500],
     [-1.25, -1.25, 'LOW', 0x40940500],
-    [-0.001, -0.001, 'LOW', 0x40940500],
-    [100.001, 100.001, 'HIGH', 0x40940600],
     [103.125, 103.125, 'HIGH', 0x40940600],
     [170.6, 103.125, 'HIGH', 0x40940600],
     [Number.MAX_VALUE, 103.125, 'HIGH', 0x40940600]
@@ -91,7 +104,7 @@ test('numeric source status takes precedence and retains its reason and flags', 
   }
 });
 
-test('a point with no declared range or kind has no invented transmitter span', () => {
+test('a point that declares a range but no kind is left alone', () => {
   const o = Measurement.observe({tag: 'TI312', pv: 480.5, lo: 0, hi: 100});
   assert.equal(o.pv, 480.5);
   assert.equal(o.quality, 'GOOD');
@@ -110,7 +123,7 @@ test('every analog point reports through the declared NE 43 window of its own ra
   assert.equal(Measurement.observe({tag: 'TIC201', kind: 'pid', pv: 150, lo: 0, hi: 200}).quality, 'GOOD');
 });
 
-test('the generalised policy reproduces the shipped TIC202 precedent exactly', () => {
+test('the generalised policy reproduces the shipped TIC202 reporting window exactly', () => {
   const r = Measurement.rangeOf({tag: 'TIC202', kind: 'pid', lo: 0, hi: 100});
   assert.equal(r.reportingLower, Measurement.TIC202.reportingLower);
   assert.equal(r.reportingUpper, Measurement.TIC202.reportingUpper);
@@ -162,6 +175,49 @@ test('a missing, non-finite or frozen point never throws, never yields NaN and i
   assert.equal(first.pv, 206.25);
   assert.deepEqual(Measurement.observe(point), first);
   assert.equal(point.pv, 250);
+});
+
+test('a reading inside the NE 43 band stays Good with its limit bit, and only a saturated reading is uncertain', () => {
+  // beyond the nominal range 0..100 but inside the window -1.25 .. 103.125 (ruling R8, spec §2.2)
+  assert.deepEqual(Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: 100.001}),
+    {pv: 100.001, badPv: false, quality: 'GOOD', statusCode: 0x600, statusName: 'Good', limit: 'HIGH'});
+  assert.deepEqual(Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: -0.001}),
+    {pv: -0.001, badPv: false, quality: 'GOOD', statusCode: 0x500, statusName: 'Good', limit: 'LOW'});
+  // the overshoot that motivated R8: a 100.011 % conversion on AI205 must not read uncertain
+  const ai205 = Measurement.observe({tag: 'AI205', kind: 'ind', eu: '%', lo: 0, hi: 100, pv: 100.011});
+  assert.equal(ai205.quality, 'GOOD'); assert.equal(ai205.pv, 100.011); assert.equal(ai205.limit, 'HIGH');
+  // the window edge itself is saturated: clamped to the edge and uncertain
+  const edge = Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: 103.125});
+  assert.equal(edge.quality, 'UNCERTAIN'); assert.equal(edge.statusCode, 0x40940600);
+  // a source Uncertain status keeps precedence inside the band: its own code, with the limit attached
+  assert.deepEqual(Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: 100.5, quality: 'STALE'}),
+    {pv: 100.5, badPv: false, quality: 'UNCERTAIN', statusCode: 0x40000600, statusName: 'Uncertain', limit: 'HIGH'});
+});
+
+test('the TIC202 precedent answers only for a point that declares no range at all', () => {
+  const precedent = Measurement.rangeOf({tag: 'TIC202'});
+  assert.equal(precedent.reportingLower, Measurement.TIC202.reportingLower);
+  assert.equal(precedent.reportingUpper, Measurement.TIC202.reportingUpper);
+  assert.ok(Measurement.rangeOf({tag: 'TIC202', kind: 'pid'}), 'a kind alone is not a range');
+  // a declared but unusable range is left alone, as for any other tag, never replaced by the precedent
+  for (const [lo, hi] of [[0, 0], [100, 0], [NaN, 100], [0, undefined]]) {
+    assert.equal(Measurement.rangeOf({tag: 'TIC202', kind: 'pid', lo, hi}), null);
+    const o = Measurement.observe({tag: 'TIC202', kind: 'pid', lo, hi, pv: 170.6});
+    assert.equal(o.pv, 170.6); assert.equal(o.quality, 'GOOD');
+  }
+});
+
+test('the live TIC202 point declares the range the policy generalises, and reports as the precedent did', () => {
+  const { load } = require('../tools/logic-harness');
+  const { Component } = load();
+  const c = new Component({});
+  c.initSim();
+  const live = c.L.TIC202;
+  assert.equal(live.kind, 'pid'); assert.equal(live.lo, 0); assert.equal(live.hi, 100);
+  const r = Measurement.rangeOf(live);
+  assert.equal(r.reportingLower, Measurement.TIC202.reportingLower);
+  assert.equal(r.reportingUpper, Measurement.TIC202.reportingUpper);
+  assert.equal(Measurement.observe(Object.assign({}, live, {pv: 170.6})).pv, 103.125);
 });
 
 test('observation is repeatable, does not mutate point/controller state and returns only its allowlist', () => {

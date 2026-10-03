@@ -107,10 +107,7 @@ the U4 analyzer and level points), so the raw value cannot be overwritten.
 instead of the TIC202 special case, and must reproduce TIC202's current values exactly (a test
 pins that):
 
-- Analog points (`pid` and `ind` kinds): reporting window from `lo - 0.0125 * span` to
-  `hi + 0.031 * span`, the 3.8 mA and 20.5 mA failure-information limits of NAMUR NE 43. Beyond
-  the window the value is clamped to the edge, status `Uncertain_EngineeringUnitsExceeded`,
-  limit `LOW` or `HIGH`. Existing Bad and Uncertain source statuses keep precedence, as today.
+- Analog points (`pid` and `ind` kinds): reporting window from `lo - 0.0125 * span` to `hi + 0.03125 * span`, the 3.8 mA and 20.5 mA failure-information limits of NAMUR NE 43. Inside the nominal range the reading is Good. Beyond the nominal range but inside the window the transmitter still reports the value: status Good with the DataValue limit bit (`LOW` or `HIGH`), so a tiny overshoot never reads as uncertain. At or beyond a window edge the value is clamped to that edge with status `Uncertain_EngineeringUnitsExceeded` and the limit; that is the saturated reading the hatch, Live Diagnosis and the coach treat as uncertain (ruling R8, 2026-10-03). Existing Bad and Uncertain source statuses keep precedence, as today.
 - Flow points (engineering unit `M3/H`): low-flow cutoff, `|pv| < 0.01 * span` reports `0`
   with quality GOOD. This is D14's model-side half.
 - Discrete and motor points: unchanged.

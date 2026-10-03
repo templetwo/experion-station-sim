@@ -1,8 +1,8 @@
 // @artifact production
-// Transmitter reporting for every analog point. From 3.2.0 the observed value also feeds the
-// controllers and the alarm scan (plant-core writes it to l.pvObs): a controller cannot see what
-// the transmitter cannot send. Anthony's decision, docs/dev/CREDIBILITY-PASS-SPEC.md §2.4.
-// observe() itself stays pure and never mutates the point.
+// Transmitter reporting for every analog point. From 3.2.0 the observed value is intended to feed
+// the controllers and the alarm scan (plant-core will write it to l.pvObs; stage S1, Task 3): a
+// controller cannot see what the transmitter cannot send. Anthony's decision,
+// docs/dev/CREDIBILITY-PASS-SPEC.md §2.4. observe() itself stays pure and never mutates the point.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.ESS.Measurement = factory();
@@ -33,7 +33,8 @@
   function isFlow(p) { return String(p.eu || '').toUpperCase() === 'M3/H'; }
 
   // The window a point reports through, or null when the point declares no usable range.
-  // TIC202 keeps answering from its shipped precedent when a caller passes no range at all.
+  // TIC202 keeps answering from its shipped precedent only when a caller declares no range at
+  // all (neither lo nor hi); a declared but unusable range is left alone like any other tag's.
   function rangeOf(point) {
     const p = point || {};
     if (isAnalog(p)) {
@@ -44,7 +45,7 @@
         reportingUpper: p.hi + RANGE_POLICY.highFrac * span
       });
     }
-    if (p.tag === 'TIC202') {
+    if (p.tag === 'TIC202' && p.lo == null && p.hi == null) {
       return Object.freeze({ lower: TIC202.lower, upper: TIC202.upper, span: TIC202.upper - TIC202.lower,
         reportingLower: TIC202.reportingLower, reportingUpper: TIC202.reportingUpper });
     }
@@ -107,6 +108,10 @@
   // failure nor failed communication. Part 8 forbids LastUsableValue for stale.
   // Existing Bad/Uncertain source statuses take precedence over range reporting;
   // an uncertain status keeps its subcode, with the current range limit attached.
+  // Range reporting (ruling R8, spec §2.2): inside the nominal range a reading is Good. Beyond it
+  // but inside the window the transmitter still reports the value, so it stays Good with the
+  // DataValue limit bit (LOW or HIGH). At or beyond a window edge the value is clamped to the edge
+  // and reads Uncertain_EngineeringUnitsExceeded with the limit.
   function observe(point) {
     const p = point || {};
     const declared = p.quality == null ? 'GOOD' : String(p.quality).toUpperCase();
@@ -124,8 +129,9 @@
     if (r && isFlow(p) && Math.abs(pv) < RANGE_POLICY.flowCutoffFrac * r.span) pv = 0;
     if (r && (pv < r.lower || pv > r.upper)) {
       const limit = pv < r.lower ? 0x100 : 0x200;
+      const saturated = pv <= r.reportingLower || pv >= r.reportingUpper;
       pv = Math.max(r.reportingLower, Math.min(r.reportingUpper, pv));
-      if (family(code) === 'GOOD' || code === STATUS.Uncertain) {
+      if (saturated && (family(code) === 'GOOD' || code === STATUS.Uncertain)) {
         code = STATUS.Uncertain_EngineeringUnitsExceeded;
       }
       code = ((code & ~LIMIT_MASK) | DATA_VALUE | limit) >>> 0;
