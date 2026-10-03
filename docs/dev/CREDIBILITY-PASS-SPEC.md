@@ -63,6 +63,9 @@ The W2 matrix declares and never enforces. PIP stays advisory.
 6. R6: enforce the trip latch with A5 re-keyed, chosen by this seat on Anthony's "you choose".
 7. PIP voice, Anthony mid-design: very concise, a couple of sentences per answer, fewer words.
 
+Control rulings made during execution are numbered CR1, CR2, ... in the stage ledgers and cited
+here as CRn, so they are never confused with the playtest's realism items R1 to R8.
+
 ---
 
 ## 1. Branch, baseline, release mechanics
@@ -104,16 +107,16 @@ places in the page. Several model equations read their own points' raw values (`
 the U4 analyzer and level points), so the raw value cannot be overwritten.
 
 2.2 **The policy, generalised.** `observe()` applies one declared range policy per point class
-instead of the TIC202 special case, and must reproduce TIC202's current values exactly (a test
-pins that):
+instead of the TIC202 special case, and must reproduce TIC202's reporting window exactly, with
+the band rule below applied to every point including TIC202 (a test pins that):
 
-- Analog points (`pid` and `ind` kinds): reporting window from `lo - 0.0125 * span` to `hi + 0.03125 * span`, the 3.8 mA and 20.5 mA failure-information limits of NAMUR NE 43. Inside the nominal range the reading is Good. Beyond the nominal range but inside the window the transmitter still reports the value: status Good with the DataValue limit bit (`LOW` or `HIGH`), so a tiny overshoot never reads as uncertain. At or beyond a window edge the value is clamped to that edge with status `Uncertain_EngineeringUnitsExceeded` and the limit; that is the saturated reading the hatch, Live Diagnosis and the coach treat as uncertain (ruling R8, 2026-10-03). Existing Bad and Uncertain source statuses keep precedence, as today.
+- Analog points (`pid` and `ind` kinds): reporting window from `lo - 0.0125 * span` to `hi + 0.03125 * span`, the 3.8 mA and 20.5 mA failure-information limits of NAMUR NE 43. Inside the nominal range the reading is Good. Beyond the nominal range but inside the window the transmitter still reports the value: status Good with the DataValue limit bit (`LOW` or `HIGH`), so a tiny overshoot never reads as uncertain. At or beyond a window edge the value is clamped to that edge with status `Uncertain_EngineeringUnitsExceeded` and the limit; that is the saturated reading the hatch, Live Diagnosis and the coach treat as uncertain (controller ruling CR8, 2026-10-03; not playtest item R8). Existing Bad and Uncertain source statuses keep precedence, as today.
 - Flow points (engineering unit `M3/H`): low-flow cutoff, `|pv| < 0.01 * span` reports `0`
   with quality GOOD. This is D14's model-side half.
 - Discrete and motor points: unchanged.
 
 NE 43 is registered at `docs/RESOURCES.md` §7.35 (CITED-NOT-HELD); the policy cites `RESOURCES-7.35`.
-(Rev 1 said it was not yet registered; corrected 2026-10-03 when Task 1 found §7.35, ruling R6.)
+(Rev 1 said it was not yet registered; corrected 2026-10-03 when Task 1 found §7.35, controller ruling CR6.)
 
 2.3 **One observed field.** Each tick, after the models write `l.pv` and before controllers and
 alarms run, plant-core writes `l.pvObs` (and the quality fields `observe()` returns) for every
@@ -373,7 +376,7 @@ answers, and asserts the emitted text and word counts.
 | D4 | journal count after a canonical start ≥ before + 1; event ids unique; `eid` continues |
 | D5 | sim time after a canonical start equals base time plus the steps taken |
 | D6 | PROGRAM in CHARGE; operator SP refused, not journaled; OPERATOR on hold; SP during hold held |
-| D7 | TIC202 `pvObs` capped at the reporting window with UNCERTAIN quality; `stepPid` reads it; TIC202 precedent values reproduced |
+| D7 | TIC202 `pvObs` capped at the reporting window with UNCERTAIN quality when saturated, Good with its limit bit inside the band; `stepPid` reads it; TIC202's reporting window reproduced |
 | D8 | `INITMAN · OP AT HI LIMIT` text; CAS return journals the clamp |
 | D9 | ladder shows `pre-trip alarm` and a trip row equal to the W2 declaration |
 | D10 | FIC102 OP equals 0 while the R-201 trip holds; OP entry refused |
@@ -428,7 +431,7 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | upset-pump, drill-D3 | §3 FIC102 tracking (D1); §6.1 Urgent on-delay (R2) |
 | drill-D11, upset-agit-batch, arch A5 physics | §4 ownership (D6) |
 | arch A5 score | §6.3 gate re-key |
-| upset-cool, drill-D4, upset-stick, any run where TIC202 leaves range | §2 saturation (D7) |
+| upset-cool, drill-D4, upset-stick, any run where TIC202 reaches a window edge (saturates) | §2 saturation (D7) |
 | runs with Urgent level alarms (overflow runs) | §6.1 (R2) |
 | runs where the R-201 trip holds while FIC102 was wound up | §3 interlock tracking (D10) |
 
