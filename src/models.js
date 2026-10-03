@@ -469,7 +469,7 @@
     }
     const seqOn = b.phase !== 'IDLE';
     if (b.phase === 'FEED') L.FIC211.sp = (b.held || P.trips.batch) ? 0 : 20; else if (seqOn) L.FIC211.sp = 0;
-    L.FIC211.modeAttr = (b.phase === 'FEED' && !b.held) ? 'PROGRAM' : 'OPERATOR';
+    L.FIC211.modeAttr = seqOn ? 'PROGRAM' : 'OPERATOR';
     L.TIC212.modeAttr = seqOn ? 'PROGRAM' : 'OPERATOR';
   }
 
