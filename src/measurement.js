@@ -18,8 +18,10 @@
   });
 
   // Declared reporting window for every analog point, the 4..20 mA loop convention: live
-  // measurement between 3.8 mA and 20.5 mA, i.e. lo - 1.25 % to hi + 3.125 % of span
-  // (NAMUR NE 43, RESOURCES-7.49, CITED-NOT-HELD; spec §2.2). Flows read 0 below 1 % of span.
+  // measurement between 3.8 mA and 20.5 mA, i.e. lo - 1.25 % to hi + 3.125 % of span. This
+  // generalises the Temple-set reporting interval through the NE 43 convention registered at
+  // RESOURCES-7.35 (CITED-NOT-HELD); it is not a claim of conformance (spec §2.2). Flows read 0
+  // below 1 % of span.
   const RANGE_POLICY = Object.freeze({
     lowFrac: -0.0125, highFrac: 0.03125, flowCutoffFrac: 0.01,
     nominalLowMa: 4, nominalHighMa: 20, reportingLowMa: 3.8, reportingHighMa: 20.5

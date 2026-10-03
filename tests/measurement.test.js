@@ -98,7 +98,7 @@ test('a point with no declared range or kind has no invented transmitter span', 
 });
 
 test('every analog point reports through the declared NE 43 window of its own range', () => {
-  // kind:'ind', range 0..100: window is -1.25 .. 103.125 (spec §2.2, RESOURCES-7.49)
+  // kind:'ind', range 0..100: window is -1.25 .. 103.125 (spec §2.2, RESOURCES-7.35)
   const hi = Measurement.observe({tag: 'TI312', kind: 'ind', pv: 480.5, lo: 0, hi: 100});
   assert.deepEqual(hi, {pv: 103.125, badPv: false, quality: 'UNCERTAIN', statusCode: 0x40940600,
     statusName: 'Uncertain_EngineeringUnitsExceeded', limit: 'HIGH'});
