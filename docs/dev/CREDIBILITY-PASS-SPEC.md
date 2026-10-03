@@ -115,8 +115,8 @@ pins that):
   with quality GOOD. This is D14's model-side half.
 - Discrete and motor points: unchanged.
 
-NE 43 is not yet in `docs/RESOURCES.md`; it is registered under §7 as CITED-NOT-HELD with a
-public overview reference before the number is used, the W0 practice.
+NE 43 is registered at `docs/RESOURCES.md` §7.35 (CITED-NOT-HELD); the policy cites `RESOURCES-7.35`.
+(Rev 1 said it was not yet registered; corrected 2026-10-03 when Task 1 found §7.35, ruling R6.)
 
 2.3 **One observed field.** Each tick, after the models write `l.pv` and before controllers and
 alarms run, plant-core writes `l.pvObs` (and the quality fields `observe()` returns) for every

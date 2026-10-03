@@ -38,27 +38,13 @@
 **Files:**
 - Modify: `src/measurement.js`
 - Modify: `tests/measurement.test.js` (the test at line 94, "other tags have no invented transmitter span")
-- Modify: `docs/RESOURCES.md` (new `### 7.49`)
+- Modify: nothing in `docs/RESOURCES.md` (NE 43 is already registered at `### 7.35`; Step 1 below is withdrawn, ruling R6 of 2026-10-03)
 
 **Interfaces:**
 - Consumes: nothing new.
 - Produces: `ESS.Measurement.rangeOf(point) -> {lower, upper, reportingLower, reportingUpper, span} | null`, `ESS.Measurement.RANGE_POLICY`, and `observe(point)` now clamps every analog point (`kind` of `pid` or `ind` with finite `lo < hi`) and applies the flow cutoff. `TIC202` and `STATUS` exports unchanged.
 
-- [ ] **Step 1: Register NE 43 in `docs/RESOURCES.md`**
-
-Append after the last `### 7.48` subsection, matching the house format of the neighbouring entries:
-
-```markdown
-### 7.49 NAMUR NE 43, failure-information signal levels for 4..20 mA transmitters
-
-Registered 2026-10-03 for the measurement policy (`src/measurement.js`), CITED-NOT-HELD: the
-recommendation text is not held in this repository and is not needed; the two numbers the policy
-uses are its public convention: live measurement between 3.8 mA and 20.5 mA, which on a 4..20 mA
-span is -1.25 % to +103.125 % of the engineering range. Public overview:
-https://www.namur.net/en/recommendations-and-worksheets/current-nena/ (NE 43 listing). The sim's
-transmitter is a synthetic one that reports through that interval; this is a citation for the
-convention, not a claim of conformance.
-```
+- [x] **Step 1: withdrawn.** NAMUR NE 43 is registered at `docs/RESOURCES.md` `### 7.35` (CITED-NOT-HELD). The policy cites `RESOURCES-7.35`; no new registration, and the "48 sources" counts stay at 48.
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -72,7 +58,7 @@ test('a point with no declared range or kind has no invented transmitter span', 
 });
 
 test('every analog point reports through the declared NE 43 window of its own range', () => {
-  // kind:'ind', range 0..100: window is -1.25 .. 103.125 (spec §2.2, RESOURCES-7.49)
+  // kind:'ind', range 0..100: window is -1.25 .. 103.125 (spec §2.2, RESOURCES-7.35)
   const hi = Measurement.observe({tag: 'TI312', kind: 'ind', pv: 480.5, lo: 0, hi: 100});
   assert.deepEqual(hi, {pv: 103.125, badPv: false, quality: 'UNCERTAIN', statusCode: 0x40940600,
     statusName: 'Uncertain_EngineeringUnitsExceeded', limit: 'HIGH'});
@@ -135,7 +121,7 @@ In `src/measurement.js`, replace the header comment on line 2 and add the policy
 ```js
   // Declared reporting window for every analog point, the 4..20 mA loop convention: live
   // measurement between 3.8 mA and 20.5 mA, i.e. lo - 1.25 % to hi + 3.125 % of span
-  // (NAMUR NE 43, RESOURCES-7.49, CITED-NOT-HELD; spec §2.2). Flows read 0 below 1 % of span.
+  // (NAMUR NE 43, RESOURCES-7.35, CITED-NOT-HELD; spec §2.2). Flows read 0 below 1 % of span.
   const RANGE_POLICY = Object.freeze({
     lowFrac: -0.0125, highFrac: 0.03125, flowCutoffFrac: 0.01,
     nominalLowMa: 4, nominalHighMa: 20, reportingLowMa: 3.8, reportingHighMa: 20.5
@@ -196,7 +182,7 @@ Run: `python3 tools/build-dist.py && node --test tests/*.test.js 2>&1 | grep -E 
 Expected: `# fail 0` (no caller reads the new fields yet, so no golden moves), smoke ok on both builds.
 
 ```bash
-git add src/measurement.js tests/measurement.test.js docs/RESOURCES.md src/model-id.js dist/experion-station-sim-standalone.html
+git add src/measurement.js tests/measurement.test.js src/model-id.js dist/experion-station-sim-standalone.html
 git commit -m "feat(measurement): a declared NE 43 reporting window for every analog point, and a low-flow cutoff" -m "Generalises the TIC202 precedent (spec §2.2); observe() stays pure. Tests: tests/measurement.test.js." -m "Co-Authored-By: Claude <model name> <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_<id>"
 git push
 ```
