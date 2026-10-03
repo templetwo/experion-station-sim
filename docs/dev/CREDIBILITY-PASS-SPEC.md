@@ -5,6 +5,10 @@ Path at commit: `docs/dev/CREDIBILITY-PASS-SPEC.md`
 Status: **rev 1**, 2026-10-03. Design brainstormed with Anthony and approved section by section
 in conversation; written for his review before an implementation plan is made.
 Author: MacBook seat (claude-fable-5-1), Claude Code session 9570056f.
+Record correction: the rev 1 commit `911329c` says the suite was 0-fail on the branch. It was
+not. The cherry-picked report `docs/playtest-2026-10-02.md` lacked its artifact marker and the two
+artifact-class tests failed; the message was written before the test output was read. Fixed in
+the commit that adds this note, left in history rather than rewritten (V3-PLAN §I practice).
 Inputs: `docs/playtest-2026-10-02.md` and `docs/playtest-pip-2026-10-02.md` (black-box runs
 against main at `1f0147e`, brought over from PR #8), and the review of PR #8 of 2026-10-03
 (chronicle claim `52167a2e`), which found PR #8's fixes unsound and is why this pass exists.
