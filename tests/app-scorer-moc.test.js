@@ -710,26 +710,34 @@ test('D4: doing nothing still fails, and cutting feed without restoring it does 
   assert.ok(v.dg.dbBreak.some((b) => b.label === 'Other equipment trips' && b.pts === '-10 / 0'));
 });
 
-// The two clauses that make D4 wait for the restored feed (spec CR11), pinned on hand-set state so no trajectory is involved.
-// FIC102 reads about 60 m3/h at the nominal feed and 26 to 30 with the output cut to 20 %, the flow creeping up as TK-101 fills.
-test('D4 stabilises only once the feed is restored: acknowledged, quiet alarms alone do not end it', () => {
+// D4 ends STABILIZED only when its alarms are quiet and acknowledged, the feed is back and TK-101 is under its 80 % high
+// level (spec CR11). "Feed back" is FIC102 in CAS, or its output at 40 % or more with the flow at 40 m3/h or more. Each
+// clause is pinned on its own, on hand-set state so no trajectory is involved. FIC102 reads about 60 m3/h at the nominal
+// feed and 26 to 30 with the output cut to 20 %, the flow creeping up as TK-101 fills, so the flow alone cannot tell a cut
+// feed from a restored one: the output has to be asked too.
+function d4Verdict(mode, op, flow, tank) {
   const c = boot('OPER');
   run(c, 10);
   assert.equal(c.alarms.length, 0, 'a quiet plant');
   const def = c.drillDefs().find((d) => d.id === 'D4');
   assert.equal(def.stable, 'restore');
-  const arm = (feed, tank) => {
-    c.setState({ drill: { def, t0: c.P.t, ti: c.P.t, injected: true, m: { tAlarm: c.P.t, tAck: c.P.t }, stableFor: 0 } });
-    c.L.FIC102.pv = feed; c.L.LIC101.pv = tank; c.measure();
-  };
-  const stillRunning = (seconds) => { for (let i = 0; i < seconds * 2; i++) { c.drillWatch(0.5); if (!c.state.drill) return false; } return true; };
-  arm(20, 50);
-  assert.ok(stillRunning(120), 'feed cut: no related alarm standing and all acknowledged, yet the drill does not end');
-  arm(60, 85);
-  assert.ok(stillRunning(120), 'feed restored but TK-101 at its 80 % high level: not yet');
-  arm(60, 50);
-  assert.equal(stillRunning(120), false, 'feed restored and the tank under 80 %: the drill ends once the alarms have stayed quiet for 60 s');
-  assert.equal(c.state.dlg.drill.reason, 'STABILIZED');
+  c.setState({ drill: { def, t0: c.P.t, ti: c.P.t, injected: true, m: { tAlarm: c.P.t, tAck: c.P.t }, stableFor: 0 } });
+  Object.assign(c.L.FIC102, { mode, op, pv: flow }); c.L.LIC101.pv = tank; c.measure();
+  for (let i = 0; i < 240; i++) { c.drillWatch(0.5); if (!c.state.drill) return c.state.dlg.drill.reason; }
+  return 'RUNNING';
+}
+test('D4 stabilises only once the feed is restored: acknowledged, quiet alarms alone do not end it', () => {
+  assert.equal(d4Verdict('MAN', 20, 28, 79), 'RUNNING', 'output cut to 20 %, flow at its cut level, tank under 80 %: the feed clause alone holds the drill');
+  assert.equal(d4Verdict('MAN', 20, 45, 50), 'RUNNING', 'flow 45 but the output still cut to 20 %: not restored');
+  assert.equal(d4Verdict('MAN', 60, 20, 50), 'RUNNING', 'output 60 % but no flow behind it: not restored');
+  assert.equal(d4Verdict('CAS', 20, 20, 50), 'STABILIZED', 'returned to CAS: restored whatever the numbers read');
+  assert.equal(d4Verdict('MAN', 60, 60, 50), 'STABILIZED', 'output 60 % and flow 60: restored');
+  assert.equal(d4Verdict('MAN', 40, 40, 50), 'STABILIZED', 'output 40 % and flow 40 are the lowest that count as restored');
+  assert.equal(d4Verdict('MAN', 39.9, 60, 50), 'RUNNING', 'output just under 40 %: not restored');
+  assert.equal(d4Verdict('MAN', 60, 39.9, 50), 'RUNNING', 'flow just under 40: not restored');
+  assert.equal(d4Verdict('MAN', 60, 60, 79.9), 'STABILIZED', 'the tank just under 80 % is under');
+  assert.equal(d4Verdict('CAS', 50, 60, 80), 'RUNNING', 'feed restored but TK-101 at its 80 % high level: not yet');
+  assert.equal(d4Verdict('MAN', 60, 60, 85), 'RUNNING', 'feed restored but TK-101 above its 80 % high level: not yet');
 });
 
 test('drill trip lists: the drill equipment decides the trip criterion; a drill without a list owns every trip; the scorer deducts and caps other trips', () => {

@@ -611,8 +611,8 @@
       const proactive=!!def.proactive&&!!m.tAct&&(!m.tAlarm||m.tAct<m.tAlarm);
       if(proactive){ ok=!m.trip&&!this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved)&&def.proactive.check(this); }
       else if(def.stable==='contain'){ ok = L.FIC102.mode==='MAN' && !this.alarmEngine.unacked().some(x=>def.rel.includes(x.tag)); }
-      // 'restore': the drill's lesson is the restored feed; quiet alarms alone no longer end D4 (spec CR11)
-      else if(def.stable==='restore'){ ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved) && ESS.Pid.pvOf(L.FIC102)>=30 && L.LIC101.pv<80; }
+      // 'restore': the drill's lesson is the restored feed (FIC102 back in CAS, or output and flow at 40 or more); quiet alarms alone no longer end D4 (spec CR11)
+      else if(def.stable==='restore'){ ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved) && (L.FIC102.mode==='CAS' || (L.FIC102.op>=40 && ESS.Pid.pvOf(L.FIC102)>=40)) && L.LIC101.pv<80; }
       else { ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved); }
       d.stableFor = ok ? d.stableFor+dt : 0;
       const stableNeed=proactive?def.proactive.holdSec:60;
