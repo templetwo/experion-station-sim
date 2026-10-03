@@ -91,10 +91,77 @@ test('numeric source status takes precedence and retains its reason and flags', 
   }
 });
 
-test('other tags have no invented transmitter span', () => {
+test('a point with no declared range or kind has no invented transmitter span', () => {
   const o = Measurement.observe({tag: 'TI312', pv: 480.5, lo: 0, hi: 100});
   assert.equal(o.pv, 480.5);
   assert.equal(o.quality, 'GOOD');
+});
+
+test('every analog point reports through the declared NE 43 window of its own range', () => {
+  // kind:'ind', range 0..100: window is -1.25 .. 103.125 (spec §2.2, RESOURCES-7.49)
+  const hi = Measurement.observe({tag: 'TI312', kind: 'ind', pv: 480.5, lo: 0, hi: 100});
+  assert.deepEqual(hi, {pv: 103.125, badPv: false, quality: 'UNCERTAIN', statusCode: 0x40940600,
+    statusName: 'Uncertain_EngineeringUnitsExceeded', limit: 'HIGH'});
+  const lo = Measurement.observe({tag: 'TI312', kind: 'ind', pv: -40, lo: 0, hi: 100});
+  assert.equal(lo.pv, -1.25); assert.equal(lo.limit, 'LOW'); assert.equal(lo.quality, 'UNCERTAIN');
+  // a pid point on a 0..200 span: window -2.5 .. 206.25
+  const r = Measurement.rangeOf({tag: 'TIC201', kind: 'pid', lo: 0, hi: 200});
+  assert.deepEqual(r, {lower: 0, upper: 200, reportingLower: -2.5, reportingUpper: 206.25, span: 200});
+  assert.equal(Measurement.observe({tag: 'TIC201', kind: 'pid', pv: 150, lo: 0, hi: 200}).quality, 'GOOD');
+});
+
+test('the generalised policy reproduces the shipped TIC202 precedent exactly', () => {
+  const r = Measurement.rangeOf({tag: 'TIC202', kind: 'pid', lo: 0, hi: 100});
+  assert.equal(r.reportingLower, Measurement.TIC202.reportingLower);
+  assert.equal(r.reportingUpper, Measurement.TIC202.reportingUpper);
+  // the precedent object still answers for a TIC202 point that declares no range
+  assert.equal(Measurement.observe({tag: 'TIC202', pv: 170.6}).pv, 103.125);
+});
+
+test('flow points read 0 below the low-flow cutoff and clamp like any analog point beyond it', () => {
+  const flow = (pv) => Measurement.observe({tag: 'FIC102', kind: 'pid', eu: 'M3/H', pv, lo: 0, hi: 120});
+  assert.deepEqual(flow(-0.1), {pv: 0, badPv: false, quality: 'GOOD', statusCode: 0, statusName: 'Good', limit: 'NONE'});
+  assert.equal(flow(0.9).pv, 0);        // 1 % of a 120 span is 1.2
+  assert.equal(flow(1.3).pv, 1.3);
+  const neg = flow(-2);                 // beyond the cutoff: low reporting limit, UNCERTAIN, LOW
+  assert.equal(neg.pv, -1.5); assert.equal(neg.quality, 'UNCERTAIN'); assert.equal(neg.limit, 'LOW');
+  assert.equal(Measurement.observe({tag: 'TIC201', kind: 'pid', eu: 'DEG C', pv: 0.5, lo: 0, hi: 200}).pv, 0.5, 'cutoff is for flows only');
+});
+
+test('an empty or inverted declared range is left alone and never yields NaN', () => {
+  for (const [lo, hi] of [[0, 0], [100, 0]]) {
+    const o = Measurement.observe({tag: 'TI999', kind: 'ind', pv: 480.5, lo, hi});
+    assert.equal(o.pv, 480.5); assert.equal(o.quality, 'GOOD');
+    assert.equal(Measurement.rangeOf({tag: 'TI999', kind: 'ind', lo, hi}), null);
+  }
+});
+
+test('motor and discrete points are not clamped', () => {
+  const o = Measurement.observe({tag: 'P101', kind: 'motor', pv: 1, lo: 0, hi: 1});
+  assert.equal(o.pv, 1); assert.equal(o.quality, 'GOOD');
+});
+
+test('the policy fractions agree with the NE 43 current endpoints and the policy cannot be edited', () => {
+  const c = Measurement.RANGE_POLICY, loop = c.nominalHighMa - c.nominalLowMa;
+  assert.equal(c.nominalLowMa + c.lowFrac * loop, c.reportingLowMa);
+  assert.equal(c.nominalLowMa + (1 + c.highFrac) * loop, c.reportingHighMa);
+  assert.ok(Object.isFrozen(c));
+});
+
+test('a missing, non-finite or frozen point never throws, never yields NaN and is never mutated', () => {
+  for (const point of [null, undefined, {}]) assert.equal(Measurement.rangeOf(point), null);
+  for (const [lo, hi] of [[NaN, 100], [0, Infinity], [-Infinity, 100], [undefined, 100], ['0', '100']]) {
+    const o = Measurement.observe({tag: 'TI999', kind: 'ind', pv: 480.5, lo, hi});
+    assert.equal(o.pv, 480.5); assert.equal(o.quality, 'GOOD');
+    assert.equal(Measurement.rangeOf({tag: 'TI999', kind: 'ind', lo, hi}), null);
+  }
+  // a flow with no declared range has no span to take 1 % of, so there is no cutoff to apply
+  assert.equal(Measurement.observe({tag: 'FIC999', eu: 'M3/H', pv: 0.1}).pv, 0.1);
+  const point = Object.freeze({tag: 'TIC201', kind: 'pid', pv: 250, lo: 0, hi: 200});
+  const first = Measurement.observe(point);
+  assert.equal(first.pv, 206.25);
+  assert.deepEqual(Measurement.observe(point), first);
+  assert.equal(point.pv, 250);
 });
 
 test('observation is repeatable, does not mutate point/controller state and returns only its allowlist', () => {

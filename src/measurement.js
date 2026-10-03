@@ -1,5 +1,8 @@
 // @artifact production
-// Observation-only transmitter reporting. Never feeds back into plant or PID state.
+// Transmitter reporting for every analog point. From 3.2.0 the observed value also feeds the
+// controllers and the alarm scan (plant-core writes it to l.pvObs): a controller cannot see what
+// the transmitter cannot send. Anthony's decision, docs/dev/CREDIBILITY-PASS-SPEC.md §2.4.
+// observe() itself stays pure and never mutates the point.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.ESS.Measurement = factory();
@@ -13,6 +16,38 @@
     lower: 0, upper: 100, reportingLower: -1.25, reportingUpper: 103.125,
     nominalLowMa: 4, nominalHighMa: 20, reportingLowMa: 3.8, reportingHighMa: 20.5
   });
+
+  // Declared reporting window for every analog point, the 4..20 mA loop convention: live
+  // measurement between 3.8 mA and 20.5 mA, i.e. lo - 1.25 % to hi + 3.125 % of span
+  // (NAMUR NE 43, RESOURCES-7.49, CITED-NOT-HELD; spec §2.2). Flows read 0 below 1 % of span.
+  const RANGE_POLICY = Object.freeze({
+    lowFrac: -0.0125, highFrac: 0.03125, flowCutoffFrac: 0.01,
+    nominalLowMa: 4, nominalHighMa: 20, reportingLowMa: 3.8, reportingHighMa: 20.5
+  });
+
+  function isAnalog(p) {
+    return (p.kind === 'pid' || p.kind === 'ind') && Number.isFinite(p.lo) && Number.isFinite(p.hi) && p.hi > p.lo;
+  }
+  function isFlow(p) { return String(p.eu || '').toUpperCase() === 'M3/H'; }
+
+  // The window a point reports through, or null when the point declares no usable range.
+  // TIC202 keeps answering from its shipped precedent when a caller passes no range at all.
+  function rangeOf(point) {
+    const p = point || {};
+    if (isAnalog(p)) {
+      const span = p.hi - p.lo;
+      return Object.freeze({
+        lower: p.lo, upper: p.hi, span,
+        reportingLower: p.lo + RANGE_POLICY.lowFrac * span,
+        reportingUpper: p.hi + RANGE_POLICY.highFrac * span
+      });
+    }
+    if (p.tag === 'TIC202') {
+      return Object.freeze({ lower: TIC202.lower, upper: TIC202.upper, span: TIC202.upper - TIC202.lower,
+        reportingLower: TIC202.reportingLower, reportingUpper: TIC202.reportingUpper });
+    }
+    return null;
+  }
 
   // RESOURCES-7.23: OPC Part 8 data quality meanings and Null for Bad values.
   // RESOURCES-7.24: Part 4 StatusCode bits; LimitBits require InfoType DataValue.
@@ -64,7 +99,8 @@
     };
   }
 
-  // Reads only the visible point's tag, PV, quality and optional OPC status.
+  // Reads only the visible point's tag, kind, declared range, unit, PV, quality and optional
+  // OPC status.
   // STALE/UNKNOWN map to generic Uncertain: age alone proves neither a sensor
   // failure nor failed communication. Part 8 forbids LastUsableValue for stale.
   // Existing Bad/Uncertain source statuses take precedence over range reporting;
@@ -82,9 +118,11 @@
     if (declared !== 'GOOD' && family(code) === 'GOOD') code = STATUS.Uncertain;
 
     let pv = p.pv;
-    if (p.tag === 'TIC202' && (pv < TIC202.lower || pv > TIC202.upper)) {
-      const limit = pv < TIC202.lower ? 0x100 : 0x200;
-      pv = Math.max(TIC202.reportingLower, Math.min(TIC202.reportingUpper, pv));
+    const r = rangeOf(p);
+    if (r && isFlow(p) && Math.abs(pv) < RANGE_POLICY.flowCutoffFrac * r.span) pv = 0;
+    if (r && (pv < r.lower || pv > r.upper)) {
+      const limit = pv < r.lower ? 0x100 : 0x200;
+      pv = Math.max(r.reportingLower, Math.min(r.reportingUpper, pv));
       if (family(code) === 'GOOD' || code === STATUS.Uncertain) {
         code = STATUS.Uncertain_EngineeringUnitsExceeded;
       }
@@ -93,5 +131,5 @@
     return result(pv, code, p.statusName);
   }
 
-  return { observe, TIC202, STATUS };
+  return { observe, rangeOf, RANGE_POLICY, TIC202, STATUS };
 });

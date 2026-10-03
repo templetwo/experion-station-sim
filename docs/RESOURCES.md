@@ -304,9 +304,10 @@ Seeded from the spec's Appendix A. The verification pass that produced this sect
 spec's own count low: it named fifteen absent sources, but Luyben is two distinct books, the
 Seborg **textbook** is a different work from the Henson/Seborg CSTR parameters already registered
 at §4.4, and the five operator-training-simulator papers cited in spec §3.2.8 and §3.5.8 were
-absent as well. W0 registered that initial set. The registry now contains 48 sources:
-the W0 entries, the rev 2 map’s proposed sources registered on 2026-09-26, and
-four offline library candidates registered for G2 preparation on 2026-09-27.
+absent as well. W0 registered that initial set. The registry now contains 49 sources:
+the W0 entries, the rev 2 map’s proposed sources registered on 2026-09-26,
+four offline library candidates registered for G2 preparation on 2026-09-27, and
+the NE 43 reporting-window numbers registered for the measurement policy on 2026-10-03 (§7.49).
 The observation and plausibility slice uses §7.23–§7.26; registration of the
 remaining candidates does not approve their gated implementation. The coverage
 table below maps every proposed entry to its stable id.
@@ -664,3 +665,8 @@ directly held official numeric-code CSV; its historical annex remains unheld.
 - Resource: [tagged release](https://github.com/scipy/scipy/releases/tag/v1.18.1), [BSD-3-Clause licence](https://raw.githubusercontent.com/scipy/scipy/v1.18.1/LICENSE.txt), [solve_ivp API](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 - **Status: VERIFIED; HELD for the retrieved solve_ivp API, read 2026-09-27.** The retrieved API page was labelled 1.18.0; the checked and executed release is 1.18.1. The offline G2 comparison uses DOP853 with explicit event boundaries, tolerance refinement and a 2 s maximum reference step. NumPy 2.5.3 is pinned alongside SciPy in the isolated development environment; both executed versions and source/input hashes are in `tools/g2/receipts/stage-one.json`.
 - Proposed use: integrate explicitly supplied synthetic balances offline, after analytical limiting cases. Select DOP853 for a suitable nonstiff reference or Radau/BDF where stiffness warrants it; establish convergence with declared component-scaled tolerances. `t_eval` selects recorded samples, not internal integration steps; event boundaries need separate treatment. Solver agreement validates implementation of the declared equations, not the chemistry or the adequacy of the live 0.5 s step. No change to the runtime solver follows from registration.
+
+### 7.49 NAMUR NE 43, failure-information signal levels for 4..20 mA transmitters
+- Resource: [NAMUR's current recommendations list](https://www.namur.net/en/recommendations-and-worksheets/current-nena/), the public overview (NE 43 listing). The issuer's edition metadata for the same recommendation is recorded in §7.35.
+- Status: **CITED-NOT-HELD.** Registered 2026-10-03 for the measurement policy (`src/measurement.js`). The recommendation text is not held in this repository and is not needed; the two numbers the policy uses are its public convention.
+- Proposed use: the declared reporting window of every analog point. Live measurement lies between 3.8 mA and 20.5 mA, which on a 4..20 mA span is -1.25 % to +103.125 % of the engineering range. The sim's transmitter is a synthetic one that reports through that interval; this is a citation for the convention, not a claim of conformance.
