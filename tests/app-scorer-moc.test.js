@@ -653,13 +653,15 @@ function runD4(seed, policy) {
 }
 const setOp = (c, tag, v) => { c.openEntry(tag, 'OP'); c.setState({ entryText: String(v) }); c.commitEntry(); };
 // the guidance, followed literally: cut feed to 20 % (here 60 s after the first alarm), then when TIC201 is falling and
-// TK-101 passes 80 % restore FIC102 toward 60 %, acknowledging as alarms come
+// before TK-101 reaches high level (LIC101 PVHI 80 %; here at 77 %) restore FIC102 toward 60 %, acknowledging as alarms
+// come. D4 stabilises only once the feed is restored (spec CR11), so the restore is what lets the drill end; restoring
+// while TK-101 is under about 73 % comes too early and the drill is still unstable at its 12-minute limit.
 function guidance(state) {
   return (c, d, ctx) => {
     if (!state.cut && ctx.since >= 60) { c.silence(); c.setMode('FIC102', 'MAN'); setOp(c, 'FIC102', 20); state.cut = true; }
     state.rT = state.rT || []; state.rT.push(c.P.rT); if (state.rT.length > 40) state.rT.shift();
     const falling = state.rT.length >= 40 && state.rT[state.rT.length - 1] < state.rT[0] - 0.3;
-    if (state.cut && !state.restored && falling && c.P.tankL >= 80) { setOp(c, 'FIC102', 60); state.restored = true; }
+    if (state.cut && !state.restored && falling && c.P.tankL >= 77) { setOp(c, 'FIC102', 60); state.restored = true; }
   };
 }
 
@@ -686,12 +688,14 @@ test('D4: doing nothing still fails, and cutting feed without restoring it does 
   assert.ok(idle.score.score < 80 && !idle.score.pass, 'nothing: ' + idle.score.score);
   assert.equal(idle.score.breakdown.find((r) => r.id === 'trip').earned, 0);
   // feed cut at the first alarm and left cut: TK-101 fills and trips — counted as an other-equipment deduction, not as
-  // the drill's trip, and the drill does not stabilise (LIC101 is a related point), so the trainee does not pass
+  // the drill's trip, and the drill does not stabilise (D4 stabilises only once the feed is restored, spec CR11, however
+  // quiet the alarms are), so the trainee does not pass
   const cut = runD4(5, (c, d, ctx) => { if (!c._cut) { c.setMode('FIC102', 'MAN'); setOp(c, 'FIC102', 20); c._cut = true; } });
   assert.equal(!!cut.d.m.trip, false, 'no R-201 trip after cutting feed');
   assert.ok(cut.peak.tankL >= 98 && cut.d.m.otherTrips === 1, 'TK-101 tripped: ' + cut.peak.tankL.toFixed(1) + ' / ' + cut.d.m.otherTrips);
   assert.deepEqual(cut.d.m.otherTripList, ['TK-101 HIHI TRIP']);
-  assert.notEqual(cut.d.reason, 'STABILIZED');
+  assert.notEqual(cut.d.reason, 'STABILIZED', 'feed left cut ended the drill as ' + cut.d.reason);
+  assert.ok(!cut.d.m.tStable, 'feed left cut never reports stable inside the drill window (tStable ' + cut.d.m.tStable + ')');
   const rows = cut.score.breakdown;
   assert.equal(rows.find((r) => r.id === 'trip').earned, 20, 'the drill trip criterion is R-201 only');
   assert.equal(rows.find((r) => r.id === 'othertrips').earned, -10, 'the tank trip deducts 10');
@@ -704,6 +708,28 @@ test('D4: doing nothing still fails, and cutting feed without restoring it does 
   assert.ok(v.dg.dbGuideOn && /restore feed/i.test(v.dg.dbGuide) && /TK-101/.test(v.dg.dbGuide));
   assert.match(cut.def.opts[cut.def.a], /restore feed/i);
   assert.ok(v.dg.dbBreak.some((b) => b.label === 'Other equipment trips' && b.pts === '-10 / 0'));
+});
+
+// The two clauses that make D4 wait for the restored feed (spec CR11), pinned on hand-set state so no trajectory is involved.
+// FIC102 reads about 60 m3/h at the nominal feed and 26 to 30 with the output cut to 20 %, the flow creeping up as TK-101 fills.
+test('D4 stabilises only once the feed is restored: acknowledged, quiet alarms alone do not end it', () => {
+  const c = boot('OPER');
+  run(c, 10);
+  assert.equal(c.alarms.length, 0, 'a quiet plant');
+  const def = c.drillDefs().find((d) => d.id === 'D4');
+  assert.equal(def.stable, 'restore');
+  const arm = (feed, tank) => {
+    c.setState({ drill: { def, t0: c.P.t, ti: c.P.t, injected: true, m: { tAlarm: c.P.t, tAck: c.P.t }, stableFor: 0 } });
+    c.L.FIC102.pv = feed; c.L.LIC101.pv = tank; c.measure();
+  };
+  const stillRunning = (seconds) => { for (let i = 0; i < seconds * 2; i++) { c.drillWatch(0.5); if (!c.state.drill) return false; } return true; };
+  arm(20, 50);
+  assert.ok(stillRunning(120), 'feed cut: no related alarm standing and all acknowledged, yet the drill does not end');
+  arm(60, 85);
+  assert.ok(stillRunning(120), 'feed restored but TK-101 at its 80 % high level: not yet');
+  arm(60, 50);
+  assert.equal(stillRunning(120), false, 'feed restored and the tank under 80 %: the drill ends once the alarms have stayed quiet for 60 s');
+  assert.equal(c.state.dlg.drill.reason, 'STABILIZED');
 });
 
 test('drill trip lists: the drill equipment decides the trip criterion; a drill without a list owns every trip; the scorer deducts and caps other trips', () => {

@@ -611,6 +611,8 @@
       const proactive=!!def.proactive&&!!m.tAct&&(!m.tAlarm||m.tAct<m.tAlarm);
       if(proactive){ ok=!m.trip&&!this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved)&&def.proactive.check(this); }
       else if(def.stable==='contain'){ ok = L.FIC102.mode==='MAN' && !this.alarmEngine.unacked().some(x=>def.rel.includes(x.tag)); }
+      // 'restore': the drill's lesson is the restored feed; quiet alarms alone no longer end D4 (spec CR11)
+      else if(def.stable==='restore'){ ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved) && ESS.Pid.pvOf(L.FIC102)>=30 && L.LIC101.pv<80; }
       else { ok = m.tAck && !this.alarmEngine.active().some(x=>def.rel.includes(x.tag)&&!x.shelved); }
       d.stableFor = ok ? d.stableFor+dt : 0;
       const stableNeed=proactive?def.proactive.holdSec:60;
@@ -1101,7 +1103,7 @@
        q:'Correct restart sequence?',opts:['FIC102 to MAN / OP 0, START P-101 after lockout, restore AUTO','Immediately drive FIC102 OP to 100%','Repeatedly press START until it holds','Shelve the TRIP alarm and wait'],a:0},
       // D4: the reactor is the drill's equipment (trips:['rx']); LIC101 is related because cutting feed fills TK-101 and
       // the trainee must restore feed before the tank reaches high level — a TK-101 trip is an 'other equipment' deduction
-      {id:'D4',name:'Cooling water loss — exotherm',basePreset:'U1_SS',fault:'cool',rel:['TIC201','TIC202','R-201','LIC101'],trips:['rx'],act:'CUTFEED',stable:'alarms',peak:'rT',
+      {id:'D4',name:'Cooling water loss — exotherm',basePreset:'U1_SS',fault:'cool',rel:['TIC201','TIC202','R-201','LIC101'],trips:['rx'],act:'CUTFEED',stable:'restore',peak:'rT',
        debrief:'Expected response: cut reactor feed (FIC102 to MAN, output about 20 %) to arrest the exotherm; when TIC201 is falling and before TK-101 reaches high level (LIC101 PVHI 80 %), restore feed — FIC102 output back toward 60 %, or return it to CAS so LIC101 draws the tank down — and confirm R-201 is cooling on TG01. Feed left cut fills the tank; feed restored while R-201 is still climbing re-lights the exotherm.',
        q:'Reactor temperature climbing with no cooling. Best action?',opts:['Cut feed (FIC102 to MAN, OP low) to arrest the exotherm, then restore feed before TK-101 reaches high level and confirm R-201 is cooling','Raise TIC201 SP to reduce the error','Put TIC202 in MAN with OP 0','Acknowledge the alarms and monitor'],a:0},
       {id:'D6',name:'Stuck coolant valve (stiction)',basePreset:'U1_SS',fault:'stick',rel:['TIC202','TIC201'],trips:['rx'],act:'MAN202',stable:'alarms',peak:'rT',
