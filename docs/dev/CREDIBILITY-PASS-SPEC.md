@@ -434,8 +434,13 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | upset-cool, drill-D4, upset-stick, any run where TIC202 reaches a window edge (saturates) | §2 saturation (D7) |
 | runs with Urgent level alarms (overflow runs) | §6.1 (R2) |
 | runs where the R-201 trip holds while FIC102 was wound up | §3 interlock tracking (D10) |
+| every v2 fixture, every arch fixture, and the g2-lifecycle archived-run comparison | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
 
-Nothing else may move; a mover outside this table is a finding, not a re-capture.
+Nothing may move for a reason outside this table; a fixture that moves for another reason is a finding,
+not a re-capture. Because the cutoff moves every fixture, the stage's closing task first archives the
+3.1.0 fixtures (as of `1f0147e`) under `tests/fixtures/v31-baseline/`, and the archive guard compares the
+live goldens against that baseline too, each S1 mover listed with its reasons, so "what moved since
+3.1.0" stays answerable; the v2 archive is untouched (CR10).
 
 ---
 

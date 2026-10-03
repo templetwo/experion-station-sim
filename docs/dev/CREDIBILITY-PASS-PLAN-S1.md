@@ -1081,32 +1081,46 @@ git push
 - Consumes: everything above.
 - Produces: a green suite at the stage's head, the mover list in the archive guard, the S1 changelog entry.
 
+- [ ] **Step 0: Archive the 3.1.0 fixtures before anything is re-captured (CR10)**
+
+Every fixture moves in S1 (the FIC211 low-flow cutoff, measured at Task 3), so option A needs a baseline
+that is not the v2 archive. Copy every fixture as it was at `1f0147e` into `tests/fixtures/v31-baseline/`
+(the same file names; `arch/` keeps its subdirectory) with `git show 1f0147e:tests/fixtures/<name>`, add a
+three-line README there saying what it is, and extend `tests/v2-baseline-archive.test.js` with a second
+check: every live fixture equals its v31-baseline copy byte for byte unless it is listed in
+`KNOWN_RECAPTURED_SINCE_31` with its reasons. The v2 archive and its `KNOWN_RECAPTURED` list are untouched.
+The `tests/g2-lifecycle.test.js` archived-run comparison moved for the same FIC211 reason: read what it
+compares; if it reproduces an archived run, re-capture that expectation with the same reason; if it compares
+two live kernels, it is a finding, stop and report.
+
 - [ ] **Step 1: Final build, then list exactly which goldens move**
 
 Run: `python3 tools/build-dist.py && node --test tests/*.test.js 2>&1 | grep -E '^\s*not ok'`
-Expected: every line is a golden test (`golden upset:`, `golden: drill`, an `arch/A*` fixture, or the archive guard). Write the fixture names down. Compare with spec §11: allowed for S1 are upset-pump, drill-D3, the runs that leave a transmitter range (upset-cool, drill-D4, upset-stick and any other where TIC202 passed 100 °C), and runs where the R-201 trip held FIC102. **A fixture outside that list means a behaviour this stage did not intend to change: stop, find the cause, fix it in the task that introduced it, and only then continue.**
+Expected: every line is a golden test (`golden upset:`, `golden: drill`, an `arch/A*` fixture, or the archive guard). Write the fixture names down. Compare with spec §11: every fixture moves for the FIC211 cutoff (CR10); on top of that, upset-pump and drill-D3 move for FIC102 tracking, the runs that saturate TIC202 (upset-cool, drill-D4, upset-stick and any other where TIC202 reached 103.125) for saturation, and runs where the R-201 trip held FIC102 for interlock tracking. The per-fixture causes Task 3 measured are in its report. **A fixture that moved for a reason outside that table means a behaviour this stage did not intend to change: stop, find the cause, fix it in the task that introduced it, and only then continue.**
 
 - [ ] **Step 2: Confirm determinism, then re-capture only the movers by name**
 
 Run the movers twice without `UPDATE_GOLDENS` and confirm each failure message says "moved from the committed golden", never "NONDETERMINISM". Then, with the pattern built from the mover names (example for the expected set):
 
 ```bash
-UPDATE_GOLDENS=1 node --test --test-name-pattern "pump|drill D3|cool|drill D4|stick" tests/golden-upsets.test.js tests/golden-drills.test.js tests/golden-u4.test.js tests/drill-arch-fixtures.test.js
+UPDATE_GOLDENS=1 node --test tests/golden-upsets.test.js tests/golden-drills.test.js tests/golden-u4.test.js tests/drill-arch-fixtures.test.js
 git status --porcelain tests/fixtures
 ```
-Expected: only the mover fixtures changed. If a fixture changed that is not a mover, `git checkout -- <that fixture>` and narrow the pattern.
+Expected: every fixture the Step 1 list named changed and nothing else; the v31-baseline copies are untouched. If a fixture changed that the list did not name, `git checkout -- <that fixture>` and find out why before continuing.
 
 - [ ] **Step 3: Record each mover in the archive guard with its reason**
 
 Edit `tests/v2-baseline-archive.test.js` line 37 area, keeping the existing three and their comment, and add:
 
 ```js
-  // 2026-10-<day of the re-capture>, credibility pass S1 (docs/dev/CREDIBILITY-PASS-SPEC.md §11): FIC102 output
-  // tracking while P-101 is stopped moved upset-pump and drill-D3 (spec §3.2, D1); transmitter
-  // saturation on TIC202 moved <the cooling-loss and stiction runs you measured> (spec §2.4, D7).
-  // Measured, not assumed: the list is what Task 9 step 1 printed.
-  const KNOWN_RECAPTURED = ['drill-D12.json', 'upset-air.json', 'upset-bedact.json',
-    'upset-pump.json', 'drill-D3.json', /* add every measured mover here, one per line */];
+  // 2026-10-<day of the re-capture>, credibility pass S1 (docs/dev/CREDIBILITY-PASS-SPEC.md §11, CR10):
+  // the FIC211 low-flow cutoff moved every fixture (its raw value is noise around 0, the observed
+  // value is 0, the loop stops dithering MV211); on top of that FIC102 output tracking while P-101 is
+  // stopped moved upset-pump and drill-D3 (spec §3.2, D1) and transmitter saturation on TIC202 moved
+  // <the cooling-loss and stiction runs you measured> (spec §2.4, D7). Measured, not assumed: the
+  // list is what Task 9 step 1 printed, and the 3.1.0 copies live in tests/fixtures/v31-baseline/.
+  const KNOWN_RECAPTURED = [/* every v2 fixture, one per line, each with its reasons */];
+  const KNOWN_RECAPTURED_SINCE_31 = [/* every fixture, one per line, each with its reasons */];
 ```
 
 - [ ] **Step 4: Changelog**
