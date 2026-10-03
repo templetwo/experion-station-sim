@@ -7,9 +7,10 @@
  * master, slave, init, sphilm, splolm, ophilm, oplolm, badPv, lo, hi, tag.
  * Optional extra fields this module reads/writes: pvtrack (bool),
  * dFilter (seconds, derivative filter time constant), dState (filtered
- * derivative memory, %/s).
+ * derivative memory, %/s), pvObs (the observed transmitter value the plant
+ * writes each tick; read through pvOf, never written here).
  *
- * Equation (error in % of span, times in minutes, ISA standard form):
+ * Equation (error in % of span, times in minutes, ISA standard form; pv is pvOf(loop)):
  *   e  = (pv - sp) / span * 100   for DIR,  (sp - pv) for REV
  *   OP = K * e  +  I  +  D,   I += K * e * dt / (T1 * 60),
  *   D  = -K * T2 * 60 * d(pv%)/dt   (derivative on PV, optionally filtered)
@@ -43,6 +44,10 @@
  *     the loop's tuning expressed as ISA standard form (minutes and
  *     seconds) and as parallel/independent gains for the Loop Tune tab.
  *   loopError(loop) -> error in % of span, signed for the control action.
+ *   pvOf(loop) -> number    the PV every read in this module uses: loop.pvObs when the
+ *     plant wrote an observed transmitter value (a number), else the raw loop.pv. A
+ *     controller cannot see what the transmitter cannot send (CREDIBILITY-PASS-SPEC 2.3),
+ *     so the error, the derivative, lastPv and PV tracking all act on it.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -55,8 +60,13 @@
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function span(loop) { var s = loop.hi - loop.lo; return s > 0 ? s : 100; }
 
+  // The value the controller sees: the observed transmitter value when the plant wrote one
+  // (plant-core measure(), spec §2.3), otherwise the raw point value. Never the model's truth
+  // when a transmitter would have saturated.
+  function pvOf(loop) { return typeof loop.pvObs === 'number' ? loop.pvObs : loop.pv; }
+
   function loopError(loop) {
-    var raw = loop.act === 'DIR' ? (loop.pv - loop.sp) : (loop.sp - loop.pv);
+    var raw = loop.act === 'DIR' ? (pvOf(loop) - loop.sp) : (loop.sp - pvOf(loop));
     return raw / span(loop) * 100;
   }
 
@@ -81,7 +91,7 @@
   // Derivative of PV in %/s, optionally through a first-order filter
   // (derivative-on-measurement filter, Kantor CBE30338, RESOURCES 4.6).
   function pvDerivative(loop, dt, ctx) {
-    var raw = ((loop.pv - loop.lastPv) / span(loop)) * 100 / dt;
+    var raw = ((pvOf(loop) - loop.lastPv) / span(loop)) * 100 / dt;
     var tau = typeof loop.dFilter === 'number' ? loop.dFilter : (ctx && typeof ctx.dFilter === 'number' ? ctx.dFilter : 0);
     if (!(tau > 0)) { loop.dState = raw; return raw; }
     var prev = typeof loop.dState === 'number' ? loop.dState : raw;
@@ -99,7 +109,7 @@
   // current OP (I = OP - P - D with D taken as zero at rest).
   function trackIntegrator(loop) {
     loop.I = loop.op - loop.K * loopError(loop);
-    loop.lastPv = loop.pv;
+    loop.lastPv = pvOf(loop);
     loop.dState = 0;
   }
 
@@ -124,13 +134,13 @@
 
   // A bad PV must never drag the SP with it (the shed already holds the loop in MAN).
   function applyPvTracking(loop) {
-    if (loop.pvtrack && !loop.badPv) loop.sp = clampSp(loop, loop.pv);
+    if (loop.pvtrack && !loop.badPv) loop.sp = clampSp(loop, pvOf(loop));
   }
 
   function stepPid(loop, dt, ctx) {
     ctx = ctx || {};
     if (loop.kind && loop.kind !== 'pid') return loop;
-    if (typeof loop.lastPv !== 'number') loop.lastPv = loop.pv;
+    if (typeof loop.lastPv !== 'number') loop.lastPv = pvOf(loop);
     if (typeof loop.I !== 'number') loop.I = loop.op;
 
     if (loop.slave && runInitman(loop, ctx)) { applyPvTracking(loop); return loop; }
@@ -152,7 +162,7 @@
     if (op > hi) { op = hi; loop.I = op - P - D; }
     if (op < lo) { op = lo; loop.I = op - P - D; }
     loop.op = op;
-    loop.lastPv = loop.pv;
+    loop.lastPv = pvOf(loop);
     return loop;
   }
 
@@ -188,5 +198,5 @@
     };
   }
 
-  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError };
+  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError, pvOf: pvOf };
 });

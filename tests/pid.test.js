@@ -152,3 +152,44 @@ test('isaForm reports standard-form and parallel gains', () => {
   const p = Pid.isaForm(1, 0, 0);
   assert.equal(p.Ti, Infinity); assert.equal(p.Ki, 0); assert.equal(p.Kd, 0);
 });
+
+test('the controller acts on pvObs when the point carries one, and on pv otherwise', () => {
+  const a = mkLoop({ sp: 50, pv: 80, K: 1, T1: 1 });
+  const b = mkLoop({ sp: 50, pv: 80, pvObs: 60, K: 1, T1: 1 });
+  assert.equal(Pid.pvOf(a), 80);
+  assert.equal(Pid.pvOf(b), 60);
+  Pid.stepPid(a, 0.5); Pid.stepPid(b, 0.5);
+  assert.ok(a.op < b.op, 'the loop that sees the larger error moves its output further');
+  assert.equal(b.lastPv, 60, 'lastPv follows the observed value');
+  assert.equal(a.lastPv, 80);
+});
+
+test('PV tracking in MAN follows the observed value', () => {
+  const l = mkLoop({ mode: 'MAN', pvtrack: true, pv: 140, pvObs: 103.125, sp: 40 });
+  Pid.stepPid(l, 0.5);
+  assert.equal(l.sp, 100, 'SP tracks the observed PV, clamped to SPHILM');
+});
+
+// SPHILM 120 sits above the observed 103.125 and below the raw 140, so only a read of the
+// observed value leaves the tracked SP unclamped: this pins the PV-tracking read itself.
+test('PV tracking clamps the observed value, not the raw one', () => {
+  const l = mkLoop({ mode: 'MAN', pvtrack: true, pv: 140, pvObs: 103.125, sp: 40, sphilm: 120 });
+  Pid.stepPid(l, 0.5);
+  assert.equal(l.sp, 103.125);
+});
+
+// The reads the tests above cannot reach (mkLoop has no derivative term): each loop's observed
+// value equals what the scan remembers, so a read of the raw 80 anywhere shows up as derivative action.
+test('the derivative, the lastPv seed and the MAN tracker read the observed value too', () => {
+  const d = mkLoop({ sp: 50, pv: 80, pvObs: 60, lastPv: 60, T2: 1 });
+  Pid.stepPid(d, 0.5);
+  assert.equal(d.dState, 0, 'derivative action sees a flat observed PV');
+
+  const s = mkLoop({ sp: 50, pv: 80, pvObs: 60, lastPv: undefined, T2: 1 });
+  Pid.stepPid(s, 0.5);
+  assert.equal(s.dState, 0, 'a loop with no lastPv yet is seeded from the observed value');
+
+  const m = mkLoop({ mode: 'MAN', op: 50, sp: 50, pv: 80, pvObs: 60, K: 2 });
+  Pid.stepPid(m, 0.5);
+  assert.equal(m.lastPv, 60, 'MAN tracking remembers the observed value');
+});
