@@ -31,7 +31,9 @@ test('the archive was a verbatim copy of the live goldens at the moment of archi
   // 2026-09-03, option A (Anthony): the fixed-bed floor (src/models.js fixedBed, bedSS floored at
   // the inlet less 5 C) moved exactly these three -- the runs where quench drove the bed below
   // its own inlet. Measured before the change: no other golden moved (CHANGELOG 3.1.0).
-  const KNOWN_RECAPTURED = ['drill-D12.json', 'upset-air.json', 'upset-bedact.json'];
+  // 2026-10-03: drill-D1.json recaptured after TIC201 PVHH reverted to 175 °C (D9 fix: PVHH is
+  // pre-trip alarm, not the trip point itself).
+  const KNOWN_RECAPTURED = ['drill-D12.json', 'upset-air.json', 'upset-bedact.json', 'drill-D1.json'];
   for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.json'))) {
     if (KNOWN_RECAPTURED.includes(file)) continue;
     const live = fs.readFileSync(path.join(__dirname, 'fixtures', file));

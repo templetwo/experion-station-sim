@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-air",
-  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 300,
   "endStateDigest": "146cf3acc6f388f21a071d877efdf33f6af9a56f7f24b02298a9ba7e8a39fb70",

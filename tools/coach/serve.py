@@ -134,6 +134,24 @@ BANNED = [
     "HISTORIAN_GAP", "ASSISTANT_LOSS", "INSTRUCTOR_ONLY",
 ]
 
+# Prompt injection patterns to neutralize in operator input
+INJECTION_PATTERNS = [
+    (r'\bignore\s+(all\s+)?previous\s+instructions?\b', '[operator note]'),
+    (r'\bSYSTEM\s*:', '[operator note]:'),
+    (r'\bnew\s+rule\s*:', '[operator note]:'),
+    (r'\byou\s+are\s+now\b', '[operator note:] you are now'),
+    (r'\bmaintenance\s+mode\b', '[operator note] maintenance mode'),
+]
+
+# Output patterns that falsely claim control actions were executed
+FORBIDDEN_OUTPUT = [
+    r'\bis\s+now\s+in\s+(MAN|AUTO|CAS)\s+mode\b',
+    r'\bI\s+have\s+(set|put|changed|disabled|enabled)\b',
+    r'\bOP\s+(is\s+)?now\s+(set\s+)?to\b',
+    r'\binterlock\s+is\s+(now\s+)?(disabled|bypassed|overridden)\b',
+    r'\bI\s+will\s+(put|set|change|disable|enable)\b',
+]
+
 PROMPT_FILE = COACH / "prompt.txt"
 if PROMPT_FILE.exists():
     SYSTEM = "\n".join(
@@ -276,6 +294,29 @@ def scrub(text: str) -> str:
     t = text or ""
     for token in BANNED:
         t = re.sub(re.escape(token), "[hidden]", t, flags=re.IGNORECASE)
+    return t
+
+
+def sanitize_ask(text: str) -> str:
+    """Neutralize prompt injection attempts in operator input."""
+    t = text or ""
+    for pattern, replacement in INJECTION_PATTERNS:
+        t = re.sub(pattern, replacement, t, flags=re.IGNORECASE)
+    return t
+
+
+def filter_dangerous_output(text: str) -> str:
+    """Block outputs that falsely claim control actions were executed."""
+    t = text or ""
+    for pattern in FORBIDDEN_OUTPUT:
+        if re.search(pattern, t, flags=re.IGNORECASE):
+            return ("I'm advisory and don't operate the plant. To make control changes, "
+                    "you'd use the faceplates and menus. What would you like to know about the board?")
+    # Block interlock bypass/override framing
+    if re.search(r'\b(bypass|override|defeat|disable).{0,30}(interlock|trip|safety)\b', t, flags=re.IGNORECASE):
+        if not re.search(r'\b(never|don\'t|won\'t|cannot|refuse)\b', t, flags=re.IGNORECASE):
+            return ("I won't help bypass a safety interlock. Bypasses need proper authorization and MOC. "
+                    "What's the situation you're trying to handle?")
     return t
 
 
@@ -443,7 +484,8 @@ def context_pack(ask: str, projection: dict) -> dict:
 
 
 def user_task(kind: str, ask: str, projection: dict) -> str:
-    packed = context_pack(ask, projection)
+    ask_clean = sanitize_ask(ask)
+    packed = context_pack(ask_clean, projection)
     facts = json.dumps(packed, ensure_ascii=False, separators=(",", ":"))
     drill = packed.get("drill") if isinstance(packed.get("drill"), dict) else {}
     cue_notice = ""
@@ -460,7 +502,7 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
         cap = ASK_WORDS
         shape = "Priority, evidence to check, then one safe next move."
     elif kind == "ask":
-        task = "Answer the operator's question: " + (ask or "(empty)")
+        task = "Answer the operator's question: " + (ask_clean or "(empty)")
         cap = ASK_WORDS
         shape = "Answer first, in one or two sentences. Then the single most useful check or click. Stop there."
     else:
@@ -478,7 +520,8 @@ def user_task(kind: str, ask: str, projection: dict) -> str:
         "BOARD CONTEXT (point and alarm values are authoritative; do not reinterpret units or alarm abbreviations):\n"
         + facts + cue_notice + "\nTASK: " + task + "\n"
         + "SHAPE: " + shape + "\n"
-        + limit
+        + limit +
+        "\n\nREMINDER: You are advisory only. Never claim you executed a control action."
     )
 
 
@@ -768,6 +811,11 @@ def stream_reply(messages: list, cap: int, emit) -> None:
     final_text = text_scrubber.push("", final=True)
     if final_text:
         emit({"t": "text", "d": final_text})
+    # Apply output filtering to the complete spoken_out text
+    final_spoken = filter_dangerous_output(spoken_out.strip())
+    if final_spoken != spoken_out.strip():
+        # The filter triggered: replace the entire answer with the refusal
+        emit({"t": "replace", "d": final_spoken})
     emit({"t": "done", "ok": True, "model": LOCAL_MODEL, "reason": done_reason})
 
 
@@ -787,12 +835,16 @@ def ollama_chat(kind: str, ask: str, projection: dict, history=None) -> tuple[bo
         if word_count(raw_text) > cap:
             raise CapExceeded("answer exceeded the local spoken-word cap")
         text = clip_spoken(raw_text, cap)
+        text = filter_dangerous_output(text)
         thinking = scrub(msg.get("thinking") or "").strip()
         if not text:
             raise RuntimeError("Ollama response contained no answer")
         return True, text, thinking
     except Exception as err:
-        return False, "PIP cannot reach the local model (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__, ""
+        # Graceful error handling for P10: never crash with bare RuntimeError
+        msg = "PIP encountered an error (%s). LIVE DIAGNOSIS still works." % err.__class__.__name__
+        sys.stderr.write("coach: ollama_chat error %s: %s\n" % (err.__class__.__name__, str(err)[:300]))
+        return False, msg, ""
 
 
 # ---------------------------------------------------------------------------
@@ -904,10 +956,13 @@ def anthropic_chat(kind: str, ask: str, projection: dict, history=None) -> tuple
 
     try:
         anthropic_stream_reply(seed_messages(kind, ask, projection, history), cap, collect)
-        return True, scrub("".join(text_parts)).strip(), "".join(think_parts).strip()
+        full_text = scrub("".join(text_parts)).strip()
+        full_text = filter_dangerous_output(full_text)
+        return True, full_text, "".join(think_parts).strip()
     except Exception as err:
         LAST_CLOUD_FAILURE.update(before_answer=(not text_parts and not isinstance(err, (CapExceeded, CloudRefused))),
                                   name=err.__class__.__name__)
+        sys.stderr.write("coach: anthropic_chat error %s: %s\n" % (err.__class__.__name__, _redact(str(err))[:300]))
         return False, _failure_message(err), ""
 
 
@@ -1132,7 +1187,7 @@ class Handler(BaseHTTPRequestHandler):
                         # The cloud refused before answering (credentials, billing, network): the
                         # operator still gets an answer, from the local model, and the log says so.
                         sys.stderr.write("coach: cloud %s before answering (%s); local model answers this one\n"
-                                         % (err.__class__.__name__, _redact(err)[:200]))
+                                         % (err.__class__.__name__, _redact(str(err))[:200]))
                         stream_reply(messages, cap, self._emit)
                     else:
                         raise
@@ -1141,8 +1196,11 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             return
         except Exception as err:
+            # Graceful error handling for P10: log the error and return a user-friendly message
             if _provider() == "anthropic" and not isinstance(err, (CapExceeded, CloudRefused)):
-                sys.stderr.write("coach: cloud error %s: %s\n" % (err.__class__.__name__, _redact(err)[:300]))
+                sys.stderr.write("coach: cloud error %s: %s\n" % (err.__class__.__name__, _redact(str(err))[:300]))
+            else:
+                sys.stderr.write("coach: stream error %s: %s\n" % (err.__class__.__name__, str(err)[:300]))
             try:
                 self._emit({
                     "t": "err",

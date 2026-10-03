@@ -3917,12 +3917,12 @@ class Component extends ESS.PlantCore(DCLogic) {
       const lr=(label,param,v,edit,note)=>mRow(label,param,this.fmt(v,dl.dec)+' '+dl.eu,edit,note);
       limitRows=[
         lr('Range high','PVEUHI',lb.rangeHi,false,'instrument range'),
-        lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?'pre-trip alarm · Alarms tab':'none configured · follows range'),
         lr('Standard high','PVHI',lb.stdHi,false,has('PVHI')?'operator must act · Alarms tab':'none configured · follows critical'),
         lr('Target high','TGTHI',lb.tgtHi,true,lb.auto?(isPid?'auto: SP + 5 % of range':'auto: centre of standard band + 5 %'):'engineer-set'),
         lr('Target low','TGTLO',lb.tgtLo,true,lb.auto?(isPid?'auto: SP − 5 % of range':'auto: centre of standard band − 5 %'):'engineer-set'),
         lr('Standard low','PVLO',lb.stdLo,false,has('PVLO')?'operator must act · Alarms tab':'none configured · follows critical'),
-        lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?'pre-trip alarm · Alarms tab':'none configured · follows range'),
         lr('Range low','PVEULO',lb.rangeLo,false,'instrument range')
       ];
       band=bs.segs; bandMarker=bs.marker; bandMarkerFill=bs.markerFill;

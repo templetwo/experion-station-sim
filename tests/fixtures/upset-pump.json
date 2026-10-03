@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-pump",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "34e72149e12957dd2176624ee75c1b44b62364486bebb5cb50182787a1694d9b",
   "seed": 20260829,
   "seconds": 600,
-  "endStateDigest": "9290ac72241dd1e2ad306e96082f6f2cb05ad391e37fe82c1a85c0ce14d3d4bd",
+  "endStateDigest": "fba9b6d09aba3dfa18809bcf58aa3eb39404bd1b7ef704bff0886f68e9a8a773",
   "alarmSequenceDigest": "547456c0f42efa8072ee9878c87b9e0ffea570ba5593308d023929cabbc14735",
   "alarmSeq": [
     "P101:TRIP:Urgent",
