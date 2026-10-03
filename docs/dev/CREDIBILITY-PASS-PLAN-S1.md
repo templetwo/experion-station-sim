@@ -276,7 +276,7 @@ git push
 
 **Interfaces:**
 - Consumes: `ESS.Measurement.observe`, `ESS.Pid.pvOf`.
-- Produces: per tick, for every `pid` and `ind` point, `l.obs` (the frozen `observe()` result) and `l.pvObs` (its `pv`, or the raw `pv` when the observation is BAD). `Component.prototype.measure()` is public and idempotent.
+- Produces: per tick, for every `pid` and `ind` point, `l.obs` (the `observe()` result as returned) and `l.pvObs` (its `pv`, or the raw `pv` when the observation is BAD). `Component.prototype.measure()` is public and idempotent.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1125,7 +1125,7 @@ Edit `tests/v2-baseline-archive.test.js` line 37 area, keeping the existing thre
 
 - [ ] **Step 4: Changelog**
 
-Under `## [Unreleased]` in `CHANGELOG.md`, above the existing G2 entry, add an entry in the house voice. It must say: what the operator sees changed (observed values, saturation at the transmitter limit with a light hatch, flows read 0 below 1 % of span, no negative zero); what the loops do changed (output tracking under a stopped pump and under an interlock, INITMAN for the primary, the flag beside the mode line, OP refused under an interlock, the clamped CAS return journaled); the ladder's trip row and the debrief margin; the decision that the controller sees the saturated value and why (spec §2.4); and the list of goldens that moved with the reason for each. Cite `docs/dev/CREDIBILITY-PASS-SPEC.md` and the playtest report.
+Under `## [Unreleased]` in `CHANGELOG.md`, above the existing G2 entry, add an entry in the house voice. It must say: what the operator sees changed (observed values, saturation at the transmitter limit with a light hatch, flows read 0 below 1 % of span, no negative zero); what the loops do changed (output tracking under a stopped pump and under an interlock, INITMAN for the primary, the flag beside the mode line, OP refused under an interlock, the clamped CAS return journaled); the ladder's trip row and the debrief margin; the decision that the controller sees the saturated value and why (spec §2.4); drill D4's new stabilisation rule and the behaviour it replaced (CR11: after the saturation seam, cutting the feed and never restoring it passed at 90 on 10 of 12 seeds; D4 now ends only once the feed is restored, as its debrief says); and the list of goldens that moved with the reason for each. Cite `docs/dev/CREDIBILITY-PASS-SPEC.md` and the playtest report.
 
 - [ ] **Step 5: All three gates, then commit and push**
 

@@ -64,7 +64,21 @@ The W2 matrix declares and never enforces. PIP stays advisory.
 7. PIP voice, Anthony mid-design: very concise, a couple of sentences per answer, fewer words.
 
 Control rulings made during execution are numbered CR1, CR2, ... in the stage ledgers and cited
-here as CRn, so they are never confused with the playtest's realism items R1 to R8.
+here as CRn, so they are never confused with the playtest's realism items R1 to R8. The ones that
+changed this document or the code, in the order made (S1, 2026-10-03):
+
+- **CR6.** NE 43 was already registered at RESOURCES-7.35; §2.2 corrected, no duplicate entry.
+- **CR8.** The band rule of §2.2: Good with the limit bit inside the window, Uncertain only when
+  saturated. Replaces the inherited TIC202 rows for -0.001 and 100.001.
+- **CR9.** `measure()` writes `pvObs` only when the observed value is finite, else the raw value.
+- **CR10.** The FIC211 low-flow cutoff moves every fixture (§11); accepted as the honest plant; the
+  3.1.0 fixtures are archived under `tests/fixtures/v31-baseline/` before any re-capture.
+- **CR11.** Drill D4's stabilisation requires the feed restored (its debrief: "feed left cut fills
+  the tank"): a `stable:'restore'` mode on D4 alone, the inherited alarm part AND FIC102 back in CAS
+  with LIC101 in control, or FIC102 output at or above 40 % with flow at or above 40 m3/h, AND
+  TK-101 below 80 %, both plant values observed. Shelving keeps the inherited semantics: a shelved
+  related alarm counts as quiet, as in every drill. Found when §2.4 let "cut feed and never restore
+  it" pass; the previous passing behaviour is recorded in the S1 changelog entry.
 
 ---
 
