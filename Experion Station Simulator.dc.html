@@ -2931,7 +2931,7 @@ class Component extends ESS.PlantCore(DCLogic) {
   scoreDrill(d,ans){
     const m=d.m, t0=d.t0, t1=d.tEnd||this.P.t;
     const load=ESS.Kpi.computeMetrics(this.alarmLog,{t0,t1:Math.max(t1,t0+1)}).per10min.avg;
-    return ESS.Kpi.scoreDrill({tAlarm:m.tAlarm,tAck:m.tAck,tAct:m.tAct,tStable:m.tStable,trip:!!m.trip,otherTrips:m.otherTrips||0,actionCorrect:!!m.tAct,quizCorrect:ans===d.def.a,alarmsPer10min:load},{passMark:ESS.Training.PASS_MARK,allowProactive:!!d.def.proactive});
+    return ESS.Kpi.scoreDrill({tAlarm:m.tAlarm,tAck:m.tAck,tAct:m.tAct,tStable:m.tStable,trip:!!m.trip,peak:m.peak,tripLimit:this.tripLimitOf(d.def),otherTrips:m.otherTrips||0,actionCorrect:!!m.tAct,quizCorrect:ans===d.def.a,alarmsPer10min:load},{passMark:ESS.Training.PASS_MARK,allowProactive:!!d.def.proactive});
   }
   // Debrief submit: score, journal, training record (last 20 per session, keyed by the trainee's logon name).
   submitDebrief(d,ans){
@@ -3931,14 +3931,16 @@ class Component extends ESS.PlantCore(DCLogic) {
       const lr=(label,param,v,edit,note)=>mRow(label,param,this.fmt(v,dl.dec)+' '+dl.eu,edit,note);
       limitRows=[
         lr('Range high','PVEUHI',lb.rangeHi,false,'instrument range'),
-        lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?'pre-trip alarm · Alarms tab':'none configured · follows range'),
         lr('Standard high','PVHI',lb.stdHi,false,has('PVHI')?'operator must act · Alarms tab':'none configured · follows critical'),
         lr('Target high','TGTHI',lb.tgtHi,true,lb.auto?(isPid?'auto: SP + 5 % of range':'auto: centre of standard band + 5 %'):'engineer-set'),
         lr('Target low','TGTLO',lb.tgtLo,true,lb.auto?(isPid?'auto: SP − 5 % of range':'auto: centre of standard band − 5 %'):'engineer-set'),
         lr('Standard low','PVLO',lb.stdLo,false,has('PVLO')?'operator must act · Alarms tab':'none configured · follows critical'),
-        lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?'trip point · Alarms tab':'none configured · follows range'),
+        lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?'pre-trip alarm · Alarms tab':'none configured · follows range'),
         lr('Range low','PVEULO',lb.rangeLo,false,'instrument range')
       ];
+      const tp=this.tripOfPoint(dl.tag);
+      if(tp) limitRows.splice(1,0,mRow('Trip','TRIP',this.fmt(tp.value,dl.dec)+' '+tp.eu,false,tp.src+' '+tp.cond+' · declared in the C&E matrix, enforced by the plant'));
       band=bs.segs; bandMarker=bs.marker; bandMarkerFill=bs.markerFill;
       const pvB=this.pvShown(dl);
       const inT=pvB>=lb.tgtLo&&pvB<=lb.tgtHi, inS=pvB>=lb.stdLo&&pvB<=lb.stdHi;

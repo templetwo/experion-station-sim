@@ -170,3 +170,20 @@ test('scoreDrill distinguishes no action, reactive action, and proactive action 
   assert.equal(beforeAlarm.earned, 100);
   assert.equal(beforeAlarm.note, '10 s before alarm');
 });
+
+test('the trip row names the peak against the declared trip point when both are known', () => {
+  const base = { tAlarm: 0, tAck: 5000, tAct: 20000, tStable: 90000, trip: false, otherTrips: 0, actionCorrect: true, quizCorrect: true, alarmsPer10min: 1 };
+  const tripRow = (m) => Kpi.scoreDrill(m, {}).breakdown.find((r) => r.id === 'trip');
+  const limit = { value: 185, eu: 'DEG C' };
+  assert.equal(tripRow(base).note, 'no trip');
+  const withMargin = tripRow({ ...base, peak: 183.7, tripLimit: limit });
+  assert.equal(withMargin.note, 'no trip · peak 183.7 DEG C vs trip 185 DEG C');
+  assert.equal(withMargin.earned, withMargin.max, 'the margin note changes no points');
+  const tripped = tripRow({ ...base, trip: true, peak: 186, tripLimit: limit });
+  assert.equal(tripped.note, 'unit tripped');
+  assert.equal(tripped.earned, 0);
+  // a margin needs both halves: a limit with no recorded peak, or a peak with no limit, says only that nothing tripped
+  assert.equal(tripRow({ ...base, tripLimit: limit }).note, 'no trip');
+  assert.equal(tripRow({ ...base, peak: 183.7 }).note, 'no trip');
+  assert.equal(tripRow({ ...base, peak: 0, tripLimit: limit }).note, 'no trip · peak 0 DEG C vs trip 185 DEG C', 'a recorded peak of zero is still a peak');
+});

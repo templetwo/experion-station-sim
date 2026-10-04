@@ -113,7 +113,8 @@ test('the limit ladder is ordered for every point and the band renders everywher
   c.setState({ display: 'detail', detailTag: 'LIC101', detailTab: 'main' });
   v = c.renderVals();
   assert.ok(v.dpt.hasBand);
-  assert.deepEqual(v.dpt.limitRows.map(r => r.param), ['PVEUHI', 'PVHH', 'PVHI', 'TGTHI', 'TGTLO', 'PVLO', 'PVLL', 'PVEULO']);
+  // LIC101 has a declared trip (TK-101 HIHI, spec 3.6), so its ladder carries the read-only TRIP row just below the range
+  assert.deepEqual(v.dpt.limitRows.map(r => r.param), ['PVEUHI', 'TRIP', 'PVHH', 'PVHI', 'TGTHI', 'TGTLO', 'PVLO', 'PVLL', 'PVEULO']);
   assert.equal(v.dpt.limitRows.filter(r => r.cur === 'pointer').length, 2, 'only the target rows are editable');
 });
 

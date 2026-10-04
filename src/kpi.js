@@ -27,11 +27,14 @@
  *       checks:[{id,label,value,limit,pass}] }
  *   scoreDrill(metrics, rubric) -> {score, pass, passMark, passLabel, breakdown}
  *     metrics: { tAlarm, tAck, tAct, tStable (ms or null), trip (bool: a trip
- *       on the drill's own equipment), otherTrips (number, optional: trips on
- *       other equipment during the drill; each deducts otherTripPenalty, capped
- *       at otherTripMax, as a 'othertrips' row with max 0), actionCorrect
- *       (bool, default true when tAct set), quizCorrect (bool),
- *       alarmsPer10min (number, load during the drill) }
+ *       on the drill's own equipment), peak (number, optional: the highest
+ *       value the drill's own variable reached) and tripLimit ({value, eu},
+ *       optional: the declared trip point of that equipment; given both, the
+ *       trip row of an untripped run states the margin), otherTrips (number,
+ *       optional: trips on other equipment during the drill; each deducts
+ *       otherTripPenalty, capped at otherTripMax, as a 'othertrips' row with
+ *       max 0), actionCorrect (bool, default true when tAct set), quizCorrect
+ *       (bool), alarmsPer10min (number, load during the drill) }
  *     rubric (all optional): weights {ack,action,trip,stable,load,quiz}
  *       (default 20/25/20/15/10/10), ackFast/ackOk/ackSlow seconds
  *       (30/60/120), actionFast/actionOk seconds (180/360), loadTarget/
@@ -230,7 +233,10 @@
       act < 0 ? (R.allowProactive ? round(-act, 0) + ' s before alarm' : round(-act, 0) + ' s before alarm — drill does not award proactive credit') : round(act, 0) + ' s';
     rows.push({ id: 'action', label: 'Correct action and latency', earned: round(W.action * actFrac, 1), max: W.action, note: actNote });
 
-    rows.push({ id: 'trip', label: 'Trip avoided', earned: m.trip ? 0 : W.trip, max: W.trip, note: m.trip ? 'unit tripped' : 'no trip' });
+    var tripNote = m.trip ? 'unit tripped'
+      : (m.tripLimit && typeof m.peak === 'number') ? 'no trip · peak ' + round(m.peak, 1) + ' ' + m.tripLimit.eu + ' vs trip ' + m.tripLimit.value + ' ' + m.tripLimit.eu
+      : 'no trip';
+    rows.push({ id: 'trip', label: 'Trip avoided', earned: m.trip ? 0 : W.trip, max: W.trip, note: tripNote });
     rows.push({ id: 'stable', label: 'Process stabilised', earned: m.tStable ? W.stable : 0, max: W.stable, note: m.tStable ? 'stabilised' : 'not stabilised' });
 
     var load = typeof m.alarmsPer10min === 'number' ? m.alarmsPer10min : null;

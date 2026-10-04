@@ -947,3 +947,100 @@ test('CR25: Point Detail puts every hold flavour on the Output row and only INIT
   r = rowsOf(s, 'TIC311');
   assert.deepEqual({ out: r.out.note, casc: r.casc.value + ' | ' + r.casc.note }, { out: 'limits 0 – 100 · INTERLOCK · H-310 TUBE SKIN TRIP', casc: 'NONE | ' });
 });
+
+test('D9: a point with a configured trip knows its trip from the W2 declaration, and the two declarations agree', () => {
+  const c = boot(4);
+  const t = c.tripOfPoint('TIC201');
+  assert.deepEqual(t, { id: 'R201_HITEMP', src: 'R-201', cond: 'HI TEMP TRIP', value: 185, eu: 'DEG C' });
+  for (const tag of ['TIC201', 'LIC101', 'PIC401', 'TIC212', 'PIC505']) {
+    const x = c.tripOfPoint(tag);
+    assert.ok(x, tag);
+    assert.equal(x.value, AlarmHelp.EQUIPMENT_TRIPS[x.src + '.' + x.cond].value, tag + ': the C&E threshold and the alarm-help trip table agree');
+  }
+  assert.equal(c.tripOfPoint('FIC102'), null);
+  assert.equal(c.tripOfPoint('NOT_A_POINT'), null, 'a tag the plant does not know has no trip, and asking never throws');
+});
+
+test('D9: the Point Detail ladder labels PVHH a pre-trip alarm and shows the declared trip row', () => {
+  const c = boot(4);
+  c.nav('detail', 'TIC201');
+  const rows = c.renderVals().dpt.limitRows;
+  const hh = rows.find((r) => r.param === 'PVHH');
+  assert.match(hh.note, /^pre-trip alarm/);
+  assert.match(rows.find((r) => r.param === 'PVLL').note, /^pre-trip alarm/, 'the low-low rung is a pre-trip alarm too');
+  const trip = rows.find((r) => r.param === 'TRIP');
+  assert.ok(trip, 'a trip row exists');
+  assert.equal(trip.value, '185.0 DEG C');
+  assert.match(trip.note, /R-201 HI TEMP TRIP/);
+  assert.equal(rows.indexOf(trip), 1, 'the trip row sits just below the range');
+  c.nav('detail', 'FIC102');
+  assert.ok(!c.renderVals().dpt.limitRows.some((r) => r.param === 'TRIP'), 'no invented trip row');
+});
+
+test('D9: the trip row of each point with a declared trip carries that trip, its unit and its source, read-only', () => {
+  const c = boot(4);
+  const want = {
+    TIC201: ['185.0 DEG C', 'R-201 HI TEMP TRIP'], LIC101: ['98.0 %', 'TK-101 HIHI TRIP'], PIC401: ['950 KPA', 'V-401 PSV LIFT'],
+    TIC212: ['110.0 DEG C', 'R-202 HI TEMP TRIP'], PIC505: ['1100 KPA', 'V-502 PSV LIFT'],
+  };
+  for (const tag of Object.keys(want)) {
+    c.nav('detail', tag);
+    const rows = c.renderVals().dpt.limitRows;
+    const trip = rows.find((r) => r.param === 'TRIP');
+    assert.ok(trip, tag + ': trip row');
+    assert.deepEqual([trip.value, trip.note], [want[tag][0], want[tag][1] + ' · declared in the C&E matrix, enforced by the plant'], tag);
+    assert.equal(trip.notEditing, true, tag + ': the declared trip is not an editable parameter');
+    assert.equal(rows.filter((r) => r.param === 'TRIP').length, 1, tag + ': one trip row');
+    assert.equal(rows.length, 9, tag + ': the eight rungs plus the trip row');
+  }
+  c.nav('detail', 'TIC301');
+  assert.equal(c.renderVals().dpt.limitRows.length, 8, 'a point with no declared trip keeps the eight rungs');
+});
+
+test('D9: the drill scorer states the margin to the declared trip point', () => {
+  const c = boot(4);
+  const defOf = (id) => c.drillDefs().find((d) => d.id === id);
+  assert.deepEqual(c.tripLimitOf(defOf('D4')), { value: 185, eu: 'DEG C' });
+  assert.equal(c.tripLimitOf(defOf('D1')), null);
+  // each drill that records a peak is paired with the trip that peak is measured against
+  assert.deepEqual(c.tripLimitOf(defOf('D2')), { value: 98, eu: '%' }, 'D2 peaks on the tank level, so its margin is to the 98 % overflow trip');
+  assert.deepEqual(c.tripLimitOf(defOf('D6')), { value: 185, eu: 'DEG C' });
+  assert.deepEqual(c.tripLimitOf(defOf('D9')), { value: 950, eu: 'KPA' });
+  assert.deepEqual(c.tripLimitOf(defOf('D11')), { value: 110, eu: 'DEG C' });
+  assert.deepEqual(c.tripLimitOf(defOf('D12')), { value: 480, eu: 'DEG C' });
+  assert.equal(c.tripLimitOf(defOf('D3')), null);
+  // a def with no trips key, no def, an unknown key, and a declared trip whose threshold is prose (the tube skin trip) all give null
+  for (const bad of [undefined, null, {}, { trips: [] }, { trips: ['nope'] }, { trips: ['skin'] }]) assert.equal(c.tripLimitOf(bad), null, JSON.stringify(bad));
+  // the page's scorer hands the peak and the limit to the KPI module
+  const tripRow = (m, id) => c.scoreDrill({ def: defOf(id), m, t0: c.P.t }, defOf(id).a).breakdown.find((r) => r.id === 'trip');
+  assert.equal(tripRow({ peak: 183.7 }, 'D4').note, 'no trip · peak 183.7 DEG C vs trip 185 DEG C');
+  assert.equal(tripRow({ peak: 183.7, trip: true }, 'D4').note, 'unit tripped');
+  assert.equal(tripRow({ peak: 91.25 }, 'D2').note, 'no trip · peak 91.3 % vs trip 98 %');
+  assert.equal(tripRow({}, 'D4').note, 'no trip', 'no peak recorded: no margin invented');
+  assert.equal(tripRow({ peak: 12 }, 'D1').note, 'no trip', 'a drill with no declared trip states no margin');
+});
+
+test('D9: a live D4 run reaches the debrief stating the peak the plant recorded against the declared 185 DEG C, and says only "unit tripped" after a trip', () => {
+  const play = (cutFeed) => {
+    const c = boot(4, 'OPER');
+    c.renderVals().dg.drills.find((x) => x.id === 'D4').canonicalCb();
+    let guard = 0;
+    while (c.state.drill && !c.state.drill.injected && guard++ < 200) c.step(0.5);
+    assert.ok(c.state.drill && c.state.drill.injected, 'the D4 fault was injected');
+    if (cutFeed) { c.setMode('FIC102', 'MAN'); c.storeEntry('FIC102', 'OP', 20); }   // the drill's prescribed first action
+    while (c.state.drill && guard++ < 6000) c.step(0.5);
+    const ended = c.state.dlg && c.state.dlg.drill;
+    assert.ok(ended, 'the drill reached its debrief');
+    c.setState({ debAns: ended.def.a });
+    c.submitDebrief(ended, ended.def.a);
+    return { ended, note: c.renderVals().dg.dbBreak.find((b) => b.label === 'Trip avoided').note };
+  };
+  const held = play(true);
+  assert.ok(!held.ended.m.trip, 'cutting the feed at once keeps R-201 under its trip');
+  assert.ok(held.ended.m.peak > 150 && held.ended.m.peak < 185, 'the plant recorded a peak below the trip: ' + held.ended.m.peak);
+  assert.equal(held.note, 'no trip · peak ' + (Math.round(held.ended.m.peak * 10) / 10) + ' DEG C vs trip 185 DEG C');
+  const lost = play(false);
+  assert.ok(lost.ended.m.trip, 'an unattended D4 trips R-201');
+  assert.ok(lost.ended.m.peak >= 185, 'the recorded peak reached the trip: ' + lost.ended.m.peak);
+  assert.equal(lost.note, 'unit tripped');
+});

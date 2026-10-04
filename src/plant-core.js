@@ -1074,6 +1074,20 @@
   rank(l){ return {VIEW:0,OPER:1,SUPV:2,ENGR:3,MNGR:4}[l]??0; }
   subprioOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; return (tup&&tup[2]!=null)?tup[2]:this.subprioDefault(cond); }
   tripPointOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; if(tup) return tup[0]; const eq=ESS.AlarmHelp.EQUIPMENT_TRIPS[tag+'.'+cond]; return eq?eq.value:undefined; }
+  // The declared trip behind a point's pre-trip alarm (spec §3.6): read from the W2 declaration
+  // so the ladder can never disagree with the code. Points without a declared trip get null.
+  tripOfPoint(tag){
+    const id=({TIC201:'R201_HITEMP',LIC101:'TK101_HIHI',PIC401:'V401_PSV',TIC212:'R202_HITEMP',PIC505:'V502_PSV'})[tag];
+    if(!id||!ESS.CauseEffect) return null;
+    const c=ESS.CauseEffect.causes().find(x=>x.id===id);
+    return (c&&typeof c.threshold==='number')?{id,src:c.src,cond:c.cond,value:c.threshold,eu:c.eu}:null;
+  }
+  // The drill's own trip, for the debrief margin: the first key of def.trips that maps to a declared cause.
+  tripLimitOf(def){
+    const map={rx:'R201_HITEMP',ovf:'TK101_HIHI',psv:'V401_PSV',batch:'R202_HITEMP',bed:'R310_HITEMP',skin:'H310_SKIN'};
+    for(const k of (def&&def.trips)||[]){ const c=ESS.CauseEffect&&ESS.CauseEffect.causes().find(x=>x.id===map[k]); if(c&&typeof c.threshold==='number') return {value:c.threshold,eu:c.eu}; }
+    return null;
+  }
   assetDisabled(tag){ for(const id of this.disabledAssets) if(this.assetMatch(id,tag)) return id; return null; }
   parkDisabled(tag,cond,by,spec){
     const E=this.alarmEngine, l=this.L[tag];
