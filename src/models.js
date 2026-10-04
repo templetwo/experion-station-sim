@@ -19,6 +19,7 @@
 //   stepU3(P, L, V, dt, ctx)                   H-310 two-pass fired heater + R-310 bed
 //   stepU4(P, L, V, dt, ctx)                   E-502 trim cooler + V-502 two-chamber weir separator
 //   step(P, L, V, dt, ctx)                     advanceClock + stepU1 + stepU2 + stepU3 + stepU4
+//   phaseSetpoints(b, P)                       the feed and jacket setpoints the sequence owns in b.phase (null: not owned)
 //   PARAMS                                     the calibrated parameter sets (read-only use)
 //
 // Arguments
@@ -455,20 +456,38 @@
   }
 
   // ---------------------------------------------------------------- unit 2
+  // The setpoints the sequence owns per phase (spec §4.1, §4.2): the feed setpoint on every running scan, the
+  // jacket setpoint at the transitions that change it; RESUME re-asserts both from here. null means the sequence
+  // does not own the value in that phase (CHARGE and IDLE leave TIC212 in MAN).
+  function phaseSetpoints(b, P) {
+    const feed = b.phase === 'FEED' ? (P.trips.batch ? 0 : 20) : 0;
+    const jacket = (b.phase === 'HEATUP' || b.phase === 'FEED' || b.phase === 'REACT') ? 80
+      : (b.phase === 'COOL' || b.phase === 'DRAIN') ? 40 : null;
+    return { FIC211: feed, TIC212: jacket };
+  }
+
   function sequence(P, L, dt, ctx) {
     const b = P.b;
-    b.pt += dt;
-    const setPh = (ph) => { b.phase = ph; b.pt = 0; ctx.addEvent('SYSTEM', 'SCM202', 'PHASE → ' + ph, '', ''); };
-    if (b.phase === 'CHARGE') { b.lvl += 0.5 * dt; if (b.lvl >= 40) { L.TIC212.mode = 'AUTO'; L.TIC212.sp = 80; setPh('HEATUP'); } }
-    else if (b.phase === 'HEATUP') { if (b.T >= 76) setPh('FEED'); }
-    else if (b.phase === 'FEED') { if (b.lvl >= 75) setPh('REACT'); }
-    else if (b.phase === 'REACT') { if (b.Cm <= 2) { L.TIC212.sp = 40; setPh('COOL'); } }
-    else if (b.phase === 'COOL') { if (b.T <= 45) setPh('DRAIN'); }
-    else if (b.phase === 'DRAIN') { b.lvl = Math.max(10, b.lvl - 0.8 * dt); if (b.lvl <= 10) { L.TIC212.mode = 'MAN'; L.TIC212.op = 8; setPh('IDLE'); } }
-    const seqOn = b.phase !== 'IDLE';
-    if (b.phase === 'FEED') L.FIC211.sp = (b.held || P.trips.batch) ? 0 : 20; else if (seqOn) L.FIC211.sp = 0;
-    L.FIC211.modeAttr = (b.phase === 'FEED' && !b.held) ? 'PROGRAM' : 'OPERATOR';
-    L.TIC212.modeAttr = seqOn ? 'PROGRAM' : 'OPERATOR';
+    // HOLD freezes (spec §4.1): no timer, no transition, no charge or drain, no setpoint write, so a setpoint the
+    // operator enters during the hold stands until RESUME re-asserts the phase's values (seqCmd). The hold state
+    // itself (feed setpoint 0) is written once, at the HOLD command, not here.
+    if (!b.held) {
+      b.pt += dt;
+      const setPh = (ph) => { b.phase = ph; b.pt = 0; ctx.addEvent('SYSTEM', 'SCM202', 'PHASE → ' + ph, '', ''); };
+      if (b.phase === 'CHARGE') { b.lvl += 0.5 * dt; if (b.lvl >= 40) { setPh('HEATUP'); L.TIC212.mode = 'AUTO'; L.TIC212.sp = phaseSetpoints(b, P).TIC212; } }
+      else if (b.phase === 'HEATUP') { if (b.T >= 76) setPh('FEED'); }
+      else if (b.phase === 'FEED') { if (b.lvl >= 75) setPh('REACT'); }
+      else if (b.phase === 'REACT') { if (b.Cm <= 2) { setPh('COOL'); L.TIC212.sp = phaseSetpoints(b, P).TIC212; } }
+      else if (b.phase === 'COOL') { if (b.T <= 45) setPh('DRAIN'); }
+      else if (b.phase === 'DRAIN') { b.lvl = Math.max(10, b.lvl - 0.8 * dt); if (b.lvl <= 10) { L.TIC212.mode = 'MAN'; L.TIC212.op = 8; setPh('IDLE'); } }
+      if (b.phase !== 'IDLE') L.FIC211.sp = phaseSetpoints(b, P).FIC211;
+    }
+    // Ownership is honest (spec §4.2): PROGRAM on both loops in every active phase while not held, OPERATOR while
+    // held or idle. Written every scan, after the transitions, so the attribute follows on the scan after HOLD and
+    // after RESUME and is already OPERATOR on the scan in which DRAIN ends the batch.
+    const own = (b.phase !== 'IDLE' && !b.held) ? 'PROGRAM' : 'OPERATOR';
+    L.FIC211.modeAttr = own;
+    L.TIC212.modeAttr = own;
   }
 
   function resetBatchInventory(b) {
@@ -756,5 +775,5 @@
     stepU4(P, L, V, dt, ctx);
   }
 
-  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, stepU4, stepU4Material, step, PARAMS, MODEL_VALVES };
+  return { createState, createRand, envDefaults, magDefaults, advanceClock, stepU1, stepU2, stepU3, stepU4, stepU4Material, step, phaseSetpoints, PARAMS, MODEL_VALVES };
 });
