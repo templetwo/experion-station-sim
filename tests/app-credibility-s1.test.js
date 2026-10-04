@@ -107,6 +107,8 @@ test('D14: fmt never prints a negative zero at any precision', () => {
   assert.equal(c.fmt(-0.6, 0), '-1');
   assert.equal(c.fmt(-1.26, 1), '-1.3');
   assert.equal(c.fmt(null, 1), '—');
+  assert.equal(c.fmt(NaN, 1), '—');
+  assert.equal(c.fmt(undefined, 1), '—');
 });
 
 test('D7: the page renders the observed value and hatches an uncertain reading', () => {
@@ -168,6 +170,7 @@ test('D14: a small flow reads 0.0 on the graphic, the faceplate and the band not
   const fic = c.renderVals().fps.find((f) => f.tag === 'FIC211');
   assert.equal(fic.pvT, '0.0');
   assert.equal(fic.pvH, 0, 'the faceplate bar follows the observed value, which the cutoff reports as zero');
+  assert.equal(c.renderVals().dpt.bandMarker, '160.0', 'the ladder marker sits on the zero rung (the bottom of the 160 px ladder), not the raw 0.3 just above it');
   c.openFp('TIC202');
   v = c.renderVals();
   assert.equal(v.fps.find((f) => f.tag === 'TIC202').pvT, '0.0');
@@ -194,6 +197,11 @@ test('pvShown and hatchOp observe on the fly when a point has no observation yet
   assert.equal(c.hatchOp(l), UNCERTAIN_HATCH);
   assert.equal(c.pvShown(c.L.P101), c.L.P101.pv, 'a motor has no transmitter window');
   assert.equal(c.hatchOp(c.L.P101), 0);
+  assert.equal(c.obsOf(l).quality, 'UNCERTAIN', 'observed on the fly when there is no obs');
+  assert.equal(c.obsOf(c.L.P101), null, 'a motor has no observation');
+  const kept = { pv: 50, quality: 'GOOD', limit: 'NONE' };
+  l.obs = kept;
+  assert.equal(c.obsOf(l), kept, 'a written observation is used as it stands');
 });
 
 test('D14: a data-acquisition flow below the cutoff reads zero in its faceplate number and indicator bar', () => {
@@ -267,4 +275,51 @@ test('the crosshatch help answer names both hatches: bad quality, and a saturate
   assert.match(a, /shed/i);
   assert.match(a, /light hatch is a saturated/i);
   assert.match(a, /reporting limit/i);
+});
+
+// CR14: the faceplate has no hatch, so its saturation cue is the note line under the controls. A saturated
+// reading says where it is reported; BADPV keeps precedence; an UNCERTAIN reading with no limit to name (a
+// stale analyzer) says nothing rather than "NONE LIMIT".
+test('CR14: the faceplate note says SATURATED at the limit, BADPV still wins, and a limit-less UNCERTAIN stays quiet', () => {
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 1800, () => c.L.TIC202.pv > 110));
+  c.openFp('TIC202');
+  const noteOf = (b, tag) => b.renderVals().fps.find((f) => f.tag === tag).noteT;
+  assert.equal(noteOf(c, 'TIC202'), 'SATURATED — REPORTED AT HIGH LIMIT');
+  c.L.TIC202.badPv = true;                      // the observation is still UNCERTAIN: a bad flag must outrank it
+  assert.match(noteOf(c, 'TIC202'), /^BADPV — SHED/);
+
+  const d = boot(4, 'OPER');
+  d.injectFault('xmtr', true);                  // FIC102 transmitter fault -> badPv after its hold time
+  assert.ok(run(d, 600, () => d.L.FIC102.badPv));
+  d.openFp('FIC102');
+  assert.match(noteOf(d, 'FIC102'), /^BADPV — SHED/);
+
+  const e = boot(4, 'OPER');
+  e.L.AI205.quality = 'STALE';                  // UNCERTAIN from its source status, inside the range: no limit to name
+  e.measure();
+  assert.equal(e.L.AI205.obs.quality, 'UNCERTAIN');
+  assert.equal(e.L.AI205.obs.limit, 'NONE');
+  e.openFp('AI205');
+  assert.equal(noteOf(e, 'AI205'), '');
+});
+
+// The data-acquisition Point Detail row names the limit of a saturated reading, as the regulatory row does,
+// and only a reading that has a limit (the help answer says Point Detail names it).
+test('the data-acquisition Point Detail row names the limit of a saturated reading, and only then', () => {
+  const c = boot(4, 'OPER');
+  const pvRow = () => c.renderVals().dpt.mainRows.find((r) => r.param === 'PV');
+  c.L.TI312.pv = 700;                           // 0-600 DEG C: reported at the 618.75 window edge, HIGH limit
+  c.measure();
+  c.nav('detail', 'TI312');
+  assert.equal(pvRow().value, '619 DEG C');
+  assert.equal(pvRow().note, 'UNCERTAIN — HIGH LIMIT, reported at the transmitter limit');
+  c.L.TI312.pv = 380;
+  c.measure();
+  assert.equal(pvRow().note, '', 'a healthy reading carries no note');
+  c.L.AI205.quality = 'STALE';
+  c.measure();
+  c.nav('detail', 'AI205');
+  assert.equal(pvRow().note, '', 'UNCERTAIN with no limit has none to name');
 });

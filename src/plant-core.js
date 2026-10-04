@@ -739,13 +739,16 @@
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
   instrNote(txt){ ESS.Instructor.logAdd(this.instr,this.P.t,txt); }
   fmt(v,dec){ if(v==null||isNaN(v)) return '—'; const s=Number(v).toFixed(dec); return (s[0]==='-'&&Number(s)===0)?s.slice(1):s; }
-  // What the operator sees: the observed transmitter value (spec §2.5). Before the first tick, or
-  // for a point measure() does not cover, observe on the fly; observe() is pure and cheap.
-  pvShown(l){ if(l.obs&&typeof l.obs.pv==='number') return l.obs.pv; if(l.kind==='pid'||l.kind==='ind'){ const m=ESS.Measurement.observe(l); if(typeof m.pv==='number') return m.pv; } return l.pv; }
+  // What the operator sees is the observed transmitter value (spec §2.5). obsOf is the one place that decides where
+  // the observation comes from: the point's obs once measure() has written one, else observe pid and ind points on
+  // the fly (before the first tick, or for a point measure() does not cover; observe() is pure and cheap); a motor
+  // has none. pvShown, hatchOp and the notes on the faceplate and in Point Detail all read it.
+  obsOf(l){ return l.obs||((l.kind==='pid'||l.kind==='ind')?ESS.Measurement.observe(l):null); }
+  pvShown(l){ const o=this.obsOf(l); return (o&&typeof o.pv==='number')?o.pv:l.pv; }
   // Crosshatch strength on a graphic value box: BAD quality 0.85 (as shipped); UNCERTAIN, a saturated reading,
   // 0.30 so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe (controller
   // ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
-  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.30:0; }
+  hatchOp(l){ if(l.badPv) return 0.85; const o=this.obsOf(l); return (o&&o.quality==='UNCERTAIN')?0.30:0; }
   phaseSets(){
     const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
     return {

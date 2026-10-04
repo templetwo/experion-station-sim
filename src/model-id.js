@@ -7,5 +7,5 @@
   else (root.ESS = root.ESS || {}).MODEL_ID = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  return '38df85d93d26991b40465352fe45241bcbac4517f258bd541b459494e5df928f';
+  return '4447589a6ea355e2a615b57873699111fbacfdd08a3dbad139a183e54c600c87';
 });

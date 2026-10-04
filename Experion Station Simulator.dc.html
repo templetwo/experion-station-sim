@@ -1485,7 +1485,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
           <div style="flex:1;text-align:center;padding:3px 0;font-weight:700;cursor:pointer;background:#D4D0C8;border:2px solid;border-color:#FFFFFF #6E6E6E #6E6E6E #FFFFFF" style-active="border-color:#6E6E6E #FFFFFF #FFFFFF #6E6E6E" onClick="{{ fp.raise }}">▲</div>
           <div style="font-size:9.5px;color:#55524c;width:74px">RAISE / LOWER {{ fp.selT }}</div>
         </div>
-        <div style="font-size:10px;font-weight:700;color:#7a1a00;height:13px">{{ fp.noteT }}</div>
+        <div style="font-size:10px;font-weight:700;color:#7a1a00;min-height:13px">{{ fp.noteT }}</div>
         <sc-if value="{{ fp.calloutOn }}" hint-placeholder-val="{{ false }}">
           <div style="padding:3px 5px;border:2px solid #CC0000;background:#F6DADA;color:#A00000;font-size:10px;font-weight:700;line-height:1.3">{{ fp.calloutT }}</div>
         </sc-if>
@@ -1512,7 +1512,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
         <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:24px;font-weight:700">{{ fp.pvT }}</div><div style="font-size:11px;color:#55524c">{{ fp.eu }}</div></div>
         <div style="font-size:10.5px;color:#55524c">INDICATION ONLY — DATAACQ (DACA)</div>
         <div style="font-size:10.5px;color:#55524c">RANGE {{ fp.loT }} – {{ fp.hiT }} {{ fp.eu }}</div>
-        <div style="font-size:10px;font-weight:700;color:#7a1a00;height:12px">{{ fp.noteT }}</div>
+        <div style="font-size:10px;font-weight:700;color:#7a1a00;min-height:12px">{{ fp.noteT }}</div>
       </div>
     </div>
     </sc-if>
@@ -2492,7 +2492,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     const segs=[seg(b.rangeLo,b.critLo,guard('PVLL')),seg(b.critLo,b.stdLo,guard('PVLO')),seg(b.stdLo,b.tgtLo,C.band.normal),seg(b.tgtLo,b.tgtHi,C.band.target),
       seg(b.tgtHi,b.stdHi,C.band.normal),seg(b.stdHi,b.critHi,guard('PVHI')),seg(b.critHi,b.rangeHi,guard('PVHH'))]
       .filter(x=>x.h>0.05).map(x=>({y:x.y.toFixed(1),h:x.h.toFixed(1),fill:x.fill}));
-    const pv=l.kind==='motor'?(l.run?1:0):l.pv;
+    const pv=l.kind==='motor'?(l.run?1:0):this.pvShown(l);
     return {segs,marker:Math.max(0,Math.min(h,y(pv))).toFixed(1),markerFill:C.band.marker,band:b};
   }
 
@@ -3862,10 +3862,12 @@ class Component extends ESS.PlantCore(DCLogic) {
     const calloutT=this.calloutOf(dl.tag), calloutBg=calloutT?'#F6DADA':'transparent';
     const almConds=(pt)=>Object.keys(pt.alm).concat(Object.keys(pt.almOff||{}));
     const mRow=(label,param,value,canEdit,note,cb)=>({label,param,value,note:note||'',editing:canEdit&&eq(param),notEditing:!(canEdit&&eq(param)),cur:canEdit?'pointer':'default',und:canEdit?'underline dotted':'none',cb:canEdit?(cb||(()=>this.openEntry(dl.tag,param))):()=>{},rowBg:'transparent'});
+    // A saturated reading names the limit it is reported at; an UNCERTAIN reading with no limit (a stale analyzer) has none to name.
+    const obsD=this.obsOf(dl), satNote=obsD&&obsD.quality==='UNCERTAIN'&&obsD.limit!=='NONE'?'UNCERTAIN — '+obsD.limit+' LIMIT, reported at the transmitter limit':'';
     let mainRows,tuneRows=[],almRows=[];
     if(isPid){
       mainRows=[
-        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':(dl.obs&&dl.obs.quality==='UNCERTAIN'?'UNCERTAIN — '+dl.obs.limit+' LIMIT, reported at the transmitter limit':'')),
+        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':satNote),
         Object.assign(mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),{rowBg:calloutBg}),
         Object.assign(mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),{rowBg:calloutBg}),
         mRow('Mode attribute','MODEATTR',dl.modeAttr,false,dl.modeAttr==='PROGRAM'?'sequence owns SP/OP/MODE — operator stores are rejected':'operator may store SP/OP/MODE'),
@@ -3901,7 +3903,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       ];
     } else {
       mainRows=[
-        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,''),
+        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,satNote),
         mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
         mRow('Point type','KIND','DATAACQ INDICATION',false,'no control output')
       ];
@@ -3970,7 +3972,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     // faceplates
     const fps=S.fps.map((f,i)=>{
       const l=L[f.tag]; const isP=l.kind==='pid'; const isM=l.kind==='motor'; const bh=isP?166:126;
-      const pvS=this.pvShown(l);
+      const pvS=this.pvShown(l), obsF=this.obsOf(l);
       const aa=E.list().filter(x=>x.tag===f.tag&&shown(x)).sort(E.compare)[0];
       let almBg='#C9C5BD',almFg='#55524c',almTxt='NO ALARM';
       if(aa){ const st=almSty(aa); almBg=st.bg==='transparent'?'#C9C5BD':st.bg; almFg=st.fg; almTxt=aa.cond+' '+aa.prio.toUpperCase()+(aa.ack?' · ACK':''); }
@@ -3995,7 +3997,7 @@ class Component extends ESS.PlantCore(DCLogic) {
         spClick:()=>this.openEntry(f.tag,'SP'),opClick:()=>this.openEntry(f.tag,'OP'),
         modes:isP?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:l.mode===mm?'#B8C4D4':'#D4D0C8',bc:l.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(f.tag,mm)})):[],
         raise:()=>this.raiseLower(f.tag,1),lower:()=>this.raiseLower(f.tag,-1),selT:selP?('→ '+selP):'',
-        noteT:l.badPv?'BADPV — SHED ('+l.shed.replace('SHED','')+')':'',
+        noteT:l.badPv?'BADPV — SHED ('+l.shed.replace('SHED','')+')':(obsF&&obsF.quality==='UNCERTAIN'&&obsF.limit!=='NONE'?'SATURATED — REPORTED AT '+obsF.limit+' LIMIT':''),
         sil:()=>this.silence(),ack:()=>{const a2=E.unacked().filter(x=>x.tag===f.tag).sort(E.compare)[0];if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
         detail:()=>this.nav('detail',f.tag),
         sigPath:()=>this.openArch(f.tag,'trace'),
