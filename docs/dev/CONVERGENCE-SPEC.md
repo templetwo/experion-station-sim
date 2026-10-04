@@ -43,6 +43,24 @@ companion MOA evaluation is recorded at `68aae66752885e98986ecdc2a78ecdc962fa538
 The G2 implementation starting point is that simulator merge; re-read live
 bindings before adding code. The original "main has not moved since" sentence
 was stale and is superseded by this checkpoint statement.
+**Pointer note, 2026-10-04 (not a revision; rev 5 stands).** The rev 5 checkpoint above stays the
+record of what rev 5 verified; this note re-verifies none of this spec's bindings. On 2026-10-04,
+simulator main was at `adeb18a92de942ed1a60bcf4112430baa071c89d` (the credibility-pass S1 merge,
+2026-10-04), and master-operations-agent main was at `3a6f81b78277b085fdc5130bf66ad8f79b276378`
+(2026-10-03), which descends from `68aae66` and adds the development manifest
+`moa/data/drills-v2.json`, pinned to simulator `bfed001` beside an unchanged `drills-v1.json`,
+with its receipt under `receipts/drills-v2/` (8/8 useful, 10/10 guards at `bfed001`). At
+`adeb18a` that repo's `scripts/rescore_drills.py` refuses drills-v2 as written for another
+revision; with `--allow-revision-mismatch` it scores 6/8 useful, 10/10 guards (8/8 at the
+previous main `1f0147e`). Both restoration-lag seeds lose the `reactor_warming` finding: TIC201
+rises 0.7 and 0.8 °C across the exported window (seeds 20260920 and 20260921) where it rose 4.2
+and 4.3 °C at `bfed001` and at `1f0147e`, under the agent's 2 °C rule (`moa/knowledge.py:92`).
+On that date no manifest on agent main was pinned to `adeb18a` (drills-v3, pinned to it, is
+proposed in master-operations-agent PR #2). The cause of that drop is measured (MacBook seat,
+2026-10-04, with the agent's own export): reverting the one line that has the controllers read the
+observed value (`pvOf()` in `src/pid.js`) at `adeb18a` reproduces the `1f0147e` trajectory to the
+sample (+4.2 and +4.3 °C), so the whole of it is credibility-pass §2.4 (controller ruling CR8), the
+jacket controller acting on the saturated 103.125 °C during the cooling loss, by design.
 **rev 2 status of the confirm-before-binding instruction.** Rev 1 told builders to confirm every function and hook name against the checkpoint before writing code, because rev 1 was authored against the repository's public README, CHANGELOG and dev-doc conventions and not against a live working tree. That pass has now been done in full at the checkpoint — `docs/dev/CONVERGENCE-SPEC-VERIFICATION.md`, file:line for every claim. It found five binding errors, all corrected in this revision. A builder no longer has to re-derive them. The standing rule does not lapse, though: **anything this spec names that the memo does not cover is still unconfirmed and is verified in the file before it is bound to.** The memo's §1 is what verified clean; its §2 is what moved.
 
 0.2 The two-lane rule. There are two lanes and they never cross. Lane one is this public repository: an independent training aid built by Anthony under MIT. Lane two is AIRCO (Air Company, New Britain, PA) work. Anything plant-specific, and anything made on company time, is AIRCO work in AIRCO systems and never enters this repository. MIT already permits AIRCO to use the public repository. Improvements made on company time stay in the company's copy. This spec adds nothing to lane two and takes nothing from it.
@@ -482,6 +500,19 @@ proposal or thread closure is made by this revision.
 additive discipline (§2.4) and the default against changing existing golden drills
 (§8.2). The merged projection-only TIC202 policy is the present behavior; this
 ruling does not authorize moving it into the controller's measurement path.
+
+**Dated note, 2026-10-04: a fact, not a ruling; G3's status above is unchanged and is
+Anthony's to rule.** The projection-only policy is no longer what main does. Credibility-pass
+stage S1, section 2.4 of `docs/dev/CREDIBILITY-PASS-SPEC.md` (designed with Anthony and approved
+by him section by section on 2026-10-03; merged to main at `adeb18a` on 2026-10-04), routes the
+observed value into the controller and alarm path: `4fc55ac` has the PID module read `pvObs`,
+and `373ba66` has the scan write it for every analog point and the controllers, alarms and
+trends read it, over the reporting window of `0dcf16d` and the band rule of `b40f3f1`. The golden
+fixtures that stage moved are listed with their reasons in `tests/v2-baseline-archive.test.js`
+and the S1 CHANGELOG entry. Its effect on the master-operations-agent development drills is
+recorded in the §0.1 pointer note: drills-v2 scores 6/8 useful at `adeb18a` with the revision
+override. The agent-side re-pin is proposed in master-operations-agent PR #2; whether its
+changed expectation stands is Anthony's scoring decision.
 
 8.8 G4 — **open**. Shape: licence/external dependency. Prior decisions: Rule 7
 keeps gateways in a sidecar; no licence ruling of this shape is recorded here.
