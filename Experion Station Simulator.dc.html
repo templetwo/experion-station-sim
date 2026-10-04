@@ -3741,11 +3741,11 @@ class Component extends ESS.PlantCore(DCLogic) {
       const aa=E.list().filter(x=>x.tag===g.tag&&shown(x)).sort(E.compare)[0];
       let aBg='none',aFg='none',aTxt='',aBd='none';
       if(aa){ const st=almSty(aa); aBg=st.bg==='transparent'?'#D8D8D8':st.bg; aFg=st.fg; aTxt=aa.prio[0]; aBd='#55524c'; }
-      const pvT=l.kind==='motor'?(l.run?'RUN':'STOP'):this.fmt(l.pv,l.dec);
+      const pvT=l.kind==='motor'?(l.run?'RUN':'STOP'):this.fmt(this.pvShown(l),l.dec);
       const bandOn=l.kind!=='motor'; const bs=bandOn?this.bandSegments(l,46):{segs:[],marker:'0',markerFill:'none'};
       return {tag:g.tag,x:g.x,y:g.y,tagX:g.x+6,tagY:g.y+14,pvX:g.x+6,pvY:g.y+36,euX:g.x+78,modeX:g.x+86,
         bandOn,bx:g.x-8,band:bs.segs.map(b=>({y:(g.y+Number(b.y)).toFixed(1),h:b.h,fill:b.fill})),bmx:g.x-10,bmy:(g.y+Number(bs.marker)-1).toFixed(1),bmFill:bs.markerFill,
-        pvT,euT:l.eu,modeT:l.kind==='pid'?mCh[l.mode]||'':'',hatchOp:l.badPv?0.85:0,
+        pvT,euT:l.eu,modeT:l.kind==='pid'?mCh[l.mode]||'':'',hatchOp:this.hatchOp(l),
         bd:S.sel===g.tag?'#31548F':'#8a8a86', bw:S.sel===g.tag?2.5:1.2,
         aX:g.x+108,aY:g.y+4,aTx:g.x+115,aTy:g.y+15,aBg,aFg,aTxt,aBd,
         click:()=>{this.openFp(g.tag);}, dbl:()=>this.nav('detail',g.tag)};
@@ -3865,7 +3865,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     let mainRows,tuneRows=[],almRows=[];
     if(isPid){
       mainRows=[
-        mRow('Process variable','PV',this.fmt(dl.pv,dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':''),
+        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':(dl.obs&&dl.obs.quality==='UNCERTAIN'?'UNCERTAIN — '+dl.obs.limit+' LIMIT, reported at the transmitter limit':'')),
         Object.assign(mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),{rowBg:calloutBg}),
         Object.assign(mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),{rowBg:calloutBg}),
         mRow('Mode attribute','MODEATTR',dl.modeAttr,false,dl.modeAttr==='PROGRAM'?'sequence owns SP/OP/MODE — operator stores are rejected':'operator may store SP/OP/MODE'),
@@ -3901,7 +3901,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       ];
     } else {
       mainRows=[
-        mRow('Process variable','PV',this.fmt(dl.pv,dl.dec)+' '+dl.eu,false,''),
+        mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,''),
         mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
         mRow('Point type','KIND','DATAACQ INDICATION',false,'no control output')
       ];
@@ -3926,8 +3926,9 @@ class Component extends ESS.PlantCore(DCLogic) {
         lr('Range low','PVEULO',lb.rangeLo,false,'instrument range')
       ];
       band=bs.segs; bandMarker=bs.marker; bandMarkerFill=bs.markerFill;
-      const inT=dl.pv>=lb.tgtLo&&dl.pv<=lb.tgtHi, inS=dl.pv>=lb.stdLo&&dl.pv<=lb.stdHi;
-      bandNote='PV '+this.fmt(dl.pv,dl.dec)+' '+dl.eu+' is '+(inT?'inside the target band.':inS?'inside the standard limits but outside the target band.':'outside the standard limits — an alarm is configured to say so.')+' Range / Critical / Standard / Target ladder after the ASM operator-interface guidance; the marker is the live PV. Target band is ENGR-editable and must sit inside the standard limits.';
+      const pvB=this.pvShown(dl);
+      const inT=pvB>=lb.tgtLo&&pvB<=lb.tgtHi, inS=pvB>=lb.stdLo&&pvB<=lb.stdHi;
+      bandNote='PV '+this.fmt(pvB,dl.dec)+' '+dl.eu+' is '+(inT?'inside the target band.':inS?'inside the standard limits but outside the target band.':'outside the standard limits — an alarm is configured to say so.')+' Range / Critical / Standard / Target ladder after the ASM operator-interface guidance; the marker is the live PV. Target band is ENGR-editable and must sit inside the standard limits.';
     }
     const condList=Object.keys(dl.alm);
     const helpCond=condList.includes(S.detailAlmCond)?S.detailAlmCond:(condList[0]||'');
@@ -3969,25 +3970,26 @@ class Component extends ESS.PlantCore(DCLogic) {
     // faceplates
     const fps=S.fps.map((f,i)=>{
       const l=L[f.tag]; const isP=l.kind==='pid'; const isM=l.kind==='motor'; const bh=isP?166:126;
+      const pvS=this.pvShown(l);
       const aa=E.list().filter(x=>x.tag===f.tag&&shown(x)).sort(E.compare)[0];
       let almBg='#C9C5BD',almFg='#55524c',almTxt='NO ALARM';
       if(aa){ const st=almSty(aa); almBg=st.bg==='transparent'?'#C9C5BD':st.bg; almFg=st.fg; almTxt=aa.cond+' '+aa.prio.toUpperCase()+(aa.ack?' · ACK':''); }
       const span=l.hi-l.lo||1;
-      const pvH=Math.max(0,Math.min(166,((l.pv-l.lo)/span)*166));
+      const pvH=Math.max(0,Math.min(166,((pvS-l.lo)/span)*166));
       const spY=Math.max(0,Math.min(164,166-((l.sp-l.lo)/span)*166));
       const tickConds=['PVHH','PVLL','PVHI','PVLO'];
       const ticks=(!isM&&l.alm)?Object.keys(l.alm).filter(c=>tickConds.includes(c)).map(c=>({y:Math.max(0,Math.min(bh-1,bh-((l.alm[c][0]-l.lo)/span)*bh)),c:pc(l.alm[c][1])})):[];
       const bands=isM?[]:this.bandSegments(l,bh).segs;
       const selP=l.mode==='MAN'?'OP':(l.mode==='AUTO'?'SP':null);
       const co=this.calloutOf(f.tag);
-      return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',calloutOn:!!co,calloutT:co,frameBc:co?'#CC0000':'#FFFFFF #5E5E5E #5E5E5E #FFFFFF',indH:Math.max(0,Math.min(126,((l.pv-l.lo)/span)*126)),
+      return {tag:f.tag,desc:l.desc,x:f.x,y:f.y,z:400+i,isPid:isP,isMotor:isM,isInd:l.kind==='ind',calloutOn:!!co,calloutT:co,frameBc:co?'#CC0000':'#FFFFFF #5E5E5E #5E5E5E #FFFFFF',indH:Math.max(0,Math.min(126,((pvS-l.lo)/span)*126)),
         pin:f.pin,pinBg:f.pin?'#B8C4D4':'#41608A',pinFg:f.pin?'#000':'#FFF',
         pinCb:()=>{const fps2=S.fps.map(x=>x===f?{...x,pin:!x.pin}:x);this.setState({fps:fps2});},
         close:()=>this.setState({fps:S.fps.filter(x=>x!==f)}),
         front:()=>{if(S.fps[S.fps.length-1]!==f)this.setState({fps:[...S.fps.filter(x=>x!==f),f]});},
         dragStart:(e)=>{this.setState({drag:{tag:f.tag,dx:e.clientX-f.x,dy:e.clientY-f.y}});},
         almBg,almFg,almTxt,eu:l.eu,hiT:this.fmt(l.hi,0),loT:this.fmt(l.lo,0),
-        pvH,spY,ticks,bands,pvT:this.fmt(l.pv,l.dec),spT:this.fmt(l.sp,l.dec),opT:this.fmt(l.op,1),opW:Math.max(0,Math.min(100,l.op)),
+        pvH,spY,ticks,bands,pvT:this.fmt(pvS,l.dec),spT:this.fmt(l.sp,l.dec),opT:this.fmt(l.op,1),opW:Math.max(0,Math.min(100,l.op)),
         spEditing:eq2(f.tag,'SP'),spNotEditing:!eq2(f.tag,'SP'),opEditing:eq2(f.tag,'OP'),opNotEditing:!eq2(f.tag,'OP'),
         spBd:selP==='SP'?'2px dashed #31548F':'2px solid transparent',opBd:selP==='OP'?'2px dashed #31548F':'2px solid transparent',
         spClick:()=>this.openEntry(f.tag,'SP'),opClick:()=>this.openEntry(f.tag,'OP'),

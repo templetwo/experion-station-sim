@@ -738,7 +738,11 @@
   }
   operName(){ return (this.state.oper||'OPERATOR').trim()||'OPERATOR'; }
   instrNote(txt){ ESS.Instructor.logAdd(this.instr,this.P.t,txt); }
-  fmt(v,dec){ return (v==null||isNaN(v))?'—':Number(v).toFixed(dec); }
+  fmt(v,dec){ if(v==null||isNaN(v)) return '—'; const s=Number(v).toFixed(dec); return (s[0]==='-'&&Number(s)===0)?s.slice(1):s; }
+  // What the operator sees: the observed transmitter value (spec §2.5). Before the first tick, or
+  // for a point measure() does not cover, observe on the fly; observe() is pure and cheap.
+  pvShown(l){ if(l.obs&&typeof l.obs.pv==='number') return l.obs.pv; if(l.kind==='pid'||l.kind==='ind'){ const m=ESS.Measurement.observe(l); if(typeof m.pv==='number') return m.pv; } return l.pv; }
+  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.45:0; }
   phaseSets(){
     const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
     return {
