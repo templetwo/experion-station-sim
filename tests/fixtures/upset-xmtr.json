@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-xmtr",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 300,
-  "endStateDigest": "79112b3aa79568c6a57618bec6aff4073baeb903fd76e5b1524504d1e3050fcb",
+  "endStateDigest": "026bc11aa1c88a58bbf75199d050620ee4323b973c098719fefa621ea28b2282",
   "alarmSequenceDigest": "bc321718c157d758f659649d08110f12e3335a27c7526a8028b47f30bdf84a2c",
   "alarmSeq": [
     "FIC102:BADPV:High",

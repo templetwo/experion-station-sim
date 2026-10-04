@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-stick",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 600,
-  "endStateDigest": "f3b801b8dac4a9134068e62f628621dd075608f885898663f236324a47b0ee11",
+  "endStateDigest": "222ed5ef47a4c3a193801c3f39c366326e2c56cce5497fbec987add108049dda",
   "alarmSequenceDigest": "f460e306c04bbf76414789591eee0f79bf8ee3cd72b49211e62c5a5a93b57770",
   "alarmSeq": [
     "TIC202:DEVHI:High",

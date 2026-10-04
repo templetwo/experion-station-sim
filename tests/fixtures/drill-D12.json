@@ -1,11 +1,11 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D12",
-  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 720.5,
-  "endStateDigest": "60e15df6f52ea0336632944de2a402b0cba533c85d8f70ec4163a9f587b9a98c",
-  "alarmSequenceDigest": "56050f3883f6880ca918dfd25fd2e7c00c793b365305838e58e70de51667e91c",
+  "endStateDigest": "30a282d98d0911c7d5f5ad9633fc678088efa8181bfa6e417608db1de5280c6e",
+  "alarmSequenceDigest": "cbfdfe0ad7a184b4c7818f25502bc65d4023df2045e13ead122d6cbed75bab72",
   "drillId": "D12",
   "stepCap": 12000,
   "steps": 1441,
@@ -16,8 +16,7 @@
     "R-310:HI TEMP TRIP:Urgent",
     "TI312:PVHH:Urgent",
     "TIC311:PVLO:Low",
-    "AI316:PVLO:Low",
-    "TIC311:PVHI:High"
+    "AI316:PVLO:Low"
   ],
   "trips": {
     "bed": false
@@ -35,9 +34,9 @@
   },
   "batchPhase": "IDLE",
   "driftOff": 0,
-  "eventsCount": 45,
+  "eventsCount": 15,
   "score": {
-    "score": 10,
+    "score": 16,
     "pass": false,
     "passMark": 80,
     "breakdown": [
@@ -72,9 +71,9 @@
       {
         "id": "load",
         "label": "Alarm load during drill",
-        "earned": 0,
+        "earned": 5.6,
         "max": 10,
-        "note": "14.2 per 10 min"
+        "note": "5 per 10 min"
       },
       {
         "id": "quiz",

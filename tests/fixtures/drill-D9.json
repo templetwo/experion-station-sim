@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D9",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 720.5,
-  "endStateDigest": "699d26e2a193a1394a298d37c9836df3c276809bae7761b4273c61e7f8a1aab9",
+  "endStateDigest": "a3e6f9db56ab838a33547c0c7307c7baf5369590664fe01425a5df10c0f394e8",
   "alarmSequenceDigest": "17a6547c1f9a5607f5ba6454b9fc08af0dc369e857a5aa44447b4962b572a996",
   "drillId": "D9",
   "stepCap": 12000,
@@ -53,7 +53,7 @@
         "label": "Trip avoided",
         "earned": 20,
         "max": 20,
-        "note": "no trip"
+        "note": "no trip · peak 854.9 KPA vs trip 950 KPA"
       },
       {
         "id": "stable",

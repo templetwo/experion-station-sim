@@ -24,17 +24,30 @@ test('Core owns accounting once per scan in browser and Kernel, including opted-
 test('actual archived v1 checkpoints resume explicit legacy operation without inventing composition',()=>{
   let old=OldK.create();for(let tick=0;tick<12;tick++)old=OldK.advance(old,.5,[]).state;
   assert.equal(old.schema_version,'peb.plant.v1');
+  const checkpoint=JSON.parse(JSON.stringify(old));
   let current=K.capture(K.restore(old));
+  assert.equal(current.schema_version,'peb.plant.v2');
   assert.equal(current.materialMode,'legacy');assert.equal(current.composition,null);
   assert.deepEqual(current.product,old.product);
-  // The archived kernel predates the observed value: obs and pvObs are derived each scan (spec §2.3), not state it could carry.
-  const bare=L=>Object.fromEntries(Object.entries(L).map(([tag,{obs,pvObs,...point}])=>[tag,point]));
+  // CR27 (docs/dev/CREDIBILITY-PASS-SPEC.md section 0.6): this test used to run the archived 3.1.0-era kernel and the current
+  // kernel in lockstep for 12 ticks and compare P, L (less the derived obs and pvObs) and V field for field. That proved G2
+  // left the legacy dynamics untouched, a property stage S1 of the credibility pass breaks on purpose: the FIC211 low-flow
+  // cutoff (CR10), the observed value feeding the controllers and the alarm scan, and plant-held outputs all change the legacy
+  // trajectory. The frozen 3.1.0 behaviour is tests/fixtures/v31-baseline/ (tests/v2-baseline-archive.test.js names what has
+  // moved since), so a legacy-dynamics regression is caught by the goldens. What stays here is the restore itself: the
+  // checkpoint resumes as legacy with no composition invented, the product ledger is carried over and keeps accounting, and the
+  // random streams are the archived kernel's (S1 changed no draw count; had it, this clause would be dropped, not loosened).
   for(let tick=0;tick<12;tick++){
     old=OldK.advance(old,.5,[]).state;current=K.advance(current,.5,[]).state;
-    for(const key of ['P','L','V'])assert.deepEqual(key==='L'?bare(current.fields.L):current.fields[key],old.fields[key]);
-    assert.deepEqual(current.product,old.product);
     assert.equal(current.rand,old.rand);assert.equal(current.rand4,old.rand4);
   }
+  assert.equal(current.materialMode,'legacy');assert.equal(current.composition,null);
+  assert.equal(current.fields.P.t,checkpoint.fields.P.t+6000);
+  const p0=checkpoint.product,p1=current.product;
+  assert.equal(p1.end,p0.end+6000);
+  for(const key of ['eligible_ms','covered_ms','continuous_ms'])assert.equal(p1[key],p0[key]+6000,key);
+  assert.equal(p1.samples.length,p0.samples.length+12);
+  assert.ok(p1.gross>p0.gross,'the ledger kept accounting after the restore');
 });
 
 test('new checkpoints retain material observer history and exactly resume both accounting ledgers',()=>{

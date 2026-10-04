@@ -1,7 +1,7 @@
 {
   "//": "@artifact dev (A-drill fixture; see tests/drill-arch-fixtures.test.js)",
   "fixture": "ARCH_A7",
-  "model": "c8440c43b8194bc82e98334d8e16aebab3a2686fcafeb1ecc36f3b36ae471bca",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 65,
   "drillId": "A7",
@@ -12,7 +12,7 @@
   ],
   "domain": "NETWORK",
   "eventCount": 5,
-  "physicsDigest": "87eb222ed3ae923bf3ef847b1a2cd4be259191b0e88edc81d72b90a8bfb420ee",
+  "physicsDigest": "1dc6fbc8a813798beadaa516d962a73ea3806da84263a39ba741a88a03b0e5b2",
   "healthDigest": "f0e08a8e9f1905e59c0af6ba259bfbb42a1c909b73bb26c7c453df22c4a24179",
   "score": 60,
   "pass": false,

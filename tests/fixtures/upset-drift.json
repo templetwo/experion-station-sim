@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-drift",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 600,
-  "endStateDigest": "3a204d91c59d32780159101396e7d6d575f633dc9a96f75e154ec1fadd5fcb22",
+  "endStateDigest": "3149bf2f1e9398a3b91e2d151528731d19636be1d526eeea03d3ad61a9cccd1b",
   "alarmSequenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "alarmSeq": [],
   "trips": {},

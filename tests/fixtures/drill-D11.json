@@ -1,14 +1,14 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D11",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
-  "seconds": 2010.5,
-  "endStateDigest": "f8fdc4781154e9a1eb64ae79cb002377cc7dac47988fb0205afffc97c0907481",
+  "seconds": 2011.5,
+  "endStateDigest": "af8884fed50810e607dc13b46129fa402dbe24c7d3e1ba5ff444377d5ef16676",
   "alarmSequenceDigest": "64fc2526185ecb54277675fca43351d12c2f2c92ed8a5ac92905b8bbdfa3a425",
   "drillId": "D11",
   "stepCap": 12000,
-  "steps": 4021,
+  "steps": 4023,
   "endReason": "TIME LIMIT REACHED",
   "injected": true,
   "alarmSequenceRaw": [
@@ -57,7 +57,7 @@
         "label": "Trip avoided",
         "earned": 20,
         "max": 20,
-        "note": "no trip"
+        "note": "no trip · peak 98.8 DEG C vs trip 110 DEG C"
       },
       {
         "id": "stable",

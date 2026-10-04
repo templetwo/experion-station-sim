@@ -1,11 +1,11 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D4",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 720.5,
-  "endStateDigest": "01d5926f300b33eb585d101c8198f8e9198ca5130e076f473bb48f4ea352cac1",
-  "alarmSequenceDigest": "4353db612233e80069b5b6f836104d4521f5536b80d9300e02fdbe4596c54ce3",
+  "endStateDigest": "fca6796d60e5ffb37b88f5f89cba53b7d1771f7cbcbe8ee9d2195a489372d061",
+  "alarmSequenceDigest": "d98619c6ff9f3ca99dc23ddbb825f390ef4d28965d7c46ec68c21fc8fa8a3ee6",
   "drillId": "D4",
   "stepCap": 12000,
   "steps": 1441,
@@ -15,12 +15,14 @@
     "TIC202:DEVHI:High",
     "TIC202:PVHH:Urgent",
     "TIC201:PVHI:High",
-    "TIC201:DEVHI:High",
     "TIC201:PVHH:Urgent",
     "R-201:HI TEMP TRIP:Urgent",
     "FIC102:PVLO:Low",
     "FIC102:PVLL:Urgent",
-    "FIC102:PVHI:High"
+    "LIC101:PVHI:High",
+    "TIC201:PVLO:Low",
+    "TIC301:PVLO:Low",
+    "TIC201:PVLL:Urgent"
   ],
   "trips": {
     "rx": false
@@ -38,7 +40,7 @@
   },
   "batchPhase": "IDLE",
   "driftOff": 0,
-  "eventsCount": 197,
+  "eventsCount": 72,
   "score": {
     "score": 10,
     "pass": false,
@@ -77,7 +79,7 @@
         "label": "Alarm load during drill",
         "earned": 0,
         "max": 10,
-        "note": "78.3 per 10 min"
+        "note": "26.7 per 10 min"
       },
       {
         "id": "quiz",

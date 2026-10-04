@@ -1,11 +1,11 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
   "fixture": "upset-cool",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 400,
-  "endStateDigest": "3b62516267aa2df96e697bcacbf17406ba65a2281bd3356da03df82e26cfa6cd",
-  "alarmSequenceDigest": "709c5a9b770875e8a7b7bdfcb2510a89d0b69e7a843aecab3d7109a3b121b6e2",
+  "endStateDigest": "c9caf8a649d2e3c83a4b9886e9769fdc876d356601e5ea160a0483343adaf813",
+  "alarmSequenceDigest": "d95faef2b0faac4a9a5a41445d4c7d35913cba7c45b0d6271b0b95015f99bb5b",
   "alarmSeq": [
     "TIC202:DEVHI:High",
     "TIC202:PVHH:Urgent",
@@ -13,8 +13,7 @@
     "TIC201:PVHH:Urgent",
     "R-201:HI TEMP TRIP:Urgent",
     "FIC102:PVLO:Low",
-    "FIC102:PVLL:Urgent",
-    "FIC102:PVHI:High"
+    "FIC102:PVLL:Urgent"
   ],
   "trips": {
     "rx": false
@@ -24,6 +23,6 @@
   },
   "phase": "IDLE",
   "driftOff": 0,
-  "countsAlarms": 8,
-  "countsEvents": 31
+  "countsAlarms": 7,
+  "countsEvents": 57
 }

@@ -1,10 +1,10 @@
 {
   "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
   "fixture": "drill-D2",
-  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "model": "1b11ccee4f360a2821655704e2a7eb70ff00efdacff7363e61f73992ca65c984",
   "seed": 20260829,
   "seconds": 720.5,
-  "endStateDigest": "21fbc04018489e755afe426e4062b298f9e3720ffb672fb8c9d73242ad31ac34",
+  "endStateDigest": "d459255178cef72fa7cb17aeebfdbc685f051eba1f9cd66b456a97b4e0a56c27",
   "alarmSequenceDigest": "bf00fc7ebec2c300326c5741b4612cdd20542c2ed63ad5fbd45a7fca33652a5c",
   "drillId": "D2",
   "stepCap": 12000,
@@ -56,7 +56,7 @@
         "label": "Trip avoided",
         "earned": 20,
         "max": 20,
-        "note": "no trip"
+        "note": "no trip · peak 86.3 % vs trip 98 %"
       },
       {
         "id": "stable",
