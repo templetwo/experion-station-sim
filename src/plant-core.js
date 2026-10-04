@@ -773,6 +773,9 @@
   // 0.30 so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe (controller
   // ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
   hatchOp(l){ if(l.badPv) return 0.85; const o=this.obsOf(l); return (o&&o.quality==='UNCERTAIN')?0.30:0; }
+  // Where a loop's output sits against its own OP limits: 'HI' or 'LO' when within 0.2 of one, else ''. The one definition behind
+  // the INITMAN limit flag, the cascade-return clamp in setMode and the Live Diagnosis saturation card.
+  opLimitOf(l){ if(l.op>=l.ophilm-0.2) return 'HI'; if(l.op<=l.oplolm+0.2) return 'LO'; return ''; }
   // One flag beside the mode line (spec §3.4): what holds this loop and why. INTERLOCK / TRACK only while the hold is
   // applied (ESS.Pid.tracking: an interlock always, a device hold outside MAN); a device hold the operator has
   // overridden in MAN is a NOTE. A primary running INITMAN says so, and says when its output sits at a limit.
@@ -782,18 +785,19 @@
       return 'NOTE · '+l.trk.reason;
     }
     if(l.init){
-      if(l.op>=l.ophilm-0.2) return 'INITMAN · OP AT HI LIMIT';
-      if(l.op<=l.oplolm+0.2) return 'INITMAN · OP AT LO LIMIT';
-      return 'INITMAN';
+      const at=this.opLimitOf(l);
+      return at?'INITMAN · OP AT '+at+' LIMIT':'INITMAN';
     }
     return '';
   }
-  // The setpoint span a primary can command on its secondary, from the cascade map, inside the
-  // secondary's own SP limits (spec §3.5). Empty when the cascade map has no entry for the secondary.
+  // The setpoint span a primary can command on its secondary: the primary's own OP range (its OP limits, 0 to 100 when it has
+  // none) pushed through the cascade map, inside the secondary's own SP limits (spec §3.5, CR24). Empty when the cascade map
+  // has no entry for the secondary.
   casRange(slaveTag){
     const ctx=this.pidCtx(), f=ctx.casMap[slaveTag], s=this.L[slaveTag];
     if(!f||!s) return '';
-    const a=f(0), b=f(100), lo=Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
+    const m=s.master?this.L[s.master]:null;
+    const a=f(m&&m.oplolm!=null?m.oplolm:0), b=f(m&&m.ophilm!=null?m.ophilm:100), lo=Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
     return this.fmt(lo,s.dec)+'–'+this.fmt(hi,s.dec)+' '+s.eu;
   }
   phaseSets(){
@@ -1085,7 +1089,7 @@
     if(!this.operatorMayWrite(tag,'MODE')) return;
     if(l.mode===m) return;
     const master=l.master?this.L[l.master]:null;
-    const pinned=m==='CAS'&&master&&master.init&&(master.op>=master.ophilm-0.2||master.op<=master.oplolm+0.2);
+    const pinned=m==='CAS'&&master&&master.init&&this.opLimitOf(master);
     const spBefore=l.sp;
     const r=ESS.Pid.transferMode(l,m,this.pidCtx());   // bumpless: integrator re-initialised so the first output equals the current OP
     if(!r.ok){ this.msgZone(r.reason); return; }

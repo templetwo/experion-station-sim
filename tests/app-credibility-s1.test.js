@@ -622,8 +622,10 @@ test('the faceplate and the Point Detail carry the flag', () => {
   c.motorCmd('P101', false); c.step(0.5);
   c.nav('detail', 'FIC102');
   const v = c.renderVals();
+  const outRow = v.dpt.mainRows.find((r) => r.param === 'OP');
   const casc = v.dpt.mainRows.find((r) => r.param === 'CASC');
-  assert.equal(casc.note, 'TRACK · P-101 STOPPED');
+  assert.equal(outRow.note, 'limits 0 – 100 · TRACK · P-101 STOPPED', 'CR25: a hold is a fact about the output, so it sits on the Output row after the limits');
+  assert.equal(casc.note, '', 'and the Cascade row says nothing about a hold');
   c.nav('detail', 'TIC201');
   const casc2 = c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC');
   assert.match(casc2.value, /PRIMARY OF TIC202 · COMMANDS SP 10\.0–70\.0 DEG C/);
@@ -642,7 +644,7 @@ test('the faceplate flag is flagText for every kind of point: a held loop, an in
   assert.equal(flagOf('FI100'), '', 'nor has an indicator point');
 });
 
-test('INITMAN names a limit only when OP is within 0.2 of it; with the pump stopped LIC101 reads plain INITMAN until the observed flow is zero, then OP AT LO LIMIT (CR20)', () => {
+test('INITMAN names a limit only when OP is within 0.2 of it; with the pump stopped LIC101 reads plain INITMAN until the observed flow reads zero and OP AT LO LIMIT one scan later (CR20)', () => {
   const c = boot(4, 'OPER');
   const flag = (op) => c.flagText({ init: true, op, ophilm: 100, oplolm: 0 });
   assert.equal(flag(99.9), 'INITMAN · OP AT HI LIMIT');
@@ -654,8 +656,19 @@ test('INITMAN names a limit only when OP is within 0.2 of it; with the pump stop
   c.motorCmd('P101', false); c.step(0.5);
   const lic = c.L.LIC101;
   assert.equal(c.flagText(lic), 'INITMAN', 'one scan after the stop LIC101 is initialising but still mid-range');
-  assert.ok(run(c, 120, () => c.flagText(lic) !== 'INITMAN'), 'LIC101 reached its low limit');
-  assert.equal(lic.op, 0, 'the observed flow reads zero below the cutoff, so LIC101 back-calculates to exactly invMap(0)');
+  // The observed flow first reads exactly zero (below the low-flow cutoff) on one scan, and FIC102's SP tracks it to 0 on that scan. LIC101 steps
+  // before FIC102, so it back-calculates to invMap(0) on the next scan, and only then does its flag name the limit.
+  let scan = 0, zeroScan = null, flipScan = null, atZero = null;
+  assert.ok(run(c, 120, () => {
+    scan++;
+    if (zeroScan === null && c.pvShown(c.L.FIC102) === 0) atZero = { scan: zeroScan = scan, flag: c.flagText(lic), sp: c.L.FIC102.sp, opAbove: lic.op > 0.2 };
+    if (c.flagText(lic) !== 'INITMAN') { flipScan = scan; return true; }
+    return false;
+  }), 'LIC101 reached its low limit');
+  assert.deepEqual(atZero, { scan: zeroScan, flag: 'INITMAN', sp: 0, opAbove: true }, 'on the scan the observed flow first reads zero FIC102\'s SP is 0 but LIC101 has not moved yet');
+  assert.equal(flipScan, zeroScan + 1, 'the flag names the limit exactly one scan later');
+  assert.equal(c.pvShown(c.L.FIC102), 0);
+  assert.equal(lic.op, 0, 'and LIC101 has back-calculated to exactly invMap(0)');
   assert.equal(c.flagText(lic), 'INITMAN · OP AT LO LIMIT');
   run(c, 60);
   c.motorCmd('P101', true);
@@ -697,7 +710,8 @@ test('D8: the clamp journals the low side too, journals nothing when the return 
   d.setMode('TIC202', 'AUTO');
   d.storeEntry('TIC202', 'SP', 60);
   d.setMode('TIC202', 'CAS');
-  assert.ok(Math.abs(d.L.TIC202.sp - 60) > 1, 'the setpoint did move: ' + d.L.TIC202.sp);
+  assert.equal(d.L.TIC202.sp, 42.078826486800764, 'the setpoint snapped to the cascade map of the primary\'s old output, 10 + 0.6 * 53.46471081133461');
+  assert.equal(d.L.TIC202.sp, d.pidCtx().casMap.TIC202(d.L.TIC201.op), 'which is the primary\'s own output through the map');
   assert.ok(!d.events.some((e) => e.desc === 'SP CLAMPED TO CASCADE RANGE'), 'but the primary was not pinned, so no clamp is claimed');
 });
 
@@ -760,8 +774,8 @@ test('CR22: the INITMAN card says the secondary is held when it is in CAS under 
 });
 
 // CR22b: "output saturated" says the disturbance exceeds the loop. A held output is the plant's doing, not the loop's,
-// and its flag already names the hold, so a held loop raises no saturation card; a loop the plant does not hold still does.
-test('CR22b: a loop whose output the plant holds raises no saturation card, whichever kind of hold; a loop it does not hold still does', () => {
+// and its flag already names the hold, so a held loop raises no saturation card.
+test('CR22b: a loop whose output the plant holds raises no saturation card: a stopped pump, and a real interlock (the H-310 tube skin trip)', () => {
   const sat = (b, tag) => b.diagnose().find((x) => x.id === 'sat.' + tag);
   const c = boot(4, 'OPER');
   c.motorCmd('P101', false);
@@ -776,19 +790,82 @@ test('CR22b: a loop whose output the plant holds raises no saturation card, whic
   const hold = fic.trk;
   fic.trk = { ...hold, on: false };
   assert.equal(sat(c, 'FIC102').title, 'FIC102 output saturated at 0%', 'without the hold the card fires, so the hold is the only thing that silences it');
-  // An interlock hold is asked of the guard on the record: in the shipped plant a trip's alarm suppression (DSUPR) keeps the
-  // loop it holds out of the announced set, so this combination is never reached by a real trip.
+  // An interlock-kind hold on this same state: valid at the predicate level (ESS.Pid.tracking holds both kinds), and it kills a guard
+  // written for device holds only. The real interlock follows below.
   fic.trk = { ...hold, kind: 'interlock', reason: 'R-201 HI TEMP TRIP' };
-  assert.equal(sat(c, 'FIC102'), undefined, 'an interlock hold raises none either');
+  assert.equal(sat(c, 'FIC102'), undefined, 'an interlock-kind hold raises none either');
   fic.trk = hold;
   assert.equal(sat(c, 'FIC102'), undefined, 'and the pump hold, put back, silences it again');
 
-  const d = boot(4, 'OPER');                    // the lost cooling saturates TIC201, which the plant does not hold, while FIC102 is interlocked
-  loseCooling(d);
-  assert.ok(run(d, 2400, () => d.P.trips.rx), 'R-201 tripped');
-  assert.equal(d.flagText(d.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP');
-  assert.equal(d.flagText(d.L.TIC201), 'INITMAN · OP AT HI LIMIT');
-  assert.equal(sat(d, 'TIC201').title, 'TIC201 output saturated at 100%', 'the card still fires for a loop the plant does not hold');
+  // A real interlock. The R-201 trip suppresses FIC102's low alarms (DAS, state DSUPR), so FIC102 cannot show it; the H-310 tube skin
+  // trip has no suppression rule (dasRules), so TIC311's high alarms stand announced under INTERLOCK · H-310 TUBE SKIN TRIP.
+  const s = boot(2, 'OPER');
+  run(s, 60);
+  s.L.TIC311.mode = 'MAN'; s.L.TIC311.op = 100;  // the recipe of the tube-skin test in tests/app-models.test.js
+  assert.ok(run(s, 300, () => s.P.trips.skin), 'tube skin trip');
+  s.setMode('TIC311', 'AUTO'); s.step(0.5);      // the card needs a loop outside MAN; an interlock holds in every mode
+  const tic = s.L.TIC311;
+  assert.equal(s.flagText(tic), 'INTERLOCK · H-310 TUBE SKIN TRIP');
+  assert.equal(tic.mode, 'AUTO');
+  assert.equal(tic.op, 0, 'the interlock holds the output at its low limit');
+  assert.equal(s.obsOf(tic).quality, 'GOOD');
+  assert.ok(s.alarms.some((a) => a.tag === 'TIC311' && a.state === 'UNACK'), 'TIC311 has announced alarms');
+  assert.equal(sat(s, 'TIC311'), undefined, 'a real interlock hold raises no saturation card');
+  const hold2 = tic.trk;
+  tic.trk = { ...hold2, on: false };
+  assert.equal(sat(s, 'TIC311').title, 'TIC311 output saturated at 0%', 'without the interlock the card fires, so the interlock is the one thing that silences it');
+  tic.trk = hold2;
+  assert.equal(sat(s, 'TIC311'), undefined);
+});
+
+// CR22c: an initialised primary's output is the secondary's doing (runInitman overwrites it every scan), so the saturation card's advice
+// to take the loop to MAN is wrong for it; the INITMAN card and the flag already say why it sits at the limit.
+test('CR22c: an initialised primary at its limit raises the INITMAN card and no saturation card', () => {
+  const card = (b, id) => b.diagnose().find((x) => x.id === id);
+  const c = boot(4, 'OPER');                    // the D8 setup: a secondary setpoint beyond the cascade range pins the primary at 100 %
+  run(c, 30);
+  c.setMode('TIC202', 'AUTO');
+  c.storeEntry('TIC202', 'SP', 75);
+  assert.ok(run(c, 600, () => c.alarms.some((a) => a.tag === 'TIC201' && a.state === 'UNACK')), 'the heated jacket put TIC201 in announced alarm');
+  const t = c.L.TIC201;
+  assert.equal(t.init, true);
+  assert.equal(t.op, 100);
+  assert.equal(c.flagText(t), 'INITMAN · OP AT HI LIMIT');
+  assert.equal(c.obsOf(t).quality, 'GOOD', 'GOOD quality, at a limit, in alarm: everything else the card needs');
+  assert.equal(card(c, 'init.TIC201').title, 'TIC201 in INITMAN — cascade broken', 'the INITMAN card says why');
+  assert.equal(card(c, 'sat.TIC201'), undefined, 'an initialised primary is not saturated by a disturbance');
+  t.init = false;                               // the same loop, OP and alarms, with only the initialised flag changed on the record
+  assert.equal(card(c, 'sat.TIC201').title, 'TIC201 output saturated at 100%', 'so being initialised is the one thing that silences the card');
+  t.init = true;
+  assert.equal(card(c, 'sat.TIC201'), undefined);
+});
+
+// The card's own cases: a primary that saturates under its own control, neither held nor initialised, still gets it, at either limit.
+test('the saturation card still fires for a primary that saturates under its own control, at its low and at its high limit', () => {
+  const sat = (b, tag) => b.diagnose().find((x) => x.id === 'sat.' + tag);
+  const a = boot(4, 'OPER');                    // lost jacket cooling (the instructor's fault): TIC201 asks for all the cooling there is and runs out of range
+  run(a, 60);
+  a.injectFault('cool', true);
+  assert.ok(run(a, 600, () => sat(a, 'TIC201')), 'TIC201 saturated');
+  assert.equal(a.L.TIC201.mode, 'AUTO');
+  assert.equal(a.L.TIC202.mode, 'CAS', 'its secondary stays in CAS, so it is not initialised');
+  assert.equal(a.L.TIC201.init, false);
+  assert.equal(a.flagText(a.L.TIC201), '', 'neither held nor initialised: no flag');
+  assert.equal(a.L.TIC201.op, 0);
+  assert.equal(a.obsOf(a.L.TIC201).quality, 'GOOD');
+  assert.equal(sat(a, 'TIC201').title, 'TIC201 output saturated at 0%');
+
+  const b = boot(4, 'OPER');                    // a feed surge: LIC101 asks for all the outflow there is and runs out of range
+  run(b, 60);
+  b.injectFault('surge', true);
+  assert.ok(run(b, 1200, () => sat(b, 'LIC101')), 'LIC101 saturated');
+  assert.equal(b.L.LIC101.mode, 'AUTO');
+  assert.equal(b.L.FIC102.mode, 'CAS', 'its secondary stays in CAS and unheld, so it is not initialised');
+  assert.equal(b.L.LIC101.init, false);
+  assert.equal(b.flagText(b.L.LIC101), '');
+  assert.equal(b.L.LIC101.op, 100);
+  assert.equal(b.obsOf(b.L.LIC101).quality, 'GOOD');
+  assert.equal(sat(b, 'LIC101').title, 'LIC101 output saturated at 100%');
 });
 
 // CR23: the help answer keeps the broken-cascade case and adds the held one (the secondary already in CAS, its output held by the plant).
@@ -799,4 +876,74 @@ test('CR23: the INITMAN help answer keeps the broken-cascade case and says the s
   assert.match(a, /stopped pump or an interlock/);
   assert.match(a, /flag beside its mode line names the hold/);
   assert.match(a, /returns bumplessly when the hold clears/);
+});
+
+// CR24: the span a primary can command is its own OP range pushed through the cascade map, then cut to the secondary's SP limits.
+test('CR24: the cascade range reads the primary\'s own OP limits, and the CAS-return clamp lands on its upper edge', () => {
+  const c = boot(4, 'OPER');
+  assert.equal(c.casRange('TIC202'), '10.0–70.0 DEG C', 'at OP limits 0 to 100');
+  assert.equal(c.storeEntry('TIC201', 'OPHILM', 90), true);
+  assert.equal(c.L.TIC201.ophilm, 90);
+  assert.equal(c.casRange('TIC202'), '10.0–64.0 DEG C', 'the primary can no longer ask for more than 90 %: 10 + 0.6 * 90');
+  assert.equal(c.storeEntry('TIC201', 'OPLOLM', 10), true);
+  assert.equal(c.casRange('TIC202'), '16.0–64.0 DEG C', 'and its low edge follows OPLOLM: 10 + 0.6 * 10');
+  c.nav('detail', 'TIC201');
+  assert.match(c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC').value, /PRIMARY OF TIC202 · COMMANDS SP 16\.0–64\.0 DEG C/, 'Point Detail states the same range');
+  const hi = (b) => b.casRange('TIC202').split('–')[1].split(' ')[0];
+
+  const e = boot(4, 'OPER');                    // the fallbacks: a primary with no limits recorded, and a secondary with no master, span 0 to 100
+  e.L.TIC201.oplolm = null; e.L.TIC201.ophilm = null;
+  assert.equal(e.casRange('TIC202'), '10.0–70.0 DEG C', 'null limits');
+  e.L.TIC201.oplolm = 20; e.L.TIC201.ophilm = 80;
+  assert.equal(e.casRange('TIC202'), '22.0–58.0 DEG C', 'and a narrowed pair moves both edges');
+  delete e.L.TIC202.master;
+  assert.equal(e.casRange('TIC202'), '10.0–70.0 DEG C', 'no master');
+
+  const d = boot(4, 'OPER');                    // the D8 clamp with the narrowed limit: the journal lands on the row's upper edge, not on 70
+  d.storeEntry('TIC201', 'OPHILM', 90);
+  run(d, 30);
+  d.setMode('TIC202', 'AUTO');
+  assert.equal(d.storeEntry('TIC202', 'SP', 75), true);
+  run(d, 5);
+  assert.equal(d.L.TIC201.op, 90, 'the back-calculated output stops at the primary\'s own limit');
+  assert.equal(d.flagText(d.L.TIC201), 'INITMAN · OP AT HI LIMIT');
+  d.setMode('TIC202', 'CAS');
+  assert.equal(d.L.TIC202.sp, 64);
+  const ev = d.events.find((e) => e.src === 'TIC202' && e.desc === 'SP CLAMPED TO CASCADE RANGE');
+  assert.ok(ev, 'the clamp is journaled');
+  assert.deepEqual({ oldV: ev.oldV, newV: ev.newV }, { oldV: '75.0', newV: '64.0' });
+  assert.equal(ev.newV, hi(d), 'the journaled setpoint is the upper edge of the range the row states');
+});
+
+// CR25: a hold is a fact about the output, not the cascade. Every hold flavour sits on the Output row's note, after the limits; the
+// Cascade row's note carries only the INITMAN flavours.
+test('CR25: Point Detail puts every hold flavour on the Output row and only INITMAN on the Cascade row', () => {
+  const rowsOf = (b, tag) => { b.nav('detail', tag); const r = b.renderVals().dpt.mainRows; return { out: r.find((x) => x.param === 'OP'), casc: r.find((x) => x.param === 'CASC') }; };
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false); c.step(0.5);
+  let r = rowsOf(c, 'FIC102');                  // TRACK
+  assert.deepEqual({ out: r.out.note, casc: r.casc.value + ' | ' + r.casc.note }, { out: 'limits 0 – 100 · TRACK · P-101 STOPPED', casc: 'SECONDARY OF LIC101 | ' });
+  r = rowsOf(c, 'LIC101');                      // plain INITMAN: the primary of the held secondary
+  assert.deepEqual({ out: r.out.note, casc: r.casc.value + ' | ' + r.casc.note }, { out: 'limits 0 – 100', casc: 'PRIMARY OF FIC102 · COMMANDS SP 0.0–80.0 M3/H | INITMAN' });
+  c.setMode('FIC102', 'MAN'); c.step(0.5);
+  r = rowsOf(c, 'FIC102');                      // NOTE: the operator overrides the device hold
+  assert.equal(r.out.note, 'limits 0 – 100 · NOTE · P-101 STOPPED');
+  assert.equal(r.casc.note, '');
+
+  const d = boot(4, 'OPER');                    // INITMAN at a limit: the D8 pin
+  run(d, 30);
+  d.setMode('TIC202', 'AUTO');
+  d.storeEntry('TIC202', 'SP', 75);
+  run(d, 5);
+  r = rowsOf(d, 'TIC201');
+  assert.deepEqual({ out: r.out.note, casc: r.casc.value + ' | ' + r.casc.note }, { out: 'limits 0 – 100', casc: 'PRIMARY OF TIC202 · COMMANDS SP 10.0–70.0 DEG C | INITMAN · OP AT HI LIMIT' });
+  assert.equal(rowsOf(d, 'PIC401').out.note, 'limits 0 – 100', 'a loop with no flag says only its limits');
+
+  const s = boot(2, 'OPER');                    // INTERLOCK on a loop with no cascade at all: the hold is still on the Output row
+  run(s, 60);
+  s.L.TIC311.mode = 'MAN'; s.L.TIC311.op = 100;
+  assert.ok(run(s, 300, () => s.P.trips.skin), 'tube skin trip');
+  s.setMode('TIC311', 'AUTO'); s.step(0.5);
+  r = rowsOf(s, 'TIC311');
+  assert.deepEqual({ out: r.out.note, casc: r.casc.value + ' | ' + r.casc.note }, { out: 'limits 0 – 100 · INTERLOCK · H-310 TUBE SKIN TRIP', casc: 'NONE | ' });
 });

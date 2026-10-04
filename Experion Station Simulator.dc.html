@@ -2738,9 +2738,10 @@ class Component extends ESS.PlantCore(DCLogic) {
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
-    // A held output (ESS.Pid.tracking: the plant holds it for a stopped pump or an interlock) is not a disturbance exceeding
-    // the loop, and its flag already names the hold, so it raises no saturation card (CR22b).
-    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!ESS.Pid.tracking(l)&&ESS.Measurement.observe(l).quality==='GOOD'&&(l.op>=l.ophilm-0.2||l.op<=l.oplolm+0.2)){ const inAlm=announced.some(a=>a.tag===k); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
+    // A held output (ESS.Pid.tracking: the plant holds it for a stopped pump or an interlock) and an initialised primary's output
+    // (its secondary's doing: INITMAN overwrites it every scan) are not a disturbance exceeding the loop, and the flag and the
+    // INITMAN card already say why, so neither raises a saturation card (CR22b, CR22c).
+    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!ESS.Pid.tracking(l)&&!l.init&&ESS.Measurement.observe(l).quality==='GOOD'&&this.opLimitOf(l)){ const inAlm=announced.some(a=>a.tag===k); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
     // An initialised primary says why (CR22). A secondary out of CAS is a broken cascade. A secondary in CAS is held by the plant,
     // and the card names the same flag its faceplate shows. In CAS with no hold, init is one scan stale (the operator has just
     // returned it to CAS), so there is nothing to say.
@@ -3875,14 +3876,16 @@ class Component extends ESS.PlantCore(DCLogic) {
     let mainRows,tuneRows=[],almRows=[];
     if(isPid){
       const casR=dl.slave?this.casRange(dl.slave):'';   // the SP span this primary can command; empty when the cascade map has no entry
+      // A hold is a fact about the output, so it rides on the Output row; INITMAN is about the cascade, so it stays on the Cascade row (CR25).
+      const flagD=this.flagText(dl), holdD=/^(INTERLOCK|TRACK|NOTE) · /.test(flagD)?flagD:'', initD=/^INITMAN/.test(flagD)?flagD:'';
       mainRows=[
         mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':satNote),
         Object.assign(mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),{rowBg:calloutBg}),
-        Object.assign(mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)),{rowBg:calloutBg}),
+        Object.assign(mRow('Output','OP',this.fmt(dl.op,1)+' %',true,'limits '+this.fmt(dl.oplolm,0)+' – '+this.fmt(dl.ophilm,0)+(holdD?' · '+holdD:'')),{rowBg:calloutBg}),
         mRow('Mode attribute','MODEATTR',dl.modeAttr,false,dl.modeAttr==='PROGRAM'?'sequence owns SP/OP/MODE — operator stores are rejected':'operator may store SP/OP/MODE'),
         mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
         mRow('Bad-PV shed option','SHED',dl.shed,false,'sheds to MAN, holds last good OP'),
-        mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave+(casR?' · COMMANDS SP '+casR:'')):'NONE'),false,this.flagText(dl))
+        mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave+(casR?' · COMMANDS SP '+casR:'')):'NONE'),false,initD)
       ];
       const isa=ESS.Pid.isaForm(dl.K,dl.T1,dl.T2), inf=(v,d,u)=>v===Infinity?'∞':this.fmt(v,d)+u;
       tuneRows=[
