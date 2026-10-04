@@ -713,3 +713,48 @@ test('a primary whose secondary has no cascade map entry names its cascade witho
   assert.equal(cascOf('TIC202').value, 'SECONDARY OF TIC201');
   assert.deepEqual({ value: cascOf('PIC401').value, note: cascOf('PIC401').note }, { value: 'NONE', note: '' });
 });
+
+// CR22: the Live Diagnosis card tells the same truth as the flag. Since the plant started holding a secondary in CAS,
+// its primary is initialised without any cascade being broken; the card must not say it is.
+test('CR22: the INITMAN card says the secondary is held when it is in CAS under a hold, names the flag verbatim, and says cascade broken only when it left CAS', () => {
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false); c.step(0.5);
+  const card = (b) => b.diagnose().find((x) => x.id === 'init.LIC101');
+  const held = card(c);
+  assert.ok(held, 'LIC101 is initialised, so it has a card');
+  assert.equal(held.sev, 'INFO');
+  assert.equal(held.title, 'LIC101 in INITMAN — FIC102 is held');
+  assert.doesNotMatch(held.title, /cascade broken/);
+  assert.equal(held.why, 'Its secondary FIC102 is in CAS but its output is held (TRACK · P-101 STOPPED), so the primary is initialized and tracks for a bumpless return.');
+  assert.ok(held.why.includes(c.flagText(c.L.FIC102)), 'the card names the flag the faceplate shows, verbatim');
+  assert.deepEqual(held.steps.map((s) => s.t), ['Open FIC102 to see what holds it. The hold clears when its cause clears.']);
+  c.setState({ fps: [] });
+  held.steps[0].go();
+  assert.ok(c.state.fps.some((f) => f.tag === 'FIC102'), 'the one step opens the secondary\'s faceplate');
+
+  for (const mode of ['MAN', 'AUTO']) {        // the operator takes the secondary out of CAS, held or not: now the cascade is broken
+    c.setMode('FIC102', mode); c.step(0.5);
+    const broken = card(c);
+    assert.equal(broken.sev, 'INFO', mode);
+    assert.equal(broken.title, 'LIC101 in INITMAN — cascade broken', mode);
+    assert.equal(broken.why, 'Its secondary FIC102 is not in CAS, so the primary is initialized and tracks for a bumpless return.', mode);
+    assert.deepEqual(broken.steps.map((s) => s.t), ['Return FIC102 to CAS when ready.'], mode);
+    c.setState({ fps: [] });
+    broken.steps[0].go();
+    assert.ok(c.state.fps.some((f) => f.tag === 'FIC102'), 'and that step opens the secondary\'s faceplate too: ' + mode);
+  }
+  c.setMode('FIC102', 'CAS'); c.step(0.5);     // back in CAS with the pump still stopped: held again, not broken
+  assert.equal(card(c).title, 'LIC101 in INITMAN — FIC102 is held');
+
+  const d = boot(4, 'OPER');                    // an interlock holds the secondary: the card names that flag, not the pump's
+  loseCooling(d);
+  assert.ok(run(d, 2400, () => d.P.trips.rx), 'R-201 tripped');
+  assert.equal(d.flagText(d.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP');
+  assert.equal(card(d).title, 'LIC101 in INITMAN — FIC102 is held');
+  assert.equal(card(d).why, 'Its secondary FIC102 is in CAS but its output is held (INTERLOCK · R-201 HI TEMP TRIP), so the primary is initialized and tracks for a bumpless return.');
+
+  const e = boot(4, 'OPER');                    // init one scan stale: the secondary is back in CAS with no hold, so there is nothing to say
+  e.step(0.5);
+  e.L.LIC101.init = true;
+  assert.equal(card(e), undefined, 'neither a held card nor a cascade-broken one');
+});
