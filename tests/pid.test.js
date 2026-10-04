@@ -195,16 +195,19 @@ test('the derivative, the lastPv seed and the MAN tracker read the observed valu
 });
 
 test('output tracking holds OP at the target in AUTO with the integrator back-calculated, then resumes bumplessly', () => {
-  const l = mkLoop({ sp: 50, pv: 50, op: 60, I: 60, K: 1, T1: 1 });
-  Pid.setTracking(l, 0, 'P-101 STOPPED', 'device');
+  // PV 40 against SP 50 leaves a real proportional term (P = 10), so I = OP - P cannot pass for I = OP,
+  // and a target of 35 leaves a released loop nowhere to hide: it must continue from 35, not from 0.
+  const l = mkLoop({ sp: 50, pv: 40, op: 60, I: 60, K: 1, T1: 1 });
+  Pid.setTracking(l, 35, 'P-101 STOPPED', 'device');
   assert.equal(Pid.tracking(l), true);
   for (let i = 0; i < 20; i++) Pid.stepPid(l, 0.5);
-  assert.equal(l.op, 0);
-  assert.equal(l.I, 0 - l.K * Pid.loopError(l), 'I = OP - P');
+  assert.equal(l.op, 35);
+  assert.equal(l.I, 35 - l.K * Pid.loopError(l), 'I = OP - P');
   Pid.clearTracking(l);
   assert.equal(Pid.tracking(l), false);
   Pid.stepPid(l, 0.5);
-  assert.ok(Math.abs(l.op - 0) < 1, 'first scan after release starts from the tracked value: ' + l.op);
+  assert.ok(l.op > 35, 'the released loop controls again, from the tracked value up: ' + l.op);
+  assert.ok(l.op - 35 <= l.K * Pid.loopError(l) * 0.5 / (l.T1 * 60) + 1e-9, 'one integral step on, no bump: ' + l.op);
 });
 
 test('device tracking yields to the operator in MAN; interlock tracking does not', () => {
@@ -227,7 +230,7 @@ test('a tracking CAS secondary keeps following its master setpoint, and its prim
   Pid.setTracking(slave, 0, 'P-101 STOPPED', 'device');
   // The secondary steps first so it reads the primary's OP before INITMAN back-calculates it from the
   // secondary's SP: stepped master-first the pair holds still at SP 10 and following cannot show
-  // (the plant's primary-first order has its own test, last in this file).
+  // (the plant's primary-first order has its own test below).
   Pid.stepPid(slave, 0.5, ctx);
   Pid.stepPid(master, 0.5, ctx);
   assert.equal(slave.sp, 70, 'SP still follows the master while OP is held');
@@ -238,9 +241,10 @@ test('a tracking CAS secondary keeps following its master setpoint, and its prim
   assert.equal(master.init, false);
 });
 
-test('clearTracking on a loop that never tracked is a no-op and stepPid ignores a cleared record', () => {
+test('clearTracking on a loop that never tracked creates no record; an ordinary loop controls normally', () => {
   const l = mkLoop({ sp: 50, pv: 40, op: 50, I: 50, K: 1, T1: 1 });
   Pid.clearTracking(l);
+  assert.equal('trk' in l, false);
   assert.equal(Pid.tracking(l), false);
   Pid.stepPid(l, 0.5);
   assert.ok(l.op > 50, 'ordinary control action');
@@ -282,9 +286,29 @@ test('the tracking record is {on, target, reason, kind}; clearing empties it, ke
   assert.equal('trk' in never, false, 'clearing a loop that never tracked leaves it without a record');
 });
 
+test('a non-finite target is held at 0, inside the output limits, and never reaches OP or the integrator as NaN', () => {
+  for (const bad of [undefined, NaN, Infinity]) {
+    for (const oplolm of [0, 10]) {
+      const l = mkLoop({ sp: 50, pv: 40, op: 60, I: 60, K: 1, T1: 1, oplolm });
+      Pid.setTracking(l, bad, 'x', 'device');
+      assert.equal(l.trk.target, 0, 'stored as 0: ' + bad);
+      for (let i = 0; i < 3; i++) Pid.stepPid(l, 0.5);
+      assert.equal(l.op, oplolm, 'held at the clamped 0 (OPLOLM ' + oplolm + '): ' + bad);
+      assert.ok(Number.isFinite(l.I), 'integrator finite while held: ' + bad);
+      Pid.clearTracking(l);
+      for (let i = 0; i < 10; i++) {
+        Pid.stepPid(l, 0.5);
+        assert.ok(Number.isFinite(l.op) && Number.isFinite(l.I), 'no NaN after the release, scan ' + i + ': ' + bad);
+      }
+    }
+  }
+});
+
 // The plant steps a primary before its secondary. Then the pair holds still while the secondary tracks:
 // the primary's OP is back-calculated from the secondary's SP, which the secondary takes straight back.
 // The primary has a standing error here, so one that is not back-calculated would wind up to its limit.
+// This is the pair without PV tracking. FIC102 and TIC213 carry pvtrack: their SP follows their PV while held, so
+// their primary does not hold still but follows invMap(secondary PV) (the pvtrack test below).
 test('in the plant scan order the primary of a tracking secondary holds still instead of winding up, then takes over bumplessly', () => {
   const master = mkLoop({ tag: 'M', slave: 'S', act: 'DIR', sp: 50, pv: 70, op: 30, I: 30, K: 1.5, T1: 3 });
   const slave = mkLoop({ tag: 'S', master: 'M', mode: 'CAS', sp: 30, pv: 30, op: 30, I: 30 });
@@ -300,4 +324,32 @@ test('in the plant scan order the primary of a tracking secondary holds still in
   assert.equal(master.init, false);
   const maxMove = 1.5 * Math.abs(Pid.loopError(master)) * 0.5 / (3 * 60);
   assert.ok(Math.abs(master.op - 30) <= maxMove + 1e-9, 'the primary resumes from where it held: ' + master.op);
+});
+
+// LIC101 over FIC102 as the plant has them (the maps, the ranges, pvtrack on the secondary). The pump stops: the
+// flow decays toward 0, the secondary's SP follows it down, and the primary's OP follows invMap of that SP down,
+// instead of holding still. Sound all the same: the primary has a standing error and does not wind up, nothing
+// goes NaN, and the release is bumpless.
+test('with a pvtrack secondary the primary follows the secondary PV down while it tracks, with no wind-up and no NaN', () => {
+  const master = mkLoop({ tag: 'LIC101', slave: 'FIC102', act: 'DIR', sp: 50, pv: 70, op: 50, I: 50, K: 1.5, T1: 3, sphilm: 95, splolm: 5 });
+  const slave = mkLoop({ tag: 'FIC102', master: 'LIC101', mode: 'CAS', pvtrack: true, hi: 120, sp: 60, pv: 60, op: 50, I: 50, K: 0.4, T1: 0.15, sphilm: 80, splolm: 0 });
+  const ctx = { loops: { LIC101: master, FIC102: slave }, casMap: { FIC102: (op) => op * 1.2 }, invMap: { FIC102: (sp) => sp / 1.2 } };
+  Pid.setTracking(slave, 0, 'P-101 STOPPED', 'device');
+  let prev = master.op;
+  for (let i = 0; i < 600; i++) {
+    Pid.stepPid(master, 0.5, ctx); Pid.stepPid(slave, 0.5, ctx);
+    slave.pv += (0 - slave.pv) * 0.5 / 5;
+    for (const v of [master.op, master.I, slave.sp, slave.op, slave.I]) assert.ok(Number.isFinite(v), 'finite at scan ' + i);
+    assert.ok(master.op <= prev + 1e-9, 'the primary only falls: ' + master.op + ' after ' + prev);
+    prev = master.op;
+  }
+  assert.equal(master.init, true);
+  assert.ok(master.op < 0.01, 'the primary is at invMap(0), not wound up: ' + master.op);
+  assert.equal(slave.op, 0);
+  const held = master.op;
+  Pid.clearTracking(slave);
+  Pid.stepPid(master, 0.5, ctx);
+  assert.equal(master.init, false);
+  const maxMove = 1.5 * Math.abs(Pid.loopError(master)) * 0.5 / (3 * 60);
+  assert.ok(Math.abs(master.op - held) <= maxMove + 1e-9, 'the primary resumes from where it held: ' + master.op);
 });

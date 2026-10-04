@@ -32,15 +32,20 @@
  *     - tracking (see tracking(loop)): a CAS loop still takes its SP from the
  *       master first; then OP is held at clamp(trk.target, OPLOLM, OPHILM),
  *       the integrator tracks OP so the release is bumpless, and with pvtrack
- *       the SP follows PV. Nothing else runs on that scan.
+ *       the SP follows PV. Nothing else runs on that scan. A primary that is
+ *       running INITMAN never reaches this branch on that scan, so a request
+ *       of its own is ignored while it back-calculates (the planned callers
+ *       are never primaries).
  *     - MAN / bad PV: no control action; integrator tracks op so a later
  *       transfer to AUTO is bumpless; with pvtrack the SP tracks PV
  *       (PVTRACK-style option: SP follows PV in MAN so AUTO starts at
  *       zero error).
  *   transferMode(loop, newMode, ctx) -> {ok, reason}   bumpless MAN->AUTO,
  *     AUTO->CAS, etc.: the integrator is re-initialised so the first AUTO/
- *     CAS output equals the current OP. Does not gate on security; the
- *     app does that. Refuses CAS without a master and non-MAN with bad PV.
+ *     CAS output equals the current OP, while no tracking request is in
+ *     force (a tracking loop holds its target on the next scan instead).
+ *     Does not gate on security; the app does that. Refuses CAS without a
+ *     master and non-MAN with bad PV.
  *   canOperatorWrite(loop, param) -> boolean   PROGRAM mode attribute:
  *     while modeAttr is 'PROGRAM' the sequence owns SP, OP and MODE, so
  *     operator writes to those are denied; engineering parameters (K, T1,
@@ -56,10 +61,12 @@
  *     controller cannot see what the transmitter cannot send (CREDIBILITY-PASS-SPEC 2.3),
  *     so the error, the derivative, lastPv and PV tracking all act on it.
  *   setTracking(loop, target, reason, kind)   the plant tells the loop to hold its output at
- *     target for a reason (the operator-facing text, e.g. 'P-101 STOPPED'). kind is 'interlock'
- *     (holds in every mode) or 'device' (device feedback: yields to the operator in MAN); any
- *     other kind is taken as 'device'. Stored as loop.trk = {on, target, reason, kind}. The
- *     module is told; it never decides who tracks (CREDIBILITY-PASS-SPEC 3.1).
+ *     target for a reason (the operator-facing text, e.g. 'P-101 STOPPED'). A non-finite target
+ *     (undefined, NaN, Infinity) is stored as 0, so a bad value can never reach OP as NaN; the
+ *     hold is clamp(target, OPLOLM, OPHILM) either way. kind is 'interlock' (holds in every
+ *     mode) or 'device' (device feedback: yields to the operator in MAN); any other kind is
+ *     taken as 'device'. Stored as loop.trk = {on, target, reason, kind}. The module is told;
+ *     it never decides who tracks (CREDIBILITY-PASS-SPEC 3.1).
  *   clearTracking(loop)   release the hold: trk.on goes false, target and reason are emptied,
  *     kind is kept. A loop that never tracked is left exactly as it was.
  *   tracking(loop) -> boolean   true when a tracking request is in force for this scan: kind
@@ -155,9 +162,11 @@
 
   // Output tracking (spec §3.1): the plant tells a loop to hold its output at a target with a
   // reason. An interlock holds in every mode; a device-feedback hold yields to the operator in MAN.
-  // The module is told, it never decides who tracks.
+  // The module is told, it never decides who tracks. A target that is not a finite number is held at 0
+  // (inside the output limits, as any target is) rather than let NaN into OP and the integrator.
   function setTracking(loop, target, reason, kind) {
-    loop.trk = { on: true, target: target, reason: String(reason || ''), kind: kind === 'interlock' ? 'interlock' : 'device' };
+    var t = Number.isFinite(target) ? target : 0;
+    loop.trk = { on: true, target: t, reason: String(reason || ''), kind: kind === 'interlock' ? 'interlock' : 'device' };
   }
   function clearTracking(loop) {
     if (loop.trk && loop.trk.on) loop.trk = { on: false, target: null, reason: '', kind: loop.trk.kind };
