@@ -814,10 +814,10 @@
     const ctx=this.pidCtx(), f=ctx.casMap[slaveTag], s=this.L[slaveTag];
     if(!f||!s) return '';
     const m=s.master?this.L[s.master]:null;
-    const a=f(m&&m.oplolm!=null?m.oplolm:0), b=f(m&&m.ophilm!=null?m.ophilm:100), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
-    // Cut to the secondary's SP limits, then the low edge to the high one: a primary narrowed past the secondary's limit can only ask for that limit,
-    // and says so (80.0–80.0), never an inverted span (84.0–80.0).
-    const lo=Math.min(Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi);
+    const a=f(m&&m.oplolm!=null?m.oplolm:0), b=f(m&&m.ophilm!=null?m.ophilm:100), sl=s.splolm!=null?s.splolm:s.lo, sh=s.sphilm!=null?s.sphilm:s.hi;
+    // Both ends are cut into the secondary's SP limits, as followMaster cuts the setpoint: a primary narrowed past either limit can only ask for that
+    // limit and says so (80.0–80.0 above SPHILM, 30.0–30.0 below SPLOLM), never an inverted span (84.0–80.0) or one that lies outside them (24.0–24.0).
+    const into=(x)=>Math.max(sl,Math.min(sh,x)), hi=into(Math.max(a,b)), lo=Math.min(into(Math.min(a,b)),hi);
     return this.fmt(lo,s.dec)+'–'+this.fmt(hi,s.dec)+' '+s.eu;
   }
   phaseSets(){
@@ -1144,7 +1144,9 @@
     if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return true;
     const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.journal('STORE',tag,this.fmt(v,3),{param}); };
     // configuration stores are MOC entries (CONFIG event with old / new, name, level, reason); tuning and trip points are signed
-    const cfg=(oldV,apply,what,reason)=>{ apply(); this.configChange(tag,what+' CHANGE',this.fmt(oldV,2),this.fmt(v,2),reason||''); this.journal('STORE',tag,this.fmt(v,3),{param}); };
+    // The journal is what a replay reads back, so a trip-point store is journaled at its exact value (CR38): fmt(v,3) turned a limit stored on a window
+    // edge, 257.8125, into 257.813, over the edge. The MOC event keeps its display formatting. Every other store keeps the three decimals.
+    const cfg=(oldV,apply,what,reason)=>{ apply(); this.configChange(tag,what+' CHANGE',this.fmt(oldV,2),this.fmt(v,2),reason||''); this.journal('STORE',tag,param.startsWith('TP:')?String(v):this.fmt(v,3),{param}); };
     if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); this.taskDone('ctl.sp'); return true; }
     if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o); this.taskDone('ctl.op');
       if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
@@ -1154,7 +1156,9 @@
       // limit below its bottom are refused before the signature: message zone only, no event, no MOC record. The edge itself is live (a saturated
       // reading sits on it and the alarm tests >=, LO <=) and is accepted. The message prints the enforced edges exactly, through fmt at the
       // point's decimals or as many more as that takes, so no entry it permits is refused. A deviation limit is a PV-SP difference, not a reported value.
-      const win=ESS.Measurement.rangeOf(l);
+      // A replay does not run the check (CR38): it reproduces what the live run accepted, as can() and the signature already stand aside for it, so an
+      // entry journaled by an earlier build with its edge rounded over the window still applies.
+      const win=this._replayApplying?null:ESS.Measurement.rangeOf(l);
       if(win&&(((c==='PVHI'||c==='PVHH')&&v>win.reportingUpper)||((c==='PVLO'||c==='PVLL')&&v<win.reportingLower))){
         const edge=(x)=>{ let d=l.dec||0; while(d<6&&Math.abs(Number(x.toFixed(d))-x)>1e-9) d++; return this.fmt(x,d); };
         this.msgZone('ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW '+edge(win.reportingLower)+'–'+edge(win.reportingUpper)); return false;

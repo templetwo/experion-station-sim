@@ -622,6 +622,8 @@ git push
 
 > **As built (2026-10-04, S1 close):** the CAS test steps the secondary first and the primary second. The master-first order in the test above cannot pass: INITMAN back-calculates the master's OP from the slave's SP before the slave follows, so the pair holds still at SP 10 and the following cannot show. The plant's own order, primary first, has a separate test (`in the plant scan order the primary of a tracking secondary holds still instead of winding up, then takes over bumplessly`). `setTracking` coerces a non-finite target to 0 (CR17: the module's safe default, the output clamp still applies) and says so in its header, with a test; the `clearTracking` test also asserts that a loop that never tracked gains no `trk` record.
 
+> **As built (2026-10-04, final review wave):** the `tracking(loop)` line in the snippet above clamps every hold; since CR34 an interlock-kind hold holds the raw target, `loop.op = loop.trk.kind === 'interlock' ? loop.trk.target : clampOp(loop, loop.trk.target)`, because the plant forces the valve to an interlock's position whatever the loop's output limits (`VALVE_TARGET` in `src/models.js`), so OP must read the valve (D10) even where OPLOLM sits above it. Only a device hold stays inside OPLOLM and OPHILM, and the CR17 note above ("the output clamp still applies") is true of a device hold only.
+
 ---
 
 ### Task 6: The plant decides who tracks (`forcedOutputs`), and the OP refusal (D1, D10)

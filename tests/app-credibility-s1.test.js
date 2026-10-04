@@ -1470,6 +1470,21 @@ test('M4: a narrowed primary prints an honest cascade span, never an inverted on
   assert.match(c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC').value, /PRIMARY OF FIC102 · COMMANDS SP 80\.0–80\.0 M3\/H/);
   assert.equal(c.storeEntry('LIC101', 'OPLOLM', 60), true);
   assert.equal(c.casRange('FIC102'), '72.0–80.0 M3/H', 'a span that still has width is unchanged: 60 % maps to 72');
+  // N2 (re-review): the other side. FIC102 SPLOLM 30 and LIC101 OPHILM 20: the primary maps to 0 to 24 M3/H, wholly below the secondary's SP floor, and the
+  // loop sits at SP 30.00 in CAS (followMaster clamps into SPLOLM..SPHILM), so the span reads 30.0–30.0, not 24.0–24.0. Both ends are cut into the SP limits.
+  const d = boot(4, 'OPER');
+  assert.equal(d.storeEntry('FIC102', 'SPLOLM', 30), true);
+  assert.equal(d.storeEntry('LIC101', 'OPHILM', 20), true);
+  assert.equal(d.L.FIC102.splolm, 30);
+  assert.equal(d.L.LIC101.ophilm, 20);
+  run(d, 10);
+  assert.equal(d.L.FIC102.mode, 'CAS');
+  assert.equal(d.L.FIC102.sp, 30, 'FIC102 sits at its SP floor in CAS');
+  assert.equal(d.casRange('FIC102'), '30.0–30.0 M3/H');
+  d.nav('detail', 'LIC101');
+  assert.match(d.renderVals().dpt.mainRows.find((r) => r.param === 'CASC').value, /PRIMARY OF FIC102 · COMMANDS SP 30\.0–30\.0 M3\/H/);
+  assert.equal(d.storeEntry('LIC101', 'OPHILM', 50), true);
+  assert.equal(d.casRange('FIC102'), '30.0–60.0 M3/H', 'a span that straddles the floor is cut at it: 0 to 60 M3/H becomes 30 to 60');
 });
 
 // M6 (whole-branch review): "Why can I not change OP?" told every trainee to click MAN, including one already in MAN under a trip, where the
@@ -1477,17 +1492,25 @@ test('M4: a narrowed primary prints an honest cascade span, never an inverted on
 test('M6: the "Why can I not change OP?" answer keeps its sentences and says an interlock holds the output in MAN too', () => {
   const a = boot(1).topics().find((t) => t.t === 'Why can I not change OP?').a;
   assert.ok(a.startsWith('OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'), 'the existing sentences are kept: ' + a);
+  // N3 (re-review): true for the TI216 shed as well, whose refusal is worded differently and which shows no flag: the sentence says the message names
+  // the cause and gives the flag to an interlock hold only
   assert.equal(a.slice('OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'.length),
-    ' Under an interlock the output is held and an OP write is refused, even in MAN, until the trip clears (the Message Zone shows OUTPUT INTERLOCKED, and the flag beside the mode line names the hold).');
-  // and what it says is what the page does: in MAN under the R-201 trip the write is refused with that wording
+    ' Under an interlock or a shed the output is held and an OP write is refused, even in MAN, until the cause clears; the Message Zone names the cause, and the flag beside the mode line names an interlock hold.');
+  // and what it says is what the page does: in MAN under the R-201 trip the write is refused, the message names the interlock and the flag the hold
   const c = boot(4, 'OPER');
   loseCooling(c);
   assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped at 185 C');
   c.setMode('FIC102', 'MAN');
   assert.equal(c.L.FIC102.mode, 'MAN');
   c.storeEntry('FIC102', 'OP', 80);
-  assert.match(c.state.msg, /OUTPUT INTERLOCKED/);
-  assert.match(c.flagText(c.L.FIC102), /^INTERLOCK · /);
+  assert.equal(c.state.msg, 'ENTRY REJECTED — OUTPUT INTERLOCKED (R-201 HI TEMP TRIP)');
+  assert.equal(c.flagText(c.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP');
+  // and under the TI216 urgent shed the write is refused too, the message names that cause, and there is no flag
+  const d = boot(4, 'OPER');
+  d.tadShed = true;
+  d.storeEntry('FIC211', 'OP', 20);
+  assert.equal(d.state.msg, 'FIC211: TI216 URGENT INTERLOCK — OP HELD BY SHED (MAN, OP 0)');
+  assert.equal(d.flagText(d.L.FIC211), '', 'the shed holds FIC211 through its own latch and shows no flag (a deferred design item)');
 });
 
 // M5 (whole-branch review): the alarm scan raises and clears with the observed value (pvOf), but three writes that put a value into an alarm record
@@ -1525,4 +1548,73 @@ test('M5: the alarm records the three paths wrote carry the observed value, not 
   d.L.TIC202.pv = 120; d.measure();
   d.parkDisabled('TIC202', 'PVHI', 'ASSET:TEST');
   assert.equal(d.alarmEngine.get('TIC202.PVHI').val, 103.125);
+});
+
+// N1, ruling CR38 (re-review of the wave): an alarm limit stored exactly on a window edge that needs more than three decimals was accepted live and
+// refused on replay. The STORE journal entry wrote the value with fmt(v, 3), the replay called storeEntry(Number(arg)) with the rounded value
+// (257.8125 journaled as 257.813), and withSignature runs the store directly during a replay, so the CR35 window check ran on a value over the edge and
+// the limit stayed where it was. Two halves: a TP: store is journaled at its exact value (the journal is the record of what was stored; the MOC event
+// keeps its display formatting), and the window check does not run while a replay applies, since a replay reproduces what the live run accepted (as
+// can() and the signature already do).
+test('N1, CR38: a limit stored on a window edge that needs more than three decimals replays as stored, and the edge is still the edge', () => {
+  // each edge is exact in binary and needs four decimals: lo - 1.25 % and hi + 3.125 % of span; the last column is one step over it
+  const edges = [['TIC301', 'PVHH', 257.8125, 257.8126], ['TIC212', 'PVHH', 154.6875, 154.6876], ['TIC213', 'PVHI', 134.0625, 134.0626], ['AI316', 'PVLO', -0.2625, -0.2626]];
+  const c = boot(4, 'ENGR');
+  run(c, 10);
+  c.saveSlot(3, 'edges');
+  run(c, 5);
+  for (const [tag, cond, edge, over] of edges) {
+    const before = c.L[tag].alm[cond][0];
+    assert.equal(c.storeEntry(tag, 'TP:' + cond, over), false, tag + ' ' + cond + ' ' + over + ': one step over the edge is refused live');
+    assert.match(c.state.msg, /ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW/);
+    assert.equal(c.L[tag].alm[cond][0], before, tag + ' ' + cond + ': unchanged by the refusal');
+    storeTripPoint(c, tag, cond, edge);          // the edge itself is accepted live, through the signature
+    run(c, 2);
+  }
+  // the journal records the stored value exactly: what a replay reads is what was stored
+  for (const [tag, cond, edge] of edges) {
+    const e = c.instr.journal.filter((x) => x.op === 'STORE' && x.tag === tag && x.param === 'TP:' + cond).pop();
+    assert.ok(e, tag + ' ' + cond + ' is journaled');
+    assert.equal(Number(e.arg), edge, tag + ' ' + cond + ': the journal holds ' + e.arg);
+  }
+  run(c, 20);
+  const seen = [], msgZone = c.msgZone.bind(c);
+  c.msgZone = (t) => { seen.push(t); msgZone(t); };
+  c.startReplay(3);
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null, 'the replay ran to its end');
+  for (const [tag, cond, edge] of edges) assert.equal(c.L[tag].alm[cond][0], edge, tag + ' ' + cond + ' replayed as stored');
+  assert.deepEqual(seen.filter((t) => /LIMIT OUTSIDE REPORTING WINDOW/.test(t)), [], 'no refusal while the replay applied the stores');
+  assert.doesNotMatch(c.state.msg || '', /LIMIT OUTSIDE REPORTING WINDOW/);
+  c.msgZone = msgZone;
+  // the edge is still the edge after the replay
+  for (const [tag, cond, , over] of edges) assert.equal(c.storeEntry(tag, 'TP:' + cond, over), false, tag + ' ' + cond + ' ' + over + ': still refused live');
+  // the other STORE entries keep their journal format: only the trip-point store is exact
+  c.storeEntry('TIC201', 'ALMDB', 2);
+  assert.equal(c.instr.journal.filter((x) => x.op === 'STORE' && x.param === 'ALMDB').pop().arg, '2.000');
+});
+
+test('N1, CR38: the window check does not run while a replay applies: a journal entry an earlier build rounded to 257.813 still applies', () => {
+  const c = boot(4, 'ENGR');
+  run(c, 10);
+  c.saveSlot(3, 'legacy');
+  run(c, 5);
+  c.journal('STORE', 'TIC301', '257.813', { param: 'TP:PVHH' });   // what the previous build wrote for a live store of 257.8125: fmt(v, 3)
+  run(c, 5);
+  assert.equal(c.L.TIC301.alm.PVHH[0], 215, 'the live plant never took that store: only the journal carries it');
+  const seen = [], msgZone = c.msgZone.bind(c);
+  c.msgZone = (t) => { seen.push(t); msgZone(t); };
+  c.startReplay(3);
+  c.replayToEnd();
+  assert.equal(c.instr.replay, null);
+  assert.equal(c.L.TIC301.alm.PVHH[0], 257.813, 'applied as journaled, not refused and left at 215');
+  assert.deepEqual(seen.filter((t) => /LIMIT OUTSIDE REPORTING WINDOW/.test(t)), []);
+  c.msgZone = msgZone;
+  // live, on a plant that has not replayed it, the same value is still over the edge (the replayed plant already holds it, and a store of the value a limit
+  // already has is a no-op), and so is anything else over it
+  const d = boot(4, 'ENGR');
+  assert.equal(d.storeEntry('TIC301', 'TP:PVHH', 257.813), false);
+  assert.match(d.state.msg, /ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW -3\.125–257\.8125/);
+  assert.equal(c.storeEntry('TIC301', 'TP:PVHH', 257.9), false, 'and on the replayed plant a different value over the edge is refused');
+  assert.equal(c.L.TIC301.alm.PVHH[0], 257.813);
 });

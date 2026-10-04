@@ -296,11 +296,23 @@ test('an interlock holds the raw target, outside OPLOLM and OPHILM, with the int
   Pid.stepPid(man, 0.5);
   assert.equal(man.trk.target, 0);
   assert.equal(man.op, 0, 'in MAN, with OPLOLM 10, the interlocked output is still 0');
-  // the release is clamped by the ordinary scan: from a held 0 under OPLOLM 20 the first controlled output is the limit
+  // the release is the ordinary scan, clamped into the limits, and its values are exact: PV 40 against SP 50 leaves P = 10, and the integrator tracked the
+  // held output (I = OP - P). From the held 0 under OPLOLM 20 the scan gives P + I = 0 plus one integral increment of 0.083, up to OPLOLM 20, with the
+  // integrator back-calculated to OP - P = 10. From the held 90 over OPHILM 80 it gives 90, down to OPHILM 80, with the integrator back-calculated to 70.
+  // Either way the next scan starts from the output the loop really has
+  const low = mk();
+  Pid.setTracking(low, 0, 'R-201 HI TEMP TRIP', 'interlock');
+  Pid.stepPid(low, 0.5);
+  assert.equal(low.I, -10);
+  Pid.clearTracking(low);
+  Pid.stepPid(low, 0.5);
+  assert.equal(low.op, 20, 'released from a held 0, the first output is OPLOLM');
+  assert.equal(low.I, 10, 'with the integrator back-calculated to it');
   Pid.clearTracking(il);
   il.mode = 'AUTO';
   Pid.stepPid(il, 0.5);
-  assert.ok(il.op >= 20 && il.op <= 80, 'released, the loop is inside its limits again: ' + il.op);
+  assert.equal(il.op, 80, 'released from the held 90, the first output is OPHILM');
+  assert.equal(il.I, 70);
 });
 
 test('the tracking record is {on, target, reason, kind}; clearing empties it, keeps the kind, and never creates one', () => {
