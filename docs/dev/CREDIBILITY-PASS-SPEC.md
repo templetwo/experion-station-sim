@@ -114,12 +114,32 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
 - **CR22.** The Live Diagnosis card tells the same truth as the flag: an initialised primary whose
   secondary is not in CAS keeps the "cascade broken" card; one whose secondary is in CAS and held
   gets a card that says the secondary is held and names the flag text, with its step pointing at
-  the secondary's faceplate.
+  the secondary's faceplate. A secondary in CAS with no hold raises no card (a one-scan
+  transient).
 - **CR22b.** The output-saturated diagnosis card is withheld for a loop whose output the plant
   holds: a held output is not a disturbance exceeding the loop, and the flag names the hold.
 - **CR23.** The page's "What is INITMAN?" help answer knows the held case (the secondary may be
   in CAS with its output held; the flag names the hold; the primary returns bumplessly when it
   clears). The coach corpus under `tools/coach/` stays S5's, as CR13 ruled.
+- **CR22c.** The output-saturated card is also withheld for an initialised primary: its output is
+  back-calculated, not driven by a disturbance, and the INITMAN card and the flag already say why.
+- **CR24.** The cascade range the Point Detail states is `casMap(OPLOLM)` to `casMap(OPHILM)` of
+  the primary, cut to the secondary's SP limits, so the row stays true when an engineer narrows
+  the primary's output limits; §3.5 amended.
+- **CR25.** In Point Detail the hold flavours of the flag (`INTERLOCK`, `TRACK`, `NOTE`) sit on
+  the Output row's note, after the limits, because a hold is a fact about the output and every
+  loop has an Output row; the Cascade row keeps the INITMAN flavours. The faceplate flag stays
+  beside the mode line; §3.4 amended.
+- **CR26.** The faceplate flag may wrap (three lines at 10 px for the longest interlock reason):
+  legible, nothing clips, and the reason stays whole, where an ellipsis would hide it. Logged
+  below as a design item.
+
+Design items deferred to the intake doc (§1.5), recorded here until it exists:
+
+- A saturation cue on the graphic that does not sit under text (CR12b).
+- The faceplate flag row's wrapping under a long interlock reason (CR26).
+- The help-answer keyword `man` matches inside `initman`, so "What is INITMAN?" also shows the
+  "Why can't I change OP?" answer (pre-existing; S5's assistant pass).
 
 ---
 
@@ -228,12 +248,15 @@ possible and drill D3 can teach it); in AUTO and CAS the entry path already refu
 3.4 **Indication.** The faceplate and Point Detail show one flag beside the mode line, where
 INITMAN shows today: `INTERLOCK · R-201 HI TEMP TRIP`, `TRACK · P-101 STOPPED`, or
 `INITMAN · OP AT HI LIMIT` when a primary's back-calculated output sits at its limit. The
-displayed OP is the tracked value, so OP equals the valve (D10).
+displayed OP is the tracked value, so OP equals the valve (D10). In Point Detail the hold flavours
+(`INTERLOCK`, `TRACK`, `NOTE`) sit on the Output row's note and the INITMAN flavours on the
+Cascade row (CR25).
 
 3.5 **D8 is indication, not dynamics.** `runInitman` already back-calculates. The cascade map
 `casMap.TIC202` commands TIC202 between 10 and 70 °C, so an operator setpoint of 75 pins TIC201 at
 100 % and a return to CAS clamps the setpoint to 70. Changes: the `OP AT HI LIMIT` flag; Point
-Detail's cascade row states the commandable range from the map (`casMap(0)` to `casMap(100)`);
+Detail's cascade row states the commandable range from the map (`casMap(OPLOLM)` to
+`casMap(OPHILM)` of the primary, cut to the secondary's SP limits; CR24);
 a return to CAS that clamps the setpoint journals `SP CLAMPED TO CASCADE RANGE 70.0` and says so
 in the message zone. Widening the map is a dynamics change and is logged to the intake doc.
 
