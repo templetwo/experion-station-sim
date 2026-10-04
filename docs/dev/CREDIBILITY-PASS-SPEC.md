@@ -133,6 +133,16 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
 - **CR26.** The faceplate flag may wrap (three lines at 10 px for the longest interlock reason):
   legible, nothing clips, and the reason stays whole, where an ellipsis would hide it. Logged
   below as a design item.
+- **CR27.** `tests/g2-lifecycle.test.js` compared the archived 3.1.0-era kernel and the current
+  kernel in lockstep for 12 ticks after restoring a v1 checkpoint. That clause proved G2 left
+  legacy dynamics untouched, which S1 breaks on purpose (CR10, the observed value feeding the
+  controllers, plant-held outputs). The restore semantics and the post-advance invariants stay
+  exact; the lockstep field comparison is removed, with `tests/fixtures/v31-baseline/` as the
+  frozen 3.1.0 behaviour.
+- **CR28.** The ladder's critical-alarm note is true per point: `pre-trip alarm` on the side of a declared
+  trip, `trip point` where the critical alarm is itself the trip or interlock condition in
+  code (a short verified list on the page), `critical alarm` elsewhere; §3.6 amended and
+  `src/philosophy.js` reworded to match.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -260,9 +270,11 @@ Detail's cascade row states the commandable range from the map (`casMap(OPLOLM)`
 a return to CAS that clamps the setpoint journals `SP CLAMPED TO CASCADE RANGE 70.0` and says so
 in the message zone. Widening the map is a dynamics change and is logged to the intake doc.
 
-3.6 **D9.** The Point Detail ladder labels PVHH and PVLL `pre-trip alarm` and adds a `trip` row
-whose value comes from the W2 declaration for that source (185 °C for R-201 from
-`src/cause-effect.js`), so the number can never disagree with the code. The drill debrief's
+3.6 **D9.** The Point Detail ladder adds a `trip` row whose value comes from the W2 declaration
+for that source (185 °C for R-201 from `src/cause-effect.js`), so the number can never disagree
+with the code, and labels the critical alarm on that trip's side `pre-trip alarm` (every declared trip is
+high-side, so PVHH; the other side reads `critical alarm`), `trip point` where the critical alarm is
+itself the trip or interlock condition in code, and `critical alarm` elsewhere (CR28). The drill debrief's
 "trip avoided" line states the margin to the documented trip point.
 
 ---
@@ -512,7 +524,8 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | upset-cool, drill-D4, upset-stick, any run where TIC202 reaches a window edge (saturates) | §2 saturation (D7) |
 | runs with Urgent level alarms (overflow runs) | §6.1 (R2) |
 | runs where an interlock in the §3.2 table holds a loop: the R-201 trip on FIC102 (upset-cool, drill-D4), the R-310 bed trip on TIC311 (drill-D12, upset-bedact), the R-202 trip on FIC211 and TIC213 | §3 interlock tracking (D10); measured at Task 6 (CR19) |
-| every v2 fixture, every arch fixture, and the g2-lifecycle archived-run comparison | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
+| drill-D2, drill-D6, drill-D9, drill-D11 | §3.6 debrief margin (D9): the drill goldens digest `score.breakdown[].note`, which now carries the peak against the declared trip; measured at Task 8 |
+| every v2 fixture and every arch fixture (the g2-lifecycle archived-kernel lockstep clause is re-scoped, not re-captured: CR27) | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
 
 Nothing may move for a reason outside this table; a fixture that moves for another reason is a finding,
 not a re-capture. Because the cutoff moves every fixture, the stage's closing task first archives the
