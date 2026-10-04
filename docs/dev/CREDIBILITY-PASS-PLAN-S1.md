@@ -950,7 +950,7 @@ git push
 
 ---
 
-### Task 8: The ladder tells the truth about the trip, and the debrief states the margin (D9)
+### Task 8: The ladder tells the truth about the trip, and the debrief states the margin (playtest D9)
 
 **Files:**
 - Modify: `src/plant-core.js` (new `tripOfPoint`, `tripLimitOf` beside `tripPointOf` at line 1000 area)
