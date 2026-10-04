@@ -306,7 +306,7 @@ function run(c, seconds, until) { for (let i = 0; i < seconds * 2; i++) { c.step
 // Jacket cooling lost by the operator's own hand: TIC202 to MAN, OP 0, exactly the playtest's D7 repro.
 function loseCooling(c) { c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 0); }
 
-test('D7: the jacket transmitter saturates at its reporting limit and the cascade primary sees the saturated value', () => {
+test('D7: the jacket transmitter saturates at its reporting limit and the loop record tracks the observed value', () => {
   const c = boot(4, 'OPER');
   loseCooling(c);
   assert.ok(run(c, 1800, () => c.L.TIC202.pv > 110), 'the jacket model exceeded 110 C');
@@ -416,7 +416,7 @@ git push
 
 **Interfaces:**
 - Consumes: `l.obs`, `l.pvObs` from Task 3.
-- Produces: `Component.prototype.pvShown(l) -> number`, `hatchOp(l) -> 0 | 0.45 | 0.85`, `fmt(v, dec)` without negative zero.
+- Produces: `Component.prototype.pvShown(l) -> number`, `hatchOp(l) -> 0 | 0.30 | 0.85` (0.45 in rev 1; CR12 set 0.30 after the AA measurement), `fmt(v, dec)` without negative zero.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -440,7 +440,7 @@ test('D7: the page renders the observed value and hatches an uncertain reading',
   assert.ok(run(c, 1800, () => c.L.TIC202.pv > 110));
   const l = c.L.TIC202;
   assert.equal(c.pvShown(l), 103.125);
-  assert.equal(c.hatchOp(l), 0.45);
+  assert.equal(c.hatchOp(l), 0.30);   // CR12: 0.45 failed AA for the 9 px and 10 px labels
   assert.equal(c.hatchOp(c.L.TIC201), 0);
   c.nav('detail', 'TIC202');
   const v = c.renderVals();
@@ -471,7 +471,7 @@ In `src/plant-core.js`, replace `fmt` (line 727) and add two helpers beside it:
   // What the operator sees: the observed transmitter value (spec §2.5). Before the first tick, or
   // for a point measure() does not cover, observe on the fly; observe() is pure and cheap.
   pvShown(l){ if(l.obs&&typeof l.obs.pv==='number') return l.obs.pv; if(l.kind==='pid'||l.kind==='ind'){ const m=ESS.Measurement.observe(l); if(typeof m.pv==='number') return m.pv; } return l.pv; }
-  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.45:0; }
+  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.30:0; }   // CR12
 ```
 
 - [ ] **Step 4: Route the page's value reads through the helpers**
@@ -491,7 +491,7 @@ Expected: PASS.
 - [ ] **Step 6: Build, full suite, smoke, commit**
 
 Run: `python3 tools/build-dist.py && node --test tests/*.test.js 2>&1 | grep -E '^\s*not ok|^# (pass|fail)' && tools/smoke.sh`
-Expected: the same golden set as Task 3 and nothing else; smoke ok on both builds. Open the folder build in a browser once, lose cooling on TIC202, and look at the faceplate: the value stops at 103.1 with a light hatch.
+Expected: the same golden set as Task 3 and nothing else; smoke ok on both builds. Open the folder build in a browser once, lose cooling on TIC202, and look: the graphic value box stops at 103.1 under a light hatch (opacity 0.30 per CR12; 0.45 failed AA for the smallest labels), and the faceplate's note line reads SATURATED — REPORTED AT HIGH LIMIT (CR14: the faceplate has no hatch; its cue is the note).
 
 ```bash
 git add src/plant-core.js "Experion Station Simulator.dc.html" tests/app-credibility-s1.test.js src/model-id.js dist/experion-station-sim-standalone.html
