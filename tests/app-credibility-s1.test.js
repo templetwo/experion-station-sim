@@ -758,3 +758,45 @@ test('CR22: the INITMAN card says the secondary is held when it is in CAS under 
   e.L.LIC101.init = true;
   assert.equal(card(e), undefined, 'neither a held card nor a cascade-broken one');
 });
+
+// CR22b: "output saturated" says the disturbance exceeds the loop. A held output is the plant's doing, not the loop's,
+// and its flag already names the hold, so a held loop raises no saturation card; a loop the plant does not hold still does.
+test('CR22b: a loop whose output the plant holds raises no saturation card, whichever kind of hold; a loop it does not hold still does', () => {
+  const sat = (b, tag) => b.diagnose().find((x) => x.id === 'sat.' + tag);
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false);
+  run(c, 40);
+  const fic = c.L.FIC102;
+  assert.equal(c.flagText(fic), 'TRACK · P-101 STOPPED');
+  assert.equal(fic.op, 0, 'the output sits at its low limit');
+  assert.notEqual(fic.mode, 'MAN');
+  assert.ok(c.alarms.some((a) => a.tag === 'FIC102' && a.active), 'in alarm, with GOOD quality: everything else the card needs');
+  assert.equal(sat(c, 'FIC102'), undefined, 'a held output is not a disturbance exceeding the loop');
+  // The same loop, the same OP and alarms, with only the hold's record changed (no step runs, so the plant does not rewrite it).
+  const hold = fic.trk;
+  fic.trk = { ...hold, on: false };
+  assert.equal(sat(c, 'FIC102').title, 'FIC102 output saturated at 0%', 'without the hold the card fires, so the hold is the only thing that silences it');
+  // An interlock hold is asked of the guard on the record: in the shipped plant a trip's alarm suppression (DSUPR) keeps the
+  // loop it holds out of the announced set, so this combination is never reached by a real trip.
+  fic.trk = { ...hold, kind: 'interlock', reason: 'R-201 HI TEMP TRIP' };
+  assert.equal(sat(c, 'FIC102'), undefined, 'an interlock hold raises none either');
+  fic.trk = hold;
+  assert.equal(sat(c, 'FIC102'), undefined, 'and the pump hold, put back, silences it again');
+
+  const d = boot(4, 'OPER');                    // the lost cooling saturates TIC201, which the plant does not hold, while FIC102 is interlocked
+  loseCooling(d);
+  assert.ok(run(d, 2400, () => d.P.trips.rx), 'R-201 tripped');
+  assert.equal(d.flagText(d.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP');
+  assert.equal(d.flagText(d.L.TIC201), 'INITMAN · OP AT HI LIMIT');
+  assert.equal(sat(d, 'TIC201').title, 'TIC201 output saturated at 100%', 'the card still fires for a loop the plant does not hold');
+});
+
+// CR23: the help answer keeps the broken-cascade case and adds the held one (the secondary already in CAS, its output held by the plant).
+test('CR23: the INITMAN help answer keeps the broken-cascade case and says the secondary can be in CAS with its output held', () => {
+  const a = boot(1).topics().find((t) => t.t === 'What is INITMAN?').a;
+  assert.ok(a.startsWith('When a cascade secondary leaves CAS, the primary initializes (INITMAN) and its output tracks the secondary SP via back-calculation, so the return to CAS is bumpless. Fix: put the secondary back in CAS.'), 'the existing sentences are kept: ' + a);
+  assert.match(a, /secondary can also be in CAS with its output held by the plant/);
+  assert.match(a, /stopped pump or an interlock/);
+  assert.match(a, /flag beside its mode line names the hold/);
+  assert.match(a, /returns bumplessly when the hold clears/);
+});
