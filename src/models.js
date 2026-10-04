@@ -536,7 +536,7 @@
     if (b.T >= c.tripT && !P.trips.batch) {
       P.trips.batch = true;
       raiseTrip(ctx, 'R-202', 'HI TEMP TRIP', b.T, 'DEG C', 'BATCH REACTOR OVERTEMP — FEED CUT, JACKET FULL COLD');
-      if (b.phase === 'FEED' || b.phase === 'REACT' || b.phase === 'HEATUP') { b.phase = 'COOL'; b.pt = 0; L.TIC212.sp = 40; }
+      if (b.phase === 'FEED' || b.phase === 'REACT' || b.phase === 'HEATUP') { b.phase = 'COOL'; b.pt = 0; L.TIC212.sp = phaseSetpoints(b, P).TIC212; }
     }
     if (P.trips.batch && b.T < c.resetT) { P.trips.batch = false; ctx.clear('R-202', 'HI TEMP TRIP'); }
   }

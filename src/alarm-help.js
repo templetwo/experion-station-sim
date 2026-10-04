@@ -238,7 +238,7 @@
     'TI216.PVHI': e(RT.short,
       'If cooling were lost now, the unreacted monomer alone would carry the batch above the alarm value; the safety margin to the 110 DEG C trip is shrinking.',
       'Monomer fed faster than it reacts (high FIC211 setpoint, low batch temperature, agitator stopped, jacket too cold).',
-      'Reduce the FIC211 setpoint or HOLD the sequence, confirm M-202 is running, and watch the monomer inventory bar fall before resuming.'),
+      'HOLD the sequence to stop the monomer feed (the sequence owns the FIC211 setpoint while it runs), confirm M-202 is running, and watch the monomer inventory bar fall before you RESUME.'),
     'TI216.PVHH': e(RT.now,
       'The accumulated monomer can reach the 110 DEG C trip on its own; the station sheds the monomer feed (FIC211 to MAN, MV-211 closed) and HOLDS the sequence automatically.',
       'Loss of agitation or cooling with the feed still running; an over-fed batch.',

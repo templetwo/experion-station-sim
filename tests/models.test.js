@@ -341,7 +341,11 @@ test('ownership is one rule: PROGRAM on both loops in every active phase while r
   c.seqCmd('START', true); tick();
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'CHARGE is an active phase'); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
   for (const phase of ['HEATUP', 'FEED', 'REACT', 'COOL', 'DRAIN']) {
-    c.P.b.phase = phase; c.P.b.pt = 0; c.P.b.lvl = 50; tick();
+    c.P.b.phase = phase; c.P.b.pt = 0; c.P.b.lvl = 50;
+    if (phase === 'REACT') c.P.b.Cm = 10;      // above the REACT → COOL threshold (2): the scan ends in REACT, not COOL
+    if (phase === 'COOL') c.P.b.T = 60;        // above the COOL → DRAIN threshold (45): the scan ends in COOL, not DRAIN
+    tick();
+    assert.equal(c.P.b.phase, phase, 'the scan ends in the phase under test');
     assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', phase); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM', phase);
   }
   c.P.b.phase = 'FEED'; c.P.b.lvl = 50;

@@ -227,8 +227,28 @@
   seqCmd(cmd,silent){
     const b=this.P.b;
     if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
-    if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.confirmInterlockHold(); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
-    if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
+    if(cmd==='HOLD'){
+      if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; }
+      if(!this.can('OPER')) return;
+      if(b.held && this.tadShed){ this.confirmInterlockHold(); return; }
+      b.held=!b.held;
+      if(b.held){
+        // Equipment goes to its hold state once, here (spec §4.1): the feed setpoint to 0 beside the record that says
+        // so. The jacket keeps holding temperature at its current setpoint; sequence() writes nothing while held.
+        this.L.FIC211.sp=0;
+        this.addEvent('OPERATOR','SCM202','SEQUENCE HELD — FEED STOPPED','','');
+      } else {
+        // RESUME re-asserts the phase's setpoints (spec §4.1): a setpoint the operator entered during the hold was
+        // the operator's until here and is the sequence's again from here.
+        const sp=ESS.Models.phaseSetpoints(b,this.P);
+        this.L.FIC211.sp=sp.FIC211;
+        if(sp.TIC212!=null) this.L.TIC212.sp=sp.TIC212;
+        this.addEvent('OPERATOR','SCM202','SEQUENCE RESUMED','','');
+      }
+      this.dAct('HOLD','SCM202','',0);
+    }
+    // COOL's setpoints come from the table the sequence reads (Models.phaseSetpoints): feed 0, jacket 40.
+    if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; const sp=ESS.Models.phaseSetpoints(b,this.P); this.L.FIC211.sp=sp.FIC211; this.L.TIC212.sp=sp.TIC212; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
     if(!silent) this.taskDone({START:'bat.start',HOLD:'bat.hold',ABORT:'bat.abort'}[cmd]);
     this.syncPhaseSet();
     if(!silent) this.journal('SEQ','SCM202',cmd);
