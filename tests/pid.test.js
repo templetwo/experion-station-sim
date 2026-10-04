@@ -193,3 +193,111 @@ test('the derivative, the lastPv seed and the MAN tracker read the observed valu
   Pid.stepPid(m, 0.5);
   assert.equal(m.lastPv, 60, 'MAN tracking remembers the observed value');
 });
+
+test('output tracking holds OP at the target in AUTO with the integrator back-calculated, then resumes bumplessly', () => {
+  const l = mkLoop({ sp: 50, pv: 50, op: 60, I: 60, K: 1, T1: 1 });
+  Pid.setTracking(l, 0, 'P-101 STOPPED', 'device');
+  assert.equal(Pid.tracking(l), true);
+  for (let i = 0; i < 20; i++) Pid.stepPid(l, 0.5);
+  assert.equal(l.op, 0);
+  assert.equal(l.I, 0 - l.K * Pid.loopError(l), 'I = OP - P');
+  Pid.clearTracking(l);
+  assert.equal(Pid.tracking(l), false);
+  Pid.stepPid(l, 0.5);
+  assert.ok(Math.abs(l.op - 0) < 1, 'first scan after release starts from the tracked value: ' + l.op);
+});
+
+test('device tracking yields to the operator in MAN; interlock tracking does not', () => {
+  const dev = mkLoop({ mode: 'MAN', op: 40, I: 40 });
+  Pid.setTracking(dev, 0, 'P-101 STOPPED', 'device');
+  assert.equal(Pid.tracking(dev), false);
+  Pid.stepPid(dev, 0.5);
+  assert.equal(dev.op, 40);
+  const il = mkLoop({ mode: 'MAN', op: 40, I: 40 });
+  Pid.setTracking(il, 0, 'R-201 HI TEMP TRIP', 'interlock');
+  assert.equal(Pid.tracking(il), true);
+  Pid.stepPid(il, 0.5);
+  assert.equal(il.op, 0);
+});
+
+test('a tracking CAS secondary keeps following its master setpoint, and its primary runs INITMAN', () => {
+  const master = mkLoop({ tag: 'M', slave: 'S', sp: 50, pv: 50, op: 70, I: 70 });
+  const slave = mkLoop({ tag: 'S', master: 'M', mode: 'CAS', sp: 10, pv: 10, op: 30, I: 30, sphilm: 100, splolm: 0 });
+  const ctx = { loops: { M: master, S: slave }, casMap: { S: (op) => op }, invMap: { S: (sp) => sp } };
+  Pid.setTracking(slave, 0, 'P-101 STOPPED', 'device');
+  // The secondary steps first so it reads the primary's OP before INITMAN back-calculates it from the
+  // secondary's SP: stepped master-first the pair holds still at SP 10 and following cannot show
+  // (the plant's primary-first order has its own test, last in this file).
+  Pid.stepPid(slave, 0.5, ctx);
+  Pid.stepPid(master, 0.5, ctx);
+  assert.equal(slave.sp, 70, 'SP still follows the master while OP is held');
+  assert.equal(slave.op, 0);
+  assert.equal(master.init, true, 'the primary back-calculates while its secondary tracks');
+  Pid.clearTracking(slave);
+  Pid.stepPid(master, 0.5, ctx);
+  assert.equal(master.init, false);
+});
+
+test('clearTracking on a loop that never tracked is a no-op and stepPid ignores a cleared record', () => {
+  const l = mkLoop({ sp: 50, pv: 40, op: 50, I: 50, K: 1, T1: 1 });
+  Pid.clearTracking(l);
+  assert.equal(Pid.tracking(l), false);
+  Pid.stepPid(l, 0.5);
+  assert.ok(l.op > 50, 'ordinary control action');
+});
+
+// The tests above hold the output at 0 only. These pin the rest of the facility: the target itself,
+// the output limits, PV tracking on the held scan, and the record the plant writes and the page reads.
+test('tracking holds the target itself, inside OPLOLM and OPHILM, and PV tracking still moves the SP', () => {
+  const l = mkLoop({ sp: 50, pv: 50, op: 50, I: 50, oplolm: 20, ophilm: 80 });
+  Pid.setTracking(l, 35, 'P-101 STOPPED', 'device');
+  Pid.stepPid(l, 0.5);
+  assert.equal(l.op, 35, 'a target inside the limits is held exactly');
+  Pid.setTracking(l, 0, 'P-101 STOPPED', 'device');
+  Pid.stepPid(l, 0.5);
+  assert.equal(l.op, 20, 'a target below OPLOLM is held at OPLOLM');
+  Pid.setTracking(l, 150, 'P-101 STOPPED', 'device');
+  Pid.stepPid(l, 0.5);
+  assert.equal(l.op, 80, 'a target above OPHILM is held at OPHILM');
+  const p = mkLoop({ pvtrack: true, sp: 40, pv: 63.2, op: 50, I: 50, sphilm: 90, splolm: 10 });
+  Pid.setTracking(p, 0, 'P-101 STOPPED', 'device');
+  Pid.stepPid(p, 0.5);
+  assert.equal(p.sp, 63.2, 'with pvtrack the SP follows the PV while OP is held');
+});
+
+test('the tracking record is {on, target, reason, kind}; clearing empties it, keeps the kind, and never creates one', () => {
+  const l = mkLoop({});
+  Pid.setTracking(l, 12, 'R-310 BED TRIP', 'interlock');
+  assert.deepEqual(l.trk, { on: true, target: 12, reason: 'R-310 BED TRIP', kind: 'interlock' });
+  Pid.clearTracking(l);
+  assert.deepEqual(l.trk, { on: false, target: null, reason: '', kind: 'interlock' });
+  Pid.clearTracking(l);
+  assert.deepEqual(l.trk, { on: false, target: null, reason: '', kind: 'interlock' }, 'a second clear changes nothing');
+  Pid.setTracking(l, 0);
+  assert.deepEqual(l.trk, { on: true, target: 0, reason: '', kind: 'device' }, 'no reason is an empty one; an unnamed kind is a device hold');
+  Pid.setTracking(l, 0, 'X', 'bogus');
+  assert.equal(l.trk.kind, 'device');
+  const never = mkLoop({});
+  Pid.clearTracking(never);
+  assert.equal('trk' in never, false, 'clearing a loop that never tracked leaves it without a record');
+});
+
+// The plant steps a primary before its secondary. Then the pair holds still while the secondary tracks:
+// the primary's OP is back-calculated from the secondary's SP, which the secondary takes straight back.
+// The primary has a standing error here, so one that is not back-calculated would wind up to its limit.
+test('in the plant scan order the primary of a tracking secondary holds still instead of winding up, then takes over bumplessly', () => {
+  const master = mkLoop({ tag: 'M', slave: 'S', act: 'DIR', sp: 50, pv: 70, op: 30, I: 30, K: 1.5, T1: 3 });
+  const slave = mkLoop({ tag: 'S', master: 'M', mode: 'CAS', sp: 30, pv: 30, op: 30, I: 30 });
+  const ctx = { loops: { M: master, S: slave }, casMap: { S: (op) => op }, invMap: { S: (sp) => sp } };
+  Pid.setTracking(slave, 0, 'P-101 STOPPED', 'device');
+  for (let i = 0; i < 600; i++) { Pid.stepPid(master, 0.5, ctx); Pid.stepPid(slave, 0.5, ctx); }
+  assert.equal(master.init, true);
+  assert.equal(master.op, 30, 'the primary did not wind up');
+  assert.equal(slave.sp, 30, 'the secondary kept its setpoint');
+  assert.equal(slave.op, 0);
+  Pid.clearTracking(slave);
+  Pid.stepPid(master, 0.5, ctx);
+  assert.equal(master.init, false);
+  const maxMove = 1.5 * Math.abs(Pid.loopError(master)) * 0.5 / (3 * 60);
+  assert.ok(Math.abs(master.op - 30) <= maxMove + 1e-9, 'the primary resumes from where it held: ' + master.op);
+});

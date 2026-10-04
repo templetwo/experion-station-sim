@@ -8,7 +8,9 @@
  * Optional extra fields this module reads/writes: pvtrack (bool),
  * dFilter (seconds, derivative filter time constant), dState (filtered
  * derivative memory, %/s), pvObs (the observed transmitter value the plant
- * writes each tick; read through pvOf, never written here).
+ * writes each tick; read through pvOf, never written here), trk (the output-
+ * tracking request {on, target, reason, kind}; the plant sets and clears it
+ * through setTracking / clearTracking, stepPid and runInitman read it).
  *
  * Equation (error in % of span, times in minutes, ISA standard form; pv is pvOf(loop)):
  *   e  = (pv - sp) / span * 100   for DIR,  (sp - pv) for REV
@@ -24,8 +26,13 @@
  *     ctx = { loops: {tag: loop}, casMap: {slaveTag: masterOp -> slaveSp},
  *             invMap: {slaveTag: slaveSp -> masterOp}, dFilter?: seconds }
  *     - primaries (loop.slave set) run INITMAN back-calculation when the
- *       slave is not in CAS: op tracks invMap(slave.sp), init = true.
+ *       slave is not in CAS, or is in CAS but tracking its output (tracking
+ *       below): op tracks invMap(slave.sp), init = true.
  *     - CAS loops take sp = clamp(casMap[tag](master.op), SPLOLM, SPHILM).
+ *     - tracking (see tracking(loop)): a CAS loop still takes its SP from the
+ *       master first; then OP is held at clamp(trk.target, OPLOLM, OPHILM),
+ *       the integrator tracks OP so the release is bumpless, and with pvtrack
+ *       the SP follows PV. Nothing else runs on that scan.
  *     - MAN / bad PV: no control action; integrator tracks op so a later
  *       transfer to AUTO is bumpless; with pvtrack the SP tracks PV
  *       (PVTRACK-style option: SP follows PV in MAN so AUTO starts at
@@ -48,6 +55,15 @@
  *     plant wrote an observed transmitter value (a number), else the raw loop.pv. A
  *     controller cannot see what the transmitter cannot send (CREDIBILITY-PASS-SPEC 2.3),
  *     so the error, the derivative, lastPv and PV tracking all act on it.
+ *   setTracking(loop, target, reason, kind)   the plant tells the loop to hold its output at
+ *     target for a reason (the operator-facing text, e.g. 'P-101 STOPPED'). kind is 'interlock'
+ *     (holds in every mode) or 'device' (device feedback: yields to the operator in MAN); any
+ *     other kind is taken as 'device'. Stored as loop.trk = {on, target, reason, kind}. The
+ *     module is told; it never decides who tracks (CREDIBILITY-PASS-SPEC 3.1).
+ *   clearTracking(loop)   release the hold: trk.on goes false, target and reason are emptied,
+ *     kind is kept. A loop that never tracked is left exactly as it was.
+ *   tracking(loop) -> boolean   true when a tracking request is in force for this scan: kind
+ *     'interlock' in any mode, kind 'device' outside MAN. stepPid and runInitman both ask it.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -116,7 +132,7 @@
   function runInitman(loop, ctx) {
     var slave = ctx && ctx.loops ? ctx.loops[loop.slave] : null;
     if (!slave) { loop.init = false; return false; }
-    loop.init = slave.mode !== 'CAS';
+    loop.init = slave.mode !== 'CAS' || tracking(slave);
     if (!loop.init) return false;
     var inv = mapFn(ctx.invMap, loop.slave);
     var target = inv ? inv(slave.sp) : slave.sp;
@@ -137,6 +153,19 @@
     if (loop.pvtrack && !loop.badPv) loop.sp = clampSp(loop, pvOf(loop));
   }
 
+  // Output tracking (spec §3.1): the plant tells a loop to hold its output at a target with a
+  // reason. An interlock holds in every mode; a device-feedback hold yields to the operator in MAN.
+  // The module is told, it never decides who tracks.
+  function setTracking(loop, target, reason, kind) {
+    loop.trk = { on: true, target: target, reason: String(reason || ''), kind: kind === 'interlock' ? 'interlock' : 'device' };
+  }
+  function clearTracking(loop) {
+    if (loop.trk && loop.trk.on) loop.trk = { on: false, target: null, reason: '', kind: loop.trk.kind };
+  }
+  function tracking(loop) {
+    return !!(loop.trk && loop.trk.on) && (loop.trk.kind === 'interlock' || loop.mode !== 'MAN');
+  }
+
   function stepPid(loop, dt, ctx) {
     ctx = ctx || {};
     if (loop.kind && loop.kind !== 'pid') return loop;
@@ -145,6 +174,7 @@
 
     if (loop.slave && runInitman(loop, ctx)) { applyPvTracking(loop); return loop; }
     if (loop.mode === 'CAS' && loop.master) followMaster(loop, ctx);
+    if (tracking(loop)) { loop.op = clampOp(loop, loop.trk.target); applyPvTracking(loop); trackIntegrator(loop); return loop; }
     if (loop.mode === 'MAN' || loop.badPv) { applyPvTracking(loop); trackIntegrator(loop); return loop; }
 
     var e = loopError(loop);
@@ -198,5 +228,5 @@
     };
   }
 
-  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError, pvOf: pvOf };
+  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError, pvOf: pvOf, setTracking: setTracking, clearTracking: clearTracking, tracking: tracking };
 });
