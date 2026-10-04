@@ -557,7 +557,8 @@
     ];
     const set=new Set();
     for(const [tag,on,kind,target,reason] of rows){ const l=L[tag]; if(!l||!on||set.has(tag)) continue; ESS.Pid.setTracking(l,target,reason(),kind); set.add(tag); }
-    for(const tag of ['FIC102','FIC211','TIC213','TIC311']) if(!set.has(tag)&&L[tag]) ESS.Pid.clearTracking(L[tag]);
+    const tags=[...new Set(rows.map(r=>r[0]))];   // every loop a row can hold, so a new row is released with no second list to edit
+    for(const tag of tags) if(!set.has(tag)&&L[tag]) ESS.Pid.clearTracking(L[tag]);
     return set;
   }
   productAnalyzerObservation(tag){

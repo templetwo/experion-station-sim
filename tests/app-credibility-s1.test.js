@@ -364,12 +364,21 @@ test('D1: a stopped pump makes FIC102 track SAFEOP, its primary runs INITMAN, an
   assert.equal(c.L.LIC101.init, true);
   run(c, 60);
   assert.equal(c.L.FIC102.op, 0, 'no wind-up while the pump is stopped');
-  assert.ok(c.L.LIC101.op < 100, 'the primary did not wind up either: ' + c.L.LIC101.op);
+  assert.equal(c.L.LIC101.op, 0, 'the primary back-calculated to the stopped feed (invMap(0)); the plant before tracking left it at 64.25: ' + c.L.LIC101.op);
   c.motorCmd('P101', true);
   assert.equal(c.L.P101.run, true, 'the lockout had expired');
-  let maxFlow = 0;
-  run(c, 300, () => { maxFlow = Math.max(maxFlow, c.L.FIC102.pv); return false; });
+  const t0 = c.P.t;
+  let maxFlow = 0, t30 = null, t50 = null;
+  run(c, 900, () => {                          // the whole recovery: the flow peaks at about 404 s, past any shorter window
+    const t = (c.P.t - t0) / 1000, f = c.L.FIC102.pv;
+    maxFlow = Math.max(maxFlow, f);
+    if (t30 === null && f >= 30) t30 = t;
+    if (t50 === null && f >= 50) t50 = t;
+    return false;
+  });
   assert.ok(maxFlow <= 80.5, 'flow after restart never exceeds SPHILM 80: ' + maxFlow);
+  assert.ok(Math.abs(t30 - 103.5) <= 0.5, 'the feed first reaches 30 m3/h 103.5 s after START, on the primary integral ramp up from 0 (one scan of tolerance): ' + t30);
+  assert.ok(Math.abs(t50 - 166.5) <= 0.5, 'and 50 m3/h 166.5 s after START (one scan of tolerance): ' + t50);
   assert.equal(c.L.FIC102.trk.on, false, 'tracking released on restart');
   assert.equal(c.L.LIC101.init, false);
 });
@@ -499,7 +508,7 @@ test('a missing run state or flag record means no tracking and never throws (spe
   assert.deepEqual([...c.forcedOutputs()], [], 'no P-101 record, no device hold on FIC102');
   c.P.trips.rx = true;                         // an interlock needs the flag, not the pump
   assert.deepEqual([...c.forcedOutputs()], ['FIC102']);
-  c.P.trips = undefined;                       // no flag record at all, as in a snapshot that predates the flags
+  c.P.trips = undefined;                       // no flag record at all: the model always creates P.trips, so the guard is defensive only
   assert.deepEqual([...c.forcedOutputs()], [], 'no flag record, no interlock');
   assert.equal(c.L.FIC102.trk.on, false, 'and the loop is released');
 });
@@ -524,6 +533,10 @@ test('D10: the OP refusal sits at the shared write gate, refuses OP and nothing 
   assert.equal(c.L.FIC102.op, 0, 'RAISE does not move a held output');
   assert.equal(c.events.filter((e) => /^WRITE REJECTED — OUTPUT INTERLOCKED/.test(e.desc)).length, 3, 'each refused route is journaled once');
   assert.deepEqual(c.instr.journal.filter((e) => e.tag === 'FIC102').map((e) => e.op), ['MODE'], 'no refused write reaches the replay journal');
+  assert.equal(c.storeEntry('FIC102', 'SP', 50), true, 'the refusal is OP only: an SP write is not an OP write');
+  assert.equal(c.L.FIC102.sp, 50, 'the SP entry was stored');
+  assert.ok(c.events.some((e) => e.desc === 'SP CHANGE' && e.src === 'FIC102' && e.newV === '50.00'), 'and journaled as a change');
+  assert.equal(c.events.filter((e) => /^WRITE REJECTED — OUTPUT INTERLOCKED/.test(e.desc)).length, 3, 'and no further refusal was raised');
   assert.ok(run(c, 3600, () => !c.P.trips.rx), 'the trip reset');
   assert.equal(c.L.FIC102.trk.on, false);
   assert.equal(c.storeEntry('FIC102', 'OP', 30), true);
@@ -545,4 +558,17 @@ test('D1: a loop returned from MAN to AUTO while the pump is stopped holds at it
   assert.equal(c.L.FIC102.op, 15, 'the hold is at SAFEOP, not a fixed zero');
   const t = c.L.FIC102.trk;
   assert.deepEqual({ on: t.on, kind: t.kind, target: t.target, reason: t.reason }, { on: true, kind: 'device', target: 15, reason: 'P-101 STOPPED' });
+});
+
+test('a trip and a stopped pump together: the interlock outranks the device hold, and the device hold takes over when the trip resets', () => {
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped');
+  c.motorCmd('P101', false);                   // the pump stops while the trip stands
+  c.step(0.5);
+  const hold = () => { const t = c.L.FIC102.trk; return { on: t.on, kind: t.kind, reason: t.reason }; };
+  assert.deepEqual(hold(), { on: true, kind: 'interlock', reason: 'R-201 HI TEMP TRIP' }, 'the trip outranks the stopped pump');
+  assert.ok(run(c, 3600, () => !c.P.trips.rx), 'the trip reset');
+  assert.equal(c.L.P101.run, false, 'with the pump still stopped');
+  assert.deepEqual(hold(), { on: true, kind: 'device', reason: 'P-101 STOPPED' }, 'the device hold takes over on the same scan');
 });
