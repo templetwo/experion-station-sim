@@ -1,0 +1,112 @@
+{
+  "//": "@artifact dev (Unit 04 golden fixture; see tests/golden-u4.test.js)",
+  "fixture": "u4-air-loss",
+  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "seed": 20260829,
+  "seconds": 600,
+  "endStateDigest": "8ce93c4b08eb0e7e0150b164f2159916d05e51109a17564934ee698db802c8ef",
+  "alarmSequenceDigest": "a72115b53712e86e2a376d6f49fe8da69febc01812b0613f2118455b57e40a7a",
+  "alarmSeq": [
+    "PIC505:PVLO:Low",
+    "PIC505:PVLL:Urgent",
+    "TIC502:PVLO:Low"
+  ],
+  "state": {
+    "s": {
+      "Tin": 30.000022,
+      "h2": 50.890693,
+      "ho": 29.965699,
+      "hw": 25.034615,
+      "ocarry": 0,
+      "pres": 99.997671,
+      "qover": 0.000445,
+      "wcarry": 0
+    },
+    "points": {
+      "TIC502": {
+        "pv": 29.912435,
+        "sp": 45,
+        "op": 8.842363,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC503": {
+        "pv": 50.935642,
+        "sp": 50,
+        "op": 54.574726,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC504": {
+        "pv": 25.009695,
+        "sp": 25,
+        "op": 45.172616,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "PIC505": {
+        "pv": 100.921601,
+        "sp": 800,
+        "op": 0,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "AI509": {
+        "pv": 0.3,
+        "badPv": false
+      },
+      "AI510": {
+        "pv": 0.2,
+        "badPv": false
+      }
+    },
+    "valves": {
+      "TV502": {
+        "pos": 1,
+        "stuck": false,
+        "fail": 1
+      },
+      "LV503": {
+        "pos": 0,
+        "stuck": false,
+        "fail": 0
+      },
+      "WV504": {
+        "pos": 0,
+        "stuck": false,
+        "fail": 0
+      },
+      "PV505": {
+        "pos": 1,
+        "stuck": false,
+        "fail": 1
+      }
+    },
+    "alarms": [
+      {
+        "tag": "PIC505",
+        "cond": "PVLL",
+        "prio": "Urgent",
+        "state": "UNACK",
+        "active": true
+      },
+      {
+        "tag": "PIC505",
+        "cond": "PVLO",
+        "prio": "Low",
+        "state": "UNACK",
+        "active": true
+      },
+      {
+        "tag": "TIC502",
+        "cond": "PVLO",
+        "prio": "Low",
+        "state": "UNACK",
+        "active": true
+      }
+    ],
+    "weirH": 55,
+    "psv": false,
+    "rand4": 1399378313
+  }
+}

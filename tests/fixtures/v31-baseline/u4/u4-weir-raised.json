@@ -1,0 +1,86 @@
+{
+  "//": "@artifact dev (Unit 04 golden fixture; see tests/golden-u4.test.js)",
+  "fixture": "u4-weir-raised",
+  "model": "39864cdfcadd5e51db7f8b3747252d7ae16db84ad537fdb021720214ceb1a51f",
+  "seed": 20260829,
+  "seconds": 1500,
+  "endStateDigest": "ec0905e6498e501c6e2bc16da54ea8abcf5041f8a64eef756cb550d27150e8b0",
+  "alarmSequenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "alarmSeq": [],
+  "state": {
+    "s": {
+      "Tin": 45.017446,
+      "h2": 48.72034,
+      "ho": 45.565797,
+      "hw": 24.999608,
+      "ocarry": 0,
+      "pres": 799.997355,
+      "qover": 34.01092,
+      "wcarry": 0
+    },
+    "points": {
+      "TIC502": {
+        "pv": 44.963324,
+        "sp": 45,
+        "op": 60.122796,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC503": {
+        "pv": 48.701997,
+        "sp": 50,
+        "op": 49.624691,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "LIC504": {
+        "pv": 24.956411,
+        "sp": 25,
+        "op": 44.931236,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "PIC505": {
+        "pv": 799.557475,
+        "sp": 800,
+        "op": 39.994518,
+        "mode": "AUTO",
+        "badPv": false
+      },
+      "AI509": {
+        "pv": 0.3,
+        "badPv": false
+      },
+      "AI510": {
+        "pv": 0.2,
+        "badPv": false
+      }
+    },
+    "valves": {
+      "TV502": {
+        "pos": 0.601489,
+        "stuck": false,
+        "fail": 1
+      },
+      "LV503": {
+        "pos": 0.496533,
+        "stuck": false,
+        "fail": 0
+      },
+      "WV504": {
+        "pos": 0.449606,
+        "stuck": false,
+        "fail": 0
+      },
+      "PV505": {
+        "pos": 0.400219,
+        "stuck": false,
+        "fail": 1
+      }
+    },
+    "alarms": [],
+    "weirH": 70,
+    "psv": false,
+    "rand4": 3123633193
+  }
+}

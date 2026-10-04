@@ -1,0 +1,29 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-cool",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 400,
+  "endStateDigest": "3b62516267aa2df96e697bcacbf17406ba65a2281bd3356da03df82e26cfa6cd",
+  "alarmSequenceDigest": "709c5a9b770875e8a7b7bdfcb2510a89d0b69e7a843aecab3d7109a3b121b6e2",
+  "alarmSeq": [
+    "TIC202:DEVHI:High",
+    "TIC202:PVHH:Urgent",
+    "TIC201:PVHI:High",
+    "TIC201:PVHH:Urgent",
+    "R-201:HI TEMP TRIP:Urgent",
+    "FIC102:PVLO:Low",
+    "FIC102:PVLL:Urgent",
+    "FIC102:PVHI:High"
+  ],
+  "trips": {
+    "rx": false
+  },
+  "faults": {
+    "cool": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 8,
+  "countsEvents": 31
+}

@@ -1,0 +1,98 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-drills.test.js)",
+  "fixture": "drill-D3",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 720.5,
+  "endStateDigest": "53b577d82737fd2bdb7bb77363b1e92af7fe5a8f3db0ddbe42c89c39e0488b7d",
+  "alarmSequenceDigest": "547456c0f42efa8072ee9878c87b9e0ffea570ba5593308d023929cabbc14735",
+  "drillId": "D3",
+  "stepCap": 12000,
+  "steps": 1441,
+  "endReason": "TIME LIMIT REACHED",
+  "injected": true,
+  "alarmSequenceRaw": [
+    "P101:TRIP:Urgent",
+    "FIC102:PVLO:Low",
+    "FIC102:PVLL:Urgent",
+    "TIC201:PVLO:Low",
+    "TIC201:PVLL:Urgent",
+    "LIC101:PVHI:High",
+    "TIC301:PVLO:Low",
+    "TK-101:HIHI TRIP:Urgent",
+    "LIC101:PVHH:Urgent"
+  ],
+  "trips": {
+    "ovf": true
+  },
+  "faults": {
+    "pump": false,
+    "rxn": false,
+    "xmtr": false,
+    "surge": false,
+    "cool": false,
+    "stick": false,
+    "vap": false,
+    "agit": false,
+    "bedact": false
+  },
+  "batchPhase": "IDLE",
+  "driftOff": 0,
+  "eventsCount": 15,
+  "score": {
+    "score": 13,
+    "pass": false,
+    "passMark": 80,
+    "breakdown": [
+      {
+        "id": "ack",
+        "label": "Time to acknowledge",
+        "earned": 0,
+        "max": 20,
+        "note": "not acknowledged"
+      },
+      {
+        "id": "action",
+        "label": "Correct action and latency",
+        "earned": 0,
+        "max": 25,
+        "note": "correct action not taken"
+      },
+      {
+        "id": "trip",
+        "label": "Trip avoided",
+        "earned": 0,
+        "max": 20,
+        "note": "unit tripped"
+      },
+      {
+        "id": "stable",
+        "label": "Process stabilised",
+        "earned": 0,
+        "max": 15,
+        "note": "not stabilised"
+      },
+      {
+        "id": "load",
+        "label": "Alarm load during drill",
+        "earned": 2.8,
+        "max": 10,
+        "note": "7.5 per 10 min"
+      },
+      {
+        "id": "quiz",
+        "label": "Debrief question",
+        "earned": 10,
+        "max": 10,
+        "note": "correct"
+      },
+      {
+        "id": "othertrips",
+        "label": "Other equipment trips",
+        "earned": 0,
+        "max": 0,
+        "note": "none"
+      }
+    ]
+  }
+}

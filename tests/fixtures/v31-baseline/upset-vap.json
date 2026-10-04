@@ -1,0 +1,18 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-vap",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 420,
+  "endStateDigest": "c505297105bc485fd22a101c6ce1aba74741a48e40b56765c8d669be8ed0a086",
+  "alarmSequenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "alarmSeq": [],
+  "trips": {},
+  "faults": {
+    "vap": false
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 0,
+  "countsEvents": 2
+}

@@ -1,0 +1,20 @@
+{
+  "//": "@artifact dev (A-drill fixture; see tests/drill-arch-fixtures.test.js)",
+  "fixture": "ARCH_A12",
+  "model": "c8440c43b8194bc82e98334d8e16aebab3a2686fcafeb1ecc36f3b36ae471bca",
+  "seed": 20260829,
+  "seconds": 135,
+  "drillId": "A12",
+  "primary": "XMTR-TIC201",
+  "compare": [
+    "XMTR-TIC201",
+    "CM-CM3_TIC201"
+  ],
+  "domain": "FIELD",
+  "eventCount": 5,
+  "physicsDigest": "85804ade86c32004c6b63a200da717edb0ad70c2bf265694a4542191fa0b4d5f",
+  "healthDigest": "f9cad7b29ab603054380d6e1f321fecd55f2f58ec4b97779a345ba7358b0d3c9",
+  "score": 60,
+  "pass": false,
+  "gated": false
+}

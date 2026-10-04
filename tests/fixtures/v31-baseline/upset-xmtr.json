@@ -1,0 +1,22 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-xmtr",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 300,
+  "endStateDigest": "79112b3aa79568c6a57618bec6aff4073baeb903fd76e5b1524504d1e3050fcb",
+  "alarmSequenceDigest": "bc321718c157d758f659649d08110f12e3335a27c7526a8028b47f30bdf84a2c",
+  "alarmSeq": [
+    "FIC102:BADPV:High",
+    "FIC102:PVLO:Low",
+    "FIC102:PVLL:Urgent"
+  ],
+  "trips": {},
+  "faults": {
+    "xmtr": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 3,
+  "countsEvents": 6
+}

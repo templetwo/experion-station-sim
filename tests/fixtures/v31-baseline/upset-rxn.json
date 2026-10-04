@@ -1,0 +1,23 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-rxn",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 300,
+  "endStateDigest": "a1f38d0ece2d4d7b495f10dbd558a2c5dbd319f6b802cf8f55bb89da80227b1c",
+  "alarmSequenceDigest": "76ac004a849e0ead39975e4521ba594543f6c12b050c925d025de20768004b6c",
+  "alarmSeq": [
+    "TIC201:PVHI:High",
+    "TIC201:DEVHI:High",
+    "TIC202:DEVHI:High",
+    "TIC201:PVHH:Urgent"
+  ],
+  "trips": {},
+  "faults": {
+    "rxn": true
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 4,
+  "countsEvents": 66
+}

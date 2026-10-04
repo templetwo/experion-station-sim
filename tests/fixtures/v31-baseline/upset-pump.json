@@ -1,0 +1,30 @@
+{
+  "//": "@artifact dev (golden fixture; see tests/golden-upsets.test.js)",
+  "fixture": "upset-pump",
+  "model": "f4cd67295a831d0d493e729f8f5c3e05802d83af8ce16812e22385d333884aee",
+  "seed": 20260829,
+  "seconds": 600,
+  "endStateDigest": "9290ac72241dd1e2ad306e96082f6f2cb05ad391e37fe82c1a85c0ce14d3d4bd",
+  "alarmSequenceDigest": "547456c0f42efa8072ee9878c87b9e0ffea570ba5593308d023929cabbc14735",
+  "alarmSeq": [
+    "P101:TRIP:Urgent",
+    "FIC102:PVLO:Low",
+    "FIC102:PVLL:Urgent",
+    "TIC201:PVLO:Low",
+    "TIC201:PVLL:Urgent",
+    "LIC101:PVHI:High",
+    "TIC301:PVLO:Low",
+    "TK-101:HIHI TRIP:Urgent",
+    "LIC101:PVHH:Urgent"
+  ],
+  "trips": {
+    "ovf": true
+  },
+  "faults": {
+    "pump": false
+  },
+  "phase": "IDLE",
+  "driftOff": 0,
+  "countsAlarms": 9,
+  "countsEvents": 16
+}
