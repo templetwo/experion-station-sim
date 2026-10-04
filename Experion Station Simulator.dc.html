@@ -2531,10 +2531,10 @@ class Component extends ESS.PlantCore(DCLogic) {
     }
     return out;
   }
-  // Live value column: the point PV (PV−SP for DEVHI); equipment trips read the model variable they protect.
+  // Live value column: the point's observed PV (PV−SP for DEVHI; CR13); equipment trips read the model variable they protect.
   liveValueOf(a){
     const l=this.L[a.tag], P=this.P;
-    if(l){ if(l.kind==='motor') return l.run?1:0; return a.cond==='DEVHI'?(l.pv-l.sp):l.pv; }
+    if(l){ if(l.kind==='motor') return l.run?1:0; return a.cond==='DEVHI'?(this.pvShown(l)-l.sp):this.pvShown(l); }
     if(a.tag==='H-310' && a.cond==='TUBE SKIN TRIP') return Math.max(P.h.ts1,P.h.ts2);
     return ({'TK-101':P.tankL,'R-201':P.rT,'V-401':P.drumP,'R-202':P.b.T,'R-310':P.h.bed,'H-310':P.h.pre})[a.tag];
   }
@@ -2795,7 +2795,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     {k:['op','output','invalid mode','man','change op'],t:'Why can I not change OP?',a:'OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'},
     {k:['sp','setpoint','rejected','limit','entry'],t:'SP entry rejected',a:'SP must be inside SPLOLM…SPHILM and the loop must be in AUTO (CAS setpoints are primary- or program-driven). Out-of-range entries are rejected with the limits shown in the Message Zone. Limits live on Point Detail → Loop Tune (ENGR to change).'},
     {k:['initman','init','cascade','track','bkcal'],t:'What is INITMAN?',a:'When a cascade secondary leaves CAS, the primary initializes (INITMAN) and its output tracks the secondary SP via back-calculation, so the return to CAS is bumpless. Fix: put the secondary back in CAS.'},
-    {k:['crosshatch','bad','badpv','hatch','stale','quality'],t:'PV shows crosshatch',a:'Crosshatch means bad or uncertain PV quality. A BADPV alarm raises and the PID sheds per its option — default SHEDHOLD: MODE to MAN, output held at the last good value. Keep it in MAN until the input is repaired.'},
+    {k:['crosshatch','bad','badpv','hatch','stale','quality'],t:'PV shows crosshatch',a:'A crosshatch behind a value means the reading cannot be taken at face value. A full hatch is bad quality: a BADPV alarm raises and the PID sheds per its option — default SHEDHOLD: MODE to MAN, output held at the last good value. Keep it in MAN until the input is repaired. A light hatch is a saturated transmitter: the process has gone past what the instrument can send, so the number shown is its reporting limit, not the true value, and nothing sheds. Point Detail names the limit; act on the process, not the instrument.'},
     {k:['shelve','shelving','nuisance','hide'],t:'How do I shelve an alarm?',a:'Select the alarm row, press SHELVE, pick a duration (max 60 min) and a reason — the reason is mandatory. The alarm goes SHLVD: silent, no flashing, listed under the SHELVED view with its remaining time. When the timer runs out it re-annunciates if the condition is still present. Shelve nuisance alarms only.'},
     {k:['pump','start','won','lockout','permissive','agitator','motor'],t:'Motor will not start',a:'Check the Message Zone: a start needs its permissive met (P-101 needs tank level above 5%) and the restart lockout expired (30 s after a trip, 15 s after a stop). Failed starts raise CMDFAIL.'},
     {k:['color','colours','flash','red','yellow','cyan','blink'],t:'What do alarm colors mean?',a:'Urgent = red, High = yellow (representative), Low = cyan. Flashing = UNACK; steady = ACKED with the cause still present; inverse flashing = RTNUN (returned to normal, never acknowledged). Grey = shelved, suppressed by DAS or out of service — those never sound. Journal alarms only log to the journal.'},
@@ -3827,7 +3827,7 @@ class Component extends ESS.PlantCore(DCLogic) {
         const start=Math.max(0,h.length-Math.ceil(span*120));
         const stride=Math.max(1,Math.floor((h.length-start)/420));
         for(let i=start;i<h.length;i+=stride){ const r=h[i]; if(r[0]<t0) continue; const x=44+(r[0]-t0)/(span*60000)*1006; const y=404-((r[idx]-lo)/(hi-lo))*394; pts.push(x.toFixed(1)+','+Math.max(6,Math.min(410,y)).toFixed(1)); }
-        const cur=fld==='pv'?l.pv:fld==='sp'?l.sp:l.op;
+        const cur=fld==='pv'?this.pvShown(l):fld==='sp'?l.sp:l.op;
         return {pts:pts.join(' '),color,dash:dash||'none',label:tag+'.'+fld.toUpperCase(),desc:l.desc,val:this.fmt(cur,isOp?1:l.dec),eu:isOp?'%':l.eu,range:this.fmt(lo,0)+' – '+this.fmt(hi,0),cb:()=>this.openArch(tag,'trace')};
       });
     };

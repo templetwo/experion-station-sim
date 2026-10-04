@@ -742,7 +742,10 @@
   // What the operator sees: the observed transmitter value (spec §2.5). Before the first tick, or
   // for a point measure() does not cover, observe on the fly; observe() is pure and cheap.
   pvShown(l){ if(l.obs&&typeof l.obs.pv==='number') return l.obs.pv; if(l.kind==='pid'||l.kind==='ind'){ const m=ESS.Measurement.observe(l); if(typeof m.pv==='number') return m.pv; } return l.pv; }
-  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.45:0; }
+  // Crosshatch strength on a graphic value box: BAD quality 0.85 (as shipped); UNCERTAIN, a saturated reading,
+  // 0.30 so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe (controller
+  // ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
+  hatchOp(l){ if(l.badPv) return 0.85; const q=l.obs?l.obs.quality:(l.kind==='pid'||l.kind==='ind'?ESS.Measurement.observe(l).quality:'GOOD'); return q==='UNCERTAIN'?0.30:0; }
   phaseSets(){
     const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
     return {
