@@ -151,6 +151,9 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   is moved.
 - **CR30.** The TRIP row's note fits two lines of the Point Detail note column; if the plan's text
   wrapped further it became `<src> <cond> · C&E matrix, plant-enforced`.
+- **CR31.** An archive guard that lists every fixture still asserts something: both guards also
+  prove that every listed re-captured fixture differs from its archived copy and every unlisted
+  one equals it, so a stale entry fails the test.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -543,6 +546,14 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | runs where an interlock in the §3.2 table holds a loop: the R-201 trip on FIC102 (upset-cool, drill-D4), the R-310 bed trip on TIC311 (drill-D12, upset-bedact), the R-202 trip on FIC211 and TIC213 | §3 interlock tracking (D10); measured at Task 6 (CR19) |
 | drill-D2, drill-D6, drill-D9, drill-D11 | §3.6 debrief margin (D9): the drill goldens digest `score.breakdown[].note`, which now carries the peak against the declared trip; measured at Task 8 |
 | every v2 fixture and every arch fixture (the g2-lifecycle archived-kernel lockstep clause is re-scoped, not re-captured: CR27) | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
+
+Measured at Task 9 (ablation in a scratch tree, all 35 movers explained, none unknown): every v2 and
+arch fixture moved for the FIC211 cutoff; upset-pump and drill-D3 also for FIC102 device tracking;
+upset-cool and drill-D4 also for TIC202 saturation and the R-201 interlock hold; drill-D12 and
+upset-bedact also for the R-310 interlock hold; drill-D2, D6, D9 and D11 also for the D9 margin
+note. upset-stick never saturates TIC202 (cutoff only); the R-202 rows and D4's `restore` rule
+moved no fixture (the unattended goldens never acknowledge an alarm); the five u4 fixtures did not
+move and the guard proves it. The per-fixture reasons live in the two archive guards.
 
 Nothing may move for a reason outside this table; a fixture that moves for another reason is a finding,
 not a re-capture. Because the cutoff moves every fixture, the stage's closing task first archives the
