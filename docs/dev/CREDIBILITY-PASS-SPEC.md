@@ -65,7 +65,7 @@ The W2 matrix declares and never enforces. PIP stays advisory.
 
 Control rulings made during execution are numbered CR1, CR2, ... in the stage ledgers and cited
 here as CRn, so they are never confused with the playtest's realism items R1 to R8. The ones that
-changed this document or the code, in the order made (S1, 2026-10-03):
+changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10-04):
 
 - **CR6.** NE 43 was already registered at RESOURCES-7.35; §2.2 corrected, no duplicate entry.
 - **CR8.** The band rule of §2.2: Good with the limit bit inside the window, Uncertain only when
@@ -79,6 +79,47 @@ changed this document or the code, in the order made (S1, 2026-10-03):
   TK-101 below 80 %, both plant values observed. Shelving keeps the inherited semantics: a shelved
   related alarm counts as quiet, as in every drill. Found when §2.4 let "cut feed and never restore
   it" pass; the previous passing behaviour is recorded in the S1 changelog entry.
+- **CR12 / CR12b.** The UNCERTAIN hatch opacity is 0.30, the highest value measured to clear WCAG
+  AA for every label on a hatched box under both palettes; the BAD hatch stays at 0.85. A
+  saturation marker that does not sit under text is a design item for the fidelity intake, not
+  widened into S1.
+- **CR13.** "Every operator-facing value" (§2.3) includes the Alarm Summary live column and the
+  trend legend value; both read the observed value. The page's "PV shows crosshatch" help answer
+  says bad or uncertain; the coach files' wording is S5's.
+- **CR14.** The faceplate's saturation cue is its note line ("SATURATED — REPORTED AT <LOW|HIGH>
+  LIMIT"), consistent with the Point Detail note; the graphic's cue stays the hatch.
+- **CR15.** A pre-existing render crash (the BADPV note on a point with no shed option) is fixed on
+  the line Task 4 edits, with a test rendering a bad analyzer faceplate in composition mode.
+- **CR16.** During a DNS outage the dist smoke stands as the gate for commits and pushes (the
+  folder build differs only by fetching React from a CDN); the folder smoke must be green before
+  the stage closes. It was, at every later task.
+- **CR17.** `setTracking` coerces a non-finite target to 0 (the module's safe default; the output
+  clamp still applies) and says so in its header.
+- **CR18.** The hold is the code's truth and the matrix only names it: a trip whose cause the
+  matrix cannot name still tracks, with the raw cause id as the reason. §12's "missing reason
+  source" means a missing flag or run state, never a missing name.
+- **CR19.** Interlock tracking moves every run where a §3.2 interlock holds a loop, including the
+  R-310 bed trip on TIC311 (drill-D12, upset-bedact); §11 amended.
+- **CR20.** PV tracking during a device hold stands: FIC102 carries the declared `pvtrack`
+  option, so an AUTO loop's SP tracks its PV (0) while the pump is stopped and stays there after
+  the restart until the operator re-enters it, the same convention as INITMAN; CAS recovers on the
+  primary's ramp. The flag and the tracked SP are visible and D1's changelog narrative says so.
+- **CR21.** The slow restart after a pump stop is the textbook bumpless return of an initialised
+  primary (LIC101 back-calculates to the output that commands zero flow while FIC102's SP tracks
+  its PV) and is accepted. Its measured consequence (seed 4: TK-101 peaks 73 % after a 60 s stop
+  and 86 % after 180 s; a restart 280 to 340 s after the stop still ends in the overflow trip
+  unless FIC102 is pre-positioned in MAN) is the lesson, not a defect: drill D3's debrief says so,
+  the S1 changelog carries the table, and S5's PIP safety card already says to put FIC102 in MAN
+  at 20 to 30 % before the restart.
+- **CR22.** The Live Diagnosis card tells the same truth as the flag: an initialised primary whose
+  secondary is not in CAS keeps the "cascade broken" card; one whose secondary is in CAS and held
+  gets a card that says the secondary is held and names the flag text, with its step pointing at
+  the secondary's faceplate.
+- **CR22b.** The output-saturated diagnosis card is withheld for a loop whose output the plant
+  holds: a held output is not a disturbance exceeding the loop, and the flag names the hold.
+- **CR23.** The page's "What is INITMAN?" help answer knows the held case (the secondary may be
+  in CAS with its output held; the flag names the hold; the primary returns bumplessly when it
+  clears). The coach corpus under `tools/coach/` stays S5's, as CR13 ruled.
 
 ---
 
