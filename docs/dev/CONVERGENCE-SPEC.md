@@ -56,7 +56,11 @@ previous main `1f0147e`). Both restoration-lag seeds lose the `reactor_warming` 
 rises 0.7 and 0.8 °C across the exported window (seeds 20260920 and 20260921) where it rose 4.2
 and 4.3 °C at `bfed001` and at `1f0147e`, under the agent's 2 °C rule (`moa/knowledge.py:92`).
 On that date no manifest on agent main was pinned to `adeb18a` (drills-v3, pinned to it, is
-proposed in master-operations-agent PR #2); which S1 change lowers that rise is not measured here.
+proposed in master-operations-agent PR #2). The cause of that drop is measured (MacBook seat,
+2026-10-04, with the agent's own export): reverting the one line that has the controllers read the
+observed value (`pvOf()` in `src/pid.js`) at `adeb18a` reproduces the `1f0147e` trajectory to the
+sample (+4.2 and +4.3 °C), so the whole of it is credibility-pass §2.4 (controller ruling CR8), the
+jacket controller acting on the saturated 103.125 °C during the cooling loss, by design.
 **rev 2 status of the confirm-before-binding instruction.** Rev 1 told builders to confirm every function and hook name against the checkpoint before writing code, because rev 1 was authored against the repository's public README, CHANGELOG and dev-doc conventions and not against a live working tree. That pass has now been done in full at the checkpoint — `docs/dev/CONVERGENCE-SPEC-VERIFICATION.md`, file:line for every claim. It found five binding errors, all corrected in this revision. A builder no longer has to re-derive them. The standing rule does not lapse, though: **anything this spec names that the memo does not cover is still unconfirmed and is verified in the file before it is bound to.** The memo's §1 is what verified clean; its §2 is what moved.
 
 0.2 The two-lane rule. There are two lanes and they never cross. Lane one is this public repository: an independent training aid built by Anthony under MIT. Lane two is AIRCO (Air Company, New Britain, PA) work. Anything plant-specific, and anything made on company time, is AIRCO work in AIRCO systems and never enters this repository. MIT already permits AIRCO to use the public repository. Improvements made on company time stay in the company's copy. This spec adds nothing to lane two and takes nothing from it.
