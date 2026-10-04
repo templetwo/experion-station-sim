@@ -3866,6 +3866,7 @@ class Component extends ESS.PlantCore(DCLogic) {
     const obsD=this.obsOf(dl), satNote=obsD&&obsD.quality==='UNCERTAIN'&&obsD.limit!=='NONE'?'UNCERTAIN — '+obsD.limit+' LIMIT, reported at the transmitter limit':'';
     let mainRows,tuneRows=[],almRows=[];
     if(isPid){
+      const casR=dl.slave?this.casRange(dl.slave):'';   // the SP span this primary can command; empty when the cascade map has no entry
       mainRows=[
         mRow('Process variable','PV',this.fmt(this.pvShown(dl),dl.dec)+' '+dl.eu,false,dl.badPv?'BAD PV — crosshatch shown on graphic':satNote),
         Object.assign(mRow('Setpoint','SP',this.fmt(dl.sp,dl.dec)+' '+dl.eu,true,'limits '+this.fmt(dl.splolm,dl.dec)+' – '+this.fmt(dl.sphilm,dl.dec)),{rowBg:calloutBg}),
@@ -3873,7 +3874,7 @@ class Component extends ESS.PlantCore(DCLogic) {
         mRow('Mode attribute','MODEATTR',dl.modeAttr,false,dl.modeAttr==='PROGRAM'?'sequence owns SP/OP/MODE — operator stores are rejected':'operator may store SP/OP/MODE'),
         mRow('PV range','PVEUHI / PVEULO',this.fmt(dl.hi,0)+' / '+this.fmt(dl.lo,0)+' '+dl.eu,false,''),
         mRow('Bad-PV shed option','SHED',dl.shed,false,'sheds to MAN, holds last good OP'),
-        mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave):'NONE'),false,dl.init?'INITMAN — tracking secondary':'')
+        mRow('Cascade','CASC',dl.master?('SECONDARY OF '+dl.master):(dl.slave?('PRIMARY OF '+dl.slave+(casR?' · COMMANDS SP '+casR:'')):'NONE'),false,this.flagText(dl))
       ];
       const isa=ESS.Pid.isaForm(dl.K,dl.T1,dl.T2), inf=(v,d,u)=>v===Infinity?'∞':this.fmt(v,d)+u;
       tuneRows=[
@@ -4001,7 +4002,7 @@ class Component extends ESS.PlantCore(DCLogic) {
         sil:()=>this.silence(),ack:()=>{const a2=E.unacked().filter(x=>x.tag===f.tag).sort(E.compare)[0];if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
         detail:()=>this.nav('detail',f.tag),
         sigPath:()=>this.openArch(f.tag,'trace'),
-        modeLine:isP?('MODE '+l.mode+' · MODEATTR '+l.modeAttr):(isM?'DEVCTL':'DATAACQ'),initT:l.init?'INITMAN':'',
+        modeLine:isP?('MODE '+l.mode+' · MODEATTR '+l.modeAttr):(isM?'DEVCTL':'DATAACQ'),initT:this.flagText(l),
         stT:l.run?'RUN':(l.trip?'TRIP':'STOP'),stBg:l.run?'#37474F':(l.trip?UC:'#E8E8E4'),stFg:l.run?'#FFFFFF':(l.trip?UT:'#000'),
         cmdT:l.cmd||'',fbT:l.run?'RUNNING':'STOPPED',
         permT:(f.tag==='P101'?'PERMISSIVE (TK-101 LVL > 5%): '+(P.tankL>=5?'MET':'NOT MET'):'PERMISSIVE: NONE CONFIGURED')+(l.lock>0?' · LOCKOUT '+Math.ceil(l.lock)+' S':''),permFg:(f.tag!=='P101'||P.tankL>=5)?'#0a3a12':'#A00000',

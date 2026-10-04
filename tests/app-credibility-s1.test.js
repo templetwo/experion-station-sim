@@ -572,3 +572,144 @@ test('a trip and a stopped pump together: the interlock outranks the device hold
   assert.equal(c.L.P101.run, false, 'with the pump still stopped');
   assert.deepEqual(hold(), { on: true, kind: 'device', reason: 'P-101 STOPPED' }, 'the device hold takes over on the same scan');
 });
+
+test('the flag names the hold: TRACK while the pump is stopped, NOTE when the operator overrides it in MAN, INTERLOCK under a trip', () => {
+  const c = boot(4, 'OPER');
+  assert.equal(c.flagText(c.L.FIC102), '');
+  c.motorCmd('P101', false); c.step(0.5);
+  assert.equal(c.flagText(c.L.FIC102), 'TRACK · P-101 STOPPED');
+  assert.equal(c.flagText(c.L.LIC101), 'INITMAN');
+  c.setMode('FIC102', 'MAN'); c.step(0.5);
+  assert.equal(c.flagText(c.L.FIC102), 'NOTE · P-101 STOPPED');
+  const d = boot(4, 'OPER');
+  loseCooling(d);
+  assert.ok(run(d, 2400, () => d.P.trips.rx));
+  assert.equal(d.flagText(d.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP');
+  d.setMode('FIC102', 'MAN'); d.step(0.5);
+  assert.equal(d.flagText(d.L.FIC102), 'INTERLOCK · R-201 HI TEMP TRIP', 'an interlock holds in MAN too');
+});
+
+test('D8: a secondary setpoint beyond the cascade range pins the primary, the flag says so, and the CAS return journals the clamp', () => {
+  const c = boot(4, 'OPER');
+  run(c, 30);
+  c.setMode('TIC202', 'AUTO');
+  assert.equal(c.storeEntry('TIC202', 'SP', 75), true);
+  run(c, 5);
+  assert.equal(c.L.TIC201.init, true);
+  assert.equal(c.L.TIC201.op, 100);
+  assert.equal(c.flagText(c.L.TIC201), 'INITMAN · OP AT HI LIMIT');
+  assert.equal(c.casRange('TIC202'), '10.0–70.0 DEG C');
+  c.setMode('TIC202', 'CAS');
+  assert.equal(c.L.TIC202.sp, 70);
+  const ev = c.events.find((e) => e.src === 'TIC202' && e.desc === 'SP CLAMPED TO CASCADE RANGE');
+  assert.ok(ev, 'the clamp is journaled');
+  assert.equal(ev.newV, '70.0');
+  assert.match(c.state.msg, /SP CLAMPED TO CASCADE RANGE 70\.0 DEG C/);
+});
+
+test('a CAS return inside the cascade range journals no clamp', () => {
+  const c = boot(4, 'OPER');
+  run(c, 30);
+  c.setMode('TIC202', 'AUTO');
+  c.storeEntry('TIC202', 'SP', 40);
+  run(c, 5);
+  c.setMode('TIC202', 'CAS');
+  assert.ok(!c.events.some((e) => e.desc === 'SP CLAMPED TO CASCADE RANGE'));
+});
+
+test('the faceplate and the Point Detail carry the flag', () => {
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false); c.step(0.5);
+  c.nav('detail', 'FIC102');
+  const v = c.renderVals();
+  const casc = v.dpt.mainRows.find((r) => r.param === 'CASC');
+  assert.equal(casc.note, 'TRACK · P-101 STOPPED');
+  c.nav('detail', 'TIC201');
+  const casc2 = c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC');
+  assert.match(casc2.value, /PRIMARY OF TIC202 · COMMANDS SP 10\.0–70\.0 DEG C/);
+});
+
+// Beyond the brief's four. Its last test is titled for the faceplate but reads only Point Detail; the others meet
+// only the HIGH limit, mid-range INITMAN and a CAS return that changes nothing.
+test('the faceplate flag is flagText for every kind of point: a held loop, an initialising primary, a motor and an indicator', () => {
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false); c.step(0.5);
+  c.setState({ fps: ['FIC102', 'LIC101', 'P101', 'FI100'].map((tag, i) => ({ tag, x: 30 + 250 * i, y: 44, pin: true })) });
+  const flagOf = (tag) => c.renderVals().fps.find((f) => f.tag === tag).initT;
+  assert.equal(flagOf('FIC102'), 'TRACK · P-101 STOPPED');
+  assert.equal(flagOf('LIC101'), 'INITMAN');
+  assert.equal(flagOf('P101'), '', 'a motor has no flag');
+  assert.equal(flagOf('FI100'), '', 'nor has an indicator point');
+});
+
+test('INITMAN names a limit only when OP is within 0.2 of it; with the pump stopped LIC101 reads plain INITMAN until the observed flow is zero, then OP AT LO LIMIT (CR20)', () => {
+  const c = boot(4, 'OPER');
+  const flag = (op) => c.flagText({ init: true, op, ophilm: 100, oplolm: 0 });
+  assert.equal(flag(99.9), 'INITMAN · OP AT HI LIMIT');
+  assert.equal(flag(99.7), 'INITMAN', 'the tolerance is 0.2, not more');
+  assert.equal(flag(0.1), 'INITMAN · OP AT LO LIMIT');
+  assert.equal(flag(0.3), 'INITMAN', 'on the low side too');
+  assert.equal(c.flagText({ op: 100, ophilm: 100, oplolm: 0 }), '', 'a loop that is not initialising shows no limit flag even at its limit');
+  assert.equal(c.flagText({ trk: { on: false, target: null, reason: '', kind: 'device' } }), '', 'a released hold shows nothing');
+  c.motorCmd('P101', false); c.step(0.5);
+  const lic = c.L.LIC101;
+  assert.equal(c.flagText(lic), 'INITMAN', 'one scan after the stop LIC101 is initialising but still mid-range');
+  assert.ok(run(c, 120, () => c.flagText(lic) !== 'INITMAN'), 'LIC101 reached its low limit');
+  assert.equal(lic.op, 0, 'the observed flow reads zero below the cutoff, so LIC101 back-calculates to exactly invMap(0)');
+  assert.equal(c.flagText(lic), 'INITMAN · OP AT LO LIMIT');
+  run(c, 60);
+  c.motorCmd('P101', true);
+  assert.equal(c.L.P101.run, true, 'the lockout had expired');
+  c.step(0.5);
+  assert.equal(c.flagText(c.L.FIC102), '', 'the restart releases the hold, and the flag with it');
+  assert.equal(c.flagText(lic), '', 'and LIC101 is out of INITMAN');
+});
+
+test('D8: the clamp journals the low side too, journals nothing when the return changes nothing, and nothing when the primary is not pinned', () => {
+  const a = boot(4, 'OPER');
+  run(a, 30);
+  a.setMode('TIC202', 'AUTO');
+  assert.equal(a.storeEntry('TIC202', 'SP', 7), true);
+  run(a, 5);
+  assert.equal(a.L.TIC201.op, 0);
+  assert.equal(a.flagText(a.L.TIC201), 'INITMAN · OP AT LO LIMIT');
+  a.setMode('TIC202', 'CAS');
+  assert.equal(a.L.TIC202.sp, 10, 'the return clamps up to the bottom of the cascade range');
+  const ev = a.events.find((e) => e.src === 'TIC202' && e.desc === 'SP CLAMPED TO CASCADE RANGE');
+  assert.ok(ev, 'the low-side clamp is journaled');
+  assert.deepEqual({ type: ev.type, oldV: ev.oldV, newV: ev.newV }, { type: 'SYSTEM', oldV: '7.0', newV: '10.0' });
+  assert.match(a.state.msg, /SP CLAMPED TO CASCADE RANGE 10\.0 DEG C/);
+  const mc = a.events.find((e) => e.desc === 'MODE CHANGE' && e.src === 'TIC202' && e.newV === 'CAS');
+  assert.ok(mc && mc.oldV === 'AUTO', 'the return is still journaled as the mode change AUTO to CAS, its own old and new values intact: ' + JSON.stringify(mc));
+
+  const b = boot(4, 'OPER');                   // a setpoint exactly at the top of the range pins the primary, and the return changes nothing
+  run(b, 30);
+  b.setMode('TIC202', 'AUTO');
+  b.storeEntry('TIC202', 'SP', 70);
+  run(b, 5);
+  assert.equal(b.flagText(b.L.TIC201), 'INITMAN · OP AT HI LIMIT');
+  b.setMode('TIC202', 'CAS');
+  assert.equal(b.L.TIC202.sp, 70);
+  assert.ok(!b.events.some((e) => e.desc === 'SP CLAMPED TO CASCADE RANGE'), 'a return that moves nothing is not a clamp');
+
+  const d = boot(4, 'OPER');                   // CAS taken in the same scan as the entry: the SP snaps to the primary's old output, which is not a clamp
+  run(d, 30);
+  d.setMode('TIC202', 'AUTO');
+  d.storeEntry('TIC202', 'SP', 60);
+  d.setMode('TIC202', 'CAS');
+  assert.ok(Math.abs(d.L.TIC202.sp - 60) > 1, 'the setpoint did move: ' + d.L.TIC202.sp);
+  assert.ok(!d.events.some((e) => e.desc === 'SP CLAMPED TO CASCADE RANGE'), 'but the primary was not pinned, so no clamp is claimed');
+});
+
+test('a primary whose secondary has no cascade map entry names its cascade without a dangling range; a point with no cascade says NONE', () => {
+  const c = boot(4, 'OPER');
+  assert.equal(c.casRange('FIC102'), '0.0–80.0 M3/H', 'the range is cut to the secondary\'s SP limits, not the raw map');
+  assert.equal(c.casRange('TIC213'), '5.0–120.0 DEG C');
+  delete c.pidCtx().casMap.TIC202;
+  assert.equal(c.casRange('TIC202'), '');
+  assert.equal(c.casRange('NOSUCHTAG'), '', 'an unknown tag has none');
+  const cascOf = (tag) => { c.nav('detail', tag); return c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC'); };
+  assert.equal(cascOf('TIC201').value, 'PRIMARY OF TIC202');
+  assert.equal(cascOf('TIC202').value, 'SECONDARY OF TIC201');
+  assert.deepEqual({ value: cascOf('PIC401').value, note: cascOf('PIC401').note }, { value: 'NONE', note: '' });
+});

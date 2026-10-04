@@ -773,6 +773,29 @@
   // 0.30 so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe (controller
   // ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
   hatchOp(l){ if(l.badPv) return 0.85; const o=this.obsOf(l); return (o&&o.quality==='UNCERTAIN')?0.30:0; }
+  // One flag beside the mode line (spec §3.4): what holds this loop and why. INTERLOCK / TRACK only while the hold is
+  // applied (ESS.Pid.tracking: an interlock always, a device hold outside MAN); a device hold the operator has
+  // overridden in MAN is a NOTE. A primary running INITMAN says so, and says when its output sits at a limit.
+  flagText(l){
+    if(l.trk&&l.trk.on){
+      if(ESS.Pid.tracking(l)) return (l.trk.kind==='interlock'?'INTERLOCK · ':'TRACK · ')+l.trk.reason;
+      return 'NOTE · '+l.trk.reason;
+    }
+    if(l.init){
+      if(l.op>=l.ophilm-0.2) return 'INITMAN · OP AT HI LIMIT';
+      if(l.op<=l.oplolm+0.2) return 'INITMAN · OP AT LO LIMIT';
+      return 'INITMAN';
+    }
+    return '';
+  }
+  // The setpoint span a primary can command on its secondary, from the cascade map, inside the
+  // secondary's own SP limits (spec §3.5). Empty when the cascade map has no entry for the secondary.
+  casRange(slaveTag){
+    const ctx=this.pidCtx(), f=ctx.casMap[slaveTag], s=this.L[slaveTag];
+    if(!f||!s) return '';
+    const a=f(0), b=f(100), lo=Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
+    return this.fmt(lo,s.dec)+'–'+this.fmt(hi,s.dec)+' '+s.eu;
+  }
   phaseSets(){
     const T=(hi,hh)=>({PVHI:[hi,'High'],PVHH:[hh,'Urgent']});
     return {
@@ -1061,9 +1084,13 @@
     if(!this.can('OPER')) return;
     if(!this.operatorMayWrite(tag,'MODE')) return;
     if(l.mode===m) return;
+    const master=l.master?this.L[l.master]:null;
+    const pinned=m==='CAS'&&master&&master.init&&(master.op>=master.ophilm-0.2||master.op<=master.oplolm+0.2);
+    const spBefore=l.sp;
     const r=ESS.Pid.transferMode(l,m,this.pidCtx());   // bumpless: integrator re-initialised so the first output equals the current OP
     if(!r.ok){ this.msgZone(r.reason); return; }
     this.addEvent('OPERATOR',tag,'MODE CHANGE','',''); this.events[0].oldV=r.from; this.events[0].newV=m;
+    if(pinned&&Math.abs(l.sp-spBefore)>1e-9){ this.addEvent('SYSTEM',tag,'SP CLAMPED TO CASCADE RANGE',this.fmt(spBefore,l.dec),this.fmt(l.sp,l.dec)); this.msgZone('SP CLAMPED TO CASCADE RANGE '+this.fmt(l.sp,l.dec)+' '+l.eu); }
     this.dAct('MODE',tag,m,0);
     this.journal('MODE',tag,m);
     this.taskDone('ctl.mode');
