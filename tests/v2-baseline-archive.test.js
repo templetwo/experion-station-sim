@@ -21,6 +21,21 @@ const crypto = require('node:crypto');
 const DIR = path.join(__dirname, 'fixtures', 'v2-baseline');
 
 /**
+ * Intact and complete: the README's sha256 table (rows like | `file.json` | `<64 hex>` |) names exactly `count` fixtures, each
+ * hashes to its listed value, and `onDisk` (the archive's .json files, sorted, relative to `dir`) is exactly the listed set.
+ */
+function assertArchiveIntact({ dir, onDisk, count }) {
+  const readme = fs.readFileSync(path.join(dir, 'README.md'), 'utf8');
+  const listed = [...readme.matchAll(/^\| `([^`]+\.json)` \| `([0-9a-f]{64})` \|$/gm)].map((m) => ({ file: m[1], sha: m[2] }));
+  assert.equal(listed.length, count, `the README must list all ${count} archived fixtures`);
+  for (const { file, sha } of listed) {
+    const bytes = fs.readFileSync(path.join(dir, file));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), sha, `${file} has changed since it was archived`);
+  }
+  assert.deepEqual(onDisk, listed.map((x) => x.file).sort(), 'every archived file is listed and every listed file exists');
+}
+
+/**
  * CR31: a guard that lists every fixture must still assert something, so the list of re-captured fixtures is held exact in both
  * directions. Every file listed must really differ, byte for byte, from its archived copy (a stale entry fails and names the
  * file); every archived file not listed must equal its copy (an unlisted mover fails and names the file); a file is listed once
@@ -45,15 +60,7 @@ function assertListedMoversExact({ dir, archived, listed, since }) {
 }
 
 test('the archived v2 baseline is intact and complete', () => {
-  const readme = fs.readFileSync(path.join(DIR, 'README.md'), 'utf8');
-  const listed = [...readme.matchAll(/^\| `([^`]+\.json)` \| `([0-9a-f]{64})` \|$/gm)].map((m) => ({ file: m[1], sha: m[2] }));
-  assert.equal(listed.length, 21, 'the README must list all 21 archived fixtures');
-  for (const { file, sha } of listed) {
-    const bytes = fs.readFileSync(path.join(DIR, file));
-    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), sha, `${file} has changed since it was archived`);
-  }
-  const onDisk = fs.readdirSync(DIR).filter((f) => f.endsWith('.json')).sort();
-  assert.deepEqual(onDisk, listed.map((x) => x.file).sort(), 'every archived file is listed and every listed file exists');
+  assertArchiveIntact({ dir: DIR, onDisk: fs.readdirSync(DIR).filter((f) => f.endsWith('.json')).sort(), count: 21 });
 });
 
 test('every golden listed as re-captured since v2 really differs from its archived v2 copy, and every unlisted one equals it', () => {
@@ -70,15 +77,18 @@ test('every golden listed as re-captured since v2 really differs from its archiv
   // here switched off in a scratch tree every fixture came back equal to its 3.1.0 copy (model stamp aside), and each mechanism
   // alone moved exactly the fixtures it is named against. All 21 differ from their v2 copies, which this check asserts one by one;
   // the 3.1.0 copies live in tests/fixtures/v31-baseline/ and the second check below holds that list the same way.
-  //   CUTOFF   the FIC211 low-flow cutoff (spec 2.2): its raw value is noise around 0, the observed value is exactly 0, so the
-  //            loop at zero setpoint stops dithering MV211. Numeric only (the end-state or physics digest): it moves all 35,
-  //            drill-D11 also by two steps (4021 -> 4023).
+  //   CUTOFF   the spec 2.2 low-flow cutoff, which observe() applies to every M3/H point (a reading under 1 % of span reads 0).
+  //            FIC211's moves all 35 on its own: its raw value is noise around 0, the observed value is exactly 0, so the loop at
+  //            zero setpoint stops dithering MV211; numeric only (the end-state or physics digest), drill-D11 also by two steps
+  //            (4021 -> 4023). FIC102's own cutoff moves nothing alone, but where the plant holds that loop shut (PUMP, ILK-RX) it
+  //            also changes the end state of drill-D3, drill-D4, upset-cool and upset-pump (switched off with the holds left on,
+  //            exactly those four move); the cutoff on FI100, FIC310 and FIC313 moves no fixture.
   //   SAT      transmitter saturation (spec 2.4, D7): TIC202 reports its 103.125 limit and the controller sees that, not the model.
-  //   PUMP     FIC102's output held at 0 while P-101 is stopped (spec 3.2, D1), where 3.1.0 wound it up to 100.
+  //   PUMP     FIC102's output held at 0 while P-101 is stopped (spec 3.2, playtest D1), where 3.1.0 wound it up to 100.
   //   ILK-RX   the R-201 trip holds FIC102 at 0 (spec 3.2, D10, CR19).
   //   ILK-BED  the R-310 bed trip holds TIC311 at 0 (spec 3.2, D10, CR19).
-  //   MARGIN   the debrief margin (spec 3.6, D9): the trip row's note now reads 'no trip · peak 86.3 % vs trip 98 %' and the
-  //            drill goldens digest score.breakdown.
+  //   MARGIN   the debrief margin (spec 3.6, playtest D9): the trip row's note now reads 'no trip · peak 86.3 % vs trip 98 %'
+  //            (drill D2's; drill D9's reads 'no trip · peak 854.9 KPA vs trip 950 KPA') and the drill goldens digest score.breakdown.
   // Mechanisms that moved no golden: the R-202 trip rows (FIC211, TIC213), because no fixture reaches that trip, and drill D4's
   // 'restore' stability rule (CR11), because the goldens are unattended runs that never acknowledge, so none reaches a
   // stability verdict; spec 11 also expected upset-stick to saturate TIC202, and its run never does.
@@ -89,16 +99,19 @@ test('every golden listed as re-captured since v2 really differs from its archiv
     'drill-D1.json',         // CUTOFF
     'drill-D11.json',        // CUTOFF, MARGIN
     'drill-D2.json',         // CUTOFF, MARGIN
-    'drill-D3.json',         // CUTOFF, PUMP
-    'drill-D4.json',         // CUTOFF, SAT, ILK-RX (alarm load 78.3 -> 26.7 per 10 min, events 197 -> 72; score unchanged)
+    'drill-D3.json',         // CUTOFF (also FIC102's), PUMP
+    'drill-D4.json',         // CUTOFF (also FIC102's), SAT, ILK-RX (alarm load 78.3 -> 26.7 per 10 min, events 197 -> 72; score unchanged).
+                             // Its alarm sequence moved too: TIC201:DEVHI and FIC102:PVHI are gone, and LIC101:PVHI, TIC201:PVLO, an
+                             // Urgent TIC201:PVLL and TIC301:PVLO are new, because the held feed returns over about 3.5 min after the
+                             // trip clears instead of surging at once
     'drill-D6.json',         // CUTOFF, MARGIN
     'drill-D9.json',         // CUTOFF, MARGIN
     'upset-agit-batch.json', // CUTOFF
     'upset-agit.json',       // CUTOFF
-    'upset-cool.json',       // CUTOFF, SAT, ILK-RX (FIC102:PVHI no longer raised, events 31 -> 57)
+    'upset-cool.json',       // CUTOFF (also FIC102's), SAT, ILK-RX (FIC102:PVHI no longer raised, events 31 -> 57)
     'upset-drift.json',      // CUTOFF
     'upset-foul.json',       // CUTOFF
-    'upset-pump.json',       // CUTOFF, PUMP
+    'upset-pump.json',       // CUTOFF (also FIC102's), PUMP
     'upset-rxn.json',        // CUTOFF
     'upset-stick.json',      // CUTOFF (its run never saturates TIC202)
     'upset-surge.json',      // CUTOFF
@@ -122,14 +135,7 @@ function jsonUnder(dir, rel = '') {
 }
 
 test('the archived 3.1.0 baseline is intact and complete', () => {
-  const readme = fs.readFileSync(path.join(DIR31, 'README.md'), 'utf8');
-  const listed = [...readme.matchAll(/^\| `([^`]+\.json)` \| `([0-9a-f]{64})` \|$/gm)].map((m) => ({ file: m[1], sha: m[2] }));
-  assert.equal(listed.length, 40, 'the README must list all 40 archived fixtures');
-  for (const { file, sha } of listed) {
-    const bytes = fs.readFileSync(path.join(DIR31, file));
-    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), sha, `${file} has changed since it was archived`);
-  }
-  assert.deepEqual(jsonUnder(DIR31), listed.map((x) => x.file).sort(), 'every archived file is listed and every listed file exists');
+  assertArchiveIntact({ dir: DIR31, onDisk: jsonUnder(DIR31), count: 40 });
 });
 
 test('every golden listed as re-captured since 3.1.0 really differs from its 3.1.0 copy, and every unlisted one equals it', () => {
@@ -144,18 +150,21 @@ test('every golden listed as re-captured since 3.1.0 really differs from its 3.1
     'drill-D11.json',        // CUTOFF (steps 4021 -> 4023), MARGIN
     'drill-D12.json',        // CUTOFF, ILK-BED (score 10 -> 16, alarm load 14.2 -> 5 per 10 min, events 45 -> 15)
     'drill-D2.json',         // CUTOFF, MARGIN
-    'drill-D3.json',         // CUTOFF, PUMP (outcome unchanged: score 13, TK-101 overflow trip; FIC102 ends at OP 0, not 100)
-    'drill-D4.json',         // CUTOFF, SAT, ILK-RX (alarm load 78.3 -> 26.7 per 10 min, events 197 -> 72; score unchanged)
+    'drill-D3.json',         // CUTOFF (also FIC102's), PUMP (outcome unchanged: score 13, TK-101 overflow trip; FIC102 ends at OP 0, not 100)
+    'drill-D4.json',         // CUTOFF (also FIC102's), SAT, ILK-RX (alarm load 78.3 -> 26.7 per 10 min, events 197 -> 72; score unchanged).
+                             // Its alarm sequence moved too: TIC201:DEVHI and FIC102:PVHI are gone, and LIC101:PVHI, TIC201:PVLO, an
+                             // Urgent TIC201:PVLL and TIC301:PVLO are new, because the held feed returns over about 3.5 min after the
+                             // trip clears instead of surging at once
     'drill-D6.json',         // CUTOFF, MARGIN
     'drill-D9.json',         // CUTOFF, MARGIN
     'upset-agit-batch.json', // CUTOFF
     'upset-agit.json',       // CUTOFF
     'upset-air.json',        // CUTOFF
     'upset-bedact.json',     // CUTOFF, ILK-BED (TIC311:PVHI no longer raised, events 37 -> 14)
-    'upset-cool.json',       // CUTOFF, SAT, ILK-RX (FIC102:PVHI no longer raised, events 31 -> 57)
+    'upset-cool.json',       // CUTOFF (also FIC102's), SAT, ILK-RX (FIC102:PVHI no longer raised, events 31 -> 57)
     'upset-drift.json',      // CUTOFF
     'upset-foul.json',       // CUTOFF
-    'upset-pump.json',       // CUTOFF, PUMP
+    'upset-pump.json',       // CUTOFF (also FIC102's), PUMP
     'upset-rxn.json',        // CUTOFF
     'upset-stick.json',      // CUTOFF (its run never saturates TIC202)
     'upset-surge.json',      // CUTOFF

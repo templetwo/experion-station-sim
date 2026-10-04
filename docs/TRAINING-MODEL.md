@@ -226,7 +226,7 @@ correct sequence of moves:
 |---|---|---|---|
 | D1 | Flow transmitter failure (FIC102) | Reading a SHEDHOLD response: the loop sheds to MAN and holds the last good output rather than chasing a bad reading | Acknowledge and confirm the shed behaviour |
 | D2 | Feed surge — tank level rising | The first correct move on a rising level is more outlet flow, not shelving the alarm | Raise outlet flow (FIC102/LIC101 output) |
-| D3 | Feed pump trip | The correct restart sequence: loop to MAN/OP 0, start the pump after lockout, then restore AUTO | Restart P-101 in the right order |
+| D3 | Feed pump trip | The correct restart sequence: loop to MAN at 20 to 30 %, start the pump after lockout, return the loop to CAS within a minute; the feed ramps back from zero, so a late restart overflows TK-101 otherwise | Restart P-101 in the right order |
 | D4 | Cooling water loss — exotherm | Cut feed to arrest a developing exotherm, then restore it before the tank reaches high level, confirming the reactor is cooling | Cut, then restore, reactor feed |
 | D6 | Stuck coolant valve (stiction) | Recognising valve stiction — output moves, the process variable it drives does not | Take the loop to MAN and work around the stuck valve |
 | D9 | Flash drum pressure high | A loop left in MAN by a previous shift will not respond no matter how the pressure trends | Return the loop to AUTO |

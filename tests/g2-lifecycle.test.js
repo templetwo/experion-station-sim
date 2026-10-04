@@ -29,6 +29,8 @@ test('actual archived v1 checkpoints resume explicit legacy operation without in
   assert.equal(current.schema_version,'peb.plant.v2');
   assert.equal(current.materialMode,'legacy');assert.equal(current.composition,null);
   assert.deepEqual(current.product,old.product);
+  // the restore itself is exact: at the restore instant, before any tick has run, the plant fields are the archived checkpoint's
+  for(const key of ['P','L','V'])assert.deepEqual(current.fields[key],checkpoint.fields[key],key);
   // CR27 (docs/dev/CREDIBILITY-PASS-SPEC.md section 0.6): this test used to run the archived 3.1.0-era kernel and the current
   // kernel in lockstep for 12 ticks and compare P, L (less the derived obs and pvObs) and V field for field. That proved G2
   // left the legacy dynamics untouched, a property stage S1 of the credibility pass breaks on purpose: the FIC211 low-flow

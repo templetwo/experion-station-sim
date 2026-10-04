@@ -1195,25 +1195,30 @@ test('CR29: TI312 shows the R-310 trip row, and its PVHH note follows the stored
   assert.equal(row('PVHH').note, 'trip point · Alarms tab', 'back at the trip value it is the trip point again');
 });
 
-// CR21: drill D3's debrief note makes a measured claim, so the claim is pinned (seed 4, 60 s settled at steady state when the pump
-// stops; the onset moves by about 10 s with the settle time, so "about 280 s" is the note's own word). Restarted 280 s after the
-// stop with FIC102 left in CAS, TK-101 reaches its 98 % overflow trip; with FIC102 put in MAN at 20 to 30 % before START and
-// returned to CAS a minute later it holds (left in MAN it still overflows); the sooner restarts (60 s, 180 s) do not trip.
-// 3.1.0 surged the flow and pulled the tank down instead.
-test("CR21: drill D3's restart note is true: a restart 280 s after the stop trips TK-101 unless FIC102 is put in MAN first", () => {
-  const note = boot(1).drillDefs().find((d) => d.id === 'D3').debrief;
-  assert.match(note, /about 280 s after the stop/);
-  assert.match(note, /FIC102 is put in MAN at 20 to 30 % before START and returned to CAS within a minute/);
-  const overflow = (stop, manOp) => {
+// CR21 and CR32: drill D3 prints a restart note and keys a quiz answer, and both make a measured claim, so both are pinned on the drill
+// itself: arm D3 (seed 4, the plant run 60 s first), let its own pump fault trip P-101, restart `stop` s after the trip. The onset
+// moves by about 10 s with the settle time, so "about 280 s" is the note's own word. Restarted 280 s after the trip with FIC102
+// left in CAS, TK-101 reaches its 98 % overflow trip; with FIC102 put in MAN at 20 to 30 % before START and returned to CAS a minute
+// later it holds (left in MAN it still overflows); the sooner restarts (60 s, 180 s) do not trip. 3.1.0 surged the flow and pulled
+// the tank down instead. The keyed-correct option says that same sequence: it used to say "restore AUTO", which under PV tracking
+// leaves the feed at SP 0 (CR20) and the tank overflows.
+test("CR21, CR32: drill D3's note and keyed answer are true: a restart 280 s after the pump trips overflows TK-101 unless FIC102 is put in MAN first", () => {
+  const def = boot(1).drillDefs().find((d) => d.id === 'D3');
+  assert.match(def.debrief, /about 280 s after the stop/);
+  assert.match(def.debrief, /FIC102 is put in MAN at 20 to 30 % before START and returned to CAS within a minute/);
+  assert.equal(def.a, 0);
+  assert.equal(def.opts[def.a], 'FIC102 to MAN at 20 to 30 %, START P-101 after lockout, return to CAS within a minute');
+  const overflow = (stop, manOp, backToCas = true) => {
     const c = boot(4, 'OPER');
     run(c, 60);
-    c.motorCmd('P101', false);
+    c.startDrill(c.drillDefs().find((d) => d.id === 'D3'));
+    assert.equal(run(c, 60, () => !c.L.P101.run), true, "the drill's own pump fault tripped P-101");
     assert.equal(run(c, stop, () => c.P.trips.ovf), false, 'the stopped tank had not overflowed yet (' + stop + ' s)');
     if (manOp != null) { c.setMode('FIC102', 'MAN'); assert.equal(c.storeEntry('FIC102', 'OP', manOp), true); }
     c.motorCmd('P101', true);
     assert.equal(c.L.P101.run, true, 'the pump restarted');
     let tripped = false;
-    if (manOp != null) { tripped = run(c, 60, () => c.P.trips.ovf); c.setMode('FIC102', 'CAS'); }   // back in CAS a minute after START
+    if (manOp != null) { tripped = run(c, 60, () => c.P.trips.ovf); if (backToCas) c.setMode('FIC102', 'CAS'); }   // back in CAS a minute after START
     return tripped || run(c, 600, () => c.P.trips.ovf);
   };
   assert.equal(overflow(60, null), false, 'a 60 s stop recovers');
@@ -1221,8 +1226,5 @@ test("CR21: drill D3's restart note is true: a restart 280 s after the stop trip
   assert.equal(overflow(280, null), true, 'a 280 s stop with FIC102 left in CAS ends in the overflow trip');
   for (const op of [20, 25, 30]) assert.equal(overflow(280, op), false, 'a 280 s stop with FIC102 put in MAN at ' + op + ' % holds');
   // and the claim needs its last clause: left in MAN at 25 % the feed stays below the inflow and the tank still overflows
-  const left = boot(4, 'OPER');
-  run(left, 60); left.motorCmd('P101', false); run(left, 280);
-  left.setMode('FIC102', 'MAN'); left.storeEntry('FIC102', 'OP', 25); left.motorCmd('P101', true);
-  assert.equal(run(left, 900, () => left.P.trips.ovf), true, 'FIC102 left in MAN at 25 % overflows the tank');
+  assert.equal(overflow(280, 25, false), true, 'FIC102 left in MAN at 25 % overflows the tank');
 });

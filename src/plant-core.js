@@ -1184,7 +1184,7 @@
        q:'Best first control action for rising level?',opts:['Increase outlet flow (raise FIC102/LIC101 output)','Shelve the level alarms','Stop the feed pump','Lower the outlet flow setpoint'],a:0},
       {id:'D3',name:'Feed pump trip',basePreset:'U1_SS',fault:'pump',rel:['P101','FIC102','LIC101','TK-101'],act:'START',stable:'alarms',
        debrief:'Restart note: after START the feed ramps back from zero instead of surging (LIC101 was initialised while P-101 was stopped), so a restart left until about 280 s after the stop still ends in the TK-101 overflow trip unless FIC102 is put in MAN at 20 to 30 % before START and returned to CAS within a minute of it.',
-       q:'Correct restart sequence?',opts:['FIC102 to MAN / OP 0, START P-101 after lockout, restore AUTO','Immediately drive FIC102 OP to 100%','Repeatedly press START until it holds','Shelve the TRIP alarm and wait'],a:0},
+       q:'Correct restart sequence?',opts:['FIC102 to MAN at 20 to 30 %, START P-101 after lockout, return to CAS within a minute','Immediately drive FIC102 OP to 100%','Repeatedly press START until it holds','Shelve the TRIP alarm and wait'],a:0},
       // D4: the reactor is the drill's equipment (trips:['rx']); LIC101 is related because cutting feed fills TK-101 and
       // the trainee must restore feed before the tank reaches high level — a TK-101 trip is an 'other equipment' deduction
       {id:'D4',name:'Cooling water loss — exotherm',basePreset:'U1_SS',fault:'cool',rel:['TIC201','TIC202','R-201','LIC101'],trips:['rx'],act:'CUTFEED',stable:'restore',peak:'rT',
