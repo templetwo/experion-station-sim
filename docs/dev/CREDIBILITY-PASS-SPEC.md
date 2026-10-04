@@ -144,7 +144,8 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   code (a short verified list on the page), `critical alarm` elsewhere; §3.6 amended and
   `src/philosophy.js` reworded to match.
 - **CR28b.** The pre-trip label also follows the stored value: `pre-trip alarm` only while the
-  configured PVHH is below the declared trip; a PVHH stored at or above it reads `critical alarm`.
+  configured PVHH is below the declared trip; a PVHH stored at or above it reads `critical alarm`,
+  except TI312 stored exactly at its trip, which the verified list names `trip point`.
 - **CR29.** TI312 joins the declared-trip map (R-310 HI TEMP TRIP, 480 °C on the bed hotspot it
   indicates), so the ladder shows the R-310 TRIP row rather than hiding the trip when its PVHH
   is moved.
@@ -286,9 +287,11 @@ with the code, and labels the critical alarm on that trip's side `pre-trip alarm
 sits below the declared trip (every declared process trip is high-side, so PVHH; the other side,
 and a PVHH stored at or above the trip, read `critical alarm`; CR28, CR28b), `trip point` where the
 critical alarm is itself the trip or interlock condition in code, and `critical alarm` elsewhere
-(CR28). The six points with a declared process trip behind their critical alarm are TIC201,
-LIC101, PIC401, TIC212, PIC505 and TI312 (CR29). The TRIP note fits two lines of the note
-column (CR30). The drill debrief's
+(CR28). The six points with a declared numeric process trip, and so a TRIP row, are TIC201,
+LIC101, PIC401, TIC212, PIC505 and TI312, whose PVHH sits at its trip and reads `trip point`
+there (CR29); TI314 and TI315 carry the declared H-310 skin trip, whose threshold is prose, so
+they show no TRIP row and read `trip point`. The TRIP note fits two lines of the note column
+(CR30). The drill debrief's
 "trip avoided" line states the margin to the documented trip point.
 
 ---
