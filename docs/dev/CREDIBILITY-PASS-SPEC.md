@@ -109,7 +109,7 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   its PV) and is accepted. Its measured consequence (seed 4: TK-101 peaks 73 % after a 60 s stop
   and 86 % after 180 s; a restart 280 to 340 s after the stop still ends in the overflow trip
   unless FIC102 is pre-positioned in MAN) is the lesson, not a defect: drill D3's debrief says so,
-  the S1 changelog carries the table, and S5's PIP safety card already says to put FIC102 in MAN
+  the S1 changelog carries the table, and the S5 PIP safety card this spec specifies (not yet built) says to put FIC102 in MAN
   at 20 to 30 % before the restart.
 - **CR22.** The Live Diagnosis card tells the same truth as the flag: an initialised primary whose
   secondary is not in CAS keeps the "cascade broken" card; one whose secondary is in CAS and held
@@ -154,9 +154,20 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
 - **CR31.** An archive guard that lists every fixture still asserts something: both guards also
   prove that every listed re-captured fixture differs from its archived copy and every unlisted
   one equals it, so a stale entry fails the test.
-- **CR32.** Drill D3's keyed-correct quiz option agrees with its debrief note and the PIP safety
-  card (FIC102 to MAN at 20 to 30 %, START after lockout, return to CAS within a minute): under PV
+- **CR32.** Drill D3's keyed-correct quiz option agrees with its debrief note and the S5 PIP safety
+  card this spec specifies (FIC102 to MAN at 20 to 30 %, START after lockout, return to CAS within a minute): under PV
   tracking (CR20) "restore AUTO" would leave the feed at SP 0 and the tank overflows.
+- **CR33.** The 35 re-captured fixtures keep the model stamp of the build that captured their bytes;
+  later commits changed only strings and comments no digest reads. S6's release re-capture refreshes it.
+- **CR34.** An interlock-kind hold holds the raw target: the plant forces the valve there regardless of
+  the loop's output limits, so OP equals the valve (§3.4, D10) even below OPLOLM; a device-kind hold
+  stays inside the limits.
+- **CR35.** Alarm-limit stores are bounded to the point's reporting window: a HI limit above it or a LO
+  limit below it is refused (the transmitter can never report it, so the alarm would be dead, and any
+  latch it drives with it).
+- **CR36.** The hatch keeps keying on quality (CR8); the word SATURATED is reserved for a value at a
+  window edge, through one `saturated(l)` predicate shared by the faceplate note, the Point Detail note
+  and the help answer; an UNCERTAIN reading away from the edge says UNCERTAIN with its limit.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -167,6 +178,21 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
 - "Trip point" names any alarm limit on the Alarms tab, in MOC records and in the curriculum
   task, while the ladder's `trip point` note means the alarm that is the trip; a naming pass in a
   later stage unifies the two.
+- The TI216 shed holds FIC211 in MAN at OP 0 through its own latch with no flag (§3.2 omits it);
+  folding it into `forcedOutputs()` is a later-stage item.
+- PV alarms on a BAD point still evaluate the raw value (pre-existing, untouched by S1).
+- The H-310 skin trip latches in `interlocks()` after `forcedOutputs()`, so TIC311's hold starts one
+  scan after the latch; OP and the valve agree at every model step (inherent to the scan order).
+- `tripLimitOf` keeps a hand map of drill keys to cause ids that `latch.field` already encodes, and
+  pairs with `def.peak` implicitly (all eight drills pair correctly; nothing guards a new one).
+- The Point Detail flag routing is by string prefix (CR25); derive it from `trk.on` when a new
+  flavour is added. The pre-trip label compares the unrounded stored value, and a PVHH stored above
+  its trip renders under the TRIP row; both belong to the naming pass, as does a uniform value rule
+  for the critical-alarm note. `round(peak, 1)` can print "peak 185 vs trip 185" for a near miss
+  inside 0.05.
+- An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
+  trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
+  four exist today).
 
 ---
 
@@ -244,7 +270,9 @@ positive form). Together with 2.2's cutoff this closes D14.
 3.1 **In `src/pid.js`.** A loop can be told to track: `setTracking(loop, target, reason, kind)`
 and `clearTracking(loop)`, stored on the loop as `trk: {on, target, reason, kind}` where `kind`
 is `interlock` or `device`. `stepPid` honours it: when `trk.on` and (`kind === 'interlock'` or
-the mode is not MAN), the output is held at `clampOp(target)`, `trackIntegrator` runs so the
+the mode is not MAN), the output is held at the raw target for an interlock hold (the plant forces
+the valve there, so OP equals the valve even below OPLOLM; CR34) and at `clampOp(target)` for a
+device hold, `trackIntegrator` runs so the
 return is bumpless, PV tracking applies, and the scan returns. `runInitman` treats a tracking
 secondary like an open cascade: `loop.init = slave.mode !== 'CAS' || (slave.trk && slave.trk.on)`,
 so the primary of a tracking secondary back-calculates instead of winding up. This closes the
@@ -268,7 +296,8 @@ equal the effect columns the matrix declares, so the matrix keeps declaring and 
 keeps enforcing; `forcedOutputs()` reads the code's own trip flags, never the matrix.
 
 3.3 **Operator writes.** An OP entry on a loop tracking by interlock is refused:
-`ENTRY REJECTED — OUTPUT INTERLOCKED (R-201 HI TEMP TRIP)`, not journaled. On a loop tracking by
+`ENTRY REJECTED — OUTPUT INTERLOCKED (R-201 HI TEMP TRIP)`, journaled as a WRITE REJECTED event and
+never as a change. On a loop tracking by
 device feedback the operator owns OP in MAN (pre-positioning the valve before a restart stays
 possible and drill D3 can teach it); in AUTO and CAS the entry path already refuses OP.
 
@@ -283,7 +312,8 @@ Cascade row (CR25).
 `casMap.TIC202` commands TIC202 between 10 and 70 °C, so an operator setpoint of 75 pins TIC201 at
 100 % and a return to CAS clamps the setpoint to 70. Changes: the `OP AT HI LIMIT` flag; Point
 Detail's cascade row states the commandable range from the map (`casMap(OPLOLM)` to
-`casMap(OPHILM)` of the primary, cut to the secondary's SP limits; CR24);
+`casMap(OPHILM)` of the primary, 0 and 100 when the primary has no limits, cut to the secondary's SP
+limits; CR24);
 a return to CAS that clamps the setpoint journals `SP CLAMPED TO CASCADE RANGE 70.0` and says so
 in the message zone. Widening the map is a dynamics change and is logged to the intake doc.
 
@@ -547,14 +577,14 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | upset-cool, drill-D4, upset-stick, any run where TIC202 reaches a window edge (saturates) | §2 saturation (D7) |
 | runs with Urgent level alarms (overflow runs) | §6.1 (R2) |
 | runs where an interlock in the §3.2 table holds a loop: the R-201 trip on FIC102 (upset-cool, drill-D4), the R-310 bed trip on TIC311 (drill-D12, upset-bedact), the R-202 trip on FIC211 and TIC213 | §3 interlock tracking (D10); measured at Task 6 (CR19) |
-| drill-D2, drill-D6, drill-D9, drill-D11 | §3.6 debrief margin (D9): the drill goldens digest `score.breakdown[].note`, which now carries the peak against the declared trip; measured at Task 8 |
+| drill-D2, drill-D6, drill-D9, drill-D11 | §3.6 debrief margin (playtest D9): the drill goldens digest `score.breakdown[].note`, which now carries the peak against the declared trip; measured at Task 8 |
 | every v2 fixture and every arch fixture (the g2-lifecycle archived-kernel lockstep clause is re-scoped, not re-captured: CR27) | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
 
 Measured at Task 9 (ablation in a scratch tree, all 35 movers explained, none unknown): every v2 and
 arch fixture moved for the FIC211 cutoff; upset-pump and drill-D3 also for FIC102 device tracking;
 upset-cool and drill-D4 also for TIC202 saturation and the R-201 interlock hold; drill-D12 and
-upset-bedact also for the R-310 interlock hold; drill-D2, D6, D9 and D11 also for the D9 margin
-note. upset-stick never saturates TIC202 (cutoff only); the R-202 rows moved no fixture (no golden
+upset-bedact also for the R-310 interlock hold; drill-D2, D6, D9 and D11 also for the playtest-D9
+margin note. upset-stick never saturates TIC202 (cutoff only); the R-202 rows moved no fixture (no golden
 reaches that trip) and D4's `restore` rule moved none (the unattended goldens never acknowledge an
 alarm); the five u4 fixtures did not move and the guard proves it. The cutoff applies to every
 M3/H point: FIC211's alone moves all 35; with the holds on, FIC102's moves drill-D3, drill-D4,
