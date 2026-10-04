@@ -207,6 +207,10 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
 - Governed-mode RAISE and LOWER send the unclamped value, so a step at OPHILM, OPLOLM, SPHILM or
   SPLOLM (and an OP below OPLOLM, reachable through an interlock hold since CR34) gets
   `native_limit` where the native path clamps (pre-existing).
+- Engineering stores (gains, limits, deadband, on-delay) accept ±Infinity typed as `1e999`; there is
+  no finiteness check (pre-existing; journals and replays identically).
+- `setTargetBand`'s refusal prints the band edges at the point's decimals ("140.0 TO 168.0" against a
+  168.0006 limit) where the CR35 message prints exact edges (cosmetic).
 - An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
   trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
   four exist today).

@@ -19,7 +19,7 @@ don't restate it. This file is what you need to *change* it safely.
 ## Commands
 
 ```bash
-node --test tests/*.test.js     # 879 tests, ~5 s, no dependencies
+node --test tests/*.test.js     # 1235 tests, ~6 s, no dependencies (2026-10-04)
 python3 tools/build-dist.py     # rebuild dist/ after ANY change to the app or src/
 tools/smoke.sh                  # headless-Chrome check of both builds
 tools/strip-dev.sh              # list/produce the production-only tree (dry run by default)
