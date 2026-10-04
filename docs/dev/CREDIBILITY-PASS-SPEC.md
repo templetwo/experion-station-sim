@@ -447,7 +447,7 @@ Expected, to be measured by the build; the archive guard lists the actual set.
 | arch A5 score | §6.3 gate re-key |
 | upset-cool, drill-D4, upset-stick, any run where TIC202 reaches a window edge (saturates) | §2 saturation (D7) |
 | runs with Urgent level alarms (overflow runs) | §6.1 (R2) |
-| runs where the R-201 trip holds while FIC102 was wound up | §3 interlock tracking (D10) |
+| runs where an interlock in the §3.2 table holds a loop: the R-201 trip on FIC102 (upset-cool, drill-D4), the R-310 bed trip on TIC311 (drill-D12, upset-bedact), the R-202 trip on FIC211 and TIC213 | §3 interlock tracking (D10); measured at Task 6 (CR19) |
 | every v2 fixture, every arch fixture, and the g2-lifecycle archived-run comparison | §2.2 low-flow cutoff on FIC211: its raw value is noise around 0 and the observed value is exactly 0, so the loop at zero setpoint stops dithering MV211; numeric-only moves, measured at Task 3 (controller ruling CR10, 2026-10-03) |
 
 Nothing may move for a reason outside this table; a fixture that moves for another reason is a finding,
