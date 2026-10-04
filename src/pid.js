@@ -30,12 +30,14 @@
  *       below): op tracks invMap(slave.sp), init = true.
  *     - CAS loops take sp = clamp(casMap[tag](master.op), SPLOLM, SPHILM).
  *     - tracking (see tracking(loop)): a CAS loop still takes its SP from the
- *       master first; then OP is held at clamp(trk.target, OPLOLM, OPHILM),
- *       the integrator tracks OP so the release is bumpless, and with pvtrack
- *       the SP follows PV. Nothing else runs on that scan. A primary that is
- *       running INITMAN never reaches this branch on that scan, so a request
- *       of its own is ignored while it back-calculates (the planned callers
- *       are never primaries).
+ *       master first; then OP is held, at trk.target itself for an interlock
+ *       (the plant forces the valve there whatever the loop's output limits, so
+ *       OP must read the valve, CR34) and at clamp(trk.target, OPLOLM, OPHILM)
+ *       for a device hold; the integrator tracks OP so the release is bumpless,
+ *       and with pvtrack the SP follows PV. Nothing else runs on that scan. A
+ *       primary that is running INITMAN never reaches this branch on that scan,
+ *       so a request of its own is ignored while it back-calculates (the planned
+ *       callers are never primaries).
  *     - MAN / bad PV: no control action; integrator tracks op so a later
  *       transfer to AUTO is bumpless; with pvtrack the SP tracks PV
  *       (PVTRACK-style option: SP follows PV in MAN so AUTO starts at
@@ -62,11 +64,12 @@
  *     so the error, the derivative, lastPv and PV tracking all act on it.
  *   setTracking(loop, target, reason, kind)   the plant tells the loop to hold its output at
  *     target for a reason (the operator-facing text, e.g. 'P-101 STOPPED'). A non-finite target
- *     (undefined, NaN, Infinity) is stored as 0, so a bad value can never reach OP as NaN; the
- *     hold is clamp(target, OPLOLM, OPHILM) either way. kind is 'interlock' (holds in every
- *     mode) or 'device' (device feedback: yields to the operator in MAN); any other kind is
- *     taken as 'device'. Stored as loop.trk = {on, target, reason, kind}. The module is told;
- *     it never decides who tracks (CREDIBILITY-PASS-SPEC 3.1).
+ *     (undefined, NaN, Infinity) is stored as 0, so a bad value can never reach OP as NaN. The
+ *     hold is the target itself for an interlock (the plant forces the valve to it regardless of
+ *     the loop's output limits, CR34) and clamp(target, OPLOLM, OPHILM) for a device hold. kind
+ *     is 'interlock' (holds in every mode) or 'device' (device feedback: yields to the operator
+ *     in MAN); any other kind is taken as 'device'. Stored as loop.trk = {on, target, reason,
+ *     kind}. The module is told; it never decides who tracks (CREDIBILITY-PASS-SPEC 3.1).
  *   clearTracking(loop)   release the hold: trk.on goes false, target and reason are emptied,
  *     kind is kept. A loop that never tracked is left exactly as it was.
  *   tracking(loop) -> boolean   true when a tracking request is in force for this scan: kind
@@ -161,9 +164,10 @@
   }
 
   // Output tracking (spec §3.1): the plant tells a loop to hold its output at a target with a
-  // reason. An interlock holds in every mode; a device-feedback hold yields to the operator in MAN.
-  // The module is told, it never decides who tracks. A target that is not a finite number is held at 0
-  // (inside the output limits, as any target is) rather than let NaN into OP and the integrator.
+  // reason. An interlock holds in every mode, at the raw target (CR34: the plant forces the valve there
+  // whatever the loop's output limits, so OP reads the valve); a device-feedback hold yields to the
+  // operator in MAN and stays inside the output limits. The module is told, it never decides who tracks.
+  // A target that is not a finite number is held at 0 rather than let NaN into OP and the integrator.
   function setTracking(loop, target, reason, kind) {
     var t = Number.isFinite(target) ? target : 0;
     loop.trk = { on: true, target: t, reason: String(reason || ''), kind: kind === 'interlock' ? 'interlock' : 'device' };
@@ -183,7 +187,7 @@
 
     if (loop.slave && runInitman(loop, ctx)) { applyPvTracking(loop); return loop; }
     if (loop.mode === 'CAS' && loop.master) followMaster(loop, ctx);
-    if (tracking(loop)) { loop.op = clampOp(loop, loop.trk.target); applyPvTracking(loop); trackIntegrator(loop); return loop; }
+    if (tracking(loop)) { loop.op = loop.trk.kind === 'interlock' ? loop.trk.target : clampOp(loop, loop.trk.target); applyPvTracking(loop); trackIntegrator(loop); return loop; }
     if (loop.mode === 'MAN' || loop.badPv) { applyPvTracking(loop); trackIntegrator(loop); return loop; }
 
     var e = loopError(loop);

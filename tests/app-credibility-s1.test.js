@@ -124,7 +124,7 @@ test('D7: the page renders the observed value and hatches an uncertain reading',
   const v = c.renderVals();
   const pvRow = v.dpt.mainRows.find((r) => r.param === 'PV');
   assert.match(pvRow.value, /^103\.1 /);
-  assert.match(pvRow.note, /UNCERTAIN/);
+  assert.equal(pvRow.note, 'SATURATED — REPORTED AT HIGH LIMIT', 'on the window edge the Point Detail note says what the faceplate says (CR14, CR36)');
 });
 
 test('a bad PV still hatches at full strength', () => {
@@ -274,8 +274,10 @@ test('the crosshatch help answer names both hatches: bad quality, and a saturate
   assert.match(a, /full hatch is bad quality/i);
   assert.match(a, /BADPV/);
   assert.match(a, /shed/i);
-  assert.match(a, /light hatch is a saturated/i);
+  assert.match(a, /light hatch is an uncertain reading, and nothing sheds/i);
+  assert.match(a, /note beside the value says SATURATED/);
   assert.match(a, /reporting limit/i);
+  assert.match(a, /UNCERTAIN with a limit, and not SATURATED, means the source itself flags the reading as uncertain/);   // CR36
 });
 
 // CR14: the faceplate has no hatch, so its saturation cue is the note line under the controls. A saturated
@@ -315,7 +317,7 @@ test('the data-acquisition Point Detail row names the limit of a saturated readi
   c.measure();
   c.nav('detail', 'TI312');
   assert.equal(pvRow().value, '619 DEG C');
-  assert.equal(pvRow().note, 'UNCERTAIN — HIGH LIMIT, reported at the transmitter limit');
+  assert.equal(pvRow().note, 'SATURATED — REPORTED AT HIGH LIMIT', 'the same words as the faceplate (CR14, CR36)');
   c.L.TI312.pv = 380;
   c.measure();
   assert.equal(pvRow().note, '', 'a healthy reading carries no note');
@@ -1227,4 +1229,300 @@ test("CR21, CR32: drill D3's note and keyed answer are true: a restart 280 s aft
   for (const op of [20, 25, 30]) assert.equal(overflow(280, op), false, 'a 280 s stop with FIC102 put in MAN at ' + op + ' % holds');
   // and the claim needs its last clause: left in MAN at 25 % the feed stays below the inflow and the tank still overflows
   assert.equal(overflow(280, 25, false), true, 'FIC102 left in MAN at 25 % overflows the tank');
+});
+
+// C1 (whole-branch review): the Live Diagnosis card for a pump trip said the affected controllers "wind up" (false since the D1 hold:
+// FIC102 is held at its safe output and LIC101 initializes) and told the trainee to put FIC102 in MAN at OP 0, START, and "restore
+// AUTO / CAS": under PV tracking (CR20) that leaves the feed shut and the tank overflows (CR32). The card now says the hold and
+// gives the sequence drill D3 keys and prints (CR21, CR32), step for step, as CR23 did for the INITMAN help answer. Exact strings.
+test('C1: the P-101 trip card says the hold and gives the restart drill D3 keys: FIC102 in MAN at 20 to 30 %, START after the lockout, CAS within a minute', () => {
+  const c = boot(4, 'OPER');
+  run(c, 60);
+  const d3 = c.drillDefs().find((d) => d.id === 'D3');
+  c.startDrill(d3);
+  assert.equal(run(c, 60, () => !c.L.P101.run), true, "the drill's own pump fault tripped P-101");
+  run(c, 2);                                    // the plant takes hold one scan after the trip, so the flag the card talks about is up
+  assert.equal(c.flagText(c.L.FIC102), 'TRACK · P-101 STOPPED');
+  const card = c.diagnose().find((x) => x.id === 'mtrip.P101');
+  assert.equal(card.sev, 'URGENT');
+  assert.equal(card.title, 'P-101 pump tripped — lockout ' + Math.ceil(c.L.P101.lock) + ' s');
+  assert.equal(c.L.P101.tripWhy, 'UNCOMMANDED STOP');
+  // the card's own text, exactly; the alarm-backed cards then inherit the banner line (this card is the one issue, so it carries it)
+  const own = 'UNCOMMANDED STOP. While the pump is stopped the plant holds FIC102 at its safe output (outside MAN) and its primary, LIC101, initializes, so after START the feed ramps back from zero instead of surging. The tank keeps filling in the meantime, and a late restart still ends in the TK-101 overflow trip unless FIC102 is pre-positioned.';
+  assert.ok(card.why.startsWith(own), card.why);
+  assert.match(card.why.slice(own.length), /^ Alarm banner: 1 active — 1 Urgent, 0 High, 0 Low, 0 Journal; 1 unacknowledged/, 'only the inherited alarm banner follows');
+  assert.deepEqual(card.steps.map((s) => s.t), [
+    'Put FIC102 in MAN at 20 to 30 % before START; the output is yours in MAN while the pump is stopped.',
+    'Wait out the lockout, then START P-101.',
+    'Return FIC102 to CAS within a minute of START. In AUTO its setpoint stays where PV tracking left it (0 while the pump was stopped), so the feed does not recover and the tank overflows.',
+  ]);
+  assert.deepEqual(card.steps.map((s) => typeof s.go), ['function', 'function', 'undefined'], 'the faceplate shortcuts are kept: FIC102, then P101');
+  assert.doesNotMatch(card.why + ' ' + card.steps.map((s) => s.t).join(' '), /wind ?up|windup|OP 0/i, 'no wind-up, and no "OP 0" in MAN');
+  // the card and the drill's keyed answer are one sequence, clause for clause
+  assert.equal(d3.opts[d3.a], 'FIC102 to MAN at 20 to 30 %, START P-101 after lockout, return to CAS within a minute');
+  assert.match(card.steps.map((s) => s.t).join(' '), /FIC102 in MAN at 20 to 30 %.*START P-101.*FIC102 to CAS within a minute/);
+  // M-202's card is not this card's business
+  const agit = boot(4, 'OPER');
+  agit.L.M202.trip = true; agit.L.M202.run = false;
+  const mcard = agit.diagnose().find((x) => x.id === 'mtrip.M202');
+  assert.match(mcard.why, /reacts all at once on restart/);
+  assert.equal(mcard.steps.length, 3);
+});
+
+// I1 (whole-branch review): the two alarm-help entries that send the trainee to restart P-101 said "wait for the lockout, then START"
+// and "restart P-101 ... and open FV-102 in MAN": a restart in CAS left late ends in the TK-101 overflow trip (CR21, CR32). Both now
+// say the sequence drill D3 keys and the pump card gives: FIC102 in MAN at 20 to 30 % before START, CAS within a minute of it.
+test('I1: the alarm help for the P-101 trip and for FIC102 PVLL gives the restart sequence drill D3 keys', () => {
+  const trip = AlarmHelp.resolve('P101', 'TRIP', {});
+  assert.equal(trip.found, true);
+  assert.equal(trip.correctiveAction, 'Check the trip reason on the P101 faceplate and confirm the TK-101 level permissive. Put FIC102 in MAN at 20 to 30 % before START, START P-101 when the 30 s restart lockout has expired, then return FIC102 to CAS within a minute of START; the feed ramps back from zero, so a restart left until about 280 s after the stop still ends in the TK-101 overflow trip without that.');
+  const low = AlarmHelp.resolve('FIC102', 'PVLL', {});
+  assert.equal(low.found, true);
+  assert.equal(low.correctiveAction, 'If P-101 is stopped, put FIC102 in MAN at 20 to 30 % before START, restart P-101 when the restart lockout clears and return FIC102 to CAS within a minute of START (a late restart left in CAS still ends in the TK-101 overflow trip); if FV-102 is closed or stuck, open it in MAN. Restore feed before TIC201 falls past 140 DEG C, because the reaction does not relight on this board.');
+  for (const text of [trip.correctiveAction, low.correctiveAction]) {
+    assert.match(text, /FIC102 in MAN at 20 to 30 % before START/);
+    assert.match(text, /FIC102 to CAS within a minute of START/);
+    assert.match(text, /TK-101 overflow trip/);
+  }
+});
+
+// I3, ruling CR35 (whole-branch review): once every analog point reports through a window (spec §2.2), an alarm limit beyond it can never
+// annunciate: the transmitter never sends a value that high or that low. TIC202 PVHH stored at 105 sat above a window top of 103.125 and was
+// accepted, signed and journaled as a MOC change, yet could never raise (the same for TI314 / TI315 beyond 721.875, and TI216 beyond 206.25,
+// where it would also have killed the feed-shed latch that alarm drives). A HI-side limit above the window top, or a LO-side limit below its
+// bottom, is now refused before the signature with the page's rejection (message zone only: no event, no MOC record). The edge itself is
+// accepted, since a saturated reading sits exactly on it and the alarm tests >= (LO: <=). The message prints the exact edges (the printed
+// edge is the enforced edge, so no entry the message permits is refused), through fmt at the point's decimals or as many more as that takes.
+test('CR35: an alarm-limit store beyond the reporting window is refused before the signature, and the window edge itself is accepted', () => {
+  const c = boot(4, 'ENGR');
+  const state = () => JSON.stringify([c.events.length, c.mocCount, c.state.dlg && c.state.dlg.type, c.L.TIC202.alm, c.L.TI314.alm, c.L.TI216.alm]);
+  const refused = (tag, cond, value, window) => {
+    const before = state();
+    assert.equal(c.storeEntry(tag, 'TP:' + cond, value), false, tag + ' ' + cond + ' ' + value + ': the store is refused');
+    assert.equal(c.state.msg, 'ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW ' + window, tag + ' ' + cond + ' ' + value);
+    assert.equal(state(), before, tag + ' ' + cond + ' ' + value + ': no event, no MOC record, no signature dialog, the limit unchanged');
+  };
+  assert.equal(c.L.TIC202.alm.PVHH[0], 85);
+  refused('TIC202', 'PVHH', 105, '-1.25–103.125');
+  refused('TIC202', 'PVHI', 103.2, '-1.25–103.125');
+  refused('TIC202', 'PVLL', -2, '-1.25–103.125');
+  refused('TIC202', 'PVLO', -1.3, '-1.25–103.125');
+  refused('TI314', 'PVHH', 722, '-8.75–721.875');                   // a dec-0 point: the message still shows the exact edge, never "722"
+  refused('TI216', 'PVHH', 207, '-2.5–206.25');
+  c.setState({ msg: '' });
+  // the edge itself, and a value inside it, are accepted through the signature as before
+  storeTripPoint(c, 'TIC202', 'PVHH', 103.125);
+  storeTripPoint(c, 'TIC202', 'PVLL', -1.25);
+  storeTripPoint(c, 'TI314', 'PVHH', 721.875);
+  storeTripPoint(c, 'TI216', 'PVHH', 206.25);
+  storeTripPoint(c, 'TIC202', 'PVHH', 90);
+  assert.doesNotMatch(c.state.msg || '', /LIMIT OUTSIDE REPORTING WINDOW/, 'nothing on the accepted path says otherwise');
+  // a deviation limit is a PV-SP difference, not a reported value: it is not bounded by the window
+  assert.equal(c.storeEntry('TIC201', 'TP:DEVHI', 300), true);
+  assert.equal(c.state.dlg && c.state.dlg.type, 'esig', 'DEVHI goes to the signature as before');
+  c.cancelSignature();
+  // the same value on a point whose window is wider is fine: TIC201 PVHH 205 is inside 206.25
+  storeTripPoint(c, 'TIC201', 'PVHH', 205);
+});
+
+test('CR35: a limit stored on the window edge is live: the saturated reading reaches it, where a refused 105 never could', () => {
+  const c = boot(4, 'ENGR');
+  storeTripPoint(c, 'TIC202', 'PVHH', 103.125);
+  c.setState({ sec: 'OPER' });
+  loseCooling(c);
+  assert.ok(run(c, 3000, () => c.alarms.some((a) => a.tag === 'TIC202' && a.cond === 'PVHH' && a.active)), 'PVHH at the window top raised');
+  assert.equal(c.L.TIC202.pvObs, 103.125);
+});
+
+// CR34 (whole-branch review): the R-201 trip forces FV-102 shut whatever FIC102's output limits say, so the loop's OP must read the valve.
+// With OPLOLM stored at 10 the hold used to clamp to 10 and the faceplate read "OP 10.0 · INTERLOCK" beside a closed valve.
+test('CR34: an interlock holds FIC102 at 0 even when OPLOLM is stored above it, so OP reads the shut valve and the flag names the trip', () => {
+  const c = boot(4, 'OPER');
+  assert.equal(c.storeEntry('FIC102', 'OPLOLM', 10), true);
+  assert.equal(c.L.FIC102.oplolm, 10);
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped at 185 C');
+  run(c, 30);                                   // the valve strokes shut, as in the D10 test
+  const l = c.L.FIC102;
+  assert.equal(l.op, 0, 'OP is the interlocked 0, not OPLOLM');
+  assert.equal(c.flagText(l), 'INTERLOCK · R-201 HI TEMP TRIP');
+  assert.ok(c.V.FV102.pos < 0.01, 'the valve is shut: ' + c.V.FV102.pos);
+  c.openFp('FIC102');
+  const fp = c.renderVals().fps.find((f) => f.tag === 'FIC102');
+  assert.equal(fp.opT, '0.0');
+  assert.equal(fp.initT, 'INTERLOCK · R-201 HI TEMP TRIP');
+  c.nav('detail', 'FIC102');
+  const row = c.renderVals().dpt.mainRows.find((r) => r.param === 'OP');
+  assert.equal(row.value, '0.0 %');
+  assert.equal(row.note, 'limits 10 – 100 · INTERLOCK · R-201 HI TEMP TRIP');
+  // a stopped pump is a device hold of the loop's own output, and stays inside the limit
+  const d = boot(4, 'OPER');
+  d.storeEntry('FIC102', 'OPLOLM', 10);
+  d.motorCmd('P101', false);
+  run(d, 5);
+  assert.equal(d.L.FIC102.trk.kind, 'device');
+  assert.equal(d.L.FIC102.op, 10, 'the device hold stays at OPLOLM');
+});
+
+// CR36 (whole-branch review): the word SATURATED is for a reading at an edge of its reporting window. The faceplate note, the Point Detail note
+// and the help answer keyed it to "UNCERTAIN with a limit", but LI513 between 100 and 103.125 % arrives from its source as Uncertain with a
+// HIGH limit, unclamped, so the faceplate said "SATURATED — REPORTED AT HIGH LIMIT" beside 101.50, a number the transmitter really reported.
+// One predicate, saturated(l): UNCERTAIN quality and the observed value on reportingLower or reportingUpper. The two notes say SATURATED only
+// then, and otherwise, for an UNCERTAIN reading with a limit, UNCERTAIN with the limit. The hatch keys on quality and does not move (CR8).
+test('CR36: SATURATED is for a reading on a window edge: TIC202 at its HIGH edge, a point at its LOW edge, and LI513 inside the window reads UNCERTAIN with its limit', () => {
+  const noteOf = (b, tag) => b.renderVals().fps.find((f) => f.tag === tag).noteT;
+  const pvRow = (b) => b.renderVals().dpt.mainRows.find((r) => r.param === 'PV');
+  // the HIGH edge, by the cooling-loss path
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 1800, () => c.L.TIC202.pv > 110));
+  c.openFp('TIC202');
+  c.nav('detail', 'TIC202');
+  assert.equal(c.saturated(c.L.TIC202), true);
+  assert.equal(noteOf(c, 'TIC202'), 'SATURATED — REPORTED AT HIGH LIMIT');
+  assert.equal(pvRow(c).note, 'SATURATED — REPORTED AT HIGH LIMIT');
+  // the LOW edge: a reading below the window bottom is clamped to it
+  const d = boot(4, 'OPER');
+  d.L.TIC202.pv = -5;
+  d.measure();
+  assert.equal(d.pvShown(d.L.TIC202), -1.25);
+  d.openFp('TIC202');
+  d.nav('detail', 'TIC202');
+  assert.equal(d.saturated(d.L.TIC202), true);
+  assert.equal(noteOf(d, 'TIC202'), 'SATURATED — REPORTED AT LOW LIMIT');
+  assert.equal(pvRow(d).note, 'SATURATED — REPORTED AT LOW LIMIT');
+  assert.equal(d.hatchOp(d.L.TIC202), UNCERTAIN_HATCH);
+  // beyond the nominal range but inside the window the transmitter still reports the value: Good with a limit bit, not saturated, no note
+  d.L.TIC202.pv = 101;
+  d.measure();
+  assert.deepEqual([d.obsOf(d.L.TIC202).quality, d.obsOf(d.L.TIC202).limit], ['GOOD', 'HIGH']);
+  assert.equal(d.saturated(d.L.TIC202), false);
+  assert.equal(noteOf(d, 'TIC202'), '');
+  assert.equal(pvRow(d).note, '');
+  // LI513 in composition mode: Uncertain with a HIGH limit from its source, unclamped between 100 and the 103.125 window top
+  const e = new Component({});
+  e.initSim(0, { materialMode: 'composition_mass_v1' });
+  const level = (pv, limit) => {
+    Object.assign(e.L.LI513, { pv, badPv: false, quality: 'UNCERTAIN', statusCode: limit === 'HIGH' ? 0x40940600 : 0x40940500, statusName: 'Uncertain_EngineeringUnitsExceeded', limit, reason: 'ENGINEERING_RANGE_EXCEEDED' });
+    e.measure();
+  };
+  e.openFp('LI513');
+  e.nav('detail', 'LI513');
+  level(101.5, 'HIGH');
+  assert.equal(e.pvShown(e.L.LI513), 101.5, 'the reading is reported as it is, not clamped');
+  assert.equal(e.saturated(e.L.LI513), false);
+  assert.equal(noteOf(e, 'LI513'), 'UNCERTAIN — HIGH LIMIT');
+  assert.equal(pvRow(e).note, 'UNCERTAIN — HIGH LIMIT');
+  assert.equal(e.hatchOp(e.L.LI513), UNCERTAIN_HATCH, 'the hatch keys on quality and is unchanged (CR8)');
+  level(-0.5, 'LOW');
+  assert.equal(e.saturated(e.L.LI513), false);
+  assert.equal(noteOf(e, 'LI513'), 'UNCERTAIN — LOW LIMIT');
+  assert.equal(pvRow(e).note, 'UNCERTAIN — LOW LIMIT');
+  // past the window it is clamped to the edge, and then it is saturated at either end
+  level(105, 'HIGH');
+  assert.equal(e.pvShown(e.L.LI513), 103.125);
+  assert.equal(e.saturated(e.L.LI513), true);
+  assert.equal(noteOf(e, 'LI513'), 'SATURATED — REPORTED AT HIGH LIMIT');
+  assert.equal(pvRow(e).note, 'SATURATED — REPORTED AT HIGH LIMIT');
+  level(-3, 'LOW');
+  assert.equal(e.pvShown(e.L.LI513), -1.25);
+  assert.equal(noteOf(e, 'LI513'), 'SATURATED — REPORTED AT LOW LIMIT');
+  assert.equal(pvRow(e).note, 'SATURATED — REPORTED AT LOW LIMIT');
+  // an UNCERTAIN reading with no limit to name, a bad reading and a motor are none of them saturated
+  const f = boot(4, 'OPER');
+  f.L.AI205.quality = 'STALE';
+  f.measure();
+  assert.equal(f.saturated(f.L.AI205), false);
+  f.L.FIC102.badPv = true;
+  f.measure();
+  assert.equal(f.saturated(f.L.FIC102), false);
+  assert.equal(f.saturated(f.L.P101), false, 'a motor has no window');
+});
+
+// M3 (whole-branch review): Point Detail printed "BAD PV — SHED ACTIVE" beside the mode row of every bad point, so a bad indicator (the product
+// analyzers start bad in composition mode, before the first sample) claimed a shed that has no option to run: only regulatory points carry
+// one. The same shape as CR15's faceplate note: a point without a shed option says plain BAD PV, a regulatory one keeps its exact note.
+test('M3: Point Detail says plain BAD PV for a bad indicator, and keeps BAD PV — SHED ACTIVE for a regulatory point', () => {
+  const c = new Component({});
+  c.initSim(0, { materialMode: 'composition_mass_v1' });
+  assert.equal(c.L.AI511.badPv, true, 'the analyzer starts bad: no sample has been published yet');
+  assert.equal(c.L.AI511.shed, undefined, 'an indicator has no shed option');
+  c.nav('detail', 'AI511');
+  assert.equal(c.renderVals().dpt.shedNote, 'BAD PV');
+  const d = boot(4, 'OPER');
+  d.nav('detail', 'FIC102');
+  assert.equal(d.renderVals().dpt.shedNote, '', 'a healthy point says nothing');
+  d.L.FIC102.badPv = true;
+  assert.equal(d.L.FIC102.shed, 'SHEDHOLD');
+  assert.equal(d.renderVals().dpt.shedNote, 'BAD PV — SHED ACTIVE');
+});
+
+// M4 (whole-branch review): a primary whose output range is narrowed past its secondary's SP limit printed an inverted span: LIC101 OPLOLM 70
+// maps to 84.0 M3/H and above, but FIC102's SPHILM is 80, so the row said "84.0–80.0 M3/H". The low edge is cut to the high one: the setpoint is
+// pinned at 80 there, and the row says so (80.0–80.0).
+test('M4: a narrowed primary prints an honest cascade span, never an inverted one', () => {
+  const c = boot(4, 'OPER');
+  assert.equal(c.casRange('FIC102'), '0.0–80.0 M3/H', 'shipped: LIC101 0 to 100 % through the x1.2 map, cut to FIC102 SPLOLM 0 and SPHILM 80');
+  assert.equal(c.storeEntry('LIC101', 'OPLOLM', 70), true);
+  assert.equal(c.L.LIC101.oplolm, 70);
+  assert.equal(c.casRange('FIC102'), '80.0–80.0 M3/H', 'the primary can only ask for the secondary limit now: 70 % maps to 84, above SPHILM 80');
+  c.nav('detail', 'LIC101');
+  assert.match(c.renderVals().dpt.mainRows.find((r) => r.param === 'CASC').value, /PRIMARY OF FIC102 · COMMANDS SP 80\.0–80\.0 M3\/H/);
+  assert.equal(c.storeEntry('LIC101', 'OPLOLM', 60), true);
+  assert.equal(c.casRange('FIC102'), '72.0–80.0 M3/H', 'a span that still has width is unchanged: 60 % maps to 72');
+});
+
+// M6 (whole-branch review): "Why can I not change OP?" told every trainee to click MAN, including one already in MAN under a trip, where the
+// output is held and the write refused (D10). One sentence says so and points at the flag; the answer's own sentences are kept.
+test('M6: the "Why can I not change OP?" answer keeps its sentences and says an interlock holds the output in MAN too', () => {
+  const a = boot(1).topics().find((t) => t.t === 'Why can I not change OP?').a;
+  assert.ok(a.startsWith('OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'), 'the existing sentences are kept: ' + a);
+  assert.equal(a.slice('OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'.length),
+    ' Under an interlock the output is held and an OP write is refused, even in MAN, until the trip clears (the Message Zone shows OUTPUT INTERLOCKED, and the flag beside the mode line names the hold).');
+  // and what it says is what the page does: in MAN under the R-201 trip the write is refused with that wording
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped at 185 C');
+  c.setMode('FIC102', 'MAN');
+  assert.equal(c.L.FIC102.mode, 'MAN');
+  c.storeEntry('FIC102', 'OP', 80);
+  assert.match(c.state.msg, /OUTPUT INTERLOCKED/);
+  assert.match(c.flagText(c.L.FIC102), /^INTERLOCK · /);
+});
+
+// M5 (whole-branch review): the alarm scan raises and clears with the observed value (pvOf), but three writes that put a value into an alarm record
+// still passed the raw model value: the return to normal when a phase set switches a condition off, and the record made when a condition is taken
+// out of service (the signed OOS and the asset-disable park). FIC211 shows the difference: a flow inside the 1 % low-flow cutoff reads 0.
+test('M5: the alarm records the three paths wrote carry the observed value, not the raw model value', () => {
+  const rawFlow = 0.3;                           // FIC211 spans 40 M3/H, so 0.3 is inside the 0.4 cutoff and reads 0
+  // 1. a phase set that switches PVLO off returns the standing alarm with the value the operator saw
+  const a = boot(4, 'OPER');
+  a.applyPhaseSet('FEED', true);
+  a.L.FIC211.pv = rawFlow; a.measure();
+  assert.equal(a.pvShown(a.L.FIC211), 0);
+  a.raiseA('FIC211', 'PVLO', 'Low', 0, 'M3/H', a.L.FIC211.desc);
+  a.L.FIC211._as.PVLO = true;
+  a.applyPhaseSet('HELD');
+  const rec = a.alarmEngine.get('FIC211.PVLO');
+  assert.equal(rec.val, 0, 'the record carries the observed 0, not the raw 0.3');
+  assert.equal(a.events.find((e) => e.src === 'FIC211' && /PVLO RETURN TO NORMAL/.test(e.desc)).newV, '0.0', 'and so does the journal entry');
+  // 2. a signed out-of-service on a condition that has never alarmed
+  const b = boot(4, 'ENGR');
+  b.L.FIC211.pv = rawFlow; b.measure();
+  b.setOos('FIC211', 'PVHI', true);
+  b.setState({ dlgPw: 'engr', dlgReason: 'test' });
+  assert.ok(b.signAction());
+  assert.equal(b.alarmEngine.get('FIC211.PVHI').state, 'OOSRV');
+  assert.equal(b.alarmEngine.get('FIC211.PVHI').val, 0);
+  // 3. an asset disable parks its conditions the same way
+  const c = boot(4, 'OPER');
+  c.L.FIC211.pv = rawFlow; c.measure();
+  c.parkDisabled('FIC211', 'PVHI', 'ASSET:TEST');
+  assert.equal(c.alarmEngine.get('FIC211.PVHI').state, 'OOSRV');
+  assert.equal(c.alarmEngine.get('FIC211.PVHI').val, 0);
+  // and a saturated transmitter: the record holds what the transmitter sent, never the model's 120
+  const d = boot(4, 'OPER');
+  d.L.TIC202.pv = 120; d.measure();
+  d.parkDisabled('TIC202', 'PVHI', 'ASSET:TEST');
+  assert.equal(d.alarmEngine.get('TIC202.PVHI').val, 103.125);
 });

@@ -31,6 +31,16 @@ test('actual archived v1 checkpoints resume explicit legacy operation without in
   assert.deepEqual(current.product,old.product);
   // the restore itself is exact: at the restore instant, before any tick has run, the plant fields are the archived checkpoint's
   for(const key of ['P','L','V'])assert.deepEqual(current.fields[key],checkpoint.fields[key],key);
+  // and so is everything else the checkpoint carries (the other plant fields, the alarm records, the random streams, the drill and the ledgers):
+  // the whole capture equals the archived checkpoint less the three things v2 adds or retypes (the schema stamp, the material mode, the composition).
+  // This recovers the hidden-state coverage the removed lockstep comparison gave (CR27): a field the restore dropped, defaulted or rewrote now
+  // fails here, naming the key, where the three plant objects alone would have passed it.
+  const bare=(capture)=>{const o={...capture};for(const k of ['schema_version','materialMode','composition'])delete o[k];return o;};
+  assert.deepEqual(Object.keys(bare(current)).sort(),Object.keys(bare(checkpoint)).sort(),'the same top-level keys');
+  assert.deepEqual(Object.keys(current.fields).sort(),Object.keys(checkpoint.fields).sort(),'the same plant fields');
+  for(const key of Object.keys(bare(checkpoint)))assert.deepEqual(bare(current)[key],bare(checkpoint)[key],'top-level '+key);
+  for(const key of Object.keys(checkpoint.fields))assert.deepEqual(current.fields[key],checkpoint.fields[key],'plant field '+key);
+  assert.deepEqual(bare(current),bare(checkpoint),'the whole capture equals the checkpoint at the restore instant');
   // CR27 (docs/dev/CREDIBILITY-PASS-SPEC.md section 0.6): this test used to run the archived 3.1.0-era kernel and the current
   // kernel in lockstep for 12 ticks and compare P, L (less the derived obs and pvObs) and V field for field. That proved G2
   // left the legacy dynamics untouched, a property stage S1 of the credibility pass breaks on purpose: the FIC211 low-flow

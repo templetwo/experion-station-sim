@@ -38,6 +38,9 @@
       if(l.mode!==a.expected_mode)return 'stale_mode';
       if(l.modeAttr==='PROGRAM')return 'program_owned';
       if(c.interlockOwns(t,'MODE'))return 'native_interlock';
+      // The plant refuses an OP write to a loop an interlock holds, in every mode (operatorMayWrite); refuse it here first so a command that cannot land
+      // never half-lands (the mode changing, the OP refused) and is never reported as committed or as already in the requested state.
+      if(a.demand&&a.demand.field==='OP'&&l.trk&&l.trk.on&&l.trk.kind==='interlock')return 'native_interlock';
       if(a.mode==='CAS'&&(!l.master||a.demand))return 'cascade_demand_forbidden';
       const check=Pid.transferMode({...l},a.mode,c.pidCtx());if(!check.ok)return 'mode_unavailable';
       if(a.demand){const d=a.demand,isSP=d.field==='SP',v=d.value_milli/1000;

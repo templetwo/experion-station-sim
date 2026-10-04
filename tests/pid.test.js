@@ -253,7 +253,7 @@ test('clearTracking on a loop that never tracked creates no record; an ordinary 
 // The tests above pin the hold and its bumpless release (a target of 35), the MAN rule and the CAS secondary (a target of 0).
 // These pin the rest of the facility: a target against OPLOLM and OPHILM, PV tracking on the held scan, and the record the
 // plant writes and the page reads.
-test('tracking holds the target itself, inside OPLOLM and OPHILM, and PV tracking still moves the SP', () => {
+test('a device hold keeps the target inside OPLOLM and OPHILM, and PV tracking still moves the SP', () => {
   const l = mkLoop({ sp: 50, pv: 50, op: 50, I: 50, oplolm: 20, ophilm: 80 });
   Pid.setTracking(l, 35, 'P-101 STOPPED', 'device');
   Pid.stepPid(l, 0.5);
@@ -268,6 +268,39 @@ test('tracking holds the target itself, inside OPLOLM and OPHILM, and PV trackin
   Pid.setTracking(p, 0, 'P-101 STOPPED', 'device');
   Pid.stepPid(p, 0.5);
   assert.equal(p.sp, 63.2, 'with pvtrack the SP follows the PV while OP is held');
+});
+
+// CR34 (whole-branch review): the plant forces the valve to an interlock's position whatever the loop's output limits (src/models.js
+// VALVE_TARGET: FV102 is 0 under the R-201 trip, not OPLOLM), so an interlock-kind hold holds the raw target, and OP equals the valve (spec
+// §3.4, D10) even when OPLOLM sits above it. A device hold (a stopped pump) is the loop's own output and stays inside its limits.
+test('an interlock holds the raw target, outside OPLOLM and OPHILM, with the integrator tracking it; a device hold of the same target stays clamped (CR34)', () => {
+  const mk = () => mkLoop({ sp: 50, pv: 40, op: 50, I: 50, K: 1, T1: 1, oplolm: 20, ophilm: 80 });
+  const il = mk();
+  Pid.setTracking(il, 0, 'R-201 HI TEMP TRIP', 'interlock');
+  Pid.stepPid(il, 0.5);
+  assert.equal(il.op, 0, 'a target below OPLOLM is held as it is: the valve is forced to 0');
+  assert.equal(il.I, 0 - il.K * Pid.loopError(il), 'the integrator tracks the held output, not the clamped one');
+  Pid.setTracking(il, 90, 'R-201 HI TEMP TRIP', 'interlock');
+  Pid.stepPid(il, 0.5);
+  assert.equal(il.op, 90, 'and a target above OPHILM too: the raw target');
+  const dev = mk();
+  Pid.setTracking(dev, 0, 'P-101 STOPPED', 'device');
+  Pid.stepPid(dev, 0.5);
+  assert.equal(dev.op, 20, 'the same target as a device hold stays at OPLOLM');
+  Pid.setTracking(dev, 90, 'P-101 STOPPED', 'device');
+  Pid.stepPid(dev, 0.5);
+  assert.equal(dev.op, 80, 'and at OPHILM');
+  // an interlock in MAN holds too, and a non-finite target is still the safe 0, now with no limit to lift it
+  const man = mkLoop({ mode: 'MAN', op: 40, I: 40, oplolm: 10 });
+  Pid.setTracking(man, NaN, 'R-201 HI TEMP TRIP', 'interlock');
+  Pid.stepPid(man, 0.5);
+  assert.equal(man.trk.target, 0);
+  assert.equal(man.op, 0, 'in MAN, with OPLOLM 10, the interlocked output is still 0');
+  // the release is clamped by the ordinary scan: from a held 0 under OPLOLM 20 the first controlled output is the limit
+  Pid.clearTracking(il);
+  il.mode = 'AUTO';
+  Pid.stepPid(il, 0.5);
+  assert.ok(il.op >= 20 && il.op <= 80, 'released, the loop is inside its limits again: ' + il.op);
 });
 
 test('the tracking record is {on, target, reason, kind}; clearing empties it, keeps the kind, and never creates one', () => {

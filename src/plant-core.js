@@ -396,7 +396,7 @@
     for(const tag in set){ const l=this.L[tag]; if(!l) continue;
       for(const cond in set[tag]){ const v=set[tag][cond];
         if(v){ const old=l.alm[cond]||l.almOff[cond]; const sub=(old&&old[2]!=null)?old[2]:this.subprioDefault(cond); l.alm[cond]=[v[0],v[1],sub]; delete l.almOff[cond]; parts.push(tag+' '+cond+' '+this.fmt(v[0],l.dec)+' '+v[1][0]); }
-        else { if(l.alm[cond]){ l.almOff[cond]=l.alm[cond]; delete l.alm[cond]; } if(l._as[cond]){ this.clearA(tag,cond,l.pv); l._as[cond]=false; } if(l._am) delete l._am[cond]; parts.push(tag+' '+cond+' OFF'); }
+        else { if(l.alm[cond]){ l.almOff[cond]=l.alm[cond]; delete l.alm[cond]; } if(l._as[cond]){ this.clearA(tag,cond,this.pvShown(l)); l._as[cond]=false; } if(l._am) delete l._am[cond]; parts.push(tag+' '+cond+' OFF'); }
       }
     }
     this.phaseSet=key;
@@ -769,10 +769,27 @@
   // has none. pvShown, hatchOp and the notes on the faceplate and in Point Detail all read it.
   obsOf(l){ return l.obs||((l.kind==='pid'||l.kind==='ind')?ESS.Measurement.observe(l):null); }
   pvShown(l){ const o=this.obsOf(l); return (o&&typeof o.pv==='number')?o.pv:l.pv; }
-  // Crosshatch strength on a graphic value box: BAD quality 0.85 (as shipped); UNCERTAIN, a saturated reading,
-  // 0.30 so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe (controller
-  // ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
+  // Crosshatch strength on a graphic value box: BAD quality 0.85 (as shipped); UNCERTAIN quality 0.30 (a saturated
+  // reading, or a source that flags its own value uncertain: the hatch keys on quality, CR8, and saturated() below
+  // only words the notes) so the 9 px unit label and the 10 px mode letter keep AA (4.5:1) on the darkest stripe
+  // (controller ruling CR12; tests/app-credibility-s1.test.js measures it from the page template).
   hatchOp(l){ if(l.badPv) return 0.85; const o=this.obsOf(l); return (o&&o.quality==='UNCERTAIN')?0.30:0; }
+  // Saturated (spec §2.2, CR36): UNCERTAIN quality with the observed value on an edge of the reporting window, where the transmitter clamps.
+  // An UNCERTAIN reading away from an edge is uncertain, not saturated: LI513 between 100 and 103.125 % arrives from its source as Uncertain
+  // with a HIGH limit and is reported as it is. 1e-9 is the page's tolerance for a clamped value. The hatch keys on quality (CR8) and
+  // does not read this.
+  saturated(l){
+    const o=this.obsOf(l), r=ESS.Measurement.rangeOf(l);
+    if(!o||!r||o.quality!=='UNCERTAIN'||typeof o.pv!=='number') return false;
+    return Math.abs(o.pv-r.reportingUpper)<=1e-9||Math.abs(o.pv-r.reportingLower)<=1e-9;
+  }
+  // The note under a value for an UNCERTAIN reading that has a limit to name, '' otherwise (a stale analyzer has none): SATURATED, with the
+  // limit it is reported at, only on a window edge; UNCERTAIN with its limit anywhere else. The faceplate and Point Detail both say this.
+  limitNote(l){
+    const o=this.obsOf(l);
+    if(!o||o.quality!=='UNCERTAIN'||o.limit==='NONE') return '';
+    return this.saturated(l)?'SATURATED — REPORTED AT '+o.limit+' LIMIT':'UNCERTAIN — '+o.limit+' LIMIT';
+  }
   // Where a loop's output sits against its own OP limits: 'HI' or 'LO' when within 0.2 of one, else ''. The one definition behind
   // the INITMAN limit flag, the cascade-return clamp in setMode and the Live Diagnosis saturation card.
   opLimitOf(l){ if(l.op>=l.ophilm-0.2) return 'HI'; if(l.op<=l.oplolm+0.2) return 'LO'; return ''; }
@@ -797,7 +814,10 @@
     const ctx=this.pidCtx(), f=ctx.casMap[slaveTag], s=this.L[slaveTag];
     if(!f||!s) return '';
     const m=s.master?this.L[s.master]:null;
-    const a=f(m&&m.oplolm!=null?m.oplolm:0), b=f(m&&m.ophilm!=null?m.ophilm:100), lo=Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
+    const a=f(m&&m.oplolm!=null?m.oplolm:0), b=f(m&&m.ophilm!=null?m.ophilm:100), hi=Math.min(Math.max(a,b), s.sphilm!=null?s.sphilm:s.hi);
+    // Cut to the secondary's SP limits, then the low edge to the high one: a primary narrowed past the secondary's limit can only ask for that limit,
+    // and says so (80.0–80.0), never an inverted span (84.0–80.0).
+    const lo=Math.min(Math.max(Math.min(a,b), s.splolm!=null?s.splolm:s.lo), hi);
     return this.fmt(lo,s.dec)+'–'+this.fmt(hi,s.dec)+' '+s.eu;
   }
   phaseSets(){
@@ -1092,7 +1112,7 @@
   assetDisabled(tag){ for(const id of this.disabledAssets) if(this.assetMatch(id,tag)) return id; return null; }
   parkDisabled(tag,cond,by,spec){
     const E=this.alarmEngine, l=this.L[tag];
-    if(!spec) spec=l&&l.alm[cond]?{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv}:undefined;
+    if(!spec) spec=l&&l.alm[cond]?{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:this.pvShown(l)}:undefined;
     const evs=E.oos(tag+'.'+cond,this.P.t,spec);
     const r=E.get(tag+'.'+cond); if(r) r.disabledBy=by;
     evs.forEach(e=>{ if(e.type==='OOS') this.addEvent('SYSTEM',e.tag,e.cond+' DISABLED — '+by,e.from,'DISABLED'); });
@@ -1128,7 +1148,18 @@
     if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); this.taskDone('ctl.sp'); return true; }
     if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o); this.taskDone('ctl.op');
       if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
-    if(param.startsWith('TP:')){ const c=param.slice(3); if(!l.alm[c]) return true; const o=l.alm[c][0]; if(o===v) return true; this.withSignature('TRIP POINT '+tag+' '+c+' '+this.fmt(o,l.dec)+' → '+this.fmt(v,l.dec),'ENGR',(reason)=>{ cfg(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT',reason); this.taskDone('ctl.trip'); }); return true; }
+    if(param.startsWith('TP:')){ const c=param.slice(3); if(!l.alm[c]) return true; const o=l.alm[c][0]; if(o===v) return true;
+      // CR35: a limit beyond the point's reporting window (spec §2.2) can never annunciate, since the transmitter never sends a value that high or that
+      // low, and an alarm that drives a latch (TI216, TI314, TI315) would take the latch with it. A HI-side limit above the window top and a LO-side
+      // limit below its bottom are refused before the signature: message zone only, no event, no MOC record. The edge itself is live (a saturated
+      // reading sits on it and the alarm tests >=, LO <=) and is accepted. The message prints the enforced edges exactly, through fmt at the
+      // point's decimals or as many more as that takes, so no entry it permits is refused. A deviation limit is a PV-SP difference, not a reported value.
+      const win=ESS.Measurement.rangeOf(l);
+      if(win&&(((c==='PVHI'||c==='PVHH')&&v>win.reportingUpper)||((c==='PVLO'||c==='PVLL')&&v<win.reportingLower))){
+        const edge=(x)=>{ let d=l.dec||0; while(d<6&&Math.abs(Number(x.toFixed(d))-x)>1e-9) d++; return this.fmt(x,d); };
+        this.msgZone('ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW '+edge(win.reportingLower)+'–'+edge(win.reportingUpper)); return false;
+      }
+      this.withSignature('TRIP POINT '+tag+' '+c+' '+this.fmt(o,l.dec)+' → '+this.fmt(v,l.dec),'ENGR',(reason)=>{ cfg(o,()=>{l.alm[c][0]=v;},c+' TRIP POINT',reason); this.taskDone('ctl.trip'); }); return true; }
     if(param==='TGTHI'||param==='TGTLO'){ const b=this.limitBand(l); const lo=param==='TGTLO'?v:b.tgtLo, hi=param==='TGTHI'?v:b.tgtHi; const o=param==='TGTLO'?b.tgtLo:b.tgtHi; if(!this.setTargetBand(l,lo,hi)) return false; cfg(o,()=>{},param==='TGTLO'?'TARGET LOW':'TARGET HIGH'); return true; }
     if(param==='ALMDB'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — DEADBAND MUST BE 0 OR MORE'); return false; } const o=this.almDeadband(l); cfg(o,()=>{ l.almDb=v; this.resetLimitTimers(l); },'ALARM DEADBAND'); return true; }
     if(param==='ALMDELAY'){ if(!(v>=0)){ this.msgZone('ENTRY REJECTED — ON-DELAY MUST BE 0 OR MORE'); return false; } const o=this.almDelay(l); cfg(o,()=>{ l.almDelay=v; this.resetLimitTimers(l); },'ALARM ON-DELAY'); return true; }
@@ -1310,7 +1341,7 @@
     // reaches archSynthEvent, which is exactly the outcome-based contract A2/A3's gates
     // depend on (matchAction already drops accepted:false; refusals here never even
     // produce an entry to drop).
-    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:l.pv})); this.configChange(tag,cond+' SERVICE STATE','IN SERVICE','OUT OF SERVICE',reason); this.journal('OOS',tag,'ON',{cond}); this.taskDone('alm.oos'); this.archSynthEvent('POINT.SUPPRESS','CM-'+l.cm,{arg:'ON'}); }); return; }
+    if(on){ this.withSignature('ALARM OUT OF SERVICE '+key,'ENGR',(reason)=>{ if(this.isOos(tag,cond)) return; this.logAlarmEvents(this.alarmEngine.oos(key,this.P.t,{tag,cond,prio:l.alm[cond][1],subprio:this.subprioOf(tag,cond),eu:l.eu,desc:l.desc,tripValue:l.alm[cond][0],val:this.pvShown(l)})); this.configChange(tag,cond+' SERVICE STATE','IN SERVICE','OUT OF SERVICE',reason); this.journal('OOS',tag,'ON',{cond}); this.taskDone('alm.oos'); this.archSynthEvent('POINT.SUPPRESS','CM-'+l.cm,{arg:'ON'}); }); return; }
     const r=this.alarmEngine.get(key); if(r&&r.disabledBy){ this.msgZone('CONDITION DISABLED BY '+r.disabledBy+' — RE-ENABLE THE ASSET'); return; }
     const evs=this.alarmEngine.rts(key,this.P.t); if(!evs.length) return;
     this.logAlarmEvents(evs);

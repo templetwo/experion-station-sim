@@ -100,3 +100,55 @@ test('RT12 optimized checkpoint copy is detached and preserves canonical bytes',
  assert.equal(Object.getPrototypeOf(copied),Object.prototype);assert.deepEqual(copied.__proto__,{safe:true});
  for(const v of [NaN,Infinity,()=>{},[undefined],Array(1)])assert.throws(()=>K.clone(v));
 });
+
+// I2 (whole-branch review): the plant refuses an OP write to a loop an interlock holds (operatorMayWrite), but the governed contract never
+// looked at the hold: under a real R-201 trip {mode MAN, demand OP 50} passed validation, the mode landed, storeEntry refused the OP, and the
+// kernel reported applied/committed (or no_effect/already_in_requested_state with OP at 0 when the loop was already in MAN). The contract now
+// refuses an OP demand on an interlock-held loop first, as native_interlock, so a command that cannot land changes nothing. A device hold (a
+// stopped pump) refuses nothing: in MAN the operator owns the output, which is how a restart is pre-positioned (drill D3).
+test('RT29 an OP demand on a loop the plant holds under an interlock is refused as native_interlock, and mode and OP stay as they were',()=>{
+ let c=K.restore(K.create());c.P.rT=190;c.P.trips.rx=true;     // R-201 above its 185 trip, so the trip stays latched
+ let s=K.advance(K.capture(c),.5,[]).state;                    // one scan: the plant derives the hold from the trip flag
+ c=K.restore(s);
+ assert.equal(c.P.trips.rx,true);assert.deepEqual([c.L.FIC102.trk.on,c.L.FIC102.trk.kind,c.L.FIC102.trk.reason],[true,'interlock','R-201 HI TEMP TRIP']);
+ assert.equal(c.L.FIC102.mode,'CAS');assert.equal(c.L.FIC102.op,0);
+ const set=(expected,mode,demand)=>({operation:'loop.set',arguments:Object.assign({target:'FIC102',expected_mode:expected,mode},demand?{demand}:{})});
+ const op50={field:'OP',value_milli:50000,unit:'%'};
+ // from CAS: the mode change alone lands, but the command that also asks for OP 50 is refused whole
+ const call=set('CAS','MAN',op50);
+ assert.equal(C.validate(c,call,{role:'subject'}),'native_interlock');
+ let a=K.advance(s,.5,[command(call,s.revisions.FIC102||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['rejected','native_interlock']);
+ assert.deepEqual(a.outcomes[0].after,a.outcomes[0].before,'a rejected command changes nothing it reports');
+ assert.equal(a.state.fields.L.FIC102.mode,'CAS','the mode did not half-land');assert.equal(a.state.fields.L.FIC102.op,0);
+ assert.equal(a.outcomes[0].revision_after,a.outcomes[0].revision_before);
+ // the mode change on its own is the operator's and is still allowed under the trip
+ a=K.advance(s,.5,[command(set('CAS','MAN'),s.revisions.FIC102||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['applied','committed']);
+ assert.equal(a.state.fields.L.FIC102.mode,'MAN');assert.equal(a.state.fields.L.FIC102.op,0,'the interlock holds the output in MAN');
+ // already in MAN: the OP demand is refused too, not reported as already in the requested state
+ s=a.state;c=K.restore(s);
+ assert.equal(C.validate(c,set('MAN','MAN',op50),{role:'subject'}),'native_interlock');
+ a=K.advance(s,.5,[command(set('MAN','MAN',op50),s.revisions.FIC102||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['rejected','native_interlock']);
+ assert.equal(a.state.fields.L.FIC102.op,0);
+ // an SP demand is not an output write: FIC102 in AUTO under the trip still takes a setpoint
+ a=K.advance(s,.5,[command(set('MAN','AUTO'),s.revisions.FIC102||0)]);assert.equal(a.outcomes[0].status,'applied');
+ s=a.state;c=K.restore(s);
+ assert.equal(C.validate(c,set('AUTO','AUTO',{field:'SP',value_milli:40000,unit:'M3/H'}),{role:'subject'}),null);
+});
+
+test('RT30 a stopped pump is a device hold: the governed OP demand in MAN still lands, so a restart can be pre-positioned',()=>{
+ let c=K.restore(K.create());
+ let s=K.advance(K.capture(c),.5,[{command_id:'stop',call:{operation:'motor.command',arguments:{target:'P101',command:'STOP'}},principal:{id:'PIP',role:'subject'}}]).state;
+ s=K.advance(s,.5,[]).state;c=K.restore(s);
+ assert.deepEqual([c.L.P101.run,c.L.FIC102.trk.on,c.L.FIC102.trk.kind,c.L.FIC102.trk.reason],[false,true,'device','P-101 STOPPED']);
+ const set=(expected,mode,demand)=>({operation:'loop.set',arguments:Object.assign({target:'FIC102',expected_mode:expected,mode},demand?{demand}:{})});
+ const op25={field:'OP',value_milli:25000,unit:'%'};
+ let a=K.advance(s,.5,[command(set('CAS','MAN'),s.revisions.FIC102||0)]);assert.equal(a.outcomes[0].status,'applied');
+ s=a.state;c=K.restore(s);
+ assert.equal(C.validate(c,set('MAN','MAN',op25),{role:'subject'}),null,'a device hold refuses nothing');
+ a=K.advance(s,.5,[command(set('MAN','MAN',op25),s.revisions.FIC102||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['applied','committed']);
+ assert.equal(a.outcomes[0].after.op_milli,25000);assert.equal(a.state.fields.L.FIC102.op,25,'the operator owns the output in MAN while the pump is stopped');
+});
