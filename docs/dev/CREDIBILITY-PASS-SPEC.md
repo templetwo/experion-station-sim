@@ -154,6 +154,9 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
 - **CR31.** An archive guard that lists every fixture still asserts something: both guards also
   prove that every listed re-captured fixture differs from its archived copy and every unlisted
   one equals it, so a stale entry fails the test.
+- **CR32.** Drill D3's keyed-correct quiz option agrees with its debrief note and the PIP safety
+  card (FIC102 to MAN at 20 to 30 %, START after lockout, return to CAS within a minute): under PV
+  tracking (CR20) "restore AUTO" would leave the feed at SP 0 and the tank overflows.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -551,9 +554,11 @@ Measured at Task 9 (ablation in a scratch tree, all 35 movers explained, none un
 arch fixture moved for the FIC211 cutoff; upset-pump and drill-D3 also for FIC102 device tracking;
 upset-cool and drill-D4 also for TIC202 saturation and the R-201 interlock hold; drill-D12 and
 upset-bedact also for the R-310 interlock hold; drill-D2, D6, D9 and D11 also for the D9 margin
-note. upset-stick never saturates TIC202 (cutoff only); the R-202 rows and D4's `restore` rule
-moved no fixture (the unattended goldens never acknowledge an alarm); the five u4 fixtures did not
-move and the guard proves it. The per-fixture reasons live in the two archive guards.
+note. upset-stick never saturates TIC202 (cutoff only); the R-202 rows moved no fixture (no golden
+reaches that trip) and D4's `restore` rule moved none (the unattended goldens never acknowledge an
+alarm); the five u4 fixtures did not move and the guard proves it. The cutoff applies to every
+M3/H point: FIC211's alone moves all 35; with the holds on, FIC102's moves drill-D3, drill-D4,
+upset-cool and upset-pump as well; FI100, FIC310 and FIC313 move nothing. The per-fixture reasons live in the two archive guards.
 
 Nothing may move for a reason outside this table; a fixture that moves for another reason is a finding,
 not a re-capture. Because the cutoff moves every fixture, the stage's closing task first archives the
