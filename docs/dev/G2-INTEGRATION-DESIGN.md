@@ -152,6 +152,17 @@ with reason `quality`; TIC202 remains visible at 103.125 degrees C with uncertai
 quality. This is evidence about the source observation and deterministic
 assessment/guard behavior. It is not an observation of G2 product composition.
 
+**Pointer note, 2026-10-04.** The check above is dated 2026-09-28 and stays a record of MOA
+`68aae66`. On 2026-10-04, MOA main was at `3a6f81b` (2026-10-03). It adds `moa/data/drills-v2.json`, pinned to
+simulator `bfed001` beside the unchanged drills-v1, with its receipt under `receipts/drills-v2/`
+(8/8 useful, 10/10 guards: both cooling-loss seeds became guard cases, so the denominators differ
+from the drills-v1 row above). Simulator main was at `adeb18a` (credibility-pass S1). At
+`adeb18a` drills-v2 is refused as written for another revision; with
+`--allow-revision-mismatch` it scores 6/8 useful, 10/10 guards. Both restoration-lag seeds lose
+`reactor_warming`: TIC201 rises 0.7 and 0.8 °C across the exported window, against 4.2 and 4.3 °C
+at `bfed001`, under the agent's 2 °C rule. Like the table, this is a documentary reference, not a
+runtime connection, an evaluation of G2 or an authorization to retarget a pin.
+
 There are **two different faults**, not one experiment observed at two layers:
 
 - **MOA: U1 cooling-water loss.** `scripts/export_trajectory.cjs:12` selects the
