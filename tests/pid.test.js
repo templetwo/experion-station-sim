@@ -250,8 +250,9 @@ test('clearTracking on a loop that never tracked creates no record; an ordinary 
   assert.ok(l.op > 50, 'ordinary control action');
 });
 
-// The tests above hold the output at 0 only. These pin the rest of the facility: the target itself,
-// the output limits, PV tracking on the held scan, and the record the plant writes and the page reads.
+// The tests above pin the hold and its bumpless release (a target of 35), the MAN rule and the CAS secondary (a target of 0).
+// These pin the rest of the facility: a target against OPLOLM and OPHILM, PV tracking on the held scan, and the record the
+// plant writes and the page reads.
 test('tracking holds the target itself, inside OPLOLM and OPHILM, and PV tracking still moves the SP', () => {
   const l = mkLoop({ sp: 50, pv: 50, op: 50, I: 50, oplolm: 20, ophilm: 80 });
   Pid.setTracking(l, 35, 'P-101 STOPPED', 'device');

@@ -556,7 +556,7 @@ live goldens against that baseline too, each S1 mover listed with its reasons, s
 
 | Where | On failure |
 |---|---|
-| `forcedOutputs()` | a missing reason source means no tracking; a test pins it |
+| `forcedOutputs()` | a missing flag or run state means no tracking and never throws; a missing name still tracks, with the raw cause id as the reason (CR18); a test pins each |
 | measurement policy | anything non-finite maps to BAD as today; never throws |
 | settle dry run | a non-finite state refuses the load with today's `SNAPSHOT REFUSED` |
 | verifier | an internal error passes the text through with a stderr line; an answer is never lost |

@@ -108,7 +108,7 @@
   // failure nor failed communication. Part 8 forbids LastUsableValue for stale.
   // Existing Bad/Uncertain source statuses take precedence over range reporting;
   // an uncertain status keeps its subcode, with the current range limit attached.
-  // Range reporting (ruling R8, spec §2.2): inside the nominal range a reading is Good. Beyond it
+  // Range reporting (ruling CR8, spec §2.2): inside the nominal range a reading is Good. Beyond it
   // but inside the window the transmitter still reports the value, so it stays Good with the
   // DataValue limit bit (LOW or HIGH). At or beyond a window edge the value is clamped to the edge
   // and reads Uncertain_EngineeringUnitsExceeded with the limit.

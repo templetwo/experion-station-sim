@@ -12,7 +12,7 @@ test('TIC202 keeps both nominal endpoints Good and reports excursions through th
     });
   }
   // Beyond nominal but inside the window the transmitter still reports the value: Good with the
-  // DataValue limit bit, so a tiny overshoot never reads as uncertain (ruling R8, spec §2.2).
+  // DataValue limit bit, so a tiny overshoot never reads as uncertain (ruling CR8, spec §2.2).
   for (const [input, limit, code] of [
     [-0.001, 'LOW', 0x00000500],
     [-1.2499, 'LOW', 0x00000500],
@@ -178,12 +178,12 @@ test('a missing, non-finite or frozen point never throws, never yields NaN and i
 });
 
 test('a reading inside the NE 43 band stays Good with its limit bit, and only a saturated reading is uncertain', () => {
-  // beyond the nominal range 0..100 but inside the window -1.25 .. 103.125 (ruling R8, spec §2.2)
+  // beyond the nominal range 0..100 but inside the window -1.25 .. 103.125 (ruling CR8, spec §2.2)
   assert.deepEqual(Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: 100.001}),
     {pv: 100.001, badPv: false, quality: 'GOOD', statusCode: 0x600, statusName: 'Good', limit: 'HIGH'});
   assert.deepEqual(Measurement.observe({tag: 'TI312', kind: 'ind', lo: 0, hi: 100, pv: -0.001}),
     {pv: -0.001, badPv: false, quality: 'GOOD', statusCode: 0x500, statusName: 'Good', limit: 'LOW'});
-  // the overshoot that motivated R8: a 100.011 % conversion on AI205 must not read uncertain
+  // the overshoot that motivated CR8: a 100.011 % conversion on AI205 must not read uncertain
   const ai205 = Measurement.observe({tag: 'AI205', kind: 'ind', eu: '%', lo: 0, hi: 100, pv: 100.011});
   assert.equal(ai205.quality, 'GOOD'); assert.equal(ai205.pv, 100.011); assert.equal(ai205.limit, 'HIGH');
   // the window edge itself is saturated: clamped to the edge and uncertain

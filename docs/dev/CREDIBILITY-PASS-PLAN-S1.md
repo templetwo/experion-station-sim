@@ -499,6 +499,8 @@ git commit -m "feat(hmi): operator-facing values are the observed ones; uncertai
 git push
 ```
 
+> **As built (2026-10-04, S1 close):** Steps 3 and 4 above predate `obsOf(l)`, the one helper that decides where a point's observation comes from: its `obs` once `measure()` has written one, else `observe()` on the fly for a `pid` or `ind` point, nothing for a motor. `pvShown`, `hatchOp`, the faceplate note and the Point Detail note all read it, so none of them inlines the fallback as the snippets above do. Three surfaces beyond this task's list also read the observed value (CR13): the Alarm Summary live column (`liveValueOf`, both branches, so the column agrees with the DEVHI the alarm scan evaluates), the trend legend (`mkPens`), and the data-acquisition PV row in Point Detail, with the faceplate's indicator bar and the band marker.
+
 ---
 
 ### Task 5: Output tracking in the PID module
@@ -617,6 +619,8 @@ git add src/pid.js tests/pid.test.js src/model-id.js dist/experion-station-sim-s
 git commit -m "feat(pid): output tracking, told by the plant, honoured by the loop" -m "setTracking/clearTracking/tracking and INITMAN for the primary of a tracking secondary (spec §3.1). Tests: tests/pid.test.js." -m "Co-Authored-By: Claude <model name> <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_<id>"
 git push
 ```
+
+> **As built (2026-10-04, S1 close):** the CAS test steps the secondary first and the primary second. The master-first order in the test above cannot pass: INITMAN back-calculates the master's OP from the slave's SP before the slave follows, so the pair holds still at SP 10 and the following cannot show. The plant's own order, primary first, has a separate test (`in the plant scan order the primary of a tracking secondary holds still instead of winding up, then takes over bumplessly`). `setTracking` coerces a non-finite target to 0 (CR17: the module's safe default, the output clamp still applies) and says so in its header, with a test; the `clearTracking` test also asserts that a loop that never tracked gains no `trk` record.
 
 ---
 
@@ -790,6 +794,8 @@ git commit -m "feat(core): the plant decides who tracks: a stopped pump or a tri
 git push
 ```
 
+> **As built (2026-10-04, S1 close):** the reason fallback in the snippet above is the raw cause id, and that stands (CR18): a trip whose cause the W2 matrix cannot name still holds its loop, with the id as the reason text. A missing flag or run state (no `trips` record, no P-101 record) is what means no tracking, and never throws; spec §12 now says so, and a test pins each. The list of loops released is derived from the rows instead of being written a second time, so a new row cannot be left unreleased. The movers beyond the Step 5 list are drill-D12 and upset-bedact, through the R-310 bed trip on TIC311 (CR19); measured at Task 9, the R-202 rows on FIC211 and TIC213 move no fixture.
+
 ---
 
 ### Task 7: The flag beside the mode line, INITMAN at a limit, and the cascade-return clamp (D8, D10 indication)
@@ -940,6 +946,8 @@ git commit -m "feat(hmi): one flag names what holds a loop; INITMAN says when it
 git push
 ```
 
+> **As built (2026-10-04, S1 close):** the Point Detail Cascade row omits the ` · COMMANDS SP ` clause when `casRange` is empty (a primary whose secondary has no cascade-map entry), so a dangling phrase cannot appear. `casRange` reads the primary's own OP limits, `casMap(OPLOLM)` to `casMap(OPHILM)`, cut to the secondary's SP limits, not `casMap(0)` to `casMap(100)` (CR24). The hold flavours of the flag (`INTERLOCK`, `TRACK`, `NOTE`) sit on the Output row's note, after the limits, and the Cascade row keeps only the INITMAN flavours (CR25), so the page test above asserts FIC102's hold on the Output row. An extra test pins LIC101 at its LO limit one scan after FIC102's observed flow first reads 0 (the flag then reads `INITMAN · OP AT LO LIMIT`), the branch the tests above never reach. The Live Diagnosis cards and the INITMAN help answer follow the same truth as the flag (CR22, CR22b, CR22c, CR23).
+
 ---
 
 ### Task 8: The ladder tells the truth about the trip, and the debrief states the margin (D9)
@@ -1068,6 +1076,8 @@ git commit -m "feat(hmi): the ladder names the declared trip and calls PVHH a pr
 git push
 ```
 
+> **As built (2026-10-04, S1 close):** the kpi test reads `.breakdown`, not `.rows` (`scoreDrill` returns `{score, pass, passMark, passLabel, breakdown}`). `tests/app-palette-limits.test.js`, outside the file list above, expects LIC101's ladder as nine rows with the TRIP row at index 1. The drill goldens do digest the margin note (`score.breakdown[].note`), so drill-D2, D6, D9 and D11 move for it at the Task 9 re-capture, not "the Task 6 golden set only". The TRIP row's note is the shorter `<src> <cond> · C&E matrix, plant-enforced` (CR30: the longer text wrapped to three lines in the 132 px note column). `tripOfPoint` also maps TI312 to `R310_HITEMP`, so the ladder shows the R-310 TRIP row at 480 (CR29), and the critical-alarm note is true per point, `pre-trip alarm`, `trip point` or `critical alarm` (CR28, CR28b), not `pre-trip alarm` on every PVHH as Step 3 has it.
+
 ---
 
 ### Task 9: Close the stage: re-capture the movers, guard the archive, changelog, gates
@@ -1141,3 +1151,5 @@ git push
 - [ ] **Step 6: Stage receipt**
 
 Record the stage's closing state in the chronicle as the house does (domain `experion-station-sim,credibility-pass,S1,...`): the head commit, the test counts, the mover list, and the browser check of Task 4 and Task 7. S2's plan is written only after this receipt exists.
+
+> **As built (2026-10-04, S1 close):** the archive and its guard were the first commit (`tests/fixtures/v31-baseline/`, 40 files, with the guard as a second pair of tests in `tests/v2-baseline-archive.test.js`); the re-capture skipped `tests/golden-u4.test.js`, because the five Unit 04 fixtures did not move and stay byte-identical, which the guard proves (re-running it under `UPDATE_GOLDENS=1` would only restamp their `model` field). The movers were measured by ablation, not read off Task 3: with all eight mechanisms switched off in a scratch tree every fixture came back to its 3.1.0 bytes, and each mechanism alone moved only the fixtures recorded in `KNOWN_RECAPTURED`. That set is narrower than spec §11 in three places: upset-stick never saturates TIC202, the R-202 tracking rows move no fixture, and drill D4's `restore` rule (CR11) moves none, because the goldens are unattended runs that never acknowledge. The g2-lifecycle archived-checkpoint test was re-scoped, not re-captured (CR27). Drill D3 had no `debrief:` field, so its restart note (CR21) is its first. `git push` in Step 5 is the controller's, after review.
