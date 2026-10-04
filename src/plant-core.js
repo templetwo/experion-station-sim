@@ -1076,8 +1076,9 @@
   tripPointOf(tag,cond){ const l=this.L[tag]; const tup=l&&l.alm&&l.alm[cond]; if(tup) return tup[0]; const eq=ESS.AlarmHelp.EQUIPMENT_TRIPS[tag+'.'+cond]; return eq?eq.value:undefined; }
   // The declared trip behind a point's pre-trip alarm (spec §3.6): read from the W2 declaration
   // so the ladder can never disagree with the code. Points without a declared trip get null.
+  // Each point here indicates the variable its trip is on; TI312 reads h.bed (models.js measureU3), the R-310 trip variable (CR29).
   tripOfPoint(tag){
-    const id=({TIC201:'R201_HITEMP',LIC101:'TK101_HIHI',PIC401:'V401_PSV',TIC212:'R202_HITEMP',PIC505:'V502_PSV'})[tag];
+    const id=({TIC201:'R201_HITEMP',LIC101:'TK101_HIHI',PIC401:'V401_PSV',TIC212:'R202_HITEMP',PIC505:'V502_PSV',TI312:'R310_HITEMP'})[tag];
     if(!id||!ESS.CauseEffect) return null;
     const c=ESS.CauseEffect.causes().find(x=>x.id===id);
     return (c&&typeof c.threshold==='number')?{id,src:c.src,cond:c.cond,value:c.threshold,eu:c.eu}:null;

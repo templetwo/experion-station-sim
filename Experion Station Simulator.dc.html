@@ -3930,18 +3930,20 @@ class Component extends ESS.PlantCore(DCLogic) {
       const has=(c)=>!!dl.alm[c];
       const lr=(label,param,v,edit,note)=>mRow(label,param,this.fmt(v,dl.dec)+' '+dl.eu,edit,note);
       // CR28: the note beside a critical rung says what that alarm is. "pre-trip alarm": a trip is declared further out (tripOfPoint, which also
-      // gives the point its TRIP row); every declared trip is high-side (comparator >= or >), so only PVHH can precede one. "trip point": the
-      // alarm is itself the condition the code trips or latches on, because the code reads the alarm (TI314, TI315, TI216) or sits at the same
-      // threshold on the same variable (TI312). Anything else is a "critical alarm" and nothing more.
+      // gives the point its TRIP row) and PVHH is still below it (CR28b: a trip-point store has no ordering check, so the label follows the stored
+      // limit); every declared process trip is high-side (comparator >= or >), so only PVHH can precede one. "trip point": the alarm is itself the
+      // condition the code trips or latches on, because the code reads the alarm (TI314, TI315, TI216) or sits at the same threshold on the same
+      // variable (TI312). Anything else is a "critical alarm" and nothing more.
       // The trip-point list is explicit and short; each entry was checked against the code, and tests/app-credibility-s1.test.js runs every claim:
       //   TI312 PVHH  the R-310 bed trip is h.bed >= PARAMS.U3.tripT (480, src/models.js fixedBed) and TI312 reads h.bed, PVHH 480. The trip does
-      //               not read the alarm, so this holds only while PVHH is still the trip value (an ENGR trip-point edit moves it)
+      //               not read the alarm, so this holds only while PVHH is still the trip value: moved below it the note reads pre-trip alarm, above
+      //               it critical alarm (CR29: TI312 also shows the R-310 TRIP row, so the trip stays on the ladder when PVHH moves)
       //   TI314 PVHH  interlocks() latches trips.skin when this channel's PVHH alarm is active (490), at whatever value it is set to
       //   TI315 PVHH  the same latch from this channel's PVHH alarm (500)
       //   TI216 PVHH  interlocks() latches the TAD shed (FIC211 to MAN at 0, SCM202 held in FEED) when this point's PVHH alarm is active (106)
-      const tp=this.tripOfPoint(dl.tag), bedTrip=this.tripLimitOf({trips:['bed']});
-      const tripPt={TI312:(c,a)=>c==='PVHH'&&!!bedTrip&&a[0]===bedTrip.value,TI314:(c)=>c==='PVHH',TI315:(c)=>c==='PVHH',TI216:(c)=>c==='PVHH'};
-      const critNote=(c)=>((tp&&c==='PVHH')?'pre-trip alarm':(tripPt[dl.tag]&&tripPt[dl.tag](c,dl.alm[c]))?'trip point':'critical alarm')+' · Alarms tab';
+      const tp=this.tripOfPoint(dl.tag);
+      const tripPt={TI312:(c,a)=>c==='PVHH'&&!!tp&&a[0]===tp.value,TI314:(c)=>c==='PVHH',TI315:(c)=>c==='PVHH',TI216:(c)=>c==='PVHH'};
+      const critNote=(c)=>((tp&&c==='PVHH'&&dl.alm.PVHH[0]<tp.value)?'pre-trip alarm':(tripPt[dl.tag]&&tripPt[dl.tag](c,dl.alm[c]))?'trip point':'critical alarm')+' · Alarms tab';
       limitRows=[
         lr('Range high','PVEUHI',lb.rangeHi,false,'instrument range'),
         lr('Critical high','PVHH',lb.critHi,false,has('PVHH')?critNote('PVHH'):'none configured · follows range'),
@@ -3952,7 +3954,8 @@ class Component extends ESS.PlantCore(DCLogic) {
         lr('Critical low','PVLL',lb.critLo,false,has('PVLL')?critNote('PVLL'):'none configured · follows range'),
         lr('Range low','PVEULO',lb.rangeLo,false,'instrument range')
       ];
-      if(tp) limitRows.splice(1,0,mRow('Trip','TRIP',this.fmt(tp.value,dl.dec)+' '+tp.eu,false,tp.src+' '+tp.cond+' · declared in the C&E matrix, enforced by the plant'));
+      // CR30: the first wording, "declared in the C&E matrix, enforced by the plant", measured 3 lines in the ladder's 132 px note column in headless Chrome; this one measures 2
+      if(tp) limitRows.splice(1,0,mRow('Trip','TRIP',this.fmt(tp.value,dl.dec)+' '+tp.eu,false,tp.src+' '+tp.cond+' · C&E matrix, plant-enforced'));
       band=bs.segs; bandMarker=bs.marker; bandMarkerFill=bs.markerFill;
       const pvB=this.pvShown(dl);
       const inT=pvB>=lb.tgtLo&&pvB<=lb.tgtHi, inS=pvB>=lb.stdLo&&pvB<=lb.stdHi;

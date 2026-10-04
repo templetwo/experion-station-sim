@@ -953,11 +953,13 @@ test('D9: a point with a configured trip knows its trip from the W2 declaration,
   const c = boot(4);
   const t = c.tripOfPoint('TIC201');
   assert.deepEqual(t, { id: 'R201_HITEMP', src: 'R-201', cond: 'HI TEMP TRIP', value: 185, eu: 'DEG C' });
-  for (const tag of ['TIC201', 'LIC101', 'PIC401', 'TIC212', 'PIC505']) {
+  for (const tag of ['TIC201', 'LIC101', 'PIC401', 'TIC212', 'PIC505', 'TI312']) {
     const x = c.tripOfPoint(tag);
     assert.ok(x, tag);
     assert.equal(x.value, AlarmHelp.EQUIPMENT_TRIPS[x.src + '.' + x.cond].value, tag + ': the C&E threshold and the alarm-help trip table agree');
   }
+  // CR29: TI312 indicates h.bed, the variable the R-310 bed trip is on, so it carries that trip
+  assert.deepEqual(c.tripOfPoint('TI312'), { id: 'R310_HITEMP', src: 'R-310', cond: 'HI TEMP TRIP', value: 480, eu: 'DEG C' });
   assert.equal(c.tripOfPoint('FIC102'), null);
   assert.equal(c.tripOfPoint('NOT_A_POINT'), null, 'a tag the plant does not know has no trip, and asking never throws');
 });
@@ -969,7 +971,7 @@ test('D9: the Point Detail ladder labels PVHH a pre-trip alarm and shows the dec
   const hh = rows.find((r) => r.param === 'PVHH');
   assert.match(hh.note, /^pre-trip alarm/);
   assert.equal(hh.note, 'pre-trip alarm · Alarms tab');
-  // CR28: every declared trip is a high-side trip, so only the critical-high rung is a pre-trip alarm; the low rung is a critical alarm
+  // CR28: every declared process trip is high-side, so only the critical-high rung is a pre-trip alarm; the low rung is a critical alarm
   assert.equal(rows.find((r) => r.param === 'PVLL').note, 'critical alarm · Alarms tab');
   const trip = rows.find((r) => r.param === 'TRIP');
   assert.ok(trip, 'a trip row exists');
@@ -982,28 +984,32 @@ test('D9: the Point Detail ladder labels PVHH a pre-trip alarm and shows the dec
   const ladder = (tag) => { c.nav('detail', tag); return c.renderVals().dpt.limitRows; };
   const noteOf = (tag, param) => ladder(tag).find((r) => r.param === param).note;
   assert.equal(noteOf('TIC201', 'PVHH'), 'pre-trip alarm · Alarms tab');      // R-201 trips at 185, the TRIP row says so
-  assert.equal(noteOf('TI312', 'PVHH'), 'trip point · Alarms tab');           // 480 is the R-310 bed trip itself
+  assert.equal(noteOf('TI312', 'PVHH'), 'trip point · Alarms tab');           // 480 is the R-310 bed trip itself, shown on its TRIP row (CR29)
   assert.equal(noteOf('TIC301', 'PVHH'), 'critical alarm · Alarms tab');      // nothing trips behind it
   assert.equal(noteOf('TIC301', 'PVLL'), 'critical alarm · Alarms tab');
   assert.equal(noteOf('FIC102', 'PVHH'), 'critical alarm · Alarms tab');
-  for (const tag of ['TI312', 'TIC301', 'FIC102']) assert.ok(!ladder(tag).some((r) => r.param === 'TRIP'), tag + ': no trip row');
+  assert.equal(ladder('TI312').find((r) => r.param === 'TRIP').value, '480 DEG C');
+  for (const tag of ['TIC301', 'FIC102']) assert.ok(!ladder(tag).some((r) => r.param === 'TRIP'), tag + ': no trip row');
 });
 
 test('D9: the trip row of each point with a declared trip carries that trip, its unit and its source, read-only', () => {
   const c = boot(4);
   const want = {
     TIC201: ['185.0 DEG C', 'R-201 HI TEMP TRIP'], LIC101: ['98.0 %', 'TK-101 HIHI TRIP'], PIC401: ['950 KPA', 'V-401 PSV LIFT'],
-    TIC212: ['110.0 DEG C', 'R-202 HI TEMP TRIP'], PIC505: ['1100 KPA', 'V-502 PSV LIFT'],
+    TIC212: ['110.0 DEG C', 'R-202 HI TEMP TRIP'], PIC505: ['1100 KPA', 'V-502 PSV LIFT'], TI312: ['480 DEG C', 'R-310 HI TEMP TRIP'],
   };
   for (const tag of Object.keys(want)) {
     c.nav('detail', tag);
     const rows = c.renderVals().dpt.limitRows;
     const trip = rows.find((r) => r.param === 'TRIP');
     assert.ok(trip, tag + ': trip row');
-    assert.deepEqual([trip.value, trip.note], [want[tag][0], want[tag][1] + ' · declared in the C&E matrix, enforced by the plant'], tag);
+    // CR30: measured at 3 lines in the 132 px note column with the longer wording; this one is 2
+    assert.deepEqual([trip.value, trip.note], [want[tag][0], want[tag][1] + ' · C&E matrix, plant-enforced'], tag);
     assert.equal(trip.notEditing, true, tag + ': the declared trip is not an editable parameter');
     assert.equal(rows.filter((r) => r.param === 'TRIP').length, 1, tag + ': one trip row');
     assert.equal(rows.length, 9, tag + ': the eight rungs plus the trip row');
+    const values = rows.map((r) => parseFloat(r.value));
+    assert.ok(values.every((v, i) => i === 0 || v <= values[i - 1]), tag + ': the ladder stays descending with the trip row in: ' + values.join(' >= '));
   }
   c.nav('detail', 'TIC301');
   assert.equal(c.renderVals().dpt.limitRows.length, 8, 'a point with no declared trip keeps the eight rungs');
@@ -1049,18 +1055,19 @@ test('D9: a live D4 run reaches the debrief stating the peak the plant recorded 
   };
   const held = play(true);
   assert.ok(!held.ended.m.trip, 'cutting the feed at once keeps R-201 under its trip');
-  assert.ok(held.ended.m.peak > 150 && held.ended.m.peak < 185, 'the plant recorded a peak below the trip: ' + held.ended.m.peak);
-  assert.equal(held.note, 'no trip · peak ' + (Math.round(held.ended.m.peak * 10) / 10) + ' DEG C vs trip 185 DEG C');
+  assert.equal(held.ended.m.peak, 170.49863188284542, 'the seeded plant is deterministic: feed cut at once, R-201 peaks at 170.5 DEG C');
+  assert.equal(held.note, 'no trip · peak 170.5 DEG C vs trip 185 DEG C');
   const lost = play(false);
   assert.ok(lost.ended.m.trip, 'an unattended D4 trips R-201');
-  assert.ok(lost.ended.m.peak >= 185, 'the recorded peak reached the trip: ' + lost.ended.m.peak);
+  assert.equal(lost.ended.m.peak, 187.75740252617464, 'unattended, R-201 runs past its 185 trip to 187.8 DEG C');
   assert.equal(lost.note, 'unit tripped');
 });
 
-test('CR28: every configured critical alarm on the ladder says what it is, and only the five declared-trip points read pre-trip', () => {
+test('CR28: every configured critical alarm on the ladder says what it is, and only the five points whose PVHH sits below a declared trip read pre-trip', () => {
   const c = boot(4);
   const PRE = ['LIC101', 'PIC401', 'PIC505', 'TIC201', 'TIC212'];   // a declared trip sits above PVHH, and the point shows it on a TRIP row
   const TRIP = ['TI216', 'TI312', 'TI314', 'TI315'];                // PVHH is itself what the code trips or latches on
+  const TRIPROW = [...PRE, 'TI312'].sort();                         // CR29: TI312 shows its R-310 trip row too, with PVHH sitting at it
   const pre = [], trip = [], tripRows = [];
   for (const tag of Object.keys(c.L)) {
     if (c.L[tag].kind === 'motor') continue;                        // a motor has no ladder
@@ -1077,12 +1084,13 @@ test('CR28: every configured critical alarm on the ladder says what it is, and o
   }
   assert.deepEqual(pre.sort(), PRE.map((t) => t + '.PVHH'));
   assert.deepEqual(trip.sort(), TRIP.map((t) => t + '.PVHH'));
-  assert.deepEqual(tripRows.sort(), PRE, 'the TRIP row and the pre-trip label belong to the same five points');
-  // pre-trip is only true if the declared trip is high-side and PVHH sits below it
-  for (const tag of PRE) {
+  assert.deepEqual(tripRows.sort(), TRIPROW, 'the TRIP row is on the five pre-trip points and on TI312');
+  // pre-trip is only true if the declared trip is high-side and PVHH sits below it; TI312's PVHH sits at its trip, so it is the trip point
+  for (const tag of TRIPROW) {
     const t = c.tripOfPoint(tag), cause = CauseEffect.causes().find((x) => x.id === t.id);
     assert.match(cause.comparator, /^>=?$/, tag + ': ' + t.id + ' trips high, so a low rung cannot precede it');
-    assert.ok(c.L[tag].alm.PVHH[0] < t.value, tag + ': PVHH ' + c.L[tag].alm.PVHH[0] + ' sits below the ' + t.value + ' trip');
+    if (PRE.includes(tag)) assert.ok(c.L[tag].alm.PVHH[0] < t.value, tag + ': PVHH ' + c.L[tag].alm.PVHH[0] + ' sits below the ' + t.value + ' trip');
+    else assert.equal(c.L[tag].alm.PVHH[0], t.value, tag + ': PVHH sits at the trip');
   }
 });
 
@@ -1093,12 +1101,10 @@ test('CR28: each trip-point entry is the condition the code acts on, and no othe
   // not read the alarm, so the entry holds only while PVHH is still the trip value (an ENGR trip-point edit moves it)
   assert.equal(Models.PARAMS.U3.tripT, 480);
   assert.equal(c.L.TI312.alm.PVHH[0], Models.PARAMS.U3.tripT, 'TI312 PVHH is the bed trip threshold');
-  assert.equal(c.tripLimitOf({ trips: ['bed'] }).value, Models.PARAMS.U3.tripT, 'and the W2 declaration says the same');
+  assert.equal(c.tripOfPoint('TI312').value, Models.PARAMS.U3.tripT, 'and the W2 declaration, which TI312 shows as its TRIP row, says the same');
   c.step(0.5);
   assert.ok(Math.abs(c.L.TI312.pv - c.P.h.bed) <= 0.25, 'TI312 indicates h.bed, within its 0.5 noise window');
-  assert.equal(ladderNote(c, 'TI312'), 'trip point · Alarms tab');
-  c.L.TI312.alm.PVHH[0] = 470;
-  assert.equal(ladderNote(c, 'TI312'), 'critical alarm · Alarms tab', 'an alarm moved off the trip value no longer is the trip point');
+  assert.equal(ladderNote(c, 'TI312'), 'trip point · Alarms tab');   // moved off the trip value it stops being the trip point: see the CR29 test below
   // TI314 and TI315: interlocks() latches trips.skin when either channel's own PVHH alarm is active, and the limits are the
   // declared 490 and 500; the alarm is the latch, so the entry holds at any value
   const skin = CauseEffect.causes().find((x) => x.id === 'H310_SKIN').threshold;
@@ -1138,8 +1144,53 @@ test('CR28: each trip-point entry is the condition the code acts on, and no othe
 test('CR28: the philosophy page says what the three ladder notes mean, and no longer calls every critical limit a trip point', () => {
   const body = Philosophy.sections({}).find((x) => x.title === 'The limit ladder').body;
   assert.ok(!/critical limits are the trip points/.test(body), 'the blanket claim is gone');
+  assert.ok(!/most severe/.test(body), 'a Journal-priority PVLL (TIC202, TIC301) sits below a Low-priority PVLO, so the critical limits are described by position');
+  assert.match(body, /the critical limits are the outermost alarm limits;/);
   for (const note of ['pre-trip alarm', 'trip point', 'critical alarm']) assert.ok(body.includes(note), 'the page names the "' + note + '" note');
   const meaning = (param) => Philosophy.limitLadder().find((r) => r.param === param).meaning;
-  assert.match(meaning('PVHH'), /^trip or safety limit, or the alarm that warns of one; an Urgent alarm/);
-  assert.equal(meaning('PVLL'), 'trip or safety limit, or the alarm that warns of one');
+  assert.equal(meaning('PVHH'), 'outermost high alarm limit; it warns of a trip where one is declared, or is the trip condition itself; an Urgent alarm');
+  assert.equal(meaning('PVLL'), 'outermost low alarm limit; it warns of a trip where one is declared');
+  assert.ok(!/interlock/.test(meaning('PVHH')), 'only three configured critical alarms latch an interlock, so the table does not say "normally an interlock"');
+});
+
+// The way an ENGR changes a trip point: the signed TP: store, then the signature dialog.
+function storeTripPoint(c, tag, cond, value) {
+  assert.equal(c.storeEntry(tag, 'TP:' + cond, value), true, tag + ' ' + cond + ': the store is accepted');
+  assert.equal(c.state.dlg && c.state.dlg.type, 'esig', tag + ' ' + cond + ': a signature is requested');
+  c.setState({ dlgPw: 'engr', dlgReason: 'ladder note check' });
+  assert.ok(c.signAction(), tag + ' ' + cond + ': signed');
+  assert.equal(c.L[tag].alm[cond][0], value, tag + ' ' + cond + ': stored');
+}
+
+test('CR28b: the pre-trip label follows the stored limit: only a PVHH below the declared trip is a pre-trip alarm', () => {
+  const c = boot(4, 'ENGR');
+  const ladder = () => { c.nav('detail', 'TIC201'); return c.renderVals().dpt.limitRows; };
+  const row = (param) => ladder().find((r) => r.param === param);
+  assert.equal(row('PVHH').note, 'pre-trip alarm · Alarms tab', 'shipped: PVHH 175 against the 185 trip');
+  for (const [value, shown, note] of [
+    [184, '184.0 DEG C', 'pre-trip alarm · Alarms tab'],
+    [185, '185.0 DEG C', 'critical alarm · Alarms tab'],     // at the trip is not before it
+    [190, '190.0 DEG C', 'critical alarm · Alarms tab'],     // past it, the reviewer's probe: this read pre-trip beside a 185 trip row
+    [170, '170.0 DEG C', 'pre-trip alarm · Alarms tab'],     // tightened again: pre-trip again
+  ]) {
+    storeTripPoint(c, 'TIC201', 'PVHH', value);
+    assert.deepEqual([row('PVHH').value, row('PVHH').note], [shown, note], 'PVHH stored at ' + value);
+    assert.equal(row('TRIP').value, '185.0 DEG C', 'the declared trip does not move with the stored alarm limit (PVHH ' + value + ')');
+  }
+});
+
+test('CR29: TI312 shows the R-310 trip row, and its PVHH note follows the stored limit: trip point at 480, pre-trip below it, critical alarm above it', () => {
+  const c = boot(4, 'ENGR');
+  const ladder = () => { c.nav('detail', 'TI312'); return c.renderVals().dpt.limitRows; };
+  const row = (param) => ladder().find((r) => r.param === param);
+  // shipped: range 600, the 480 trip at index 1, PVHH 480 next, descending
+  assert.deepEqual(ladder().slice(0, 3).map((r) => [r.param, r.value]), [['PVEUHI', '600 DEG C'], ['TRIP', '480 DEG C'], ['PVHH', '480 DEG C']]);
+  assert.equal(row('TRIP').note, 'R-310 HI TEMP TRIP · C&E matrix, plant-enforced');
+  assert.equal(row('PVHH').note, 'trip point · Alarms tab', 'at the bed trip value the alarm is the trip point');
+  storeTripPoint(c, 'TI312', 'PVHH', 470);
+  assert.deepEqual([row('TRIP').value, row('PVHH').value, row('PVHH').note], ['480 DEG C', '470 DEG C', 'pre-trip alarm · Alarms tab'], 'below the trip it is a pre-trip alarm, and the trip row stays at 480');
+  storeTripPoint(c, 'TI312', 'PVHH', 490);
+  assert.deepEqual([row('TRIP').value, row('PVHH').value, row('PVHH').note], ['480 DEG C', '490 DEG C', 'critical alarm · Alarms tab'], 'above it, a critical alarm');
+  storeTripPoint(c, 'TI312', 'PVHH', 480);
+  assert.equal(row('PVHH').note, 'trip point · Alarms tab', 'back at the trip value it is the trip point again');
 });
