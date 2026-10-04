@@ -27,12 +27,12 @@
 
   var LADDER = [
     { level: 'Range high', param: 'PVEUHI', meaning: 'top of the instrument range; the bar cannot show more' },
-    { level: 'Critical high', param: 'PVHH', meaning: 'trip or safety limit; an Urgent alarm and normally an interlock' },
+    { level: 'Critical high', param: 'PVHH', meaning: 'trip or safety limit, or the alarm that warns of one; an Urgent alarm and normally an interlock' },
     { level: 'Standard high', param: 'PVHI', meaning: 'the operator must act; a High or Low alarm' },
     { level: 'Target high', param: 'TGTHI', meaning: 'upper edge of the operating band; no alarm, just the aim' },
     { level: 'Target low', param: 'TGTLO', meaning: 'lower edge of the operating band' },
     { level: 'Standard low', param: 'PVLO', meaning: 'the operator must act' },
-    { level: 'Critical low', param: 'PVLL', meaning: 'trip or safety limit' },
+    { level: 'Critical low', param: 'PVLL', meaning: 'trip or safety limit, or the alarm that warns of one' },
     { level: 'Range low', param: 'PVEULO', meaning: 'bottom of the instrument range' }
   ];
 
@@ -56,7 +56,7 @@
       { title: 'Deadband and on-delay',
         body: 'An alarm that flickers around its limit is worse than no alarm, because the operator learns to ignore it. Two settings stop the chatter. The deadband makes the alarm clear only when the value has moved a little way back inside the limit (default ' + db + ' % of range on this station). The on-delay makes the value stay past the limit for a few seconds before the alarm is raised at all, so measurement noise and pump starts do not annunciate; flow loops wait longest, temperature loops least. Both are shown on the Alarms tab of every point.' },
       { title: 'The limit ladder',
-        body: 'Every measurement carries a ladder of eight values, drawn as a vertical band beside the value box on the overview and behind the bar on the faceplate. Reading from the outside in: the range is what the instrument can measure; the critical limits are the trip points; the standard limits are where the operator must act; and the target band is where the loop should live. When the pointer sits inside the target band nothing is required. When it leaves the standard band an alarm says so. Engineers set the target band on Point Detail; the alarm limits belong to the Alarms tab.' }
+        body: 'Every measurement carries a ladder of eight values, drawn as a vertical band beside the value box on the overview and behind the bar on the faceplate. Reading from the outside in: the range is what the instrument can measure; the critical limits are the most severe alarms on the point; the standard limits are where the operator must act; and the target band is where the loop should live. The note beside a critical limit says what sits behind it: a pre-trip alarm where a trip is declared further out (Point Detail shows that trip on its own row), the trip point itself where the alarm is the trip condition, or a critical alarm and nothing more. When the pointer sits inside the target band nothing is required. When it leaves the standard band an alarm says so. Engineers set the target band on Point Detail; the alarm limits belong to the Alarms tab.' }
     ];
   }
 
