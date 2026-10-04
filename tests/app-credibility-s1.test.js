@@ -1495,7 +1495,7 @@ test('M6: the "Why can I not change OP?" answer keeps its sentences and says an 
   // N3 (re-review): true for the TI216 shed as well, whose refusal is worded differently and which shows no flag: the sentence says the message names
   // the cause and gives the flag to an interlock hold only
   assert.equal(a.slice('OP entry is only permitted in MAN. In AUTO the PID computes OP; in CAS the SP comes from the primary. Click MAN on the faceplate first — the Message Zone shows INVALID MODE when the rule blocks you.'.length),
-    ' Under an interlock or a shed the output is held and an OP write is refused, even in MAN, until the cause clears; the Message Zone names the cause, and the flag beside the mode line names an interlock hold.');
+    ' Under an interlock, or the TI216 urgent shed on FIC211, the output is held and an OP write is refused, even in MAN, until the cause clears; the Message Zone names the cause, and the flag beside the mode line names an interlock hold.');
   // and what it says is what the page does: in MAN under the R-201 trip the write is refused, the message names the interlock and the flag the hold
   const c = boot(4, 'OPER');
   loseCooling(c);
@@ -1511,6 +1511,13 @@ test('M6: the "Why can I not change OP?" answer keeps its sentences and says an 
   d.storeEntry('FIC211', 'OP', 20);
   assert.equal(d.state.msg, 'FIC211: TI216 URGENT INTERLOCK — OP HELD BY SHED (MAN, OP 0)');
   assert.equal(d.flagText(d.L.FIC211), '', 'the shed holds FIC211 through its own latch and shows no flag (a deferred design item)');
+  // and "a shed" in general is too wide (re-review): the bad-PV shed sends FIC102 to MAN and leaves the output to the operator, so the sentence names the TI216 shed
+  const e = boot(4, 'OPER');
+  e.injectFault('xmtr', true);
+  assert.ok(run(e, 600, () => e.L.FIC102.badPv), 'FIC102 went bad');
+  assert.equal(e.L.FIC102.mode, 'MAN', 'shed to MAN');
+  assert.equal(e.storeEntry('FIC102', 'OP', 30), true);
+  assert.equal(e.L.FIC102.op, 30, 'the operator owns the output after a bad-PV shed');
 });
 
 // M5 (whole-branch review): the alarm scan raises and clears with the observed value (pvOf), but three writes that put a value into an alarm record
@@ -1589,9 +1596,6 @@ test('N1, CR38: a limit stored on a window edge that needs more than three decim
   c.msgZone = msgZone;
   // the edge is still the edge after the replay
   for (const [tag, cond, , over] of edges) assert.equal(c.storeEntry(tag, 'TP:' + cond, over), false, tag + ' ' + cond + ' ' + over + ': still refused live');
-  // the other STORE entries keep their journal format: only the trip-point store is exact
-  c.storeEntry('TIC201', 'ALMDB', 2);
-  assert.equal(c.instr.journal.filter((x) => x.op === 'STORE' && x.param === 'ALMDB').pop().arg, '2.000');
 });
 
 test('N1, CR38: the window check does not run while a replay applies: a journal entry an earlier build rounded to 257.813 still applies', () => {
@@ -1617,4 +1621,58 @@ test('N1, CR38: the window check does not run while a replay applies: a journal 
   assert.match(d.state.msg, /ENTRY REJECTED — LIMIT OUTSIDE REPORTING WINDOW -3\.125–257\.8125/);
   assert.equal(c.storeEntry('TIC301', 'TP:PVHH', 257.9), false, 'and on the replayed plant a different value over the edge is refused');
   assert.equal(c.L.TIC301.alm.PVHH[0], 257.813);
+});
+
+// CR38b (re-review): CR38 made only the trip-point store journal exactly, but a target band is bounded by those limits, so the same rounding reached the
+// band. TIC201 PVHI stored at 168.0006 and TGTHI at 168.0006 were both accepted live (band 140 / 168.0006), the journal held "168.0006" and "168.001", and the
+// replay refused the rounded band top (TARGET BAND MUST LIE INSIDE ... AND LOW < HIGH) and left the band on auto; the mirror is PVLO 140.0004 with TGTLO
+// 140.0004, journaled "140.000". Every operator store, in both closures of storeEntry (SP and OP through done; tuning, limits, target band, deadband,
+// on-delay and trip points through cfg), now journals String(v), which is what a replay reads back; the MOC record keeps its two-decimal display.
+test('CR38b: every operator store journals exactly, so a target band stored at a limit replays as stored (TGTHI and its TGTLO mirror)', () => {
+  const bandCase = (limit, param, value, band) => {
+    const c = boot(4, 'ENGR');
+    run(c, 10);
+    c.saveSlot(3, 'band');
+    run(c, 5);
+    storeTripPoint(c, 'TIC201', limit, value);
+    assert.equal(c.storeEntry('TIC201', param, value), true, param + ' ' + value + ' is accepted live');
+    assert.deepEqual([c.L.TIC201.tgtLo, c.L.TIC201.tgtHi], band, param + ': the live band');
+    assert.equal(c.instr.journal.filter((x) => x.op === 'STORE' && x.param === param).pop().arg, String(value), param + ' journals exactly');
+    assert.equal(c.instr.journal.filter((x) => x.op === 'STORE' && x.param === 'TP:' + limit).pop().arg, String(value), limit + ' journals exactly');
+    run(c, 20);
+    const seen = [], msgZone = c.msgZone.bind(c);
+    c.msgZone = (t) => { seen.push(t); msgZone(t); };
+    c.startReplay(3);
+    c.replayToEnd();
+    assert.equal(c.instr.replay, null, param + ': the replay ran to its end');
+    assert.deepEqual([c.L.TIC201.tgtLo, c.L.TIC201.tgtHi], band, param + ': the replayed band equals the live band');
+    assert.equal(c.L.TIC201.alm[limit][0], value, limit + ' replayed as stored');
+    assert.deepEqual(seen.filter((t) => /TARGET BAND MUST LIE INSIDE|LIMIT OUTSIDE REPORTING WINDOW/.test(t)), [], param + ': no refusal during the replay');
+    return c;
+  };
+  const hi = bandCase('PVHI', 'TGTHI', 168.0006, [140, 168.0006]);
+  bandCase('PVLO', 'TGTLO', 140.0004, [140.0004, 160]);
+  // the MOC record keeps its two-decimal display; only the journal is exact
+  assert.equal(hi.events.find((e) => e.type === 'CONFIG' && e.src === 'TIC201' && /PVHI TRIP POINT CHANGE/.test(e.desc)).newV, '168.00');
+  // and every other kind of store is exact in the journal, where fmt(v, 3) used to round it
+  const d = boot(4, 'ENGR');
+  const last = (param) => d.instr.journal.filter((x) => x.op === 'STORE' && x.param === param).pop().arg;
+  assert.equal(d.storeEntry('TIC201', 'SP', 152.25), true);
+  assert.equal(last('SP'), '152.25');
+  d.setMode('TIC202', 'MAN');
+  assert.equal(d.storeEntry('TIC202', 'OP', 55.1234), true);
+  assert.equal(last('OP'), '55.1234');
+  assert.equal(d.storeEntry('TIC201', 'ALMDB', 2), true);
+  assert.equal(last('ALMDB'), '2');
+  assert.equal(d.storeEntry('TIC201', 'ALMDELAY', 5.5), true);
+  assert.equal(last('ALMDELAY'), '5.5');
+  assert.equal(d.storeEntry('TIC201', 'OPHILM', 90.0625), true);
+  assert.equal(last('OPHILM'), '90.0625');
+  assert.equal(d.storeEntry('TIC201', 'K', 2.5), true);
+  d.setState({ dlgPw: 'engr', dlgReason: 'tune' });
+  assert.ok(d.signAction());
+  assert.equal(last('K'), '2.5');
+  assert.equal(d.L.TIC201.K, 2.5);
+  // a replayed value is the number that was stored
+  for (const e of d.instr.journal.filter((x) => x.op === 'STORE')) assert.equal(String(Number(e.arg)), e.arg, e.param + ' round-trips through Number');
 });

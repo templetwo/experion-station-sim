@@ -1142,11 +1142,12 @@
   storeEntry(tag,param,v){
     const l=this.L[tag]; if(!l) return true;
     if((param==='SP'||param==='OP') && !this.operatorMayWrite(tag,param)) return true;
-    const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.journal('STORE',tag,this.fmt(v,3),{param}); };
+    // The journal is what a replay reads back, so every operator store is journaled at its exact value, String(v) (CR38, CR38b): fmt(v,3) turned a limit
+    // stored on a window edge, 257.8125, into 257.813, over the edge, and a target band stored at its limit, 168.0006, into 168.001, past it, and the
+    // replay refused both and left the limit or the band as it was. The events and the MOC record keep their two-decimal display.
+    const done=(oldV,apply,evName)=>{ apply(); this.addEvent('OPERATOR',tag,evName+' CHANGE','',''); this.events[0].oldV=this.fmt(oldV,2); this.events[0].newV=this.fmt(v,2); this.journal('STORE',tag,String(v),{param}); };
     // configuration stores are MOC entries (CONFIG event with old / new, name, level, reason); tuning and trip points are signed
-    // The journal is what a replay reads back, so a trip-point store is journaled at its exact value (CR38): fmt(v,3) turned a limit stored on a window
-    // edge, 257.8125, into 257.813, over the edge. The MOC event keeps its display formatting. Every other store keeps the three decimals.
-    const cfg=(oldV,apply,what,reason)=>{ apply(); this.configChange(tag,what+' CHANGE',this.fmt(oldV,2),this.fmt(v,2),reason||''); this.journal('STORE',tag,param.startsWith('TP:')?String(v):this.fmt(v,3),{param}); };
+    const cfg=(oldV,apply,what,reason)=>{ apply(); this.configChange(tag,what+' CHANGE',this.fmt(oldV,2),this.fmt(v,2),reason||''); this.journal('STORE',tag,String(v),{param}); };
     if(param==='SP'){ if(v>l.sphilm||v<l.splolm){ this.msgZone('ENTRY REJECTED — SP LIMITS '+this.fmt(l.splolm,l.dec)+' TO '+this.fmt(l.sphilm,l.dec)); return false; } const o=l.sp; done(o,()=>{l.sp=v;},'SP'); this.dAct('SP',tag,v,v-o); this.taskDone('ctl.sp'); return true; }
     if(param==='OP'){ if(v>l.ophilm||v<l.oplolm){ this.msgZone('ENTRY REJECTED — OP LIMITS '+this.fmt(l.oplolm,1)+' TO '+this.fmt(l.ophilm,1)); return false; } const o=l.op; done(o,()=>{l.op=v;l.I=v;},'OP'); this.dAct('OP',tag,v,v-o); this.taskDone('ctl.op');
       if(tag==='TIC202'&&this.V.TV202.stuck&&Math.abs(v-o)>=8){ this.V.TV202.stuck=false; this.P.faults.stick=false; this.addEvent('SYSTEM','TIC202','TV-202 FREED BY MANUAL STROKE','',''); this.msgZone('TV-202 RESPONDING AGAIN'); } return true; }
