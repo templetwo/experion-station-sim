@@ -288,13 +288,13 @@ test('CR14: the faceplate note says SATURATED at the limit, BADPV still wins, an
   const noteOf = (b, tag) => b.renderVals().fps.find((f) => f.tag === tag).noteT;
   assert.equal(noteOf(c, 'TIC202'), 'SATURATED — REPORTED AT HIGH LIMIT');
   c.L.TIC202.badPv = true;                      // the observation is still UNCERTAIN: a bad flag must outrank it
-  assert.match(noteOf(c, 'TIC202'), /^BADPV — SHED/);
+  assert.equal(noteOf(c, 'TIC202'), 'BADPV — SHED (HOLD)');
 
   const d = boot(4, 'OPER');
   d.injectFault('xmtr', true);                  // FIC102 transmitter fault -> badPv after its hold time
   assert.ok(run(d, 600, () => d.L.FIC102.badPv));
   d.openFp('FIC102');
-  assert.match(noteOf(d, 'FIC102'), /^BADPV — SHED/);
+  assert.equal(noteOf(d, 'FIC102'), 'BADPV — SHED (HOLD)');
 
   const e = boot(4, 'OPER');
   e.L.AI205.quality = 'STALE';                  // UNCERTAIN from its source status, inside the range: no limit to name
@@ -322,4 +322,32 @@ test('the data-acquisition Point Detail row names the limit of a saturated readi
   c.measure();
   c.nav('detail', 'AI205');
   assert.equal(pvRow().note, '', 'UNCERTAIN with no limit has none to name');
+});
+
+// CR15: only regulatory points carry a shed option. The faceplate's BADPV note used to call l.shed.replace for any
+// bad point, so a bad indicator (the product analyzers start bad in composition mode, before the first sample)
+// threw in renderVals, which the page shows as the red render-error overlay. The indicator's note is plain BADPV;
+// a regulatory point's note is byte-identical to what it always read.
+test('CR15: a bad indicator point opens a faceplate that renders, with a plain BADPV note', () => {
+  const c = new Component({});
+  c.initSim(0, { materialMode: 'composition_mass_v1' });
+  assert.equal(c.L.AI511.badPv, true, 'the analyzer starts bad: no sample has been published yet');
+  assert.equal(c.L.AI511.shed, undefined, 'an indicator has no shed option');
+  c.setState({ fps: [...c.state.fps, { tag: 'AI511', x: 30, y: 44, pin: false }] });
+  let v;
+  assert.doesNotThrow(() => { v = c.renderVals(); });
+  assert.equal(v.fps.find((f) => f.tag === 'AI511').noteT, 'BADPV');
+});
+
+test('CR15: a regulatory point keeps its exact BADPV note for every shed option that sheds', () => {
+  const c = boot(4, 'OPER');
+  c.openFp('FIC102');
+  c.L.FIC102.badPv = true;
+  const noteOf = () => c.renderVals().fps.find((f) => f.tag === 'FIC102').noteT;
+  assert.equal(c.L.FIC102.shed, 'SHEDHOLD');
+  assert.equal(noteOf(), 'BADPV — SHED (HOLD)');
+  for (const [opt, tail] of [['SHEDLOW', 'LOW'], ['SHEDHIGH', 'HIGH'], ['SHEDSAFE', 'SAFE']]) {
+    c.L.FIC102.shed = opt;
+    assert.equal(noteOf(), 'BADPV — SHED (' + tail + ')', opt);
+  }
 });

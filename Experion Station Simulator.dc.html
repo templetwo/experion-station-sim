@@ -3997,7 +3997,7 @@ class Component extends ESS.PlantCore(DCLogic) {
         spClick:()=>this.openEntry(f.tag,'SP'),opClick:()=>this.openEntry(f.tag,'OP'),
         modes:isP?['MAN','AUTO','CAS'].map(mm=>({label:mm,bg:l.mode===mm?'#B8C4D4':'#D4D0C8',bc:l.mode===mm?'#31548F':'#FFFFFF #6E6E6E #6E6E6E #FFFFFF',cb:()=>this.setMode(f.tag,mm)})):[],
         raise:()=>this.raiseLower(f.tag,1),lower:()=>this.raiseLower(f.tag,-1),selT:selP?('→ '+selP):'',
-        noteT:l.badPv?'BADPV — SHED ('+l.shed.replace('SHED','')+')':(obsF&&obsF.quality==='UNCERTAIN'&&obsF.limit!=='NONE'?'SATURATED — REPORTED AT '+obsF.limit+' LIMIT':''),
+        noteT:l.badPv?'BADPV'+(l.shed?' — SHED ('+l.shed.replace('SHED','')+')':''):(obsF&&obsF.quality==='UNCERTAIN'&&obsF.limit!=='NONE'?'SATURATED — REPORTED AT '+obsF.limit+' LIMIT':''),
         sil:()=>this.silence(),ack:()=>{const a2=E.unacked().filter(x=>x.tag===f.tag).sort(E.compare)[0];if(a2)this.ackAlarm(a2);else this.msgZone('NO UNACK ALARM ON '+f.tag);},
         detail:()=>this.nav('detail',f.tag),
         sigPath:()=>this.openArch(f.tag,'trace'),
