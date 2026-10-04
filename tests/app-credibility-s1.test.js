@@ -351,3 +351,178 @@ test('CR15: a regulatory point keeps its exact BADPV note for every shed option 
     assert.equal(noteOf(), 'BADPV — SHED (' + tail + ')', opt);
   }
 });
+
+const tripFlagOfCause = { R201_HITEMP: 'rx', R202_HITEMP: 'batch', R310_HITEMP: 'bed', H310_SKIN: 'skin' };
+
+test('D1: a stopped pump makes FIC102 track SAFEOP, its primary runs INITMAN, and the restart does not surge', () => {
+  const c = boot(4, 'OPER');
+  run(c, 60);
+  c.motorCmd('P101', false);
+  c.step(0.5);
+  assert.deepEqual({ on: c.L.FIC102.trk.on, kind: c.L.FIC102.trk.kind, reason: c.L.FIC102.trk.reason }, { on: true, kind: 'device', reason: 'P-101 STOPPED' });
+  assert.equal(c.L.FIC102.op, 0);
+  assert.equal(c.L.LIC101.init, true);
+  run(c, 60);
+  assert.equal(c.L.FIC102.op, 0, 'no wind-up while the pump is stopped');
+  assert.ok(c.L.LIC101.op < 100, 'the primary did not wind up either: ' + c.L.LIC101.op);
+  c.motorCmd('P101', true);
+  assert.equal(c.L.P101.run, true, 'the lockout had expired');
+  let maxFlow = 0;
+  run(c, 300, () => { maxFlow = Math.max(maxFlow, c.L.FIC102.pv); return false; });
+  assert.ok(maxFlow <= 80.5, 'flow after restart never exceeds SPHILM 80: ' + maxFlow);
+  assert.equal(c.L.FIC102.trk.on, false, 'tracking released on restart');
+  assert.equal(c.L.LIC101.init, false);
+});
+
+test('D1: in MAN the operator owns the output while the pump is stopped; returning to AUTO re-engages tracking', () => {
+  const c = boot(4, 'OPER');
+  c.motorCmd('P101', false);
+  c.step(0.5);
+  c.setMode('FIC102', 'MAN');
+  assert.equal(c.storeEntry('FIC102', 'OP', 40), true);
+  run(c, 5);
+  assert.equal(c.L.FIC102.op, 40, 'device tracking yields in MAN');
+  c.setMode('FIC102', 'AUTO');
+  c.step(0.5);
+  assert.equal(c.L.FIC102.op, 0, 'tracking engages again outside MAN');
+});
+
+test('D10: the R-201 trip holds FIC102 at zero in every mode, shows why, and refuses an OP entry', () => {
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped at 185 C');
+  const l = c.L.FIC102;
+  assert.deepEqual({ kind: l.trk.kind, reason: l.trk.reason }, { kind: 'interlock', reason: 'R-201 HI TEMP TRIP' });
+  assert.equal(l.op, 0);
+  c.setMode('FIC102', 'MAN');
+  c.storeEntry('FIC102', 'OP', 80);
+  assert.match(c.state.msg, /ENTRY REJECTED — OUTPUT INTERLOCKED \(R-201 HI TEMP TRIP\)/);
+  assert.ok(c.events.some((e) => /^WRITE REJECTED — OUTPUT INTERLOCKED — R-201 HI TEMP TRIP/.test(e.desc)), 'the refusal is journaled');
+  run(c, 30);
+  assert.equal(l.op, 0, 'OP equals the forced valve');
+  assert.ok(c.V.FV102.pos < 0.01, 'the valve is shut: ' + c.V.FV102.pos);
+  assert.ok(!c.events.some((e) => e.desc === 'OP CHANGE' && e.src === 'FIC102' && e.newV === '80.00'), 'a refused write is never journaled as a change');
+});
+
+test('tracking is released when the trip resets, and a restored snapshot recomputes it from the flags', () => {
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx));
+  const snap = c.snapshotData('mid-trip');
+  assert.ok(run(c, 3600, () => !c.P.trips.rx), 'the trip reset below 160 C');
+  assert.equal(c.L.FIC102.trk.on, false);
+  c.restoreSnapshot(snap, 'test');
+  assert.equal(c.P.trips.rx, true);
+  c.L.FIC102.trk = { on: false, target: null, reason: '', kind: 'device' };   // corrupt the stored record on purpose
+  c.step(0.5);
+  assert.equal(c.L.FIC102.trk.on, true, 'the tick recomputed tracking from the restored trip flag');
+  assert.equal(c.L.FIC102.trk.kind, 'interlock');
+});
+
+test('the tracking set equals the W2 matrix effect columns, cause by cause', () => {
+  const c = boot(4);
+  const loopOf = {}; for (const [loop, valve] of Object.entries(c.valveMap())) loopOf[valve] = loop;
+  for (const col of CauseEffect.effects().filter((e) => e.kind === 'valve')) {
+    const loop = c.L[loopOf[col.target]];
+    assert.ok(loop, col.target + ' has a loop');
+    for (const causeId of col.causedBy) {
+      const flag = tripFlagOfCause[causeId];
+      assert.ok(flag, causeId + ' has a trip flag');
+      for (const k of Object.keys(tripFlagOfCause)) c.P.trips[tripFlagOfCause[k]] = false;
+      c.L.P101.run = true;
+      c.P.trips[flag] = true;
+      c.forcedOutputs();
+      assert.equal(loop.trk.on, true, col.target + ' tracks under ' + causeId);
+      assert.equal(loop.trk.kind, 'interlock');
+      const cause = CauseEffect.causes().find((x) => x.id === causeId);
+      assert.equal(loop.trk.reason, cause.src + ' ' + cause.cond);
+      c.P.trips[flag] = false;
+      c.forcedOutputs();
+      assert.equal(loop.trk.on, false);
+    }
+  }
+  assert.equal(CauseEffect.effects().filter((e) => e.kind === 'valve').length, 4, 'four valve columns are declared');
+});
+
+// Beyond the brief's five. The mutation pass over forcedOutputs() and the OP refusal left these alive: a return value
+// nobody read, FIC211 forced on a sequence HOLD or an agitator stop, a refusal that took MODE and SP with it, a refusal that
+// outlived the trip (clearTracking keeps `kind`, so only trk.on tells a released loop from a held one), and a SAFEOP target
+// that was a fixed zero.
+test('forcedOutputs() returns exactly the loops of the valve columns the matrix declares for each cause, and nothing else', () => {
+  const c = boot(4);
+  const loopOf = {}; for (const [loop, valve] of Object.entries(c.valveMap())) loopOf[valve] = loop;
+  const valveCols = CauseEffect.effects().filter((e) => e.kind === 'valve');
+  const trips = CauseEffect.causes().filter((x) => x.kind === 'process-trip');
+  const flagOf = (cause) => cause.latch.field.replace('P.trips.', '');
+  assert.equal(trips.length, 7, 'seven process trips are declared');
+  for (const cause of trips) {
+    for (const t of trips) c.P.trips[flagOf(t)] = false;
+    c.P.trips[flagOf(cause)] = true;
+    const expected = valveCols.filter((col) => col.causedBy.includes(cause.id)).map((col) => loopOf[col.target]).sort();
+    assert.deepEqual([...c.forcedOutputs()].sort(), expected, cause.id + ': the matrix names the loops');
+  }
+  for (const t of trips) c.P.trips[flagOf(t)] = false;
+  assert.deepEqual([...c.forcedOutputs()], [], 'no trip and the pump running: nothing tracks');
+  c.L.M202.run = false; c.P.b.held = true;      // an agitator stop and a sequence HOLD force no output: FIC211 tracks under the R-202 trip only
+  assert.deepEqual([...c.forcedOutputs()], [], 'a stopped agitator and a held sequence force nothing');
+  c.L.P101.run = false;
+  assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'a stopped pump forces FIC102 alone');
+});
+
+test('a trip the matrix cannot name tracks nothing, and a stopped pump, which names itself, still tracks (spec §12)', () => {
+  const c = boot(4);
+  const CE = globalThis.ESS.CauseEffect, real = CE.causes;
+  try {
+    CE.causes = () => [];
+    c.P.trips.rx = true;
+    assert.deepEqual([...c.forcedOutputs()], [], 'no reason source, no tracking');
+    assert.ok(!(c.L.FIC102.trk && c.L.FIC102.trk.on), 'and the record says so');
+    c.P.trips.rx = false; c.L.P101.run = false;
+    assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'the pump stop does not need the matrix');
+  } finally { CE.causes = real; }
+  c.L.P101.run = true; c.P.trips.rx = true;
+  assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'with the matrix back the trip tracks again');
+});
+
+test('D10: the OP refusal sits at the shared write gate, refuses OP and nothing else, and lifts when the trip resets', () => {
+  const c = boot(4, 'OPER');
+  loseCooling(c);
+  assert.ok(run(c, 2400, () => c.P.trips.rx), 'R-201 tripped');
+  const refused = /ENTRY REJECTED — OUTPUT INTERLOCKED \(R-201 HI TEMP TRIP\)/;
+  c.openEntry('FIC102', 'OP');                  // in CAS: refused as interlocked, not as an invalid mode
+  assert.match(c.state.msg, refused);
+  assert.ok(!c.state.entry, 'no entry field opened');
+  c.setMode('FIC102', 'MAN');                   // a mode change is not an OP entry
+  assert.equal(c.L.FIC102.mode, 'MAN');
+  c.setState({ msg: '' });
+  c.openEntry('FIC102', 'OP');
+  assert.match(c.state.msg, refused);
+  assert.ok(!c.state.entry, 'no entry field opened in MAN either');
+  c.setState({ msg: '' });
+  c.raiseLower('FIC102', 1);
+  assert.match(c.state.msg, refused);
+  assert.equal(c.L.FIC102.op, 0, 'RAISE does not move a held output');
+  assert.equal(c.events.filter((e) => /^WRITE REJECTED — OUTPUT INTERLOCKED/.test(e.desc)).length, 3, 'each refused route is journaled once');
+  assert.deepEqual(c.instr.journal.filter((e) => e.tag === 'FIC102').map((e) => e.op), ['MODE'], 'no refused write reaches the replay journal');
+  assert.ok(run(c, 3600, () => !c.P.trips.rx), 'the trip reset');
+  assert.equal(c.L.FIC102.trk.on, false);
+  assert.equal(c.storeEntry('FIC102', 'OP', 30), true);
+  assert.equal(c.L.FIC102.op, 30, 'the operator owns the output again');
+  assert.ok(c.events.some((e) => e.desc === 'OP CHANGE' && e.src === 'FIC102' && e.newV === '30.00'), 'and the entry is journaled as a change');
+});
+
+test('D1: a loop returned from MAN to AUTO while the pump is stopped holds at its SAFEOP and says why', () => {
+  const c = boot(4, 'OPER');
+  c.L.FIC102.safeop = 15;
+  c.motorCmd('P101', false);
+  c.step(0.5);
+  c.setMode('FIC102', 'MAN');
+  assert.equal(c.storeEntry('FIC102', 'OP', 40), true);
+  run(c, 5);
+  assert.equal(c.L.FIC102.op, 40, 'the operator owns the output in MAN');
+  c.setMode('FIC102', 'AUTO');
+  c.step(0.5);
+  assert.equal(c.L.FIC102.op, 15, 'the hold is at SAFEOP, not a fixed zero');
+  const t = c.L.FIC102.trk;
+  assert.deepEqual({ on: t.on, kind: t.kind, target: t.target, reason: t.reason }, { on: true, kind: 'device', target: 15, reason: 'P-101 STOPPED' });
+});

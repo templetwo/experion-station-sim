@@ -204,6 +204,7 @@
     this.stepU3(dt);
     this.stepU4(dt);
     this.measure();
+    this.forcedOutputs();
     this.pids(dt);
     this.scan(dt);
     this.interlocks();
@@ -537,6 +538,27 @@
     }
   }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
+  // Who tracks, decided once per tick from the code's own trip flags and run states, the same
+  // gating src/models.js VALVE_TARGET enforces (spec §3.2). The W2 matrix declares the same
+  // columns and tests/app-credibility-s1.test.js holds the two equal; this reads the flags, never
+  // the matrix. Interlock holds in every mode; a stopped pump holds only outside MAN.
+  // An interlock row takes its reason text from the matrix; a row the matrix cannot name does not
+  // track, so a hold is never one the operator cannot be told the reason for (spec §12).
+  forcedOutputs(){
+    const P=this.P, L=this.L, trips=P.trips||{};
+    const name=(id)=>{ const c=(ESS.CauseEffect?ESS.CauseEffect.causes():[]).find(x=>x.id===id); return c&&c.src&&c.cond?(c.src+' '+c.cond):''; };
+    const rows=[
+      ['FIC102', !!trips.rx, 'interlock', 0, ()=>name('R201_HITEMP')],
+      ['FIC102', !trips.rx && !!L.P101 && !L.P101.run, 'device', (L.FIC102&&L.FIC102.safeop)||0, ()=>'P-101 STOPPED'],
+      ['FIC211', !!trips.batch, 'interlock', 0, ()=>name('R202_HITEMP')],
+      ['TIC213', !!trips.batch, 'interlock', 0, ()=>name('R202_HITEMP')],
+      ['TIC311', !!(trips.bed||trips.skin), 'interlock', 0, ()=>trips.bed?name('R310_HITEMP'):name('H310_SKIN')],
+    ];
+    const set=new Set();
+    for(const [tag,on,kind,target,reason] of rows){ const l=L[tag]; if(!l||!on||set.has(tag)) continue; const why=reason(); if(!why) continue; ESS.Pid.setTracking(l,target,why,kind); set.add(tag); }
+    for(const tag of ['FIC102','FIC211','TIC213','TIC311']) if(!set.has(tag)&&L[tag]) ESS.Pid.clearTracking(L[tag]);
+    return set;
+  }
   productAnalyzerObservation(tag){
     // Public sample evidence only. Do not consult material truth to raise or
     // clear a warning, or to decide whether a retained alarm implies recovery.
@@ -1332,6 +1354,7 @@
   }
   operatorMayWrite(tag,param){
     const l=this.L[tag]; if(!l||l.kind!=='pid') return true;
+    if(param==='OP' && l.trk && l.trk.on && l.trk.kind==='interlock'){ this.rejectWrite(tag,'OUTPUT INTERLOCKED — '+l.trk.reason); this.msgZone('ENTRY REJECTED — OUTPUT INTERLOCKED ('+l.trk.reason+')'); return false; }
     if(this.interlockOwns(tag,param)){ this.rejectWrite(tag,'TI216 URGENT INTERLOCK — '+param+' HELD BY SHED (MAN, OP 0)'); return false; }
     if(ESS.Pid.canOperatorWrite(l,param)) return true;
     this.rejectWrite(tag,ESS.Pid.writeDenial(l,param));
