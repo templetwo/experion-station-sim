@@ -5,9 +5,11 @@
 //
 // The second archive, tests/fixtures/v31-baseline/, is the 3.1.0 release line: every golden fixture
 // (drills, upsets, arch/, u4/) as it stood at 1f0147e, copied before stage S1 of the credibility pass
-// re-captured any of them (docs/dev/CREDIBILITY-PASS-SPEC.md section 11, CR10). Same discipline, below:
-// an intact-and-complete check against its README, and a live-equals-archived check whose exceptions
-// are named with their reasons.
+// re-captured any of them (docs/dev/CREDIBILITY-PASS-SPEC.md section 11, CR10).
+//
+// Both archives get the same two checks: intact and complete (the README's sha256 table), and a check that the live goldens
+// differ from the archive exactly where the list of re-captured fixtures says (CR31): every listed file must really differ
+// from its archived copy, so a stale entry fails as surely as an unlisted mover, and every other file must equal its copy.
 'use strict';
 
 const test = require('node:test');
@@ -17,6 +19,30 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const DIR = path.join(__dirname, 'fixtures', 'v2-baseline');
+
+/**
+ * CR31: a guard that lists every fixture must still assert something, so the list of re-captured fixtures is held exact in both
+ * directions. Every file listed must really differ, byte for byte, from its archived copy (a stale entry fails and names the
+ * file); every archived file not listed must equal its copy (an unlisted mover fails and names the file); a file is listed once
+ * and has an archived copy (a typo fails). `archived` is the archive's file list relative to `dir`; the live copy of each file
+ * sits in tests/fixtures/ under the same relative path.
+ */
+function assertListedMoversExact({ dir, archived, listed, since }) {
+  const twice = listed.find((file, i) => listed.indexOf(file) !== i);
+  assert.equal(twice, undefined, `${twice} is listed twice as re-captured since ${since}`);
+  for (const file of listed) {
+    assert.ok(archived.includes(file), `${file} is listed as re-captured since ${since} but has no archived copy`);
+  }
+  for (const file of archived) {
+    const live = fs.readFileSync(path.join(__dirname, 'fixtures', file));
+    const copy = fs.readFileSync(path.join(dir, file));
+    if (listed.includes(file)) {
+      assert.ok(!live.equals(copy), `${file} is listed as re-captured since ${since} but equals its archived copy: take it off the list`);
+    } else {
+      assert.ok(live.equals(copy), `${file} differs from its archived ${since} copy but is not listed as re-captured since ${since}`);
+    }
+  }
+}
 
 test('the archived v2 baseline is intact and complete', () => {
   const readme = fs.readFileSync(path.join(DIR, 'README.md'), 'utf8');
@@ -30,10 +56,11 @@ test('the archived v2 baseline is intact and complete', () => {
   assert.deepEqual(onDisk, listed.map((x) => x.file).sort(), 'every archived file is listed and every listed file exists');
 });
 
-test('the archive was a verbatim copy of the live goldens at the moment of archiving (no live golden has moved yet)', () => {
-  // Deliberately NOT a permanent invariant: the first justified re-capture will make a live
-  // golden differ from its archived copy, and that is the point of the archive. Until then,
-  // this proves the copy was exact. When a golden is re-captured, list it in KNOWN_RECAPTURED.
+test('every golden listed as re-captured since v2 really differs from its archived v2 copy, and every unlisted one equals it', () => {
+  // Not "the live goldens equal the archive": each justified re-capture makes a golden differ from its archived copy, and that is
+  // the point of the archive. This holds the record of which ones have moved exact in both directions (CR31): a golden listed in
+  // KNOWN_RECAPTURED must really differ from its v2 copy, so a stale entry fails and names the file, and every golden not listed
+  // must equal it. When a golden is re-captured, list it here with its reasons.
   // 2026-09-03, option A (Anthony): the fixed-bed floor (src/models.js fixedBed, bedSS floored at
   // the inlet less 5 C) moved exactly these three -- the runs where quench drove the bed below
   // its own inlet. Measured before the change: no other golden moved (CHANGELOG 3.1.0).
@@ -41,8 +68,8 @@ test('the archive was a verbatim copy of the live goldens at the moment of archi
   // 2026-10-04, credibility pass S1 (docs/dev/CREDIBILITY-PASS-SPEC.md section 11, CR10): every one of the 21 moved again, so
   // every one is listed, each with the reasons measured at the re-capture. Measured, not assumed: with the eight mechanisms named
   // here switched off in a scratch tree every fixture came back equal to its 3.1.0 copy (model stamp aside), and each mechanism
-  // alone moved exactly the fixtures it is named against. The 3.1.0 copies live in tests/fixtures/v31-baseline/ and the second
-  // check below keeps the set of movers exact; with every v2 fixture listed this one no longer compares anything live.
+  // alone moved exactly the fixtures it is named against. All 21 differ from their v2 copies, which this check asserts one by one;
+  // the 3.1.0 copies live in tests/fixtures/v31-baseline/ and the second check below holds that list the same way.
   //   CUTOFF   the FIC211 low-flow cutoff (spec 2.2): its raw value is noise around 0, the observed value is exactly 0, so the
   //            loop at zero setpoint stops dithering MV211. Numeric only (the end-state or physics digest): it moves all 35,
   //            drill-D11 also by two steps (4021 -> 4023).
@@ -78,12 +105,7 @@ test('the archive was a verbatim copy of the live goldens at the moment of archi
     'upset-vap.json',        // CUTOFF
     'upset-xmtr.json',       // CUTOFF
   ];
-  for (const file of fs.readdirSync(DIR).filter((f) => f.endsWith('.json'))) {
-    if (KNOWN_RECAPTURED.includes(file)) continue;
-    const live = fs.readFileSync(path.join(__dirname, 'fixtures', file));
-    const archived = fs.readFileSync(path.join(DIR, file));
-    assert.ok(live.equals(archived), `${file}: the live golden differs from the archive but is not listed as re-captured`);
-  }
+  assertListedMoversExact({ dir: DIR, archived: fs.readdirSync(DIR).filter((f) => f.endsWith('.json')).sort(), listed: KNOWN_RECAPTURED, since: 'v2' });
 });
 
 const DIR31 = path.join(__dirname, 'fixtures', 'v31-baseline');
@@ -110,13 +132,12 @@ test('the archived 3.1.0 baseline is intact and complete', () => {
   assert.deepEqual(jsonUnder(DIR31), listed.map((x) => x.file).sort(), 'every archived file is listed and every listed file exists');
 });
 
-test('every live golden equals its 3.1.0 copy unless it is listed as re-captured since 3.1.0', () => {
-  // Like the v2 check above this is deliberately not a permanent invariant: each golden a stage
-  // re-captures is listed here with its reasons. Unlike it, the list is exact in both directions: a
-  // listed file must really differ from its archived copy (a stale entry is a failure), and every
-  // file not listed, the five Unit 04 goldens in u4/ included, must be byte-identical.
+test('every golden listed as re-captured since 3.1.0 really differs from its 3.1.0 copy, and every unlisted one equals it', () => {
+  // The same check as the v2 one above (CR31), against the 3.1.0 copies: each golden a stage re-captures is listed here with its
+  // reasons, a listed file must really differ from its copy (a stale entry fails and names the file), and every file not listed,
+  // the five Unit 04 goldens in u4/ included, must be byte-identical.
   // Reason codes as in KNOWN_RECAPTURED above (credibility pass S1, 2026-10-04): 35 of the 40 moved, all by the CUTOFF at least.
-  // The five Unit 04 goldens (u4/) are deliberately absent: none of the S1 mechanisms reaches them, so the loop below proves them
+  // The five Unit 04 goldens (u4/) are deliberately absent: none of the S1 mechanisms reaches them, so the check below proves them
   // byte-identical instead of listing them.
   const KNOWN_RECAPTURED_SINCE_31 = [
     'drill-D1.json',         // CUTOFF
@@ -155,17 +176,5 @@ test('every live golden equals its 3.1.0 copy unless it is listed as re-captured
     'arch/A11.json',         // CUTOFF
     'arch/A12.json',         // CUTOFF
   ];
-  const archived = jsonUnder(DIR31);
-  for (const file of KNOWN_RECAPTURED_SINCE_31) {
-    assert.ok(archived.includes(file), `${file} is listed as re-captured but has no 3.1.0 copy`);
-  }
-  for (const file of archived) {
-    const live = fs.readFileSync(path.join(__dirname, 'fixtures', file));
-    const old = fs.readFileSync(path.join(DIR31, file));
-    if (KNOWN_RECAPTURED_SINCE_31.includes(file)) {
-      assert.ok(!live.equals(old), `${file} is listed as re-captured since 3.1.0 but equals its archived copy: take it off the list`);
-      continue;
-    }
-    assert.ok(live.equals(old), `${file}: the live golden differs from the 3.1.0 archive but is not listed as re-captured since 3.1.0`);
-  }
+  assertListedMoversExact({ dir: DIR31, archived: jsonUnder(DIR31), listed: KNOWN_RECAPTURED_SINCE_31, since: '3.1.0' });
 });
