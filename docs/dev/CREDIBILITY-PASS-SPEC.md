@@ -175,8 +175,13 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   git-ignored workspace is deleted, so the measurements the changelog cites stay in the tree;
   screenshots and scratch scripts are not kept.
 - **CR38.** Replay reproduces what the live run accepted: alarm-limit stores are journaled at exact
-  precision, and the CR35 window check, like the other operator gates, does not run while a replay
-  is applying.
+  precision, and the CR35 window check, like the authority gates (`can`, `withSignature`,
+  `instructorAllowed`), does not run while a replay is applying; the value checks still run, on the
+  exact values.
+- **CR38b.** Every operator store (gains, limits, SP and OP, target band, SAFEOP, deadband,
+  on-delay) journals at exact precision, not only trip points: the journal is the record of the
+  stored value, every reader takes `Number(arg)` or prints it, and a target band stored at an
+  edge replays as stored.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -199,11 +204,9 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
   its trip renders under the TRIP row; both belong to the naming pass, as does a uniform value rule
   for the critical-alarm note. `round(peak, 1)` can print "peak 185 vs trip 185" for a near miss
   inside 0.05.
-- Governed-mode RAISE sends `op+1` without clamping, so an OP below OPLOLM (reachable through an
-  interlock hold since CR34) gets `native_limit` where the native RAISE clamps (pre-existing).
-- Other STORE entries (gains, SP and OP limits, deadband, on-delay) still journal at three decimals,
-  so a replay can differ from the live value by under 0.0005; only trip-point stores journal exactly
-  (CR38). Nothing validates against the rounded ones today.
+- Governed-mode RAISE and LOWER send the unclamped value, so a step at OPHILM, OPLOLM, SPHILM or
+  SPLOLM (and an OP below OPLOLM, reachable through an interlock hold since CR34) gets
+  `native_limit` where the native path clamps (pre-existing).
 - An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
   trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
   four exist today).
