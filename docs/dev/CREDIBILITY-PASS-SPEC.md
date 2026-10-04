@@ -140,9 +140,16 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   exact; the lockstep field comparison is removed, with `tests/fixtures/v31-baseline/` as the
   frozen 3.1.0 behaviour.
 - **CR28.** The ladder's critical-alarm note is true per point: `pre-trip alarm` on the side of a declared
-  trip, `trip point` where the critical alarm is itself the trip or interlock condition in
+  process trip, `trip point` where the critical alarm is itself the trip or interlock condition in
   code (a short verified list on the page), `critical alarm` elsewhere; §3.6 amended and
   `src/philosophy.js` reworded to match.
+- **CR28b.** The pre-trip label also follows the stored value: `pre-trip alarm` only while the
+  configured PVHH is below the declared trip; a PVHH stored at or above it reads `critical alarm`.
+- **CR29.** TI312 joins the declared-trip map (R-310 HI TEMP TRIP, 480 °C on the bed hotspot it
+  indicates), so the ladder shows the R-310 TRIP row rather than hiding the trip when its PVHH
+  is moved.
+- **CR30.** The TRIP row's note fits two lines of the Point Detail note column; if the plan's text
+  wrapped further it became `<src> <cond> · C&E matrix, plant-enforced`.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -150,6 +157,9 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
 - The faceplate flag row's wrapping under a long interlock reason (CR26).
 - The help-answer keyword `man` matches inside `initman`, so "What is INITMAN?" also shows the
   "Why can't I change OP?" answer (pre-existing; S5's assistant pass).
+- "Trip point" names any alarm limit on the Alarms tab, in MOC records and in the curriculum
+  task, while the ladder's `trip point` note means the alarm that is the trip; a naming pass in a
+  later stage unifies the two.
 
 ---
 
@@ -272,9 +282,13 @@ in the message zone. Widening the map is a dynamics change and is logged to the 
 
 3.6 **D9.** The Point Detail ladder adds a `trip` row whose value comes from the W2 declaration
 for that source (185 °C for R-201 from `src/cause-effect.js`), so the number can never disagree
-with the code, and labels the critical alarm on that trip's side `pre-trip alarm` (every declared trip is
-high-side, so PVHH; the other side reads `critical alarm`), `trip point` where the critical alarm is
-itself the trip or interlock condition in code, and `critical alarm` elsewhere (CR28). The drill debrief's
+with the code, and labels the critical alarm on that trip's side `pre-trip alarm` while its configured limit
+sits below the declared trip (every declared process trip is high-side, so PVHH; the other side,
+and a PVHH stored at or above the trip, read `critical alarm`; CR28, CR28b), `trip point` where the
+critical alarm is itself the trip or interlock condition in code, and `critical alarm` elsewhere
+(CR28). The six points with a declared process trip behind their critical alarm are TIC201,
+LIC101, PIC401, TIC212, PIC505 and TI312 (CR29). The TRIP note fits two lines of the note
+column (CR30). The drill debrief's
 "trip avoided" line states the margin to the documented trip point.
 
 ---
