@@ -542,11 +542,12 @@
   // gating src/models.js VALVE_TARGET enforces (spec §3.2). The W2 matrix declares the same
   // columns and tests/app-credibility-s1.test.js holds the two equal; this reads the flags, never
   // the matrix. Interlock holds in every mode; a stopped pump holds only outside MAN.
-  // An interlock row takes its reason text from the matrix; a row the matrix cannot name does not
-  // track, so a hold is never one the operator cannot be told the reason for (spec §12).
+  // The hold is the code's truth and the matrix only names it: a trip flag whose cause the matrix cannot
+  // name still holds its loop, with the raw cause id as the reason text. A missing flag or run state (no
+  // trips record, no P-101 record) holds nothing, and never throws (spec §12).
   forcedOutputs(){
     const P=this.P, L=this.L, trips=P.trips||{};
-    const name=(id)=>{ const c=(ESS.CauseEffect?ESS.CauseEffect.causes():[]).find(x=>x.id===id); return c&&c.src&&c.cond?(c.src+' '+c.cond):''; };
+    const name=(id)=>{ const c=(ESS.CauseEffect?ESS.CauseEffect.causes():[]).find(x=>x.id===id); return c?(c.src+' '+c.cond):id; };
     const rows=[
       ['FIC102', !!trips.rx, 'interlock', 0, ()=>name('R201_HITEMP')],
       ['FIC102', !trips.rx && !!L.P101 && !L.P101.run, 'device', (L.FIC102&&L.FIC102.safeop)||0, ()=>'P-101 STOPPED'],
@@ -555,7 +556,7 @@
       ['TIC311', !!(trips.bed||trips.skin), 'interlock', 0, ()=>trips.bed?name('R310_HITEMP'):name('H310_SKIN')],
     ];
     const set=new Set();
-    for(const [tag,on,kind,target,reason] of rows){ const l=L[tag]; if(!l||!on||set.has(tag)) continue; const why=reason(); if(!why) continue; ESS.Pid.setTracking(l,target,why,kind); set.add(tag); }
+    for(const [tag,on,kind,target,reason] of rows){ const l=L[tag]; if(!l||!on||set.has(tag)) continue; ESS.Pid.setTracking(l,target,reason(),kind); set.add(tag); }
     for(const tag of ['FIC102','FIC211','TIC213','TIC311']) if(!set.has(tag)&&L[tag]) ESS.Pid.clearTracking(L[tag]);
     return set;
   }

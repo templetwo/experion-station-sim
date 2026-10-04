@@ -469,19 +469,39 @@ test('forcedOutputs() returns exactly the loops of the valve columns the matrix 
   assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'a stopped pump forces FIC102 alone');
 });
 
-test('a trip the matrix cannot name tracks nothing, and a stopped pump, which names itself, still tracks (spec §12)', () => {
+// CR18: the hold is the code's truth and the matrix only names it. A trip flag whose cause the matrix cannot name still holds
+// its loop, with the raw cause id as its reason text; an empty matrix and no matrix module at all read the same.
+test('an interlock the matrix cannot name still holds its loop, and the raw cause id names it (CR18)', () => {
   const c = boot(4);
-  const CE = globalThis.ESS.CauseEffect, real = CE.causes;
+  const ESSg = globalThis.ESS, CE = ESSg.CauseEffect, real = CE.causes;
+  const reasons = (flag) => {                  // the loops held under this one trip flag, with the reason each carries
+    for (const f of ['rx', 'batch', 'bed', 'skin']) c.P.trips[f] = false;
+    c.P.trips[flag] = true;
+    const out = {};
+    for (const tag of c.forcedOutputs()) { const t = c.L[tag].trk; assert.deepEqual([t.on, t.kind, t.target], [true, 'interlock', 0], tag); out[tag] = t.reason; }
+    return out;
+  };
+  const rawIds = [['rx', { FIC102: 'R201_HITEMP' }], ['batch', { FIC211: 'R202_HITEMP', TIC213: 'R202_HITEMP' }], ['bed', { TIC311: 'R310_HITEMP' }], ['skin', { TIC311: 'H310_SKIN' }]];
   try {
-    CE.causes = () => [];
-    c.P.trips.rx = true;
-    assert.deepEqual([...c.forcedOutputs()], [], 'no reason source, no tracking');
-    assert.ok(!(c.L.FIC102.trk && c.L.FIC102.trk.on), 'and the record says so');
-    c.P.trips.rx = false; c.L.P101.run = false;
-    assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'the pump stop does not need the matrix');
-  } finally { CE.causes = real; }
-  c.L.P101.run = true; c.P.trips.rx = true;
-  assert.deepEqual([...c.forcedOutputs()], ['FIC102'], 'with the matrix back the trip tracks again');
+    CE.causes = () => [];                      // the matrix has lost every cause
+    for (const [flag, expected] of rawIds) assert.deepEqual(reasons(flag), expected, flag + ': held, named by the raw id');
+    ESSg.CauseEffect = undefined;              // and with no matrix module at all
+    for (const [flag, expected] of rawIds) assert.deepEqual(reasons(flag), expected, flag + ': held without a matrix module');
+  } finally { CE.causes = real; ESSg.CauseEffect = CE; }
+  assert.deepEqual(reasons('rx'), { FIC102: 'R-201 HI TEMP TRIP' }, 'with the matrix back, its own name');
+  assert.deepEqual(reasons('skin'), { TIC311: 'H-310 TUBE SKIN TRIP' });
+});
+
+// Spec §12: a missing flag or run state means no tracking, and never an exception. (A missing name is the test above.)
+test('a missing run state or flag record means no tracking and never throws (spec §12)', () => {
+  const c = boot(4);
+  delete c.L.P101;                             // no pump record, so no run state to read
+  assert.deepEqual([...c.forcedOutputs()], [], 'no P-101 record, no device hold on FIC102');
+  c.P.trips.rx = true;                         // an interlock needs the flag, not the pump
+  assert.deepEqual([...c.forcedOutputs()], ['FIC102']);
+  c.P.trips = undefined;                       // no flag record at all, as in a snapshot that predates the flags
+  assert.deepEqual([...c.forcedOutputs()], [], 'no flag record, no interlock');
+  assert.equal(c.L.FIC102.trk.on, false, 'and the loop is released');
 });
 
 test('D10: the OP refusal sits at the shared write gate, refuses OP and nothing else, and lifts when the trip resets', () => {
