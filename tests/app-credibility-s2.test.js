@@ -145,7 +145,7 @@ test('§4.3: under the R-202 trip both batch loops carry INTERLOCK · R-202 HI T
 });
 
 // Review Focus 1: every other writer of the two loops keeps working under the new rule.
-test('other writers: ABORT during a hold cools and clears the hold; the TI216 shed during FEED holds and keeps writing the shed state; the governed RESUME is the HOLD toggle', () => {
+test('other writers: ABORT during a hold cools and clears the hold; the TI216 shed during FEED holds and keeps writing the shed state', () => {
   const c = boot(4, 'OPER');
   c.applyPreset('U2_FEED');
   c.setState({ sec: 'OPER' });
@@ -265,20 +265,26 @@ test('CR41: RESUME hands both loops back in AUTO: TIC212 put in MAN during a FEE
 
 // CR42: the alarm help for the three high alarms that told the operator to write a loop the sequence owns while it runs now says HOLD the
 // sequence first: FIC211 and TIC212 are the sequence's while it runs and the operator's while it is held (spec 4.2).
-test('CR42: the alarm help for FIC211, TIC212 and LI215 PVHI says HOLD the sequence first', () => {
+test('CR42: the alarm help that directs a write to a loop the sequence owns says HOLD the sequence first: FIC211, TIC212, LI215 and PI214 PVHI, and FIC211 PVLO', () => {
   const f = AlarmHelp.resolve('FIC211', 'PVHI', {});
   assert.equal(f.found, true);
   assert.equal(f.correctiveAction, 'HOLD the sequence first: FIC211 belongs to the sequence while it runs and to you while it is held. Then reduce the FIC211 setpoint or place it in MAN at a lower output; check the monomer inventory bar.');
-  for (const [tag, cond] of [['TIC212', 'PVHI'], ['LI215', 'PVHI']]) {
+  for (const [tag, cond] of [['TIC212', 'PVHI'], ['LI215', 'PVHI'], ['PI214', 'PVHI']]) {
     const h = AlarmHelp.resolve(tag, cond, {});
     assert.equal(h.found, true, tag);
-    assert.match(h.correctiveAction, /^HOLD the sequence first/, tag);
+    assert.match(h.correctiveAction, /^HOLD the sequence first/, tag + ' ' + cond);
   }
+  // S2 round 2: the low-flow alarm used to say "return FIC211 to AUTO", a mode store the attribute refuses while the sequence runs; the
+  // sequence restores AUTO itself (CR41, once the PV is good), and the operator's way to the loop is HOLD.
+  const low = AlarmHelp.resolve('FIC211', 'PVLO', {});
+  assert.equal(low.found, true);
+  assert.equal(low.correctiveAction, 'Check MV-211 position against output. The sequence returns FIC211 to AUTO itself once its PV is good. To work the loop, HOLD the sequence first (FIC211 is yours while it is held) and keep it held until the feed is available.');
 });
 
-// CR40: the plant gives every M3/H PID loop the measurement policy's low-flow cutoff (1 % of its span) once, at init, and nothing else; a snapshot
-// that predates the field gets it back on restore, and a value that is present is never overwritten.
-test('CR40: every M3/H PID loop carries spCutoff = 1 % of its span from init and nothing else does; a restored snapshot without it gets it back', () => {
+// CR40: the plant gives every M3/H PID loop the measurement policy's low-flow cutoff (1 % of its span) at init, and nothing else. The field is
+// derived from the range, which nothing changes at runtime, so a restored snapshot has it recomputed: a snapshot that predates it gets it, and a
+// value in the file is not kept (S2 round 2 review).
+test('CR40: every M3/H PID loop carries spCutoff = 1 % of its span from init and nothing else does; a restored snapshot has it recomputed', () => {
   const c = boot(4);
   assert.deepEqual(Object.keys(c.L).filter((k) => 'spCutoff' in c.L[k]).sort(), ['FIC102', 'FIC211', 'FIC310', 'FIC313']);
   assert.equal(c.L.FIC102.spCutoff, 1.2); assert.equal(c.L.FIC211.spCutoff, 0.4);
@@ -292,5 +298,95 @@ test('CR40: every M3/H PID loop carries spCutoff = 1 % of its span from init and
   delete snap.L.FIC211.spCutoff; snap.L.FIC310.spCutoff = 5;
   c.restoreSnapshot(snap);
   assert.equal(c.L.FIC211.spCutoff, 0.4, 'an imported snapshot from before the field gets it back');
-  assert.equal(c.L.FIC310.spCutoff, 5, 'a value that is present is not overwritten');
+  assert.equal(c.L.FIC310.spCutoff, 0.8, 'a value in the file is recomputed from the range, not kept');
+});
+
+// ---- S2 fix round 2 (Opus task review) ----
+
+// Important 1: the CR40 shutoff parks OP at OPLOLM on purpose. The Live Diagnosis saturation card read that as "the disturbance exceeds this
+// loop" (FIC313 at an operator SP 0 in AUTO: the card on 80 of 120 scans once PVLO announced, 0 before CR40). The card now asks ESS.Pid.shutoff,
+// the question stepPid asks. A loop saturated for a real reason still gets it.
+test('the saturation card stays silent under the setpoint shutoff: FIC313 at SP 0 in AUTO raises none while PVLO and PVLL stand, and the same loop saturated for a real reason still does', () => {
+  const card = (b) => b.diagnose().find((x) => x.id === 'sat.FIC313');
+  const active = (b, cond) => b.alarms.some((a) => a.tag === 'FIC313' && a.cond === cond && a.active);
+  const c = boot(4, 'OPER');
+  run(c, 60);
+  c.storeEntry('FIC313', 'SP', 0);
+  let shown = 0;
+  for (let i = 0; i < 120; i++) { c.step(0.5); if (card(c)) shown++; }        // every scan of 60 s
+  const l = c.L.FIC313;
+  assert.equal(l.mode, 'AUTO'); assert.equal(l.sp, 0); assert.equal(l.op, 0, 'the output is parked at OPLOLM');
+  assert.equal(c.obsOf(l).quality, 'GOOD', 'GOOD quality, at a limit, in alarm: everything else the card needs');
+  assert.ok(active(c, 'PVLO') && active(c, 'PVLL'), 'the low flow alarms stand');
+  assert.equal(shown, 0, 'no saturation card on any scan');
+  // the same record with only the cutoff taken away: the shutoff is the one thing that silences the card
+  const cutoff = l.spCutoff;
+  delete l.spCutoff;
+  assert.equal(card(c).title, 'FIC313 output saturated at 0%');
+  l.spCutoff = cutoff;
+  assert.equal(card(c), undefined);
+  // a real reason: the quench valve sticks nearly shut at an SP the loop owns and can no longer reach, so the output runs out of range
+  const d = boot(4, 'OPER');
+  run(d, 60);
+  d.V.QV313.pos = 0.02; d.V.QV313.stuck = true;
+  assert.ok(run(d, 360, () => card(d)), 'the saturation card fires for a stuck valve');
+  assert.equal(d.L.FIC313.sp, 10); assert.equal(d.L.FIC313.op, 100);
+  assert.equal(card(d).title, 'FIC313 output saturated at 100%');
+  assert.ok(active(d, 'PVLO') && active(d, 'PVLL'));
+});
+
+// Minor 3: the risk.tad card sent the operator to the FIC211 faceplate to "reduce the monomer feed", a store the PROGRAM attribute refuses
+// while the sequence runs in FEED and REACT. It now says HOLD first, as the TI216 alarm help does, and keeps its GO to the faceplate.
+test('the adiabatic-temperature risk card says HOLD the sequence to stop the feed, and keeps its GO to the FIC211 faceplate', () => {
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' });
+  c.injectFault('agit', true);
+  assert.ok(run(c, 200, () => c.diagnose().some((x) => x.id === 'risk.tad')), 'the risk card appears as the agitator trip lets the monomer accumulate');
+  const risk = c.diagnose().find((x) => x.id === 'risk.tad');
+  assert.equal(risk.steps[0].t, 'HOLD the sequence to stop the monomer feed (the sequence owns the FIC211 setpoint while it runs).');
+  assert.equal(typeof risk.steps[0].go, 'function');
+  risk.steps[0].go();
+  assert.equal(c.state.sel, 'FIC211', 'the GO opens the FIC211 faceplate');
+});
+
+// Minor 4 (ruled correct): ABORT from CHARGE leaves TIC212 in MAN at 8 % with the sequence in COOL. The sequence owns the jacket in COOL, so
+// CR41 restores AUTO at the COOL setpoint with its record: an aborted batch cools under control.
+test('ABORT from CHARGE hands the jacket loop back under control: TIC212 goes from MAN 8 % to AUTO at SP 40 with its own record', () => {
+  const c = boot(4, 'OPER');
+  c.seqCmd('START'); c.step(0.5);
+  assert.equal(c.P.b.phase, 'CHARGE');
+  assert.equal(c.L.TIC212.mode, 'MAN'); assert.equal(c.L.TIC212.op, 8);
+  c.seqCmd('ABORT');
+  assert.equal(c.L.TIC212.sp, 40); assert.equal(c.L.FIC211.sp, 0);
+  c.step(0.5);                                         // COOL, or DRAIN at once: the batch is cold, T is 25
+  assert.ok(['COOL', 'DRAIN'].includes(c.P.b.phase), c.P.b.phase);
+  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  assert.equal(c.L.TIC212.mode, 'AUTO');
+  assert.equal(c.L.TIC212.sp, 40);
+  assert.ok(has(c, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  assert.notEqual(c.L.TIC212.op, 8, 'the loop is controlling from that scan, not parked at its manual 8 %');
+});
+
+// Minor 8, ruling CR43: the batch trip forces COOL; it now clears the hold as ABORT does. Held, the sequence stood frozen in COOL under the trip,
+// the button read RESUME once the TI216 shed released, and after the trip reset the batch sat at HELD · COOL until someone pressed RESUME, while
+// the trip card says the sequence resumes in COOL when the trip clears. (At the trip scan the TI216 shed latches too, since Tad is above 106,
+// so the button reads HOLD then for that reason; the hold shows once the shed releases with the trip still standing.)
+test('CR43: a batch trip during a hold clears the hold: COOL runs, the timer advances, the button reads HOLD, and the batch carries on to DRAIN after the trip resets', () => {
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' });
+  c.seqCmd('HOLD');
+  assert.equal(c.P.b.held, true);
+  c.P.b.T = 112; c.step(0.5);
+  assert.equal(c.P.trips.batch, true);
+  assert.equal(c.P.b.phase, 'COOL');
+  assert.equal(c.P.b.held, false, 'the trip clears the hold, beside the forced COOL');
+  assert.equal(c.P.b.pt, 0);
+  c.step(0.5);
+  assert.equal(c.P.b.pt, 0.5, 'the timer advances on the next scan');
+  assert.ok(run(c, 120, () => !c.tadShed), 'the TI216 shed released');
+  assert.equal(c.P.trips.batch, true, 'the trip still stands');
+  assert.equal(c.renderVals().batch.holdT, 'HOLD', 'the button does not offer RESUME on a hold that is gone');
+  assert.ok(run(c, 600, () => !c.P.trips.batch), 'the trip resets');
+  assert.equal(c.renderVals().batch.phase, 'COOL', 'running COOL, not HELD · COOL');
+  assert.ok(run(c, 3600, () => c.P.b.phase === 'DRAIN'), 'COOL completes into DRAIN with nobody pressing RESUME');
 });

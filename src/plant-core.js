@@ -558,14 +558,16 @@
       l.obs=m; l.pvObs=Number.isFinite(m.pv)?m.pv:l.pv;
     }
   }
-  // CR40, spec §2.2: every M3/H PID loop carries the measurement policy's low-flow cutoff (one per cent of its span, read from ESS.Measurement
-  // so the loop and its transmitter share one constant): the value below which the transmitter reads 0. ESS.Pid.stepPid reads it to close a loop
-  // in AUTO whose setpoint is at or below it (a CAS secondary follows its master and is exempt, CR40b), because SP 0 against an observed 0 is no error. Set once at init; a restored snapshot that predates the
-  // field (an imported 3.0 file) gets it back here, and a value that is present is never overwritten.
+  // CR40, spec §2.2: every M3/H PID loop carries the measurement policy's low-flow cutoff (one per cent of its span, read from
+  // ESS.Measurement so the loop and its transmitter share one constant): the value below which the transmitter reads 0.
+  // ESS.Pid.stepPid reads it to close a loop in AUTO whose setpoint is at or below it (a CAS secondary follows its master and is
+  // exempt, CR40b), because SP 0 against an observed 0 is no error. The field is derived from the range, which nothing changes at
+  // runtime, so it is recomputed every time it is set: at init, and on a restore, where a snapshot that predates the field (an
+  // imported 3.0 file) gets it and a value in the file is not kept.
   setFlowCutoffs(){
     const M=ESS.Measurement;
     for(const k in this.L){ const l=this.L[k];
-      if(l.kind!=='pid' || String(l.eu||'').toUpperCase()!=='M3/H' || Number.isFinite(l.spCutoff)) continue;
+      if(l.kind!=='pid' || String(l.eu||'').toUpperCase()!=='M3/H') continue;
       const r=M.rangeOf(l); if(r) l.spCutoff=M.RANGE_POLICY.flowCutoffFrac*r.span;
     }
   }

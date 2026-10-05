@@ -503,3 +503,31 @@ test('CR40b: a CAS loop under the cutoff keeps following its master with no shut
     assert.equal(auto.sp, 0.5, 'the setpoint is not overwritten, scan ' + i);
   }
 });
+
+// The predicate stepPid and the plant's Live Diagnosis share (S2 round 2 review): true exactly when the CR40 shutoff holds this loop on this
+// scan. The saturation card reads an output parked at OPLOLM as "the disturbance exceeds this loop"; under the shutoff that is the stop
+// instruction, not a saturation, so the card asks the same question stepPid does.
+test('shutoff(loop): true exactly when the loop owns its setpoint (AUTO), is not held by tracking, has a good PV and sits at or below spCutoff; stepPid forces OPLOLM exactly there', () => {
+  const mk = (o) => mkLoop(Object.assign({ tag: 'FIC313', hi: 40, sp: 0, pv: 0, op: 3, I: 3, K: 0.4, T1: 0.15, spCutoff: 0.4 }, o));
+  const held = (kind, target) => { const l = mk({}); Pid.setTracking(l, target, 'TEST', kind); return l; };
+  const cases = [
+    ['AUTO, sp 0, cutoff 0.4', mk({}), true],
+    ['sp exactly at the cutoff', mk({ sp: 0.4 }), true],
+    ['sp just above the cutoff', mk({ sp: 0.4000001 }), false],
+    ['no spCutoff', mk({ spCutoff: undefined }), false],
+    ['spCutoff not finite', mk({ spCutoff: NaN }), false],
+    ['MAN', mk({ mode: 'MAN' }), false],
+    ['CAS secondary', mk({ mode: 'CAS', master: 'LIC101' }), false],
+    ['bad PV', mk({ badPv: true }), false],
+    ['interlock hold', held('interlock', 50), false],
+    ['device hold (outside MAN)', held('device', 50), false],
+  ];
+  for (const [name, loop, expected] of cases) {
+    assert.equal(Pid.shutoff(loop), expected, name);
+    Pid.stepPid(loop, 0.5);                      // no ctx: a CAS loop keeps its own SP here, so it is not shut either
+    assert.equal(loop.op === 0, expected, name + ': OP is at OPLOLM exactly when the predicate says the loop is shut (' + loop.op + ')');
+  }
+  // a device hold the operator overrode in MAN is not a hold: MAN is its own path, and the predicate is false there too
+  const manHeld = held('device', 50); manHeld.mode = 'MAN';
+  assert.equal(Pid.shutoff(manHeld), false);
+});

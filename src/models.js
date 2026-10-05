@@ -536,7 +536,8 @@
     if (b.T >= c.tripT && !P.trips.batch) {
       P.trips.batch = true;
       raiseTrip(ctx, 'R-202', 'HI TEMP TRIP', b.T, 'DEG C', 'BATCH REACTOR OVERTEMP — FEED CUT, JACKET FULL COLD');
-      if (b.phase === 'FEED' || b.phase === 'REACT' || b.phase === 'HEATUP') { b.phase = 'COOL'; b.pt = 0; L.TIC212.sp = phaseSetpoints(b, P).TIC212; }
+      // CR43: the trip forces COOL and clears the hold, as ABORT does, so COOL runs under the trip and the batch carries on to DRAIN when it resets.
+      if (b.phase === 'FEED' || b.phase === 'REACT' || b.phase === 'HEATUP') { b.phase = 'COOL'; b.pt = 0; b.held = false; L.TIC212.sp = phaseSetpoints(b, P).TIC212; }
     }
     if (P.trips.batch && b.T < c.resetT) { P.trips.batch = false; ctx.clear('R-202', 'HI TEMP TRIP'); }
   }

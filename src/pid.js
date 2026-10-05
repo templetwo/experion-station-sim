@@ -92,6 +92,10 @@
  *     kind is kept. A loop that never tracked is left exactly as it was.
  *   tracking(loop) -> boolean   true when a tracking request is in force for this scan: kind
  *     'interlock' in any mode, kind 'device' outside MAN. stepPid and runInitman both ask it.
+ *   shutoff(loop) -> boolean   true when the low-flow shutoff holds the loop on this scan: spCutoff
+ *     finite, mode AUTO (it owns its setpoint), no tracking request in force, PV good, sp <= spCutoff.
+ *     The one question stepPid and the plant's Live Diagnosis saturation card both ask, so an output
+ *     the shutoff parks at OPLOLM is not read as a loop saturated by a disturbance (CR40).
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -197,6 +201,12 @@
     return !!(loop.trk && loop.trk.on) && (loop.trk.kind === 'interlock' || loop.mode !== 'MAN');
   }
 
+  // The CR40 shutoff question, shared with the plant's Live Diagnosis (see the header). In stepPid it is asked after the tracking and MAN /
+  // bad-PV paths have returned, so those three terms only matter to a caller outside it.
+  function shutoff(loop) {
+    return loop.mode === 'AUTO' && !loop.badPv && !tracking(loop) && Number.isFinite(loop.spCutoff) && loop.sp <= loop.spCutoff;
+  }
+
   function stepPid(loop, dt, ctx) {
     ctx = ctx || {};
     if (loop.kind && loop.kind !== 'pid') return loop;
@@ -211,7 +221,7 @@
     // OPLOLM. The observed PV reads 0 below the cutoff, so the ordinary law would see no error and leave the valve cracked. A CAS
     // secondary is exempt: its setpoint is its master's demand passing through the band, not an instruction to stop. No PV tracking in
     // here: the setpoint is the stop instruction, and the running flow must not overwrite it.
-    if (loop.mode === 'AUTO' && Number.isFinite(loop.spCutoff) && loop.sp <= loop.spCutoff) {
+    if (shutoff(loop)) {
       loop.op = clampOp(loop, typeof loop.oplolm === 'number' ? loop.oplolm : 0);
       trackIntegrator(loop);
       return loop;
@@ -268,5 +278,5 @@
     };
   }
 
-  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError, pvOf: pvOf, setTracking: setTracking, clearTracking: clearTracking, tracking: tracking };
+  return { stepPid: stepPid, transferMode: transferMode, canOperatorWrite: canOperatorWrite, writeDenial: writeDenial, isaForm: isaForm, loopError: loopError, pvOf: pvOf, setTracking: setTracking, clearTracking: clearTracking, tracking: tracking, shutoff: shutoff };
 });
