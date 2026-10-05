@@ -1575,6 +1575,10 @@
     this.materialMode=snap.materialMode;this.composition=I.clone(snap.composition);this.product=I.clone(snap.product);
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
     this.setFlowCutoffs();
+    // _lastADrill is not a snapshot key. A slot or backtrack restore to before an ended architecture drill's start leaves a drill that is not this
+    // timeline's: its debrief window would reopen once the clock passed that start and its score would show meanwhile, so it is dropped here (CR49).
+    // A restore to at or after the start keeps it: the drill happened on this timeline.
+    if(this._lastADrill&&typeof this._lastADrill.startedAt==='number'&&this._lastADrill.startedAt>this.P.t) this._lastADrill=null;
     this.plausibility=snap.plausibility?I.clone(snap.plausibility):ESS.Plausibility.create(this.P);
     // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
     // absence means all-healthy, the same pattern the architecture-view addendum uses

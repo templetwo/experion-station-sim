@@ -221,7 +221,13 @@ Stage S2 (2026-10-04 onward), same numbering:
   slots are unaffected.
 - **CR48.** TIC212 is program-owned only where the phase table owns its jacket setpoint (HEATUP to
   DRAIN); in CHARGE and IDLE it reads OPERATOR, so a change the operator makes during a CHARGE hold is
-  not locked in at RESUME; the sequence takes the loop at HEATUP (CR41 restores AUTO). §4.2 amended.
+  not locked in at RESUME; the sequence takes the loop at HEATUP (the transition's own AUTO write at the
+  table's setpoint, not a CR41 restore). §4.2 amended.
+- **CR49.** A slot or backtrack restore to before an architecture drill's start drops that drill
+  (`_lastADrill`, which is not a snapshot key): the debrief is the session's, cannot re-window on the
+  abandoned start once the clock passes it, and shows no stale score. A restore to at or after the
+  start keeps it. Not a snapshot key still: a restore to after one drill and before the next does not
+  bring the earlier drill's debrief back.
 - *CR39 is a process ruling (the Task 1 push waited for Task 2), recorded in the S2 ledger only.*
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
@@ -261,8 +267,9 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
   return value (unreachable with the shipped presets).
 - An initial-condition load during an armed drill clears it silently (pre-existing); a load should end
   an armed drill with a reason.
-- After an instructor slot restore to before an architecture drill, the debrief still shows that
-  drill's stale score (`_lastADrill` is not a snapshot key); the window is guarded, the score is not.
+- `_lastADrill` is not a snapshot key. A restore to before a drill's start drops it (CR49); a restore
+  to after one drill's end and before the next drill's start keeps nothing of the earlier drill, whose
+  debrief the later one overwrote.
 - An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
   trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
   four exist today).

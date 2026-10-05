@@ -399,7 +399,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
     </g>
   </sc-for>
-  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. FIC211 is program-driven (MODEATTR = PROGRAM) while it runs, TIC212 from HEATUP; HOLD freezes it and hands both to the operator. Alarm limits follow the phase. TI216 Urgent sheds the feed and HOLDs.</text>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. FIC211 is program-driven (MODEATTR = PROGRAM) while it runs, TIC212 from HEATUP; HOLD freezes it and hands both to the operator. Alarm limits follow the phase. TI216 Urgent sheds the feed and HOLDs in FEED.</text>
 </svg>
 </div>
 </sc-if>
@@ -2897,8 +2897,8 @@ class Component extends ESS.PlantCore(DCLogic) {
     return rows;
   }
   // The start of the architecture drill the debrief is about (CR45), running or ended; null when none has run, and the debrief is the whole session.
-  // _lastADrill is not a snapshot key, so a slot or backtrack restore to before the drill leaves its start in the plant's future: a start later than the
-  // plant clock is not this timeline's drill (every row of the session precedes it and the window would hide them all), so it counts as none.
+  // _lastADrill is not a snapshot key: a slot or backtrack restore to before the drill drops it (plant core applySnapshot, CR49). The guard here stays for
+  // a start later than the plant clock the restore did not see: it is not this timeline's drill (every row of the session precedes it), so it counts as none.
   archDebriefFrom(){
     if(this.P.aDrill) return this.P.aDrill.startedAt;
     const d=this._lastADrill;

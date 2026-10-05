@@ -879,7 +879,8 @@ test('CR45: the window covers the action journal too: an action taken between th
 
 // Review Minor 5: _lastADrill is not a snapshot key, so a slot or backtrack restore to before the drill leaves the ended drill's start in the plant's future, and the
 // window opened at that instant: every row of the session is before it, so the debrief came up empty. A start later than the plant clock is not this timeline's drill.
-test('CR45: after a slot restore to before an architecture drill the debrief is the session again, not a window that opens in the future; a restore to after it keeps the window', () => {
+// CR49 (the re-review's residual): the restore drops that drill, so the window cannot reopen once the clock passes its start and its score is not shown meanwhile.
+test('CR45/CR49: a slot restore to before an architecture drill drops it: the debrief is the session again, the window does not reopen when the clock passes the start, and no score survives; a restore to after it keeps the window', () => {
   const c = boot(4, 'MNGR');
   run(c, 60);
   c.setMode('TIC202', 'MAN');
@@ -894,6 +895,11 @@ test('CR45: after a slot restore to before an architecture drill the debrief is 
   assert.equal(c.P.t, slotT);
   assert.ok(from > c.P.t, 'test setup: the drill\'s start is after the restored clock');
   assert.equal(c.archDebriefFrom(), null, 'a start in the plant\'s future is not this timeline\'s drill');
+  assert.equal(c._lastADrill, null, 'CR49: the restore drops the drill, so its score is not shown either');
+  run(c, 60);
+  assert.ok(c.P.t > from, 'test setup: the clock has passed the abandoned start');
+  assert.equal(c.archDebriefFrom(), null, 'CR49: the window does not reopen once the clock passes the abandoned start');
+  assert.equal(debriefInput(c).seen.score, null, 'and the debrief carries no score');
   const { seen, rows } = debriefInput(c);
   assert.equal(seen.t0, c.t0, 'the debrief is the session');
   assert.ok(seen.events.some((e) => /OPERATOR STATION STARTED/.test(e.desc)), 'the session before the slot is in it');
