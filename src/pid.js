@@ -10,7 +10,9 @@
  * derivative memory, %/s), pvObs (the observed transmitter value the plant
  * writes each tick; read through pvOf, never written here), trk (the output-
  * tracking request {on, target, reason, kind}; the plant sets and clears it
- * through setTracking / clearTracking, stepPid and runInitman read it).
+ * through setTracking / clearTracking, stepPid and runInitman read it), spCutoff
+ * (a flow loop's low-flow cutoff in engineering units; the plant sets it from the
+ * measurement policy, this module only reads it, CR40).
  *
  * Equation (error in % of span, times in minutes, ISA standard form; pv is pvOf(loop)):
  *   e  = (pv - sp) / span * 100   for DIR,  (sp - pv) for REV
@@ -42,6 +44,22 @@
  *       transfer to AUTO is bumpless; with pvtrack the SP tracks PV
  *       (PVTRACK-style option: SP follows PV in MAN so AUTO starts at
  *       zero error).
+ *     - low-flow shutoff (CR40, CR40b, CREDIBILITY-PASS-SPEC 2.2): a loop that
+ *       carries spCutoff and owns its setpoint (mode AUTO; not MAN, not CAS, not
+ *       held by tracking, PV good) drives OP to OPLOLM while sp <= spCutoff. The
+ *       transmitter reads 0 below the cutoff, so SP 0 against an observed 0 is
+ *       no error; without this the output froze wherever the integral tail left
+ *       it and a flow the loop could not see kept running. A zero setpoint means
+ *       no flow, not no error. The integrator tracks OP as in a hold, so the
+ *       return is bumpless when the setpoint rises above the cutoff. A cascade
+ *       secondary following its master (CAS) is exempt: its setpoint is the
+ *       master's demand passing through the band on a cascade return, not an
+ *       instruction to stop; the master's output limit and the plant's interlock
+ *       and device holds (tracking) close the valve where that is meant. PV
+ *       tracking does not apply inside the shutoff: the setpoint is the stop
+ *       instruction and must not be overwritten by the running flow (applied, a
+ *       pvtrack loop in AUTO at SP 0 would take SP := PV and re-open on the next
+ *       scan). Nothing else runs on that scan.
  *   transferMode(loop, newMode, ctx) -> {ok, reason}   bumpless MAN->AUTO,
  *     AUTO->CAS, etc.: the integrator is re-initialised so the first AUTO/
  *     CAS output equals the current OP, while no tracking request is in
@@ -189,6 +207,15 @@
     if (loop.mode === 'CAS' && loop.master) followMaster(loop, ctx);
     if (tracking(loop)) { loop.op = loop.trk.kind === 'interlock' ? loop.trk.target : clampOp(loop, loop.trk.target); applyPvTracking(loop); trackIntegrator(loop); return loop; }
     if (loop.mode === 'MAN' || loop.badPv) { applyPvTracking(loop); trackIntegrator(loop); return loop; }
+    // Low-flow shutoff (CR40, CR40b): a flow loop that owns its setpoint (AUTO) and whose setpoint is at or below its cutoff closes to
+    // OPLOLM. The observed PV reads 0 below the cutoff, so the ordinary law would see no error and leave the valve cracked. A CAS
+    // secondary is exempt: its setpoint is its master's demand passing through the band, not an instruction to stop. No PV tracking in
+    // here: the setpoint is the stop instruction, and the running flow must not overwrite it.
+    if (loop.mode === 'AUTO' && Number.isFinite(loop.spCutoff) && loop.sp <= loop.spCutoff) {
+      loop.op = clampOp(loop, typeof loop.oplolm === 'number' ? loop.oplolm : 0);
+      trackIntegrator(loop);
+      return loop;
+    }
 
     var e = loopError(loop);
     var P = loop.K * e;

@@ -61,6 +61,7 @@
       }
     }
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
+    this.setFlowCutoffs();
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
@@ -557,6 +558,17 @@
       l.obs=m; l.pvObs=Number.isFinite(m.pv)?m.pv:l.pv;
     }
   }
+  // CR40, spec §2.2: every M3/H PID loop carries the measurement policy's low-flow cutoff (one per cent of its span, read from ESS.Measurement
+  // so the loop and its transmitter share one constant): the value below which the transmitter reads 0. ESS.Pid.stepPid reads it to close a loop
+  // in AUTO whose setpoint is at or below it (a CAS secondary follows its master and is exempt, CR40b), because SP 0 against an observed 0 is no error. Set once at init; a restored snapshot that predates the
+  // field (an imported 3.0 file) gets it back here, and a value that is present is never overwritten.
+  setFlowCutoffs(){
+    const M=ESS.Measurement;
+    for(const k in this.L){ const l=this.L[k];
+      if(l.kind!=='pid' || String(l.eu||'').toUpperCase()!=='M3/H' || Number.isFinite(l.spCutoff)) continue;
+      const r=M.rangeOf(l); if(r) l.spCutoff=M.RANGE_POLICY.flowCutoffFrac*r.span;
+    }
+  }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
   // Who tracks, decided once per tick from the code's own trip flags and run states, the same
   // gating src/models.js VALVE_TARGET enforces (spec §3.2). The W2 matrix declares the same
@@ -969,11 +981,20 @@
     d.m.otherTrips=(d.m.otherTrips||0)+1;
     (d.m.otherTripList=d.m.otherTripList||[]).push(src+(cond?' '+cond:''));
   }
+  // The sequence restores every loop it owns to the mode its phase needs (CR41, spec 4.2): FIC211 to AUTO in every active phase, TIC212 to AUTO
+  // wherever the phase table gives the sequence the jacket setpoint (HEATUP to DRAIN; in CHARGE it leaves the jacket loop in MAN by design and
+  // does not touch it). Each restore has its own record. A loop with a bad PV is skipped (the shed path put it in MAN), and so is FIC211 while the
+  // TI216 shed stands (the interlock owns it).
   scmRestoreModes(){
-    const f=this.L.FIC211;
-    if(f.modeAttr!=='PROGRAM' || f.mode==='AUTO' || f.badPv || this.tadShed) return;
-    const r=ESS.Pid.transferMode(f,'AUTO',this.pidCtx());
-    if(r.ok) this.addEvent('SYSTEM','SCM202','FIC211 MODE RESTORED BY SEQUENCE ('+r.from+' → AUTO)',r.from,'AUTO');
+    const ownsJacket=ESS.Models.phaseSetpoints(this.P.b,this.P).TIC212!=null;
+    const restore=(tag)=>{
+      const l=this.L[tag];
+      if(l.modeAttr!=='PROGRAM' || l.mode==='AUTO' || l.badPv) return;
+      const r=ESS.Pid.transferMode(l,'AUTO',this.pidCtx());
+      if(r.ok) this.addEvent('SYSTEM','SCM202',tag+' MODE RESTORED BY SEQUENCE ('+r.from+' → AUTO)',r.from,'AUTO');
+    };
+    if(!this.tadShed) restore('FIC211');
+    if(ownsJacket) restore('TIC212');
   }
   scmPrompts(){
     const ph=this.P.b.phase; if(ph===this._lastPhase) return;
@@ -1501,6 +1522,7 @@
     const I=ESS.Instructor;
     this.materialMode=snap.materialMode;this.composition=I.clone(snap.composition);this.product=I.clone(snap.product);
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
+    this.setFlowCutoffs();
     this.plausibility=snap.plausibility?I.clone(snap.plausibility):ESS.Plausibility.create(this.P);
     // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
     // absence means all-healthy, the same pattern the architecture-view addendum uses

@@ -399,3 +399,107 @@ test('with a pvtrack secondary the primary follows the secondary PV down while i
   const maxMove = 1.5 * Math.abs(Pid.loopError(master)) * 0.5 / (3 * 60);
   assert.ok(Math.abs(master.op - held) <= maxMove + 1e-9, 'the primary resumes from where it held: ' + master.op);
 });
+
+// CR40 (credibility pass S2): a flow loop whose setpoint is at or below its low-flow cutoff drives its output to the low limit. The
+// transmitter reads 0 below the cutoff, so a loop at SP 0 with an observed 0 saw no error: it froze its output wherever the integral
+// tail left it (0.803 % on FIC211) and the valve kept passing a flow the loop could not see. A zero setpoint means no flow, not no
+// error. The plant sets spCutoff on the M3/H loops from the measurement policy; a loop without the field is untouched.
+test('CR40: a setpoint at or below spCutoff drives OP to OPLOLM exactly, with the integrator tracked; the frozen 0.803 % output is released', () => {
+  // the state the S2 measurement found: SP 0, observed PV 0 (under the 0.4 cutoff), OP stuck at 0.803
+  const stuck = mkLoop({ tag: 'FIC211', hi: 40, sp: 0, pv: 0, op: 0.803, I: 0.803, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  Pid.stepPid(stuck, 0.5);
+  assert.equal(stuck.op, 0);
+  assert.equal(stuck.I, 0, 'tracked: I = OP - K*e with e = 0');
+  // the low limit is the loop's own OPLOLM, and a setpoint exactly at the cutoff is shut off too
+  const edge = mkLoop({ hi: 40, sp: 0.4, pv: 0, op: 30, I: 30, K: 0.4, T1: 0.15, spCutoff: 0.4, oplolm: 2 });
+  Pid.stepPid(edge, 0.5);
+  assert.equal(edge.op, 2);
+  assert.equal(edge.I, 2 - edge.K * Pid.loopError(edge), 'tracked at the clamped output');
+  // flow still decaying through the PI tail (observed PV above the cutoff): the output goes to the limit at once, not along the tail
+  const tail = mkLoop({ hi: 40, sp: 0, pv: 5, op: 10, I: 10, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  Pid.stepPid(tail, 0.5);
+  assert.equal(tail.op, 0);
+  assert.equal(tail.I, 0 - tail.K * Pid.loopError(tail));
+  assert.equal(tail.I, 5);
+  assert.equal(tail.lastPv, 5, 'the derivative memory is re-seeded as the hold path does');
+  // just above the cutoff the loop controls
+  const above = mkLoop({ hi: 40, sp: 0.4000001, pv: 0, op: 30, I: 30, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  Pid.stepPid(above, 0.5);
+  assert.ok(above.op > 2, 'control resumed above the cutoff: ' + above.op);
+});
+
+test('CR40: above the cutoff the loop is the old loop, to the last bit; a loop with no spCutoff is untouched', () => {
+  const mk = (extra) => mkLoop(Object.assign({ tag: 'FIC211', hi: 40, sp: 0.5, pv: 0.3, op: 4, I: 4, K: 0.4, T1: 0.15 }, extra));
+  const withCutoff = mk({ spCutoff: 0.4 }), without = mk({});
+  for (let i = 0; i < 200; i++) {
+    for (const l of [withCutoff, without]) { Pid.stepPid(l, 0.5); l.pv += (l.op * 0.4 - l.pv) * 0.5 / 6; }
+    assert.deepEqual([withCutoff.op, withCutoff.I, withCutoff.pv, withCutoff.lastPv], [without.op, without.I, without.pv, without.lastPv], 'scan ' + i);
+  }
+  // no field, SP 0, observed 0: the loop sees no error and keeps its output, as before
+  const none = mk({ sp: 0, pv: 0, op: 0.803, I: 0.803 });
+  Pid.stepPid(none, 0.5);
+  assert.equal(none.op, 0.803);
+});
+
+test('CR40: the release is bumpless: the integrator was tracked, so the first controlled output is the proportional kick of the setpoint step plus one integration step, not the stale integral', () => {
+  const l = mkLoop({ hi: 40, sp: 0, pv: 0.3, op: 6, I: 6, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  for (let i = 0; i < 5; i++) { Pid.stepPid(l, 0.5); assert.equal(l.op, 0); assert.equal(l.I, l.op - l.K * Pid.loopError(l), 'tracked on scan ' + i); }
+  const eShut = Pid.loopError(l);               // the error the integrator was tracked against
+  l.sp = 0.5;                                   // the setpoint rises above the cutoff; the flow has not moved
+  const eNow = Pid.loopError(l);
+  Pid.stepPid(l, 0.5);
+  const kick = l.K * (eNow - eShut), oneStep = l.K * eNow * 0.5 / (l.T1 * 60);
+  assert.ok(Math.abs(l.op - (0 + kick + oneStep)) < 1e-12, 'first controlled output ' + l.op + ' vs the shutoff output 0 + kick ' + kick + ' + one step ' + oneStep);
+  assert.ok(l.op < 1, 'an untracked integrator would have carried the stale 6 % into this output: ' + l.op);
+});
+
+test('CR40: not in MAN and not held by tracking: a MAN loop, a tracking loop and a bad-PV loop keep their own paths below the cutoff', () => {
+  const man = mkLoop({ hi: 40, mode: 'MAN', sp: 0, pv: 0, op: 30, I: 30, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  Pid.stepPid(man, 0.5);
+  assert.equal(man.op, 30, 'MAN: no control action, so no shutoff');
+  const trk = mkLoop({ hi: 40, sp: 0, pv: 0, op: 30, I: 30, K: 0.4, T1: 0.15, spCutoff: 0.4 });
+  Pid.setTracking(trk, 50, 'TEST', 'interlock');
+  Pid.stepPid(trk, 0.5);
+  assert.equal(trk.op, 50, 'a tracking request wins over the shutoff');
+  const bad = mkLoop({ hi: 40, sp: 0, pv: 0, op: 30, I: 30, K: 0.4, T1: 0.15, spCutoff: 0.4, badPv: true });
+  Pid.stepPid(bad, 0.5);
+  assert.equal(bad.op, 30, 'a bad PV holds the output, as before');
+});
+
+test('CR40: the shutoff does not apply PV tracking: a pvtrack loop in AUTO at SP 0 keeps SP 0 and stays closed while the flow dies away', () => {
+  // FIC102 as the plant has it, in AUTO. PV tracking belongs to loops that are not controlling (MAN, hold); applied here it would
+  // overwrite the demanded 0 with the flow still running and the loop would re-open on the next scan.
+  const l = mkLoop({ tag: 'FIC102', hi: 120, pvtrack: true, sp: 0, pv: 60, op: 50, I: 50, K: 0.4, T1: 0.15, sphilm: 80, splolm: 0, spCutoff: 1.2 });
+  for (let i = 0; i < 400; i++) {
+    Pid.stepPid(l, 0.5);
+    assert.equal(l.sp, 0, 'SP is the demand, scan ' + i);
+    assert.equal(l.op, 0, 'closed, scan ' + i);
+    l.pv += (l.op - l.pv) * 0.5 / 5;
+  }
+  assert.ok(l.pv < 1.2, 'the flow has fallen under the cutoff: ' + l.pv);
+});
+
+// CR40b: the shutoff is for a loop that owns its setpoint (AUTO). A cascade secondary in CAS takes its setpoint from its master every scan, and
+// that demand passing through the band under the cutoff on a cascade return (FIC102 after an R-201 trip releases) is not an instruction to stop:
+// the master's output limit and the plant's interlock and device holds close the valve where that is meant.
+test('CR40b: a CAS loop under the cutoff keeps following its master with no shutoff; the same loop in AUTO is shut', () => {
+  const master = mkLoop({ tag: 'LIC101', slave: 'FIC102', act: 'DIR', sp: 50, pv: 50, op: 0.5 / 1.2, I: 0.5 / 1.2, K: 1.5, T1: 3 });
+  const secondary = (mode) => mkLoop({ tag: 'FIC102', master: 'LIC101', mode, hi: 120, pvtrack: true, sp: 0.5, pv: 0, op: 0, I: 0, K: 0.4, T1: 0.15, sphilm: 80, splolm: 0, spCutoff: 1.2 });
+  const ctxFor = (slave) => ({ loops: { LIC101: master, FIC102: slave }, casMap: { FIC102: (op) => op * 1.2 }, invMap: { FIC102: (sp) => sp / 1.2 } });
+  // CAS: the master demands 0.5 M3/H, under the 1.2 cutoff. The loop follows it and controls.
+  const cas = secondary('CAS');
+  let prev = cas.op;
+  for (let i = 0; i < 10; i++) {
+    Pid.stepPid(cas, 0.5, ctxFor(cas));
+    assert.equal(cas.sp, master.op * 1.2, 'the setpoint is the master demand, scan ' + i);
+    assert.ok(cas.op > prev, 'controlling, not shut: ' + cas.op + ' after ' + prev + ', scan ' + i);
+    prev = cas.op;
+  }
+  // AUTO: the same 0.5 M3/H is now the loop's own setpoint, a stop instruction. The loop is shut and the setpoint stands.
+  const auto = secondary('AUTO');
+  for (let i = 0; i < 10; i++) {
+    Pid.stepPid(auto, 0.5, ctxFor(auto));
+    assert.equal(auto.op, 0, 'shut, scan ' + i);
+    assert.equal(auto.sp, 0.5, 'the setpoint is not overwritten, scan ' + i);
+  }
+});

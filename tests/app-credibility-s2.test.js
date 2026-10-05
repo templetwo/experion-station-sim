@@ -5,6 +5,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { load } = require('../tools/logic-harness');
 const Models = require('../src/models.js');
+const AlarmHelp = require('../src/alarm-help.js');
+const Measurement = require('../src/measurement.js');
 
 const { Component } = load();
 function boot(seed, sec) {
@@ -43,7 +45,12 @@ test('D3: HOLD during CHARGE freezes the batch: the banner reads HELD · CHARGE,
   assert.ok(run(c, 400, () => c.P.b.phase === 'HEATUP'), 'the charge continues and completes after RESUME');
 });
 
-test('D3: HOLD in FEED stops the monomer feed: the setpoint goes to 0 at the command, the observed flow reaches 0, the level stops rising; RESUME re-asserts 20 and the jacket setpoint', () => {
+// Scans after the command (0.5 s each), measured on the U2_FEED preset: CR40 drives the loop output to 0 on the first scan once the setpoint is
+// under the 0.4 M3/H cutoff, then the valve (3 s lag) and the flow (3 s lag) die away. The observed flow reads 0 for good from scan 33 (16.5 s);
+// the level, which only rises in FEED while the true flow is above 0.1 M3/H, last moves on scan 41 (the true flow is 0.12 there and 0.10 on 42).
+const READS_ZERO_FROM = 33;
+const LEVEL_LAST_MOVES = 41;
+test('D3: HOLD in FEED stops the monomer feed: the setpoint goes to 0 at the command, the output goes to 0, the observed flow reads 0 within the valve lag and the level is exactly constant after it; RESUME re-asserts 20 and the jacket setpoint', () => {
   const c = boot(4, 'OPER');
   c.applyPreset('U2_FEED');
   c.setState({ sec: 'OPER' });
@@ -52,18 +59,48 @@ test('D3: HOLD in FEED stops the monomer feed: the setpoint goes to 0 at the com
   c.L.TIC212.sp = 78;                    // an engineer-trimmed jacket setpoint: RESUME re-asserts the phase's 80
   c.seqCmd('HOLD');
   assert.equal(c.L.FIC211.sp, 0);
-  // The loop runs on the observed flow, and a flow reads 0 below 1 % of span (0.4 M3/H on FIC211's 0 to 40). The flow therefore falls
-  // along the PI tail (5.1 M3/H at 30 s, 0.8 at 80 s) and the output settles at 0.8 % when the observed value reaches 0: the loop sees no
-  // error and a true 0.32 M3/H keeps flowing under a display that reads 0. It is below the cutoff and about 2 % of the running rate.
-  run(c, 240);
-  assert.equal(c.pvShown(c.L.FIC211), 0, 'the feed flow reads zero through the low-flow cutoff');
-  assert.ok(c.P.b.mf < 0.4, 'the true flow is below that cutoff too: ' + c.P.b.mf);
-  const lvl = c.P.b.lvl;
-  run(c, 60);
-  assert.ok(c.P.b.lvl - lvl < 0.5, 'held, the level gains under 0.5 % in a minute where a running FEED adds 14: ' + (c.P.b.lvl - lvl));
+  const scans = 360;
+  let lastReading = 0, lastMoved = 0, lvl = c.P.b.lvl;
+  for (let i = 1; i <= scans; i++) {
+    c.step(0.5);
+    assert.equal(c.L.FIC211.op, 0, 'the output is at its low limit from the first scan, scan ' + i);
+    if (c.pvShown(c.L.FIC211) !== 0) lastReading = i;
+    if (c.P.b.lvl !== lvl) { lastMoved = i; lvl = c.P.b.lvl; }
+  }
+  assert.equal(lastReading + 1, READS_ZERO_FROM, 'the observed flow reads 0 from this scan on, and every scan after it');
+  assert.equal(lastMoved, LEVEL_LAST_MOVES, 'the level last moves on this scan');
+  assert.ok(scans - lastMoved >= 120, 'the level is exactly constant for at least the following 60 s');
+  assert.ok(c.P.b.mf < 1e-6, 'the true flow is dead: ' + c.P.b.mf);
   c.seqCmd('HOLD');
   assert.equal(c.L.FIC211.sp, 20);
   assert.equal(c.L.TIC212.sp, 80);
+  run(c, 60);                            // the loop leaves the shutoff at once (OP 21.1 % on the first scan) and the feed climbs back
+  assert.ok(c.pvShown(c.L.FIC211) > 15, 'the feed comes back after RESUME: ' + c.pvShown(c.L.FIC211));
+});
+
+// CR40: when FEED ends the sequence sets the feed setpoint to 0 every scan, and that closes the valve. The 0.32 M3/H that used to keep running
+// under a display that read 0 kept feeding monomer into the batch through REACT (the level itself only moves in CHARGE, FEED and DRAIN, so the
+// creep shows in the true flow and the monomer inventory, not the level). Measured on the U2_FEED preset: FEED ends 150 scans in, REACT lasts
+// 289 scans from there, and the observed flow reads 0 for good from scan 32 of REACT.
+test('CR40: after FEED ends (REACT) the feed reads 0 and the true flow dies away, and the level does not creep', () => {
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED');
+  c.setState({ sec: 'OPER' });
+  assert.ok(run(c, 600, () => c.P.b.phase === 'REACT'), 'FEED completes');
+  assert.equal(c.L.FIC211.sp, 0);
+  const scans = 240;                                 // 120 s, inside REACT
+  let lastReading = 0;
+  const lvl = c.P.b.lvl;
+  for (let i = 1; i <= scans; i++) {
+    c.step(0.5);
+    assert.equal(c.P.b.phase, 'REACT', 'still in REACT, scan ' + i);
+    assert.equal(c.L.FIC211.op, 0, 'the output is at its low limit from the first scan, scan ' + i);
+    assert.equal(c.P.b.lvl, lvl, 'the level does not move, scan ' + i);
+    if (c.pvShown(c.L.FIC211) !== 0) lastReading = i;
+  }
+  assert.equal(lastReading + 1, 32, 'the observed flow reads 0 from this scan on');
+  assert.equal(c.pvShown(c.L.FIC211), 0);
+  assert.ok(c.P.b.mf < 1e-6, 'no monomer keeps flowing through REACT: ' + c.P.b.mf);
 });
 
 test('D6: the sequence owns FIC211 and TIC212 in CHARGE: an operator SP is refused with the PROGRAM message and only the refusal is journaled; on HOLD both are OPERATOR on the next scan and an SP entered during the hold is held until RESUME re-asserts the phase value', () => {
@@ -181,4 +218,79 @@ test('scmRestoreModes: a PROGRAM-owned FIC211 is returned to AUTO in CHARGE, not
   c.step(0.5);
   assert.equal(c.L.FIC211.mode, 'AUTO');
   assert.ok(has(c, 'SCM202', 'FIC211 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+});
+
+// CR41: the sequence restores every loop it owns to the mode its phase needs. TIC212 comes back to AUTO wherever the table gives the sequence the
+// jacket setpoint (HEATUP to DRAIN). In CHARGE the sequence leaves the jacket loop in MAN by design and does not touch it. A loop with a bad PV
+// is skipped, and FIC211 under the TI216 shed as before (covered by tests/app-models.test.js).
+test('CR41: RESUME hands both loops back in AUTO: TIC212 put in MAN during a FEED hold returns to AUTO at 80 with its own record; in CHARGE it stays MAN', () => {
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' }); c.step(0.5);
+  c.seqCmd('HOLD'); c.step(0.5);
+  assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  c.setMode('TIC212', 'MAN');
+  assert.equal(c.L.TIC212.mode, 'MAN');
+  c.seqCmd('HOLD');                                  // RESUME
+  c.step(0.5);                                       // one scan
+  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  assert.equal(c.L.TIC212.mode, 'AUTO');
+  assert.equal(c.L.TIC212.sp, 80);
+  assert.ok(has(c, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  assert.ok(!has(c, 'SCM202', 'FIC211 MODE RESTORED BY SEQUENCE (MAN → AUTO)'), 'FIC211 was left in AUTO, so it gets no record');
+  // both taken during the hold: each comes back with its own record
+  const b = boot(4, 'OPER');
+  b.applyPreset('U2_FEED'); b.setState({ sec: 'OPER' }); b.step(0.5);
+  b.seqCmd('HOLD'); b.step(0.5);
+  b.setMode('FIC211', 'MAN'); b.setMode('TIC212', 'MAN');
+  b.seqCmd('HOLD'); b.step(0.5);
+  assert.equal(b.L.FIC211.mode, 'AUTO'); assert.equal(b.L.TIC212.mode, 'AUTO');
+  assert.ok(has(b, 'SCM202', 'FIC211 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  assert.ok(has(b, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  // CHARGE: PROGRAM, but the sequence does not own the jacket setpoint there, so it leaves the loop where it is
+  const d = boot(4, 'OPER');
+  d.seqCmd('START'); d.step(0.5);
+  assert.equal(d.P.b.phase, 'CHARGE');
+  assert.equal(d.L.TIC212.modeAttr, 'PROGRAM'); assert.equal(d.L.TIC212.mode, 'MAN');
+  run(d, 20);
+  assert.equal(d.L.TIC212.mode, 'MAN');
+  assert.ok(!has(d, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  // a loop with a bad PV is skipped: the shed path put it in MAN and the sequence does not fight it
+  const e = boot(4, 'OPER');
+  e.applyPreset('U2_FEED'); e.setState({ sec: 'OPER' }); e.step(0.5);
+  e.L.TIC212.badPv = true; e.L.TIC212.mode = 'MAN'; e.L.FIC211.badPv = true; e.L.FIC211.mode = 'MAN';
+  e.step(0.5);
+  assert.equal(e.L.TIC212.mode, 'MAN'); assert.equal(e.L.FIC211.mode, 'MAN');
+  assert.ok(!e.events.some((x) => /MODE RESTORED BY SEQUENCE/.test(x.desc)));
+});
+
+// CR42: the alarm help for the three high alarms that told the operator to write a loop the sequence owns while it runs now says HOLD the
+// sequence first: FIC211 and TIC212 are the sequence's while it runs and the operator's while it is held (spec 4.2).
+test('CR42: the alarm help for FIC211, TIC212 and LI215 PVHI says HOLD the sequence first', () => {
+  const f = AlarmHelp.resolve('FIC211', 'PVHI', {});
+  assert.equal(f.found, true);
+  assert.equal(f.correctiveAction, 'HOLD the sequence first: FIC211 belongs to the sequence while it runs and to you while it is held. Then reduce the FIC211 setpoint or place it in MAN at a lower output; check the monomer inventory bar.');
+  for (const [tag, cond] of [['TIC212', 'PVHI'], ['LI215', 'PVHI']]) {
+    const h = AlarmHelp.resolve(tag, cond, {});
+    assert.equal(h.found, true, tag);
+    assert.match(h.correctiveAction, /^HOLD the sequence first/, tag);
+  }
+});
+
+// CR40: the plant gives every M3/H PID loop the measurement policy's low-flow cutoff (1 % of its span) once, at init, and nothing else; a snapshot
+// that predates the field gets it back on restore, and a value that is present is never overwritten.
+test('CR40: every M3/H PID loop carries spCutoff = 1 % of its span from init and nothing else does; a restored snapshot without it gets it back', () => {
+  const c = boot(4);
+  assert.deepEqual(Object.keys(c.L).filter((k) => 'spCutoff' in c.L[k]).sort(), ['FIC102', 'FIC211', 'FIC310', 'FIC313']);
+  assert.equal(c.L.FIC102.spCutoff, 1.2); assert.equal(c.L.FIC211.spCutoff, 0.4);
+  assert.equal(c.L.FIC310.spCutoff, 0.8); assert.equal(c.L.FIC313.spCutoff, 0.4);
+  // the transmitter and the loop share the constant: the observed value is 0 just under the cutoff and reads through at it
+  const probe = { kind: 'pid', tag: 'FIC211', eu: 'M3/H', lo: 0, hi: 40, pv: 0.3999 };
+  assert.equal(c.L.FIC211.spCutoff, 0.4);
+  assert.equal(Measurement.observe(probe).pv, 0);
+  assert.equal(Measurement.observe(Object.assign({}, probe, { pv: 0.4 })).pv, 0.4);
+  const snap = c.snapshotData('S2 cutoff');
+  delete snap.L.FIC211.spCutoff; snap.L.FIC310.spCutoff = 5;
+  c.restoreSnapshot(snap);
+  assert.equal(c.L.FIC211.spCutoff, 0.4, 'an imported snapshot from before the field gets it back');
+  assert.equal(c.L.FIC310.spCutoff, 5, 'a value that is present is not overwritten');
 });
