@@ -219,6 +219,10 @@ Stage S2 (2026-10-04 onward), same numbering:
 - **CR47.** An initial-condition load empties the backtrack ring: a backtrack never crosses a load into
   the settle (not operable history), so the KPI rows written at the load cannot be trimmed away; the
   slots are unaffected.
+- **CR48.** TIC212 is program-owned only where the phase table owns its jacket setpoint (HEATUP to
+  DRAIN); in CHARGE and IDLE it reads OPERATOR, so a change the operator makes during a CHARGE hold is
+  not locked in at RESUME; the sequence takes the loop at HEATUP (CR41 restores AUTO). §4.2 amended.
+- *CR39 is a process ruling (the Task 1 push waited for Task 2), recorded in the S2 ledger only.*
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -248,6 +252,17 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
   no finiteness check (pre-existing; journals and replays identically).
 - `setTargetBand`'s refusal prints the band edges at the point's decimals ("140.0 TO 168.0" against a
   168.0006 limit) where the CR35 message prints exact edges (cosmetic).
+- CR44's retroactive raise rows survive an instructor slot restore to inside the settle window (an
+  alarm the engine no longer holds stays standing in the KPI), and an earlier episode of the same key
+  ending inside that window would close the live one; both unreachable with the shipped presets (none
+  leaves an alarm standing after its settle); fix together.
+- A refused dry settle leaves the plant settled at the epoch with the session journal restored; a
+  capture-and-rollback around the dry settle would also cover the menu callers that ignore the load's
+  return value (unreachable with the shipped presets).
+- An initial-condition load during an armed drill clears it silently (pre-existing); a load should end
+  an armed drill with a reason.
+- After an instructor slot restore to before an architecture drill, the debrief still shows that
+  drill's stale score (`_lastADrill` is not a snapshot key); the window is guarded, the score is not.
 - An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
   trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
   four exist today).
@@ -399,8 +414,9 @@ Equipment goes to its hold state once, at the HOLD command in `seqCmd`: the feed
 The jacket keeps holding temperature at its current setpoint. RESUME re-asserts the phase's
 setpoints. The HOLD button reads RESUME while held.
 
-4.2 **Ownership honest.** FIC211 and TIC212 carry `modeAttr: 'PROGRAM'` in every active phase
-while not held, because the sequence writes their setpoints. On HOLD both go to `OPERATOR` on the
+4.2 **Ownership honest.** FIC211 carries `modeAttr: 'PROGRAM'` in every active phase while not
+held, and TIC212 in the phases whose jacket setpoint the sequence owns (HEATUP to DRAIN; in CHARGE
+and IDLE it is the operator's, CR48), because the sequence writes their setpoints there. On HOLD both go to `OPERATOR` on the
 next scan and the sequence stops writing them until RESUME, so an operator setpoint during a hold
 is honoured. This keeps the M202-trip advice and `tests/app-models.test.js` ("HOLD the sequence",
 attribute `OPERATOR` on the next scan) as designed. Under PROGRAM an operator write is refused
