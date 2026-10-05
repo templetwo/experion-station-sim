@@ -1326,6 +1326,10 @@
       const live=this.alarmEngine.list().filter(a=>a.active), now=new Set(live.map(a=>a.key)), was=new Set(wasLive.map(a=>a.key));
       for(const a of wasLive) if(!now.has(a.key)) this.logKpi(loadT,a,'rtn');
       for(const a of live) if(!was.has(a.key)) this.logKpi(a.t,a,'raise');
+      // A load empties the backtrack ring (CR47): what it holds now is the settle's snapshots, stamped in the minutes before the base time, and the settle
+      // is not history the operator lived. A backtrack into it would restore that plant and trim the session journal and the KPI rows written just above.
+      // The ring starts again with the first scan after the load. Same fields as ESS.Instructor.resetRun, which also clears the journal and the replay.
+      this.instr.ring=[]; this.instr.lastRingT=-Infinity;
     };
     // The settle ends at the base time instead of starting there (spec §5.3): a dry settle from 0 measures its
     // length for this preset and seed (initSim re-seeds from the instructor seed, so the two runs are the same run),
@@ -1361,7 +1365,9 @@
     // keeps the choice so a replay writes the same record. A RANDOM start would otherwise name the fault before it injects.
     if(startMode==='CANONICAL') this.addEvent('SYSTEM','STN01',reveal?'DRILL '+d.id+' STARTED — '+d.name.toUpperCase()+' — CANONICAL':'DRILL STARTED — CANONICAL','','');
     this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — '+startMode+(preset?' '+preset:'')+' — INJECTION AT '+this.fT(this.P.t+delay));
-    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
+    // The confirm message names the drill under the record's rule too (CR46b): a canonical start only when it is revealed. A LIVE STATE start has no
+    // record and is always the trainee's own pick by name from the menu, so it names the drill as before.
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+(startMode==='CANONICAL'&&!reveal?'':d.id+' ')+'armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }
   startADrill(id,opts){
     const def=ESS.DrillArch.drillById(id);

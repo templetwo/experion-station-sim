@@ -624,6 +624,41 @@ test('CR44: an alarm active on both sides of a load stays open in the KPI histor
   assert.deepEqual(K.standing.map((x) => [x.key, x.since]), [['TIC201.PVHI', first]]);
 });
 
+// CR47: an IC load empties the backtrack ring. After a load the ring held the settle's snapshots, stamped in the minutes before the base time, so a
+// backtrack right after a load restored the settle's plant and trimmed the session journal and the KPI rows the load had just written (the CR44 return
+// rows sit at the load time), which brought the phantom standing alarms back. The settle is not operable history: the ring restarts at the load (its
+// first entry is the first scan after it) and the instructor's slots are untouched.
+test('CR47: a backtrack never crosses an IC load: the ring restarts empty, its first entry is the first scan after the load, the load\'s records survive a backtrack, and the slots are untouched', () => {
+  const c = boot(4, 'MNGR', 0);
+  c.storeEntry('TIC201', 'SP', 100);                    // as the CR44 test: the reactor cools through PVLO and PVLL
+  assert.ok(run(c, 700, () => c.alarms.some((a) => a.key === 'TIC201.PVLL' && a.active)), 'test setup: TIC201 is in alarm');
+  assert.ok(c.instr.ring.length > 10, 'test setup: the ring holds the session before the load');
+  c.saveSlot(1, 'before the load');
+  const slot = c.instr.snapshots[1];
+  const open = c.alarms.filter((a) => a.active).map((a) => a.key);
+  const base = c.P.t;
+  c.applyPreset('U1_SS', { baseTime: base });
+  assert.deepEqual(c.instr.ring.map((s) => s.t), [], 'the load empties the ring: the settle is not operable history');
+  assert.equal(c.instr.lastRingT, -Infinity);
+  const events = c.events.length, rows = c.alarmLog.length;
+  c.backtrack(30000);                                   // the empty-ring path: the message, and nothing restored or trimmed
+  assert.equal(c.state.msg, 'NO BACKTRACK POINT YET');
+  assert.equal(c.P.t, base);
+  assert.equal(c.events.length, events);
+  assert.equal(c.alarmLog.length, rows);
+  run(c, 10);
+  assert.deepEqual(c.instr.ring.map((s) => s.t), [base + 500], 'the ring restarts with the first scan after the load');
+  c.backtrack(30000);                                   // 30 s back is before the load: the nearest point is the first scan after it
+  assert.equal(c.P.t, base + 500, 'restored to the first scan after the load, not into the settle');
+  assert.ok(c.events.some((e) => e.src === 'STN01' && /^INITIAL CONDITION LOADED/.test(e.desc)), 'the load record is still in the journal');
+  for (const key of open) assert.equal(c.alarmLog.filter((r) => r.type === 'rtn' && r.key === key && r.t === base).length, 1, key + ': its return row at the load time survives');
+  run(c, 660);                                          // 11 minutes after the load
+  assert.deepEqual(c.kpiMetrics(30).standing, []);
+  assert.equal(c.instr.snapshots[1], slot, 'the slot is untouched by the load');
+  c.restoreSlot(1);
+  assert.equal(c.P.t, slot.t, 'and it still restores to its own time, across the load');
+});
+
 // CR45: the session journal survives an IC load (spec §5.2), so the architecture drill's debrief, which was handed every event and alarm row from the
 // session start, opened on the whole session. It is the drill's: its rows and its relative times start at the drill, running or ended.
 function debriefInput(c) {                              // what the ARCH debrief hands ESS.Debrief, and the rows it renders
@@ -681,12 +716,15 @@ test('with no architecture drill run the debrief shows the whole session, as bef
 // CR46: the start record names the drill only when the trainee chose it by name. A RANDOM start would name the fault before it injects, and so would a
 // start made while the instructor hides upsets. The choice is journaled with the DRILL entry, so a replay writes the same record.
 const startRecord = (c) => c.events.filter((e) => /^DRILL .*STARTED/.test(e.desc)).map((e) => e.desc);
+// CR46b: the confirm message the trainee is sent when a drill is armed follows the record's rule (a canonical start names the drill only when revealed).
+const armedMsg = (c) => c.msgs.filter((m) => /^INSTRUCTOR: drill/.test(m.txt)).map((m) => m.txt);
 test('CR46: a named canonical start records the drill by id and name, and journals that choice', () => {
   const c = boot(4, 'MNGR');
   run(c, 30);
   c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'canonical');
   assert.deepEqual(startRecord(c), ['DRILL D3 STARTED — FEED PUMP TRIP — CANONICAL']);
   assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, true);
+  assert.deepEqual(armedMsg(c), ['INSTRUCTOR: drill D3 armed — confirm you are at the console'], 'CR46b: the trainee named it, so the message does too');
 });
 
 test('CR46: a RANDOM · CANONICAL start records DRILL STARTED — CANONICAL with no id or name', () => {
@@ -697,6 +735,8 @@ test('CR46: a RANDOM · CANONICAL start records DRILL STARTED — CANONICAL with
   assert.deepEqual(startRecord(c), ['DRILL STARTED — CANONICAL']);
   assert.ok(!c.events.some((e) => e.desc.includes(c.state.drill.def.name.toUpperCase())), 'the drill\'s name is nowhere in the journal');
   assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, false);
+  assert.deepEqual(armedMsg(c), ['INSTRUCTOR: drill armed — confirm you are at the console'], 'CR46b: the message withholds the id too');
+  assert.ok(!c.msgs.some((m) => m.txt.includes(c.state.drill.def.id + ' ') || m.txt.includes(c.state.drill.def.name)), 'the drill\'s id and name are in no message');
 });
 
 test('CR46: a canonical start made while the instructor hides upsets records DRILL STARTED — CANONICAL, even when the trainee named the drill', () => {
@@ -706,6 +746,21 @@ test('CR46: a canonical start made while the instructor hides upsets records DRI
   c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'canonical');
   assert.deepEqual(startRecord(c), ['DRILL STARTED — CANONICAL']);
   assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, false);
+  assert.deepEqual(armedMsg(c), [], 'hidden upsets: no instructor message reaches the trainee, as before');
+});
+
+// A LIVE STATE start has no start record and is always the trainee's own pick by name from the menu, so its message names the drill, as it did before
+// CR46b (tests/app-instructor.test.js pins the same for a direct call). A direct canonical start that passes no reveal says it anonymously, like its record.
+test('CR46b: a LIVE STATE start names the drill in its message as before; a direct canonical start without reveal does not', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'live');
+  assert.deepEqual(startRecord(c), []);
+  assert.deepEqual(armedMsg(c), ['INSTRUCTOR: drill D3 armed — confirm you are at the console']);
+  const d = boot(4, 'MNGR');
+  d.startDrill(d.drillDefs().find((x) => x.id === 'D3'), { startMode: 'CANONICAL' });
+  assert.deepEqual(startRecord(d), ['DRILL STARTED — CANONICAL']);
+  assert.deepEqual(armedMsg(d), ['INSTRUCTOR: drill armed — confirm you are at the console']);
 });
 
 test('CR46: a replayed DRILL entry writes the record its journal entry says, whatever the instructor switch reads at replay time', () => {
