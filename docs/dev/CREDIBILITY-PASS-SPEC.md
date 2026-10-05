@@ -199,6 +199,10 @@ Stage S2 (2026-10-04 onward), same numbering:
   RESTORED BY SEQUENCE event.
 - **CR42.** Alarm-help actions that direct a write to a PROGRAM-owned loop during a batch say to HOLD
   the sequence first; the loops are the operator's while held.
+- **CR43.** The batch trip clears the hold: its forced COOL is the plant taking the sequence over, so
+  the phase timer runs in COOL, the button reads HOLD, and the trip card's "resumes in COOL when the
+  trip clears" stays true. The setpoint shutoff (CR40) shows no saturation card: a valve the loop
+  closed on purpose is not a disturbance exceeding it.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
