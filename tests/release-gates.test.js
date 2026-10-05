@@ -252,6 +252,9 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
       assert.equal(jump, 0,
         `${lane.name}: P.t moved ${jump} ms across the start; the preset ${presetId} settles ` +
         `${preset.run} s ending at the base time (spec §5.3) and a start must not move the sim clock at all`);
+      // The control that keeps a zero jump from passing vacuously: a start whose applyPreset returned early would not move the clock either.
+      assert.ok(c.events.some((e) => e.desc === 'INITIAL CONDITION LOADED — ' + preset.label.toUpperCase() + ' (SETTLED ' + preset.run + ' S)'),
+        `${lane.name}: the load ran, so its record (a settle of ${preset.run} s) is in the journal`);
     }
   });
 

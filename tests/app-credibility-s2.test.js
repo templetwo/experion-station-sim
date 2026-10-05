@@ -19,6 +19,13 @@ function boot(seed, sec, at) {
 }
 function run(c, seconds, until) { for (let i = 0; i < seconds * 2; i++) { c.step(0.5); if (until && until()) return true; } return false; }
 const has = (c, src, desc) => c.events.some((e) => e.src === src && e.desc === desc);
+// A U1_HIFEED whose settle raises an alarm: the shipped preset stops under the High limit (R-201 reads 164.3 against PVHI 165), so this variant
+// takes the TIC201 setpoint to its 170 limit as well, which crosses PVHI at about 246 s into the 480 s run-forward. Patched for the call only.
+function withHotHifeed(fn) {
+  const I = globalThis.ESS.Instructor, real = I.presets;
+  I.presets = () => real().map((p) => p.id === 'U1_HIFEED' ? Object.assign({}, p, { set: { L: { LIC101: { sp: 40 }, TIC201: { sp: 170 } } } }) : p);
+  try { return fn(); } finally { I.presets = real; }
+}
 
 test('D3: HOLD during CHARGE freezes the batch: the banner reads HELD · CHARGE, the button reads RESUME, the feed setpoint is written to 0 beside the HELD record, and phase, level and timer are unchanged over 120 s; RESUME continues to HEATUP', () => {
   const c = boot(4, 'OPER');
@@ -480,17 +487,11 @@ test('D5: a canonical drill start leaves the station clock where it was: the set
   assert.equal(c.state.drill.t0, base);
 });
 
-// The shipped U1_HIFEED stops under the High limit (R-201 reads 164.3 against PVHI 165), so no alarm is raised during its settle. This variant takes the
-// TIC201 setpoint to its 170 limit as well, which crosses PVHI at about 246 s into the 480 s run-forward: an alarm raised during a settle.
 test('D5: the settle lands before the base time: an IC with alarms raised during its run-forward carries raise times inside [base − length, base], and the zero clock tolerates it (times before the session start)', () => {
   const c = boot(4, 'MNGR', 0);
   const base = c.P.t;                                   // the zero clock: the 480 s settle runs at negative times
   assert.equal(base, 0);
-  const I = globalThis.ESS.Instructor, real = I.presets;
-  I.presets = () => real().map((p) => p.id === 'U1_HIFEED' ? Object.assign({}, p, { set: { L: { LIC101: { sp: 40 }, TIC201: { sp: 170 } } } }) : p);
-  try {
-    assert.equal(c.applyPreset('U1_HIFEED', { baseTime: base }), true);
-  } finally { I.presets = real; }
+  assert.equal(withHotHifeed(() => c.applyPreset('U1_HIFEED', { baseTime: base })), true);
   assert.equal(c.P.t, base);
   const active = c.alarms.filter((a) => a.active);
   assert.ok(active.length > 0, 'the hot U1 high feed settles with R-201 in alarm');
@@ -521,7 +522,7 @@ test('D5: without a base time the load is today\'s: the settle starts at the pag
   assert.deepEqual(JSON.stringify(d.P), JSON.stringify(c.P), 'the same base time gives the same plant either way');
 });
 
-test('D5: the dry settle is the real settle: two loads of the same preset at the same base time are byte-identical, and a replay of a canonical drill rebuilds at the receipt\'s time', () => {
+test('D5: two loads of the same preset at the same base time are byte-identical, and a canonical start\'s DRILL receipt agrees with its own time (the check a replay makes)', () => {
   const a = boot(4, 'MNGR', 0); run(a, 30); a.applyPreset('U2_FEED', { baseTime: a.P.t });
   const b = boot(4, 'MNGR', 0); run(b, 30); b.applyPreset('U2_FEED', { baseTime: b.P.t });
   assert.equal(JSON.stringify(a.P), JSON.stringify(b.P));
@@ -533,9 +534,11 @@ test('D5: the dry settle is the real settle: two loads of the same preset at the
   assert.equal(drill.presetBaseT, drill.t, 'the DRILL receipt and its own time agree, so replay\'s time check holds');
 });
 
-test('§12: a dry settle whose state is not finite refuses the load with SNAPSHOT REFUSED', () => {
+test('§12: a dry settle whose state is not finite refuses the load with SNAPSHOT REFUSED, and the session journal survives the refusal', () => {
   const c = boot(4, 'MNGR');
   run(c, 30);
+  c.setMode('TIC202', 'MAN');
+  const ids = c.events.map((e) => e.id), eid = c.eid, t0 = c.t0, msgs = c.msgs.length, log = c.alarmLog.length;
   const I = globalThis.ESS.Instructor, real = I.presets;
   I.presets = () => real().map((p) => p.id === 'U1_SS' ? Object.assign({}, p, { set: { L: { LIC101: { sp: Infinity } } } }) : p);
   try {
@@ -543,6 +546,11 @@ test('§12: a dry settle whose state is not finite refuses the load with SNAPSHO
   } finally { I.presets = real; }
   assert.equal(c.state.msg, 'SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE');
   assert.ok(Number.isFinite(c.P.t));
+  assert.deepEqual(c.events.map((e) => e.id), ids, 'the session\'s records, not the scratch settle\'s');
+  assert.equal(c.eid, eid);
+  assert.equal(c.t0, t0);
+  assert.equal(c.msgs.length, msgs);
+  assert.ok(c.alarmLog.length >= log);
 });
 
 // Review Focus 5: every path that changes the run speed flips the label.
@@ -556,7 +564,7 @@ test('§5.4: the status-bar clock reads SIM hh:mm:ss whenever the run control is
   assert.equal(c.renderVals().timeT, 'SIM ' + t);
   c.setSpeed(1);
   assert.equal(c.renderVals().timeT, t);
-  c.setSpeed(4);
+  c.setSpeed(5);
   assert.equal(c.renderVals().timeT, 'SIM ' + t);
   c.setSpeed(1);
   c.stepOnce();
@@ -571,9 +579,140 @@ test('§5.4: the status-bar clock reads SIM hh:mm:ss whenever the run control is
   assert.equal(line.stateT, 'FROZEN');
 });
 
-test('no core code reads the wall clock for the label: src/ has the same Date.now count as S1 left it, and the page seeds the start clock once', () => {
+test('src/ still reads Date.now() once, in createState\'s start-clock fallback in models.js: nothing else in the core reads the wall clock, the SIM label included', () => {
   const fs = require('node:fs'), path = require('node:path');
   const src = fs.readdirSync(path.join(__dirname, '..', 'src')).filter((f) => f.endsWith('.js'));
   const hits = src.flatMap((f) => (fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8').match(/Date\.now\(\)/g) || []).map(() => f));
   assert.deepEqual(hits.sort(), ['models.js'], 'only createState\'s start-clock fallback reads Date.now in src/');
+});
+
+// CR44: the session alarmLog survives a load but initSim rebuilds the alarm engine. An alarm that was active at the load never got its rtn row, so
+// the KPI standing list kept it after 10 min. A load closes what was open at the load time and opens what the IC holds at its raise time.
+test('CR44: an alarm active before an IC load is closed in the KPI history at the load time, so none stands afterwards', () => {
+  const c = boot(4, 'MNGR', 0);
+  c.storeEntry('TIC201', 'SP', 100);                    // the reactor cools through PVLO (140, at about 310 s) and PVLL (130, at about 515 s)
+  assert.ok(run(c, 700, () => c.alarms.some((a) => a.key === 'TIC201.PVLL' && a.active)), 'test setup: TIC201 is in alarm');
+  const open = c.alarms.filter((a) => a.active).map((a) => a.key);
+  assert.ok(open.includes('TIC201.PVLO') && open.includes('TIC201.PVLL'), open.join(','));
+  const base = c.P.t;
+  c.applyPreset('U1_SS', { baseTime: base });
+  assert.deepEqual(c.alarms.filter((a) => a.active), [], 'U1_SS holds no alarm');
+  for (const key of open) assert.equal(c.alarmLog.filter((r) => r.type === 'rtn' && r.key === key && r.t === base).length, 1, key + ': one rtn row at the load time');
+  run(c, 660);                                          // 11 minutes later, past the 10 min standing threshold
+  assert.deepEqual(c.kpiMetrics(30).standing, []);
+});
+
+test('CR44: an alarm the IC holds is opened in the KPI history at its raise time, before the base time', () => {
+  const c = boot(4, 'MNGR', 0);
+  withHotHifeed(() => c.applyPreset('U1_HIFEED', { baseTime: 0 }));
+  const a = c.alarms.find((x) => x.key === 'TIC201.PVHI' && x.active);
+  assert.ok(a && a.t < 0, 'the settle raised it before the base time');
+  assert.deepEqual(c.alarmLog.map((r) => [r.key, r.type, r.t]), [['TIC201.PVHI', 'raise', a.t]]);
+  const K = globalThis.ESS.Kpi.computeMetrics(c.alarmLog, { t0: -1800000, t1: 0, staleAfterMs: 60000 });
+  assert.deepEqual(K.standing.map((x) => [x.key, x.since]), [['TIC201.PVHI', a.t]], 'open since its raise time, not since the load');
+});
+
+test('CR44: an alarm active on both sides of a load stays open in the KPI history: no return row and no second raise, so the time-ordered log does not close it', () => {
+  const c = boot(4, 'MNGR', 0);
+  withHotHifeed(() => c.applyPreset('U1_HIFEED', { baseTime: 0 }));
+  const first = c.alarms.find((x) => x.key === 'TIC201.PVHI').t;
+  run(c, 60);
+  withHotHifeed(() => c.applyPreset('U1_HIFEED', { baseTime: c.P.t }));
+  assert.ok(c.alarms.some((x) => x.key === 'TIC201.PVHI' && x.active), 'in alarm after the second load as before it');
+  assert.deepEqual(c.alarmLog.map((r) => [r.key, r.type, r.t]), [['TIC201.PVHI', 'raise', first]]);
+  const K = globalThis.ESS.Kpi.computeMetrics(c.alarmLog, { t0: -1800000, t1: c.P.t, staleAfterMs: 60000 });
+  assert.deepEqual(K.standing.map((x) => [x.key, x.since]), [['TIC201.PVHI', first]]);
+});
+
+// CR45: the session journal survives an IC load (spec §5.2), so the architecture drill's debrief, which was handed every event and alarm row from the
+// session start, opened on the whole session. It is the drill's: its rows and its relative times start at the drill, running or ended.
+function debriefInput(c) {                              // what the ARCH debrief hands ESS.Debrief, and the rows it renders
+  const D = globalThis.ESS.Debrief, real = D.build;
+  let seen = null;
+  D.build = (input, opts) => { seen = input; return real(input, opts); };
+  try {
+    c.setState({ display: 'arch', archMode: 'debrief' });
+    const rows = c.renderVals().arch.debrief.rows;
+    return { seen, rows };
+  } finally { D.build = real; }
+}
+test('CR45: an architecture drill\'s debrief starts at the drill: 15 minutes of session before it are not in it, and its first relative time reads 00:00, running and ended', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 900);
+  c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 40); c.setMode('TIC202', 'AUTO');
+  run(c, 30);
+  assert.ok(c.events.length > 3, 'test setup: a session of records precedes the drill');
+  c.startADrillFromMenu('A1');
+  const from = c.P.aDrill.startedAt;
+  for (const phase of ['running', 'ended']) {
+    if (phase === 'ended') c.endADrill('ENDED BY INSTRUCTOR');
+    const { seen, rows } = debriefInput(c);
+    assert.equal(seen.t0, from, phase);
+    for (const k of ['events', 'alarmLog', 'journal']) assert.ok(seen[k].every((r) => r.t >= from), phase + ': ' + k + ' start at the drill');
+    assert.ok(seen.events.some((e) => /^INITIAL CONDITION LOADED/.test(e.desc)), phase + ': the load that opened the drill is its first record');
+    assert.ok(!rows.some((r) => /STATION STARTED|TIC202/.test(r.text)), phase + ': no row from before the drill');
+    assert.equal(rows[0].rel, '00:00', phase);
+  }
+});
+
+test('CR45: the window covers the action journal too: an action taken between the load and a direct drill start is not in the drill\'s debrief', () => {
+  const c = boot(4, 'MNGR');
+  c.applyPreset('U1_SS', { baseTime: c.P.t });
+  run(c, 60);
+  c.setMode('TIC202', 'MAN');                           // journaled 30 s before the drill
+  run(c, 30);
+  c.startADrill('A1');
+  const from = c.P.aDrill.startedAt;
+  assert.ok(c.instr.journal.some((e) => e.t < from), 'test setup: a journal row precedes the drill');
+  const { seen } = debriefInput(c);
+  assert.ok(seen.journal.length > 0 && seen.journal.every((r) => r.t >= from));
+});
+
+test('with no architecture drill run the debrief shows the whole session, as before', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 60);
+  c.setMode('TIC202', 'MAN');
+  const { seen, rows } = debriefInput(c);
+  assert.equal(seen.t0, c.t0);
+  assert.ok(seen.events.some((e) => /OPERATOR STATION STARTED/.test(e.desc)));
+  assert.ok(rows.some((r) => /MODE/.test(r.text)));
+});
+
+// CR46: the start record names the drill only when the trainee chose it by name. A RANDOM start would name the fault before it injects, and so would a
+// start made while the instructor hides upsets. The choice is journaled with the DRILL entry, so a replay writes the same record.
+const startRecord = (c) => c.events.filter((e) => /^DRILL .*STARTED/.test(e.desc)).map((e) => e.desc);
+test('CR46: a named canonical start records the drill by id and name, and journals that choice', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'canonical');
+  assert.deepEqual(startRecord(c), ['DRILL D3 STARTED — FEED PUMP TRIP — CANONICAL']);
+  assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, true);
+});
+
+test('CR46: a RANDOM · CANONICAL start records DRILL STARTED — CANONICAL with no id or name', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.renderVals().dg.randomDrill();
+  assert.ok(c.state.drill && c.state.drill.startMode === 'CANONICAL', 'test setup: a canonical drill is armed');
+  assert.deepEqual(startRecord(c), ['DRILL STARTED — CANONICAL']);
+  assert.ok(!c.events.some((e) => e.desc.includes(c.state.drill.def.name.toUpperCase())), 'the drill\'s name is nowhere in the journal');
+  assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, false);
+});
+
+test('CR46: a canonical start made while the instructor hides upsets records DRILL STARTED — CANONICAL, even when the trainee named the drill', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.setHidden(true);
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'canonical');
+  assert.deepEqual(startRecord(c), ['DRILL STARTED — CANONICAL']);
+  assert.equal(c.instr.journal.find((e) => e.op === 'DRILL').reveal, false);
+});
+
+test('CR46: a replayed DRILL entry writes the record its journal entry says, whatever the instructor switch reads at replay time', () => {
+  for (const [reveal, want] of [[true, ['DRILL D3 STARTED — FEED PUMP TRIP — CANONICAL']], [false, ['DRILL STARTED — CANONICAL']]]) {
+    const c = boot(4, 'MNGR');
+    c.setHidden(reveal);                                // the opposite of the entry's own choice
+    c.applyJournalEntry({ op: 'DRILL', tag: 'D3', t: c.P.t, startMode: 'CANONICAL', preset: 'U1_SS', presetBaseT: c.P.t, reveal });
+    assert.deepEqual(startRecord(c), want, 'reveal ' + reveal);
+  }
 });

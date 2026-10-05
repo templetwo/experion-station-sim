@@ -1966,7 +1966,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="cursor:pointer;font-weight:700" onClick="{{ audCb }}">HORN: {{ audT }}</div>
   <div style="color:#55524c">|</div>
   <div style="cursor:pointer;padding:1px 10px;font-weight:700;background:#B8C4D4;border:1px solid #6E6E6E" onClick="{{ secCb }}">{{ secT }}</div>
-  <div>{{ dateT }}</div><div style="font-weight:700;width:92px">{{ timeT }}</div>
+  <div>{{ dateT }}</div><div style="font-weight:700;width:92px;white-space:nowrap">{{ timeT }}</div>
 </div>
 </div>
 </x-dc>
@@ -2883,17 +2883,21 @@ class Component extends ESS.PlantCore(DCLogic) {
   // PRE-DRILL STAYS SILENT FOR THE TRAINEE. Notes never reach msgZone; dofPreflight messages the
   // operator only on a REFUSAL, where the drill did not start and they are owed the reason. The
   // note is a debrief observation, not a nag at arming time.
+  // Takes no argument on purpose (tests/app-boundary-dof.test.js): there is no way to render it for one audience and not the other. Inside an
+  // architecture drill's debrief window (archDebriefFrom) the notes before the start are another drill's and the rest read relative to the start.
   dofNoteRows(){
-    const ring=(this.instr&&this.instr.dofNotes)||[];
-    const rows=[];
-    for(const e of ring) for(const n of e.notes) rows.push({
-      rel:this.mmss(Math.max(0,(e.t-(this.t0||e.t)))),
+    const ring=(this.instr&&this.instr.dofNotes)||[], from=this.archDebriefFrom();
+    const base=(from==null)?this.t0:from, rows=[];
+    for(const e of ring) if(from==null||e.t>=from) for(const n of e.notes) rows.push({
+      rel:this.mmss(Math.max(0,(e.t-(base==null?e.t:base)))),
       lane:'SYSTEM', actor:'SYSTEM', kind:'SPEC',
       text:e.what+' — '+n.code+': '+n.detail,
       pvT:'', hasPv:false, fg:'#1c1c1c'
     });
     return rows;
   }
+  // The start of the architecture drill the debrief is about (CR45), running or ended; null when none has run, and the debrief is the whole session.
+  archDebriefFrom(){ return this.P.aDrill?this.P.aDrill.startedAt:(this._lastADrill&&typeof this._lastADrill.startedAt==='number'?this._lastADrill.startedAt:null); }
 
 
   // The trainee menu makes the initial-condition choice explicit. Canonical starts load
@@ -2912,7 +2916,8 @@ class Component extends ESS.PlantCore(DCLogic) {
     // DRILL journal entry carries so a replay rebuilds the identical plant at the identical t.
     const presetBaseT=this.P.t;
     this.applyPreset(preset,{baseTime:presetBaseT});
-    this.startDrill(d,{startMode:'CANONICAL',preset,presetBaseT,applySetup:true});
+    // The start record names the drill only when the trainee chose it by name ('random' is RANDOM · CANONICAL) and the instructor is not hiding upsets (CR46).
+    this.startDrill(d,{startMode:'CANONICAL',preset,presetBaseT,applySetup:true,reveal:mode!=='random'&&!this.instr.hidden});
   }
   // A snapshot carries the armed / running drill as plain data; the definition is looked up again on restore.
 
@@ -4136,7 +4141,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       // D-shaped def fields an A-series DrillDefinition does not carry.
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,presetT:d.basePreset,canonicalCb:()=>this.startDrillFromMenu(d,'canonical'),liveCb:()=>this.startDrillFromMenu(d,'live')})),
       archDrills:ESS.DrillArch.drillIds().map(id=>{ const def=ESS.DrillArch.drillById(id); return {id,name:def.traineeTitle,cb:()=>this.startADrillFromMenu(id)}; }),
-      randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; } const ds=this.drillDefs();this.startDrillFromMenu(ds[Math.floor(this.modelCtx().rand()*ds.length)],'canonical');},
+      randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; } const ds=this.drillDefs();this.startDrillFromMenu(ds[Math.floor(this.modelCtx().rand()*ds.length)],'random');},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Unit 04 Separation','graphic','U4'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:'',dbGuide:'',dbGuideOn:false};
@@ -4448,12 +4453,17 @@ class Component extends ESS.PlantCore(DCLogic) {
     let score=null;
     if(this.P.aDrill) score=this.aDrillRecordShape(ESS.DrillArch.scoreDrill(this.P.aDrill.id,this.P.aDrill.events.slice()));
     else if(this._lastADrill) score=this._lastADrill;
+    // The debrief is the drill's (CR45): the session journal survives an initial-condition load (spec §5.2), so rows and relative times start at the
+    // drill's own start, running or ended. With no drill ever run the whole session is shown. An alarm row stamped at the start itself belongs to
+    // the load that opened the drill (it closes the old plant's alarms there), so alarm rows are those after the start; every other row is from it.
+    const from=this.archDebriefFrom();
+    const win=(rows,after)=>from===null?rows:rows.filter(r=>after?r.t>from:r.t>=from);
     const out=ESS.Debrief.build({
-      journal:this.archDebriefJournalSafe(reveal), alarmLog:this.alarmLog, events:this.events,
+      journal:win(this.archDebriefJournalSafe(reveal)), alarmLog:win(this.alarmLog,true), events:win(this.events),
       // A TRAINEE_SAFE timeline that names the exact changed topology node still reveals
       // the answer. Live debrief remains available for its required response, but root
       // location rows are instructor/replay-only.
-      hist:this.hist, faultTimeline:reveal?this.archFaultTimeline():[], score:score, t0:this.t0
+      hist:this.hist, faultTimeline:reveal?win(this.archFaultTimeline()):[], score:score, t0:from===null?this.t0:from
     },{
       projection:reveal?'DEBRIEF_REVEALED':'TRAINEE_SAFE',
       journalText:e=>I.journalText(e,t=>this.fT(t)),

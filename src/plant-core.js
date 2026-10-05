@@ -730,6 +730,9 @@
       }
     }
   }
+  // The backtrack ring, one snapshot per RING_MS of sim time. After an initial-condition load it holds the settle's snapshots, stamped in the
+  // seconds before the base time (spec §5.3), and a backtrack to one of them is today's restore (spec §5.2): it trims the session journal to
+  // that time, so the records of those seconds go with it. Known and deferred (S2 review).
   backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS){ const snap=this.snapshotData(''); if(snap) I.pushRing(this.instr,snap,this.P.t); } }
   replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT&&r.i>=r.entries.length){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
   msgZone(t){ this.setState({msg:t, msgT:this.P.t}); }
@@ -765,6 +768,8 @@
     this.P.aDrill.events.push({seq:this.P.aDrill.events.length+1, simTime:this.P.t, actor:'TRAINEE',
       actionType, target, payload:payload==null?null:payload, accepted:true});
   }
+  // One row of the KPI history (ESS.Kpi): a raise, return or acknowledge of an alarm, newest last; the last 5000 are kept.
+  logKpi(t,a,type){ this.alarmLog.push({t,key:a.key,tag:a.tag,cond:a.cond,prio:a.prio,type}); if(this.alarmLog.length>5000) this.alarmLog.splice(0,this.alarmLog.length-5000); }
   logAlarmEvents(evs){
     let horn=false;
     for(const e of evs){
@@ -782,7 +787,7 @@
       }
       if(e.to==='UNACK' && e.prio!=='Journal') horn=true;
       const kt=e.type==='ALARM'?'raise':e.type==='RTN'?'rtn':e.type==='ACK'?'ack':null;
-      if(kt){ this.alarmLog.push({t:e.t,key:e.key,tag:e.tag,cond:e.cond,prio:e.prio,type:kt}); if(this.alarmLog.length>5000) this.alarmLog.splice(0,this.alarmLog.length-5000); }
+      if(kt) this.logKpi(e.t,e,kt);
     }
     if(horn) this.hornNew();
   }
@@ -915,7 +920,7 @@
             this.instrNote('REPLAY REFUSED: canonical drill '+e.tag+' rebuilt at '+this.P.t+' instead of '+e.t+'.'); break;
           }
         }
-        this.startDrill(d,{startMode:e.startMode,preset:e.preset,presetBaseT:e.presetBaseT,applySetup:e.startMode==='CANONICAL'});
+        this.startDrill(d,{startMode:e.startMode,preset:e.preset,presetBaseT:e.presetBaseT,applySetup:e.startMode==='CANONICAL',reveal:e.reveal});
         break;
       }
       case 'DRILLEND': this.endDrill(e.arg||'ENDED BY INSTRUCTOR'); break;
@@ -1310,6 +1315,18 @@
     // a scratch journal, put the session's back after the restore, and record the load as one entry. KPI history
     // (alarmLog, t0) is session state too; trends (hist) are process data and reset with the IC.
     const session={events:this.events,msgs:this.msgs,alarmLog:this.alarmLog,eid:this.eid,t0:this.t0};
+    // The load rebuilds the alarm engine but not the KPI history, so the history is brought in step with the engine (CR44): an alarm that was
+    // active and is not in the new engine is closed at the load time (else it would stand in the log for ever), and one the new engine holds
+    // that was not active is opened at its raise time, before the base time. An alarm active on both sides is left as it is, one open episode:
+    // the KPI reads the log in time order, and a return row at the load time would come after the IC's raise row and close it.
+    const loadT=this.P.t, wasLive=this.alarmEngine.list().filter(a=>a.active);
+    // However the load ends, refused or done, the session's journal comes back (spec §5.2) and the history is brought in step.
+    const resume=()=>{
+      this.events=session.events; this.msgs=session.msgs; this.alarmLog=session.alarmLog; this.eid=session.eid; this.t0=session.t0;
+      const live=this.alarmEngine.list().filter(a=>a.active), now=new Set(live.map(a=>a.key)), was=new Set(wasLive.map(a=>a.key));
+      for(const a of wasLive) if(!now.has(a.key)) this.logKpi(loadT,a,'rtn');
+      for(const a of live) if(!was.has(a.key)) this.logKpi(a.t,a,'raise');
+    };
     // The settle ends at the base time instead of starting there (spec §5.3): a dry settle from 0 measures its
     // length for this preset and seed (initSim re-seeds from the instructor seed, so the two runs are the same run),
     // then the real settle runs from baseTime - length and ends exactly at baseTime. Alarms raised during the settle
@@ -1317,12 +1334,12 @@
     let settled;
     if(typeof o.baseTime==='number'){
       const dry=this.settle(p,0);
-      if(!this.snapshotData('IC '+p.label)) return;   // a non-finite settle refuses the load with today's SNAPSHOT REFUSED
+      if(!this.snapshotData('IC '+p.label)){ resume(); return; }   // a non-finite settle refuses the load with today's SNAPSHOT REFUSED
       settled=this.settle(p,o.baseTime-dry.ms);
     } else settled=this.settle(p,undefined);
-    const snap=this.snapshotData('IC '+p.label); if(!snap) return;
+    const snap=this.snapshotData('IC '+p.label); if(!snap){ resume(); return; }
     this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
-    this.events=session.events; this.msgs=session.msgs; this.alarmLog=session.alarmLog; this.eid=session.eid; this.t0=session.t0;
+    resume();
     this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase()+' (SETTLED '+settled.seconds+' S)','','');
     this.setState({fps:[],unit:p.id.slice(0,2)});
     if(o.preserveReplay) this.instr.replay=replay;
@@ -1330,7 +1347,7 @@
   }
   startDrill(d,opts){
     if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
-    const o=opts||{}, startMode=o.startMode==='CANONICAL'?'CANONICAL':'LIVE STATE';
+    const o=opts||{}, startMode=o.startMode==='CANONICAL'?'CANONICAL':'LIVE STATE', reveal=o.reveal===true;
     const preset=startMode==='CANONICAL'?(o.preset||d.basePreset||null):null;
     if(startMode==='CANONICAL'&&d.needBatch&&this.P.b.phase==='IDLE') this.seqCmd('START',true);
     // LIVE STATE is literal: arming cannot secretly manufacture a precondition.
@@ -1339,8 +1356,10 @@
     if(!this.dofPreflight('DRILL '+d.id)) return;   // BEFORE the rand() draw below -- see dofPreflight
     const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0,startMode,preset},dlg:null});
-    this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT});
-    if(startMode==='CANONICAL') this.addEvent('SYSTEM','STN01','DRILL '+d.id+' STARTED — '+d.name.toUpperCase()+' — CANONICAL','','');
+    this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT,reveal});
+    // The record names the drill only when the trainee chose it by name and upsets are not hidden (CR46): the caller decides, and the journal
+    // keeps the choice so a replay writes the same record. A RANDOM start would otherwise name the fault before it injects.
+    if(startMode==='CANONICAL') this.addEvent('SYSTEM','STN01',reveal?'DRILL '+d.id+' STARTED — '+d.name.toUpperCase()+' — CANONICAL':'DRILL STARTED — CANONICAL','','');
     this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — '+startMode+(preset?' '+preset:'')+' — INJECTION AT '+this.fT(this.P.t+delay));
     if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }
@@ -1364,7 +1383,7 @@
     if(def) (def.faultTimeline||[]).forEach(step=>this.aDrillClear(step));
     const score=ESS.DrillArch.scoreDrill(d.id,d.events.slice());
     const rec=this.aDrillRecordShape(score);
-    this._lastADrill=rec;
+    this._lastADrill=Object.assign({startedAt:d.startedAt},rec);   // startedAt: the debrief of an ended drill still starts at the drill (CR45)
     if(!this._replayApplying){
       ESS.Training.addRecord(this.trainingRecords,ESS.Training.recordFor(this.operName(),d.id,def?def.traineeTitle:d.id,rec,this.P.t,reason),20);
       this.taskDone('abn.drill'); if(rec.pass) this.taskDone('abn.pass');
