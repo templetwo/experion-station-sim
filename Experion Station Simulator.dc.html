@@ -399,7 +399,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
       <text x="{{ p.aTx }}" y="{{ p.aTy }}" style="font:700 10px Tahoma;fill:{{ p.aFg }};text-anchor:middle">{{ p.aTxt }}</text>
     </g>
   </sc-for>
-  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. TIC212 (whole batch) and FIC211 (FEED) are program-driven (MODEATTR = PROGRAM). Alarm limits follow the phase. TI216 Urgent sheds the feed and HOLDs.</text>
+  <text x="24" y="706" style="font:10px Tahoma;fill:#6a665e">START BATCH runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. FIC211 is program-driven (MODEATTR = PROGRAM) while it runs, TIC212 from HEATUP; HOLD freezes it and hands both to the operator. Alarm limits follow the phase. TI216 Urgent sheds the feed and HOLDs in FEED.</text>
 </svg>
 </div>
 </sc-if>
@@ -1966,7 +1966,7 @@ input,select,button{font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
   <div style="cursor:pointer;font-weight:700" onClick="{{ audCb }}">HORN: {{ audT }}</div>
   <div style="color:#55524c">|</div>
   <div style="cursor:pointer;padding:1px 10px;font-weight:700;background:#B8C4D4;border:1px solid #6E6E6E" onClick="{{ secCb }}">{{ secT }}</div>
-  <div>{{ dateT }}</div><div style="font-weight:700;width:60px">{{ timeT }}</div>
+  <div>{{ dateT }}</div><div style="font-weight:700;width:92px;white-space:nowrap">{{ timeT }}</div>
 </div>
 </div>
 </x-dc>
@@ -2659,8 +2659,9 @@ class Component extends ESS.PlantCore(DCLogic) {
 
   // Interlock ownership of FIC211 (operator stores refused with a callout while the TI216 shed stands).
 
-  // The SCM restores the mode of a loop it takes ownership of: when FIC211 becomes PROGRAM (FEED entered or resumed)
-  // and the loop was left in MAN (after a shed, or by the operator), the sequence puts it back in AUTO and journals it.
+  // The SCM restores the mode of a loop it owns (CR41): when FIC211, or TIC212 wherever the phase table gives the sequence the jacket
+  // setpoint, is PROGRAM (a phase entered or the sequence resumed) and the loop was left in MAN (after a shed, or by the operator), the
+  // sequence puts it back in AUTO and journals it, one record per loop.
 
   // ---------- state-based alarm limits (ISA-TR18.2.6 pattern, InTech state-based limit table; RESOURCES 2.19, ISA-88 phases) ----------
   // One limit set per SCM202 phase; HELD is its own state (feed stopped on purpose). A condition mapped to null is
@@ -2724,26 +2725,27 @@ class Component extends ESS.PlantCore(DCLogic) {
     if(P.trips.bed) out.push({id:'trip.bed',sev:'URGENT',title:'R-310 bed overtemp trip — fuel shut off',why:'The hotspot reached 480 °C; fuel gas is isolated until the bed cools below 400 °C.',steps:[{t:'Acknowledge; verify quench flow is available.',go:gFp('FIC313')},{t:'Lower the TIC311 SP before relight to avoid a repeat.',go:gFp('TIC311')}]});
     if(P.trips.ovf) out.push({id:'trip.ovf',sev:'URGENT',title:'TK-101 overflow protection active',why:'Tank level reached 98% and unit feed was isolated.',steps:[{t:'Increase outlet flow to draw the level down.',go:gFp('FIC102')},{t:'Acknowledge alarms; feed restores below 90%.',go:()=>gAlm()}]});
     if(P.trips.skin) out.push({id:'trip.skin',sev:'URGENT',title:'H-310 tube-skin trip — fuel shut off',why:'A tube skin (TI314 / TI315) reached its Urgent limit; fuel gas is isolated until both skins are below 400 °C. Keep feed flowing through the tubes so the metal cools.',steps:[{t:'Acknowledge; confirm FV-311 closed and FIC310 flow present.',go:gFp('FIC310')},{t:'Lower the TIC311 SP before relight; watch the skins on TG05.',go:gTg('TG05')}]});
-    if(this.tadShed) out.push({id:'shed.tad',sev:'URGENT',title:'Monomer feed shed by TI216'+(P.b.held?' — sequence HELD':''),why:'The adiabatic end temperature reached its Urgent limit ('+this.fmt(L.TI216.alm.PVHH?L.TI216.alm.PVHH[0]:106,0)+' °C): the unreacted monomer alone could carry the batch to the 110 °C trip. The interlock holds FIC211 in MAN with MV-211 closed and refuses RESUME until the Urgent alarm clears.',steps:[{t:'Confirm M-202 running and the jacket on full cooling.',go:gFp('TIC213')},{t:'Wait for the monomer inventory and TI216 to fall.',go:gTg('TG04')},{t:'When the Urgent alarm clears, RESUME the sequence — the SCM returns FIC211 to AUTO itself.',go:gSeq}]});
+    if(this.tadShed) out.push({id:'shed.tad',sev:'URGENT',title:'Monomer feed shed by TI216'+(P.b.held?' — sequence HELD':''),why:'The adiabatic end temperature reached its Urgent limit ('+this.fmt(L.TI216.alm.PVHH?L.TI216.alm.PVHH[0]:106,0)+' °C): the unreacted monomer alone could carry the batch to the 110 °C trip. The interlock holds FIC211 in MAN with MV-211 closed'+(P.b.held?' and refuses RESUME until the Urgent alarm clears.':' until the Urgent alarm clears; the sequence is not held'+(P.trips.batch?' (the R-202 trip has it running in COOL).':'.')),steps:[{t:'Confirm M-202 running and the jacket on full cooling.',go:gFp('TIC213')},{t:'Wait for the monomer inventory and TI216 to fall.',go:gTg('TG04')},P.b.held?{t:'When the Urgent alarm clears, RESUME the sequence — the SCM returns FIC211 to AUTO itself.',go:gSeq}:{t:'No RESUME is needed: the shed releases on its own when the Urgent alarm clears, and the SCM returns FIC211 to AUTO itself.'}]});
     if(P.trips.psv) out.push({id:'trip.psv',sev:'URGENT',title:'V-401 relief valve lifted',why:'Drum pressure exceeded 950 kPa and is venting to flare.',steps:[{t:'Verify PIC401 is in AUTO and the vent is opening.',go:gFp('PIC401')},{t:'Reduce heat input at TIC301.',go:gFp('TIC301')}]});
     // The pump card gives the restart drill D3 keys and prints (CR21, CR32): while P-101 is stopped the plant holds FIC102 and LIC101
     // initializes, so the feed returns from zero; FIC102 to MAN at 20 to 30 % before START, START after the lockout, back to CAS within a minute.
-    for(const mt of ['P101','M202']){ const m=L[mt]; if(m.trip) out.push({id:'mtrip.'+mt,sev:'URGENT',title:(mt==='P101'?'P-101 pump tripped':'M-202 agitator tripped')+(m.lock>0?' — lockout '+Math.ceil(m.lock)+' s':''),why:(m.tripWhy||'Uncommanded stop')+'. '+(mt==='M202'?'Without agitation heat transfer collapses and unreacted monomer accumulates — it reacts all at once on restart.':'While the pump is stopped the plant holds FIC102 at its safe output (outside MAN) and its primary, LIC101, initializes, so after START the feed ramps back from zero instead of surging. The tank keeps filling in the meantime, and a late restart still ends in the TK-101 overflow trip unless FIC102 is pre-positioned.'),steps: mt==='M202'?[{t:'Cut monomer feed first — HOLD the sequence (FIC211 is program-owned during FEED; its faceplate refuses MAN / OP stores).',go:gSeq},{t:'Watch TIC212 and the monomer inventory bar.',go:gFp('TIC212')},{t:'Restart the agitator only after the feed is stopped.',go:gFp('M202')}]:[{t:'Put FIC102 in MAN at 20 to 30 % before START; the output is yours in MAN while the pump is stopped.',go:gFp('FIC102')},{t:'Wait out the lockout, then START P-101.',go:gFp('P101')},{t:'Return FIC102 to CAS within a minute of START. In AUTO its setpoint stays where PV tracking left it (0 while the pump was stopped), so the feed does not recover and the tank overflows.'}]}); }
+    for(const mt of ['P101','M202']){ const m=L[mt]; if(m.trip) out.push({id:'mtrip.'+mt,sev:'URGENT',title:(mt==='P101'?'P-101 pump tripped':'M-202 agitator tripped')+(m.lock>0?' — lockout '+Math.ceil(m.lock)+' s':''),why:(m.tripWhy||'Uncommanded stop')+'. '+(mt==='M202'?'Without agitation heat transfer collapses and unreacted monomer accumulates — it reacts all at once on restart.':'While the pump is stopped the plant holds FIC102 at its safe output (outside MAN) and its primary, LIC101, initializes, so after START the feed ramps back from zero instead of surging. The tank keeps filling in the meantime, and a late restart still ends in the TK-101 overflow trip unless FIC102 is pre-positioned.'),steps: mt==='M202'?[{t:'Cut monomer feed first — HOLD the sequence (FIC211 is program-owned while the sequence runs, so its faceplate refuses MAN / OP stores; HOLD sets the feed to zero and hands the loop back to you).',go:gSeq},{t:'Watch TIC212 and the monomer inventory bar.',go:gFp('TIC212')},{t:'Restart the agitator only after the feed is stopped.',go:gFp('M202')}]:[{t:'Put FIC102 in MAN at 20 to 30 % before START; the output is yours in MAN while the pump is stopped.',go:gFp('FIC102')},{t:'Wait out the lockout, then START P-101.',go:gFp('P101')},{t:'Return FIC102 to CAS within a minute of START. In AUTO its setpoint stays where PV tracking left it (0 while the pump was stopped), so the feed does not recover and the tank overflows.'}]}); }
     if(!P.trips.rx && P.rT>162 && slope('TIC201',20)>0.04) out.push({id:'risk.rx',sev:'URGENT',title:'R-201 temperature rising — runaway risk',why:'Reaction heat rises exponentially with temperature while jacket cooling is only linear. Act before the 185 °C trip.',steps:[{t:'Check TV-202 position against TIC202 output.',go:gFp('TIC202')},{t:'Cut feed — FIC102 to MAN, OP about 20 % — to arrest the exotherm.',go:gFp('FIC102')},{t:'Track the exotherm on trend TG01; wait for TIC201 to turn down.',go:gTg('TG01')},{t:'Feed cut fills TK-101: before LIC101 reaches high level (80 %) and once TIC201 is falling, restore feed — FIC102 OP back toward 60 % or CAS so LIC101 draws the tank down.',go:gFp('LIC101')},{t:'Confirm R-201 is cooling before returning TIC201 / TIC202 to normal operation.',go:gFp('TIC201')}]});
     if(!P.trips.bed && P.h.bed>435) out.push({id:'risk.bed',sev:'WARN',title:'R-310 bed hotspot climbing ('+Math.round(P.h.bed)+' °C)',why:'The bed exotherm grows with temperature; the fuel trip operates at 480 °C.',steps:[{t:'Raise quench flow FIC313.',go:gFp('FIC313')},{t:'Lower the preheater SP at TIC311.',go:gFp('TIC311')}]});
-    if(!this.tadShed && !P.trips.batch && (P.b.phase==='FEED'||P.b.phase==='REACT') && L.TI216.alm.PVHI && P.b.Tad>L.TI216.alm.PVHI[0]-4) out.push({id:'risk.tad',sev:'WARN',title:'R-202 adiabatic end temperature '+Math.round(P.b.Tad)+' °C',why:'If cooling were lost now, the unreacted monomer would take the batch to about '+Math.round(P.b.Tad)+' °C. Reduce the inventory before it reaches the Urgent limit, where the station sheds the feed automatically.',steps:[{t:'Reduce the monomer feed or HOLD the sequence.',go:gFp('FIC211')},{t:'Confirm the agitator is running.',go:gFp('M202')},{t:'Watch TI216 against TIC212 on TG04.',go:gTg('TG04')}]});
+    if(!this.tadShed && !P.trips.batch && (P.b.phase==='FEED'||P.b.phase==='REACT') && L.TI216.alm.PVHI && P.b.Tad>L.TI216.alm.PVHI[0]-4) out.push({id:'risk.tad',sev:'WARN',title:'R-202 adiabatic end temperature '+Math.round(P.b.Tad)+' °C',why:'If cooling were lost now, the unreacted monomer would take the batch to about '+Math.round(P.b.Tad)+' °C. Reduce the inventory before it reaches the Urgent limit, where the station sheds the feed automatically.',steps:[{t:'HOLD the sequence to stop the monomer feed (the sequence owns the FIC211 setpoint while it runs).',go:gSeq},{t:'Confirm the agitator is running.',go:gFp('M202')},{t:'Watch TI216 against TIC212 on TG04.',go:gTg('TG04')}]});
     const skinHi=Math.max(P.h.ts1,P.h.ts2);
     if(!P.trips.skin && L.TI315.alm.PVHI && skinHi>L.TI315.alm.PVHI[0]) out.push({id:'risk.skin',sev:'WARN',title:'H-310 tube skin high ('+Math.round(skinHi)+' °C)',why:'Tube metal is running hotter than its continuous rating — usually firing raised faster than the feed can absorb, or low flow through the passes. The fuel trips at the Urgent limit.',steps:[{t:'Reduce the TIC311 setpoint or, in MAN, lower the output.',go:gFp('TIC311')},{t:'Confirm FIC310 feed flow through the tubes.',go:gFp('FIC310')},{t:'Watch TI314 / TI315 against the outlet on TG05.',go:gTg('TG05')}]});
     if(L.AI316._as.PVLO) out.push({id:'o2.low',sev:'WARN',title:'H-310 excess O2 low — air register lagging',why:'Fuel was raised faster than the combustion air followed; sub-stoichiometric firing wastes fuel and drives the tube skins up.',steps:[{t:'Hold the TIC311 output until AI316 recovers above 2 %.',go:gFp('TIC311')},{t:'Watch the skins on TG05.',go:gTg('TG05')}]});
-    if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned during FEED).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
+    if(!L.M202.trip && !L.M202.run && (P.b.phase==='FEED'||P.b.Cm>15)) out.push({id:'risk.acc',sev:'URGENT',title:'Agitator stopped — monomer accumulating',why:'With no mixing the reaction nearly stops but feed keeps charging monomer, which will react all at once when mixing resumes.',steps:[{t:'HOLD the sequence to stop the FIC211 feed (program-owned while the sequence runs).',go:gSeq},{t:'Restart M-202 only after the feed is stopped.',go:gFp('M202')}]});
     for(const k in L){ const l=L[k],m=(k==='AI511'||k==='AI512')?this.productAnalyzerObservation(k):ESS.Measurement.observe(l); if(m.quality!=='GOOD') out.push({id:(m.badPv?'badpv.':'uncertain.')+k,sev:'WARN',title:k+(m.badPv?' reading unavailable':' reading uncertain'),why:'The published PV is '+m.quality+(m.reason==='SAMPLE_UNAVAILABLE'?' because its sample timing or metadata is unavailable or stale':'')+'. It does not establish the current process condition or the cause of the measurement problem.',steps:[{t:'Review measurement quality and available sample age on Point Detail.',go:gDet(k)},{t:l.kind==='pid'?'Check the actual loop mode and compare independent indications before changing output.':'Compare related indications and trends before judging recovery.',go:gFp(k)}]}); }
     const vmap={FIC102:'FV102',TIC202:'TV202',TIC301:'TV301',PIC401:'PV401',LIC401:'LV401',FIC211:'MV211',TIC213:'JV213',FIC310:'FV310',TIC311:'FV311',FIC313:'QV313',TIC502:'TV502',LIC503:'LV503',LIC504:'WV504',PIC505:'PV505'};
     const lagging=this.laggingValves(), airLoss=lagging.length>=3;
     if(!airLoss){ for(const k in vmap){ const l=L[k], v=V[vmap[k]]; if(l&&v&&(this.vLag[vmap[k]]||0)>=20) out.push({id:'stuck.'+k,sev:'WARN',title:vmap[k]+' not following '+k+' output',why:'The controller output is moving but the valve (and PV) is not responding — classic stiction or a jammed actuator.',steps:[{t:'Compare OP vs PV on the trend.',go:gTg(this.unitOf(k)==='U2'?'TG04':this.unitOf(k)==='U3'?'TG05':'TG01')},{t:'Put '+k+' in MAN and stroke the output firmly (±10%).',go:gFp(k)},{t:'If it will not move, flag the valve for maintenance.'}]}); } }
-    // A held output (ESS.Pid.tracking: the plant holds it for a stopped pump or an interlock) and an initialised primary's output
-    // (its secondary's doing: INITMAN overwrites it every scan) are not a disturbance exceeding the loop, and the flag and the
-    // INITMAN card already say why, so neither raises a saturation card (CR22b, CR22c).
-    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!ESS.Pid.tracking(l)&&!l.init&&ESS.Measurement.observe(l).quality==='GOOD'&&this.opLimitOf(l)){ const inAlm=announced.some(a=>a.tag===k); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
+    // A held output (ESS.Pid.tracking: the plant holds it for a stopped pump or an interlock), an initialised primary's output
+    // (its secondary's doing: INITMAN overwrites it every scan) and an output the setpoint shutoff parks at its low limit
+    // (ESS.Pid.shutoff: the loop's own SP is at or below its low-flow cutoff, a stop instruction) are not a disturbance exceeding the
+    // loop, and the flag, the INITMAN card and the setpoint already say why, so none raises a saturation card (CR22b, CR22c, CR40).
+    for(const k in L){ const l=L[k]; if(l.kind==='pid'&&l.mode!=='MAN'&&!ESS.Pid.tracking(l)&&!ESS.Pid.shutoff(l)&&!l.init&&ESS.Measurement.observe(l).quality==='GOOD'&&this.opLimitOf(l)){ const inAlm=announced.some(a=>a.tag===k); if(inAlm) out.push({id:'sat.'+k,sev:'WARN',title:k+' output saturated at '+Math.round(l.op)+'%',why:'The controller has no more range — the disturbance exceeds this loop. Windup is prevented, but the PV cannot be held.',steps:[{t:'Address the disturbance at its source (feed rate, heat input).'},{t:'Consider MAN with a sensible fixed output while conditions recover.',go:gFp(k)}]}); } }
     // An initialised primary says why (CR22). A secondary out of CAS is a broken cascade. A secondary in CAS is held by the plant,
     // and the card names the same flag its faceplate shows. In CAS with no hold, init is one scan stale (the operator has just
     // returned it to CAS), so there is nothing to say.
@@ -2812,11 +2814,11 @@ class Component extends ESS.PlantCore(DCLogic) {
     {k:['color','colours','flash','red','yellow','cyan','blink'],t:'What do alarm colors mean?',a:'Urgent = red, High = yellow (representative), Low = cyan. Flashing = UNACK; steady = ACKED with the cause still present; inverse flashing = RTNUN (returned to normal, never acknowledged). Grey = shelved, suppressed by DAS or out of service — those never sound. Journal alarms only log to the journal.'},
     {k:['ack','silence','acknowledge','horn'],t:'Ack vs Silence',a:'SILENCE (F1) stops the horn only. ACK (F2) claims the alarm: flashing stops and it goes steady while the cause remains, or drops off the summary if it already returned to normal. Sequence: Silence → Ack → read → trend → act → verify.'},
     {k:['tuning','tune','gain','t1','t2','engr','action'],t:'Cannot change tuning',a:'K, T1, T2, limits and control action need ENGR level or above: Station menu → Security Level, password engr. Experion PID uses overall gain K with T1 and T2 in minutes.'},
-    {k:['batch','sequence','scm','phase','stuck','hold','charge'],t:'Batch sequence control',a:'SCM202 on Unit 02 runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. START begins a batch; HOLD stops the monomer feed without losing the phase; ABORT forces COOL. During FEED the FIC211 SP is program-driven (MODEATTR = PROGRAM).'},
+    {k:['batch','sequence','scm','phase','stuck','hold','charge'],t:'Batch sequence control',a:'SCM202 on Unit 02 runs CHARGE → HEATUP → FEED → REACT → COOL → DRAIN. START begins a batch; HOLD freezes it where it stands (the phase timer stops, no phase change fires and the monomer feed setpoint goes to zero) and hands the loops it drives to the operator; RESUME re-asserts the phase setpoints and carries on from the same point; ABORT forces COOL. While the sequence runs, FIC211 is program-driven (MODEATTR = PROGRAM) in every phase and TIC212 from HEATUP on; in CHARGE the jacket loop is yours.'},
     {k:['raise','lower','arrow','keys','select'],t:'RAISE / LOWER keys',a:'The raise/lower buttons act on the auto-selected target: SP in AUTO, OP in MAN (dashed highlight on the faceplate). In an entry field, arrow keys nudge the typed value; Enter stores, Esc cancels.'},
     {k:['drill','score','practice','scenario'],t:'Running drills',a:'Drills menu → Start Drill. An upset begins unannounced 8–15 s later. You are scored on time to acknowledge, correct action, trip avoidance, stabilization and diagnosis; the debrief shows your timeline.'},
     {k:['runaway','exotherm','cooling','reactor','temperature','hot'],t:'Reactor temperature runaway',a:'Reaction heat grows exponentially with temperature; cooling only linearly. If cooling is lost: maximize what cooling remains, CUT FEED to remove the heat source, and never raise SP to chase the PV. Then, once the reactor is falling, restore feed before the feed tank reaches high level (a cut feed fills TK-101) and confirm the reactor keeps cooling. Trips: R-201 at 185 °C, R-202 at 110 °C, R-310 fuel at 480 °C.'},
-    {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. TIC212 is PROGRAM for the whole batch, FIC211 during FEED. HOLD the sequence to take the monomer feed back (the attribute returns to OPERATOR), or wait for the sequence to end.'},
+    {k:['program','modeattr','owned','sequence owns','rejected','callout'],t:'Write rejected — MODEATTR PROGRAM',a:'While SCM202 drives a loop its mode attribute is PROGRAM: the sequence owns SP, OP and MODE, so operator stores are rejected with a red callout on the faceplate and a journal entry. FIC211 is PROGRAM in every phase while the sequence runs, and TIC212 from HEATUP on (in CHARGE the sequence writes no jacket setpoint, so TIC212 is yours). HOLD the sequence to take them back (the attribute returns to OPERATOR on the next scan, and a setpoint you enter stands until RESUME re-asserts the phase value), or wait for the sequence to end.'},
     {k:['pv tracking','pvtrack','track','bumpless','bump'],t:'PV tracking and bumpless transfer',a:'With PV tracking ON (Loop Tune, ENGR) the SP follows the PV while the loop is in MAN, so a return to AUTO starts at zero error and the output does not step. The integrator is re-initialised on every mode change so MAN → AUTO and AUTO → CAS are bumpless either way. Default ON for the cascade secondaries FIC102, TIC202 and TIC213.'},
     {k:['state','phase set','limit set','state-based','disabled','batch alarm'],t:'State-based alarm limits',a:'Unit 02 alarm limits follow the SCM202 phase: the level low alarm is off during CHARGE, DRAIN and IDLE, the monomer flow low alarm is active only in FEED, and the temperature limits tighten in REACT. Every phase change journals the limit set applied; Point Detail → Alarms shows the phase set in force and any conditions it disabled.'},
     {k:['assistant','guide','coach','panel','granite','ai'],t:'About this assistant',a:'The COACH at the top of this panel is the local board model when you start with Launch Station.command. LIVE DIAGNOSIS below is rule-based and always on. The coach does not move valves or change modes. On a real console, follow site procedures.'}
@@ -2881,16 +2883,26 @@ class Component extends ESS.PlantCore(DCLogic) {
   // PRE-DRILL STAYS SILENT FOR THE TRAINEE. Notes never reach msgZone; dofPreflight messages the
   // operator only on a REFUSAL, where the drill did not start and they are owed the reason. The
   // note is a debrief observation, not a nag at arming time.
+  // Takes no argument on purpose (tests/app-boundary-dof.test.js): there is no way to render it for one audience and not the other. Inside an
+  // architecture drill's debrief window (archDebriefFrom) the notes before the start are another drill's and the rest read relative to the start.
   dofNoteRows(){
-    const ring=(this.instr&&this.instr.dofNotes)||[];
-    const rows=[];
-    for(const e of ring) for(const n of e.notes) rows.push({
-      rel:this.mmss(Math.max(0,(e.t-(this.t0||e.t)))),
+    const ring=(this.instr&&this.instr.dofNotes)||[], from=this.archDebriefFrom();
+    const base=(from==null)?this.t0:from, rows=[];
+    for(const e of ring) if(from==null||e.t>=from) for(const n of e.notes) rows.push({
+      rel:this.mmss(Math.max(0,(e.t-(base==null?e.t:base)))),
       lane:'SYSTEM', actor:'SYSTEM', kind:'SPEC',
       text:e.what+' — '+n.code+': '+n.detail,
       pvT:'', hasPv:false, fg:'#1c1c1c'
     });
     return rows;
+  }
+  // The start of the architecture drill the debrief is about (CR45), running or ended; null when none has run, and the debrief is the whole session.
+  // _lastADrill is not a snapshot key: a slot or backtrack restore to before the drill drops it (plant core applySnapshot, CR49). The guard here stays for
+  // a start later than the plant clock the restore did not see: it is not this timeline's drill (every row of the session precedes it), so it counts as none.
+  archDebriefFrom(){
+    if(this.P.aDrill) return this.P.aDrill.startedAt;
+    const d=this._lastADrill;
+    return (d&&typeof d.startedAt==='number'&&d.startedAt<=this.P.t)?d.startedAt:null;
   }
 
 
@@ -2910,7 +2922,8 @@ class Component extends ESS.PlantCore(DCLogic) {
     // DRILL journal entry carries so a replay rebuilds the identical plant at the identical t.
     const presetBaseT=this.P.t;
     this.applyPreset(preset,{baseTime:presetBaseT});
-    this.startDrill(d,{startMode:'CANONICAL',preset,presetBaseT,applySetup:true});
+    // The start record names the drill only when the trainee chose it by name ('random' is RANDOM · CANONICAL) and the instructor is not hiding upsets (CR46).
+    this.startDrill(d,{startMode:'CANONICAL',preset,presetBaseT,applySetup:true,reveal:mode!=='random'&&!this.instr.hidden});
   }
   // A snapshot carries the armed / running drill as plain data; the definition is looked up again on restore.
 
@@ -3478,7 +3491,8 @@ class Component extends ESS.PlantCore(DCLogic) {
       speeds:X.speeds().filter(v=>v>1).map(v=>chip(v+'×',S.speed===v,()=>this.setSpeed(v)))};
     const slots=I.snapshots.map((s,i)=>({n:String(i+1),name:s?s.name:'— empty —',t:s?this.fT(s.t):'',has:!!s,
       save:()=>{this.saveSlot(i,S.instrSnapName);},restore:()=>this.restoreSlot(i),replay:()=>this.startReplay(i),clear:()=>{this.clearSlot(i);bump();}}));
-    const presets=X.presets().map(p=>({label:p.label,desc:p.desc,cb:()=>this.applyPreset(p.id)}));
+    // the settle ends at the sim clock (spec 5.3), so a load never jumps the station clock
+    const presets=X.presets().map(p=>({label:p.label,desc:p.desc,cb:()=>this.applyPreset(p.id,{baseTime:this.P.t})}));
     const oldest=I.ring.length?I.ring[0].t:null;
     const back={count:String(I.ring.length),spanT:oldest!=null?this.mmss(P.t-oldest):'00:00',oldestT:oldest!=null?this.fT(oldest):'—',
       btns:[[30000,'−30 S'],[120000,'−2 MIN'],[600000,'−10 MIN']].map(b=>({label:b[1],cb:()=>this.backtrack(b[0])}))};
@@ -4133,7 +4147,7 @@ class Component extends ESS.PlantCore(DCLogic) {
       // D-shaped def fields an A-series DrillDefinition does not carry.
       drills:this.drillDefs().map(d=>({id:d.id,name:d.name,presetT:d.basePreset,canonicalCb:()=>this.startDrillFromMenu(d,'canonical'),liveCb:()=>this.startDrillFromMenu(d,'live')})),
       archDrills:ESS.DrillArch.drillIds().map(id=>{ const def=ESS.DrillArch.drillById(id); return {id,name:def.traineeTitle,cb:()=>this.startADrillFromMenu(id)}; }),
-      randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; } const ds=this.drillDefs();this.startDrillFromMenu(ds[Math.floor(this.modelCtx().rand()*ds.length)],'canonical');},
+      randomDrill:()=>{ if(this.P.aDrill){ this.msgZone('AN ARCHITECTURE DRILL IS ACTIVE — END IT FIRST'); return; } if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; } const ds=this.drillDefs();this.startDrillFromMenu(ds[Math.floor(this.modelCtx().rand()*ds.length)],'random');},
       resetYes:()=>{this.initSim();this.setState({dlg:null,fps:[],drill:null,selAlm:null,sel:null});},
       sysLinks:[['Unit 01 Graphic','graphic','U1'],['Unit 02 Batch','graphic','U2'],['Unit 03 Fired Rx','graphic','U3'],['Unit 04 Separation','graphic','U4'],['Alarm Summary','alarms'],['Event Summary','events'],['Message Summary','msgs'],['Trends','trend'],['Alarm KPI','kpi'],['System Status','sys']].map(x=>({label:x[0],cb:()=>{const st2={dlg:null};if(x[2])st2.unit=x[2];this.setState(st2);this.nav(x[1]);}})).concat([{label:'Change Log (MOC)',cb:()=>{this.setState({dlg:null});this.openChangeLog();}}]),
       dbName:'',dbReason:'',dbRows:[],dbAsk:false,dbScored:false,dbQ:'',dbOpts:[],dbSubmit:()=>{},dbScore:0,dbGrade:'',dbGradeFg:'#31548F',dbBreak:[],dbPassT:ESS.Training.PASS_LABEL,dbOper:'',dbGuide:'',dbGuideOn:false};
@@ -4187,7 +4201,8 @@ class Component extends ESS.PlantCore(DCLogic) {
       spdT:S.speed===0?'FROZEN':S.speed+'×', instrOpen:()=>this.openInstructor(),
       audT:((this.props.audible??true)&&S.aud)?'ON':'OFF', audCb:()=>this.setState({aud:!S.aud}),
       secT:S.sec==='VIEW'?'VIEW ONLY':S.sec, secCb:setS({dlg:{type:'logon'}}),
-      dateT:this.fD(P.t), timeT:this.fT(P.t)
+      // SIM label (spec 5.4): the clock says so whenever the run control is frozen or off 1x; from state.speed alone
+      dateT:this.fD(P.t), timeT:(S.speed===1?'':'SIM ')+this.fT(P.t)
     };
   }
   // KPI display view model. Thresholds are the exida / ISA-18.2 figures carried by ESS.Kpi (RESOURCES 2.7, 2.8).
@@ -4444,12 +4459,17 @@ class Component extends ESS.PlantCore(DCLogic) {
     let score=null;
     if(this.P.aDrill) score=this.aDrillRecordShape(ESS.DrillArch.scoreDrill(this.P.aDrill.id,this.P.aDrill.events.slice()));
     else if(this._lastADrill) score=this._lastADrill;
+    // The debrief is the drill's (CR45): the session journal survives an initial-condition load (spec §5.2), so rows and relative times start at the
+    // drill's own start, running or ended. With no drill ever run the whole session is shown. An alarm row stamped at the start itself belongs to
+    // the load that opened the drill (it closes the old plant's alarms there), so alarm rows are those after the start; every other row is from it.
+    const from=this.archDebriefFrom();
+    const win=(rows,after)=>from===null?rows:rows.filter(r=>after?r.t>from:r.t>=from);
     const out=ESS.Debrief.build({
-      journal:this.archDebriefJournalSafe(reveal), alarmLog:this.alarmLog, events:this.events,
+      journal:win(this.archDebriefJournalSafe(reveal)), alarmLog:win(this.alarmLog,true), events:win(this.events),
       // A TRAINEE_SAFE timeline that names the exact changed topology node still reveals
       // the answer. Live debrief remains available for its required response, but root
       // location rows are instructor/replay-only.
-      hist:this.hist, faultTimeline:reveal?this.archFaultTimeline():[], score:score, t0:this.t0
+      hist:this.hist, faultTimeline:reveal?win(this.archFaultTimeline()):[], score:score, t0:from===null?this.t0:from
     },{
       projection:reveal?'DEBRIEF_REVEALED':'TRAINEE_SAFE',
       journalText:e=>I.journalText(e,t=>this.fT(t)),

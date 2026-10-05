@@ -61,6 +61,7 @@
       }
     }
     for(const k in this.L){ const l=this.L[k]; if(l.kind==='pid'){ l.I=l.op; l.lastPv=l.pv; } l._am={}; l.almOff={}; for(const c in l.alm){ if(l.alm[c].length<3) l.alm[c][2]=this.subprioDefault(c); } }
+    this.setFlowCutoffs();
     this.V = { FV102:{pos:.5,stuck:false,fail:0}, TV202:{pos:.74,stuck:false,fail:1}, TV301:{pos:.5,stuck:false,fail:0}, PV401:{pos:.4,stuck:false,fail:1}, LV401:{pos:.73,stuck:false,fail:0}, MV211:{pos:0,stuck:false,fail:0}, JV213:{pos:.45,stuck:false,fail:0}, FV310:{pos:.5,stuck:false,fail:0}, FV311:{pos:.4,stuck:false,fail:0}, QV313:{pos:.25,stuck:false,fail:1}, TV502:{pos:.6,stuck:false,fail:1}, LV503:{pos:.5,stuck:false,fail:0}, WV504:{pos:.45,stuck:false,fail:0}, PV505:{pos:.4,stuck:false,fail:1} };
     // process state and dynamics come from ESS.Models (Henson/Seborg CSTR, Lucia/Engell semi-batch, Badgwell fired heater; RESOURCES 4.4, 4.1, 4.2)
     this.P = ESS.Models.createState(now);
@@ -227,8 +228,28 @@
   seqCmd(cmd,silent){
     const b=this.P.b;
     if(cmd==='START'){ if(b.phase!=='IDLE'){ this.msgZone('SEQUENCE ALREADY RUNNING'); return; } if(!silent && !this.can('OPER')) return; b.phase='CHARGE'; b.pt=0; b.Cm=0; b.held=false; this.addEvent(silent?'SYSTEM':'OPERATOR','SCM202','BATCH SEQUENCE STARTED','IDLE','CHARGE'); }
-    if(cmd==='HOLD'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; if(b.held && this.tadShed){ this.confirmInterlockHold(); return; } b.held=!b.held; this.addEvent('OPERATOR','SCM202',b.held?'SEQUENCE HELD — FEED STOPPED':'SEQUENCE RESUMED','',''); this.dAct('HOLD','SCM202','',0); }
-    if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; this.L.FIC211.sp=0; this.L.TIC212.sp=40; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
+    if(cmd==='HOLD'){
+      if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; }
+      if(!this.can('OPER')) return;
+      if(b.held && this.tadShed){ this.confirmInterlockHold(); return; }
+      b.held=!b.held;
+      if(b.held){
+        // Equipment goes to its hold state once, here (spec §4.1): the feed setpoint to 0 beside the record that says
+        // so. The jacket keeps holding temperature at its current setpoint; sequence() writes nothing while held.
+        this.L.FIC211.sp=0;
+        this.addEvent('OPERATOR','SCM202','SEQUENCE HELD — FEED STOPPED','','');
+      } else {
+        // RESUME re-asserts the phase's setpoints (spec §4.1): a setpoint the operator entered during the hold was
+        // the operator's until here and is the sequence's again from here.
+        const sp=ESS.Models.phaseSetpoints(b,this.P);
+        this.L.FIC211.sp=sp.FIC211;
+        if(sp.TIC212!=null) this.L.TIC212.sp=sp.TIC212;
+        this.addEvent('OPERATOR','SCM202','SEQUENCE RESUMED','','');
+      }
+      this.dAct('HOLD','SCM202','',0);
+    }
+    // COOL's setpoints come from the table the sequence reads (Models.phaseSetpoints): feed 0, jacket 40.
+    if(cmd==='ABORT'){ if(b.phase==='IDLE'){ this.msgZone('SEQUENCE IS IDLE'); return; } if(!this.can('OPER')) return; b.phase='COOL'; b.pt=0; b.held=false; const sp=ESS.Models.phaseSetpoints(b,this.P); this.L.FIC211.sp=sp.FIC211; this.L.TIC212.sp=sp.TIC212; this.addEvent('OPERATOR','SCM202','SEQUENCE ABORTED → COOL','',''); this.dAct('HOLD','SCM202','',0); }
     if(!silent) this.taskDone({START:'bat.start',HOLD:'bat.hold',ABORT:'bat.abort'}[cmd]);
     this.syncPhaseSet();
     if(!silent) this.journal('SEQ','SCM202',cmd);
@@ -537,6 +558,19 @@
       l.obs=m; l.pvObs=Number.isFinite(m.pv)?m.pv:l.pv;
     }
   }
+  // CR40, spec §2.2: every M3/H PID loop carries the measurement policy's low-flow cutoff (one per cent of its span, read from
+  // ESS.Measurement so the loop and its transmitter share one constant): the value below which the transmitter reads 0.
+  // ESS.Pid.stepPid reads it to close a loop in AUTO whose setpoint is at or below it (a CAS secondary follows its master and is
+  // exempt, CR40b), because SP 0 against an observed 0 is no error. The field is derived from the range, which nothing changes at
+  // runtime, so it is recomputed every time it is set: at init, and on a restore, where a snapshot that predates the field (an
+  // imported 3.0 file) gets it and a value in the file is not kept.
+  setFlowCutoffs(){
+    const M=ESS.Measurement;
+    for(const k in this.L){ const l=this.L[k];
+      if(l.kind!=='pid' || String(l.eu||'').toUpperCase()!=='M3/H') continue;
+      const r=M.rangeOf(l); if(r) l.spCutoff=M.RANGE_POLICY.flowCutoffFrac*r.span;
+    }
+  }
   pids(dt){ const ctx=this.pidCtx(); for(const k of this.pidOrder()) ESS.Pid.stepPid(this.L[k],dt,ctx); }
   // Who tracks, decided once per tick from the code's own trip flags and run states, the same
   // gating src/models.js VALVE_TARGET enforces (spec §3.2). The W2 matrix declares the same
@@ -696,6 +730,9 @@
       }
     }
   }
+  // The backtrack ring, one snapshot per RING_MS of sim time. After an initial-condition load it holds the settle's snapshots, stamped in the
+  // seconds before the base time (spec §5.3), and a backtrack to one of them is today's restore (spec §5.2): it trims the session journal to
+  // that time, so the records of those seconds go with it. Known and deferred (S2 review).
   backtrackTick(){ const I=ESS.Instructor; if(this.P.t-this.instr.lastRingT>=I.RING_MS){ const snap=this.snapshotData(''); if(snap) I.pushRing(this.instr,snap,this.P.t); } }
   replayCheckDone(){ const r=this.instr&&this.instr.replay; if(r&&this.P.t>=r.toT&&r.i>=r.entries.length){ this.instr.replay=null; this.instrLog('REPLAY COMPLETE'); } }
   msgZone(t){ this.setState({msg:t, msgT:this.P.t}); }
@@ -731,6 +768,8 @@
     this.P.aDrill.events.push({seq:this.P.aDrill.events.length+1, simTime:this.P.t, actor:'TRAINEE',
       actionType, target, payload:payload==null?null:payload, accepted:true});
   }
+  // One row of the KPI history (ESS.Kpi): a raise, return or acknowledge of an alarm, newest last; the last 5000 are kept.
+  logKpi(t,a,type){ this.alarmLog.push({t,key:a.key,tag:a.tag,cond:a.cond,prio:a.prio,type}); if(this.alarmLog.length>5000) this.alarmLog.splice(0,this.alarmLog.length-5000); }
   logAlarmEvents(evs){
     let horn=false;
     for(const e of evs){
@@ -748,7 +787,7 @@
       }
       if(e.to==='UNACK' && e.prio!=='Journal') horn=true;
       const kt=e.type==='ALARM'?'raise':e.type==='RTN'?'rtn':e.type==='ACK'?'ack':null;
-      if(kt){ this.alarmLog.push({t:e.t,key:e.key,tag:e.tag,cond:e.cond,prio:e.prio,type:kt}); if(this.alarmLog.length>5000) this.alarmLog.splice(0,this.alarmLog.length-5000); }
+      if(kt) this.logKpi(e.t,e,kt);
     }
     if(horn) this.hornNew();
   }
@@ -881,7 +920,7 @@
             this.instrNote('REPLAY REFUSED: canonical drill '+e.tag+' rebuilt at '+this.P.t+' instead of '+e.t+'.'); break;
           }
         }
-        this.startDrill(d,{startMode:e.startMode,preset:e.preset,presetBaseT:e.presetBaseT,applySetup:e.startMode==='CANONICAL'});
+        this.startDrill(d,{startMode:e.startMode,preset:e.preset,presetBaseT:e.presetBaseT,applySetup:e.startMode==='CANONICAL',reveal:e.reveal});
         break;
       }
       case 'DRILLEND': this.endDrill(e.arg||'ENDED BY INSTRUCTOR'); break;
@@ -949,11 +988,20 @@
     d.m.otherTrips=(d.m.otherTrips||0)+1;
     (d.m.otherTripList=d.m.otherTripList||[]).push(src+(cond?' '+cond:''));
   }
+  // The sequence restores every loop it owns to the mode its phase needs (CR41, spec 4.2): FIC211 to AUTO in every active phase, TIC212 to AUTO
+  // wherever the phase table gives the sequence the jacket setpoint (HEATUP to DRAIN; in CHARGE it leaves the jacket loop in MAN by design and
+  // does not touch it). Each restore has its own record. A loop with a bad PV is skipped (the shed path put it in MAN), and so is FIC211 while the
+  // TI216 shed stands (the interlock owns it).
   scmRestoreModes(){
-    const f=this.L.FIC211;
-    if(f.modeAttr!=='PROGRAM' || f.mode==='AUTO' || f.badPv || this.tadShed) return;
-    const r=ESS.Pid.transferMode(f,'AUTO',this.pidCtx());
-    if(r.ok) this.addEvent('SYSTEM','SCM202','FIC211 MODE RESTORED BY SEQUENCE ('+r.from+' → AUTO)',r.from,'AUTO');
+    const ownsJacket=ESS.Models.phaseSetpoints(this.P.b,this.P).TIC212!=null;
+    const restore=(tag)=>{
+      const l=this.L[tag];
+      if(l.modeAttr!=='PROGRAM' || l.mode==='AUTO' || l.badPv) return;
+      const r=ESS.Pid.transferMode(l,'AUTO',this.pidCtx());
+      if(r.ok) this.addEvent('SYSTEM','SCM202',tag+' MODE RESTORED BY SEQUENCE ('+r.from+' → AUTO)',r.from,'AUTO');
+    };
+    if(!this.tadShed) restore('FIC211');
+    if(ownsJacket) restore('TIC212');
   }
   scmPrompts(){
     const ph=this.P.b.phase; if(ph===this._lastPhase) return;
@@ -1244,26 +1292,66 @@
     this.msgZone('REPLAY REFUSED — '+reason);
     this.instrNote('REPLAY REFUSED: '+note);
   }
+  // A preset's settle from a clock: initSim at atTime (today's clock when undefined), the preset's point and
+  // environment set, the batch run to its phase, then its run-forward. Returns the settle's length; null when the
+  // preset is unknown.
+  settle(p,atTime){
+    if(!p) return null;
+    this.initSim(typeof atTime==='number'?atTime:undefined);
+    const start=this.P.t;
+    if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
+    if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
+    if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
+    for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
+    const ms=this.P.t-start;
+    return {ms,seconds:Math.round(ms/1000)};
+  }
   applyPreset(id,opts){
     const p=ESS.Instructor.presets().find(x=>x.id===id); if(!p) return;
     const o=opts||{}, replay=o.preserveReplay?this.instr.replay:null;
     this.instr.replay=null;
     if(this.state.drill) this.setState({drill:null});   // an armed drill must not inject during the run-forward below
-    this.initSim(typeof o.baseTime==='number'?o.baseTime:undefined);
-    if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
-    if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
-    if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
-    for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
-    const snap=this.snapshotData('IC '+p.label); if(!snap) return;
+    // The journal belongs to the session, not to the process state (spec §5.2): lift it out, let the settle run on
+    // a scratch journal, put the session's back after the restore, and record the load as one entry. KPI history
+    // (alarmLog, t0) is session state too; trends (hist) are process data and reset with the IC.
+    const session={events:this.events,msgs:this.msgs,alarmLog:this.alarmLog,eid:this.eid,t0:this.t0};
+    // The load rebuilds the alarm engine but not the KPI history, so the history is brought in step with the engine (CR44): an alarm that was
+    // active and is not in the new engine is closed at the load time (else it would stand in the log for ever), and one the new engine holds
+    // that was not active is opened at its raise time, before the base time. An alarm active on both sides is left as it is, one open episode:
+    // the KPI reads the log in time order, and a return row at the load time would come after the IC's raise row and close it.
+    const loadT=this.P.t, wasLive=this.alarmEngine.list().filter(a=>a.active);
+    // However the load ends, refused or done, the session's journal comes back (spec §5.2) and the history is brought in step.
+    const resume=()=>{
+      this.events=session.events; this.msgs=session.msgs; this.alarmLog=session.alarmLog; this.eid=session.eid; this.t0=session.t0;
+      const live=this.alarmEngine.list().filter(a=>a.active), now=new Set(live.map(a=>a.key)), was=new Set(wasLive.map(a=>a.key));
+      for(const a of wasLive) if(!now.has(a.key)) this.logKpi(loadT,a,'rtn');
+      for(const a of live) if(!was.has(a.key)) this.logKpi(a.t,a,'raise');
+      // A load empties the backtrack ring (CR47): what it holds now is the settle's snapshots, stamped in the minutes before the base time, and the settle
+      // is not history the operator lived. A backtrack into it would restore that plant and trim the session journal and the KPI rows written just above.
+      // The ring starts again with the first scan after the load. Same fields as ESS.Instructor.resetRun, which also clears the journal and the replay.
+      this.instr.ring=[]; this.instr.lastRingT=-Infinity;
+    };
+    // The settle ends at the base time instead of starting there (spec §5.3): a dry settle from 0 measures its
+    // length for this preset and seed (initSim re-seeds from the instructor seed, so the two runs are the same run),
+    // then the real settle runs from baseTime - length and ends exactly at baseTime. Alarms raised during the settle
+    // land in the preceding minutes, like a plant that was already running. With no base time the load is today's.
+    let settled;
+    if(typeof o.baseTime==='number'){
+      const dry=this.settle(p,0);
+      if(!this.snapshotData('IC '+p.label)){ resume(); return; }   // a non-finite settle refuses the load with today's SNAPSHOT REFUSED
+      settled=this.settle(p,o.baseTime-dry.ms);
+    } else settled=this.settle(p,undefined);
+    const snap=this.snapshotData('IC '+p.label); if(!snap){ resume(); return; }
     this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
-    this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase(),'','');
+    resume();
+    this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase()+' (SETTLED '+settled.seconds+' S)','','');
     this.setState({fps:[],unit:p.id.slice(0,2)});
     if(o.preserveReplay) this.instr.replay=replay;
     return true;
   }
   startDrill(d,opts){
     if(this.state.drill){ this.msgZone('DRILL ALREADY ACTIVE'); return; }
-    const o=opts||{}, startMode=o.startMode==='CANONICAL'?'CANONICAL':'LIVE STATE';
+    const o=opts||{}, startMode=o.startMode==='CANONICAL'?'CANONICAL':'LIVE STATE', reveal=o.reveal===true;
     const preset=startMode==='CANONICAL'?(o.preset||d.basePreset||null):null;
     if(startMode==='CANONICAL'&&d.needBatch&&this.P.b.phase==='IDLE') this.seqCmd('START',true);
     // LIVE STATE is literal: arming cannot secretly manufacture a precondition.
@@ -1272,9 +1360,14 @@
     if(!this.dofPreflight('DRILL '+d.id)) return;   // BEFORE the rand() draw below -- see dofPreflight
     const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0,startMode,preset},dlg:null});
-    this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT});
+    this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT,reveal});
+    // The record names the drill only when the trainee chose it by name and upsets are not hidden (CR46): the caller decides, and the journal
+    // keeps the choice so a replay writes the same record. A RANDOM start would otherwise name the fault before it injects.
+    if(startMode==='CANONICAL') this.addEvent('SYSTEM','STN01',reveal?'DRILL '+d.id+' STARTED — '+d.name.toUpperCase()+' — CANONICAL':'DRILL STARTED — CANONICAL','','');
     this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — '+startMode+(preset?' '+preset:'')+' — INJECTION AT '+this.fT(this.P.t+delay));
-    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
+    // The confirm message names the drill under the record's rule too (CR46b): a canonical start only when it is revealed. A LIVE STATE start has no
+    // record and is always the trainee's own pick by name from the menu, so it names the drill as before.
+    if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+(startMode==='CANONICAL'&&!reveal?'':d.id+' ')+'armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }
   startADrill(id,opts){
     const def=ESS.DrillArch.drillById(id);
@@ -1296,7 +1389,7 @@
     if(def) (def.faultTimeline||[]).forEach(step=>this.aDrillClear(step));
     const score=ESS.DrillArch.scoreDrill(d.id,d.events.slice());
     const rec=this.aDrillRecordShape(score);
-    this._lastADrill=rec;
+    this._lastADrill=Object.assign({startedAt:d.startedAt},rec);   // startedAt: the debrief of an ended drill still starts at the drill (CR45)
     if(!this._replayApplying){
       ESS.Training.addRecord(this.trainingRecords,ESS.Training.recordFor(this.operName(),d.id,def?def.traineeTitle:d.id,rec,this.P.t,reason),20);
       this.taskDone('abn.drill'); if(rec.pass) this.taskDone('abn.pass');
@@ -1481,6 +1574,11 @@
     const I=ESS.Instructor;
     this.materialMode=snap.materialMode;this.composition=I.clone(snap.composition);this.product=I.clone(snap.product);
     this.P=I.clone(snap.P); this.L=I.clone(snap.L); this.V=I.clone(snap.V);
+    this.setFlowCutoffs();
+    // _lastADrill is not a snapshot key. A slot or backtrack restore to before an ended architecture drill's start leaves a drill that is not this
+    // timeline's: its debrief window would reopen once the clock passed that start and its score would show meanwhile, so it is dropped here (CR49).
+    // A restore to at or after the start keeps it: the drill happened on this timeline.
+    if(this._lastADrill&&typeof this._lastADrill.startedAt==='number'&&this._lastADrill.startedAt>this.P.t) this._lastADrill=null;
     this.plausibility=snap.plausibility?I.clone(snap.plausibility):ESS.Plausibility.create(this.P);
     // A snapshot taken before V3-PLAN S2 (or an older ring/slot entry) predates this field;
     // absence means all-healthy, the same pattern the architecture-view addendum uses

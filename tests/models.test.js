@@ -286,3 +286,116 @@ test('module works without the optional ctx callbacks and attaches ESS.Models as
   assert.equal(typeof root.ESS.Models.stepU1, 'function');
   assert.deepEqual(Object.keys(root.ESS.Models).sort(), Object.keys(Models).sort());
 });
+
+// ---- credibility pass S2: HOLD freezes, ownership is one rule (spec §4.1, §4.2; playtest D3, D6) ----
+
+test('phaseSetpoints: the sequence owns FIC211 20 in FEED (0 under the batch trip) and 0 elsewhere; TIC212 80 in HEATUP/FEED/REACT, 40 in COOL/DRAIN, none in CHARGE/IDLE', () => {
+  const P = Models.createState(0);
+  const at = (phase, trip) => { P.b.phase = phase; P.trips.batch = !!trip; return Models.phaseSetpoints(P.b, P); };
+  assert.deepEqual(at('IDLE'), { FIC211: 0, TIC212: null });
+  assert.deepEqual(at('CHARGE'), { FIC211: 0, TIC212: null });
+  assert.deepEqual(at('HEATUP'), { FIC211: 0, TIC212: 80 });
+  assert.deepEqual(at('FEED'), { FIC211: 20, TIC212: 80 });
+  assert.deepEqual(at('FEED', true), { FIC211: 0, TIC212: 80 });
+  assert.deepEqual(at('REACT'), { FIC211: 0, TIC212: 80 });
+  assert.deepEqual(at('COOL'), { FIC211: 0, TIC212: 40 });
+  assert.deepEqual(at('DRAIN'), { FIC211: 0, TIC212: 40 });
+});
+
+test('HOLD during CHARGE freezes the sequence: timer, level and phase unchanged over 120 s, no PHASE event; the first scan after RESUME continues from where it stopped (D3, spec 4.1)', () => {
+  const { c, tick } = rig(4);
+  c.seqCmd('START', true);
+  for (let i = 0; i < 20; i++) tick();                 // 10 s into CHARGE: level 12 + 5
+  assert.equal(c.P.b.phase, 'CHARGE');
+  assert.equal(c.P.b.pt, 10);
+  assert.equal(c.P.b.lvl, 17);
+  const phaseEvents = () => c.events.filter((e) => /PHASE →/.test(e.desc)).length;
+  const n = phaseEvents();
+  c.P.b.held = true;
+  for (let i = 0; i < 240; i++) tick();                // 120 s held
+  assert.equal(c.P.b.phase, 'CHARGE');
+  assert.equal(c.P.b.pt, 10, 'the phase timer does not advance while held');
+  assert.equal(c.P.b.lvl, 17, 'CHARGE does not raise the level while held');
+  assert.equal(phaseEvents(), n, 'no transition fires while held');
+  c.P.b.held = false;
+  tick();
+  assert.equal(c.P.b.pt, 10.5);
+  assert.equal(c.P.b.lvl, 17.25);
+});
+
+test('HOLD during DRAIN freezes the drain: the level does not fall and IDLE is not reached while held', () => {
+  const { c, tick } = rig(4);
+  c.seqCmd('START', true);
+  c.P.b.phase = 'DRAIN'; c.P.b.pt = 0; c.P.b.lvl = 30; c.P.b.held = true;
+  for (let i = 0; i < 100; i++) tick();                // 50 s: a running drain would have reached 10 and gone IDLE
+  assert.equal(c.P.b.phase, 'DRAIN');
+  assert.equal(c.P.b.lvl, 30);
+  c.P.b.held = false;
+  tick();
+  assert.equal(c.P.b.lvl, 29.6);
+});
+
+test('ownership is one rule per loop (D6, spec 4.2, CR48): FIC211 is PROGRAM in every active phase while running, TIC212 only where the phase table owns its jacket setpoint (not CHARGE); both are OPERATOR one scan after HOLD and when IDLE', () => {
+  const { c, tick } = rig(4);
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  c.seqCmd('START', true); tick();
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'CHARGE is an active phase: the sequence writes the feed setpoint every scan');
+  assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'but it owns no jacket setpoint there (phaseSetpoints gives null), so the loop is the operator\'s');
+  // the flip is the scan that enters HEATUP and no scan before it
+  for (let i = 0; i < 600 && c.P.b.phase === 'CHARGE'; i++) {
+    tick();
+    if (c.P.b.phase === 'CHARGE') assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'CHARGE scan ' + i);
+  }
+  assert.equal(c.P.b.phase, 'HEATUP');
+  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM', 'PROGRAM on the scan that enters HEATUP');
+  assert.equal(c.L.TIC212.mode, 'AUTO'); assert.equal(c.L.TIC212.sp, 80);
+  for (const phase of ['HEATUP', 'FEED', 'REACT', 'COOL', 'DRAIN']) {
+    c.P.b.phase = phase; c.P.b.pt = 0; c.P.b.lvl = 50;
+    if (phase === 'REACT') c.P.b.Cm = 10;      // above the REACT → COOL threshold (2): the scan ends in REACT, not COOL
+    if (phase === 'COOL') c.P.b.T = 60;        // above the COOL → DRAIN threshold (45): the scan ends in COOL, not DRAIN
+    tick();
+    assert.equal(c.P.b.phase, phase, 'the scan ends in the phase under test');
+    assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', phase); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM', phase);
+    assert.notEqual(Models.phaseSetpoints(c.P.b, c.P).TIC212, null, phase + ': the table owns the jacket setpoint exactly where the loop reads PROGRAM');
+  }
+  assert.equal(Models.phaseSetpoints({ phase: 'CHARGE' }, c.P).TIC212, null);
+  assert.equal(Models.phaseSetpoints({ phase: 'IDLE' }, c.P).TIC212, null);
+  c.P.b.phase = 'FEED'; c.P.b.lvl = 50;
+  c.P.b.held = true;
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'the attribute follows on the next scan');
+  tick();
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  c.P.b.held = false; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM'); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  // a hold in CHARGE: both are the operator's; RESUME gives the sequence the feed loop and not the jacket loop
+  c.P.b.phase = 'CHARGE'; c.P.b.pt = 0; c.P.b.lvl = 20; c.P.b.held = true; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  c.P.b.held = false; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'RESUME in CHARGE does not take the jacket loop');
+  c.P.b.phase = 'IDLE'; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+});
+
+test('while held the sequence writes no setpoint: FIC211.sp and TIC212.sp survive the scan; running again it writes the phase feed setpoint', () => {
+  const { c, tick } = rig(4);
+  c.seqCmd('START', true);
+  c.P.b.phase = 'FEED'; c.P.b.pt = 0; c.P.b.lvl = 50; tick();
+  assert.equal(c.L.FIC211.sp, 20);
+  c.P.b.held = true; tick();
+  c.L.FIC211.sp = 5; c.L.TIC212.sp = 77;
+  for (let i = 0; i < 20; i++) tick();
+  assert.equal(c.L.FIC211.sp, 5, 'an operator setpoint during the hold is honoured');
+  assert.equal(c.L.TIC212.sp, 77);
+  c.P.b.held = false; tick();
+  assert.equal(c.L.FIC211.sp, 20, 'the sequence owns the feed setpoint again');
+  assert.equal(c.L.TIC212.sp, 77, 'the model re-asserts the jacket setpoint only at a transition; RESUME (Task 2) re-asserts it from the table');
+});
+
+test('the transitions still set the jacket from the table: CHARGE → HEATUP puts TIC212 in AUTO at 80, REACT → COOL at 40', () => {
+  const { c, tick } = rig(4);
+  c.seqCmd('START', true);
+  c.P.b.lvl = 39.9; tick();
+  assert.equal(c.P.b.phase, 'HEATUP'); assert.equal(c.L.TIC212.mode, 'AUTO'); assert.equal(c.L.TIC212.sp, 80);
+  c.P.b.phase = 'REACT'; c.P.b.Cm = 1; tick();
+  assert.equal(c.P.b.phase, 'COOL'); assert.equal(c.L.TIC212.sp, 40);
+});

@@ -92,12 +92,24 @@ test('every golden listed as re-captured since v2 really differs from its archiv
   // Mechanisms that moved no golden: the R-202 trip rows (FIC211, TIC213), because no fixture reaches that trip, and drill D4's
   // 'restore' stability rule (CR11), because the goldens are unattended runs that never acknowledge, so none reaches a
   // stability verdict; spec 11 also expected upset-stick to saturate TIC202, and its run never does.
+  //
+  // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): two of the 21 moved again, and no other did, so those two lines carry the S2
+  // reasons beside the S1 ones. Measured field by field against the S1 head (adeb18a): each end state differs from it in exactly the leaves named
+  // here, and the mechanisms were switched off one at a time in a scratch tree while the stage was built.
+  //   OWNERSHIP  FIC211 reads PROGRAM in every active phase while the sequence runs, TIC212 where the table owns its jacket setpoint (HEATUP to DRAIN, CR48), and both read OPERATOR while held or idle (spec 4.2, CR41):
+  //              a batch the TI216 shed holds in FEED ends with TIC212 OPERATOR where it read PROGRAM.
+  //   FREEZE     a held batch stands still (spec 4.1): the phase timer, the transitions and the charge and drain levels stop. The shed holds the batch
+  //              in FEED in both runs, and its phase timer used to run on (batch.pt 746 -> 90 in drill-D11, 300 -> 91.5 in upset-agit-batch).
+  // Nothing else in either end state moved, and neither run's alarm order, step count, event count or score did. The third S2 mechanism, SPCUTOFF
+  // (CR40, CR40b), moves only arch/A5, which is not in the v2 archive. drill-D4 and upset-cool were red under CR40 as first ruled (FIC102, a cascade
+  // secondary, was held shut for four or five scans as the R-201 trip released); CR40b exempts a cascade secondary and both are back at their S1
+  // digests, so they carry no S2 reason.
   const KNOWN_RECAPTURED = [
     'drill-D12.json',        // 3.1.0 fixed-bed floor; S1: CUTOFF, ILK-BED (score 10 -> 16, alarm load 14.2 -> 5 per 10 min)
     'upset-air.json',        // 3.1.0 fixed-bed floor; S1: CUTOFF
     'upset-bedact.json',     // 3.1.0 fixed-bed floor; S1: CUTOFF, ILK-BED (TIC311:PVHI no longer raised, events 37 -> 14)
     'drill-D1.json',         // CUTOFF
-    'drill-D11.json',        // CUTOFF, MARGIN
+    'drill-D11.json',        // CUTOFF, MARGIN; S2: OWNERSHIP, FREEZE (batch.pt 746 -> 90, TIC212 OPERATOR while held)
     'drill-D2.json',         // CUTOFF, MARGIN
     'drill-D3.json',         // CUTOFF (also FIC102's), PUMP
     'drill-D4.json',         // CUTOFF (also FIC102's), SAT, ILK-RX (alarm load 78.3 -> 26.7 per 10 min, events 197 -> 72; score unchanged).
@@ -106,7 +118,7 @@ test('every golden listed as re-captured since v2 really differs from its archiv
                              // trip clears instead of surging at once
     'drill-D6.json',         // CUTOFF, MARGIN
     'drill-D9.json',         // CUTOFF, MARGIN
-    'upset-agit-batch.json', // CUTOFF
+    'upset-agit-batch.json', // CUTOFF; S2: OWNERSHIP, FREEZE (batch.pt 300 -> 91.5, TIC212 OPERATOR while held)
     'upset-agit.json',       // CUTOFF
     'upset-cool.json',       // CUTOFF (also FIC102's), SAT, ILK-RX (FIC102:PVHI no longer raised, events 31 -> 57)
     'upset-drift.json',      // CUTOFF
@@ -145,9 +157,26 @@ test('every golden listed as re-captured since 3.1.0 really differs from its 3.1
   // Reason codes as in KNOWN_RECAPTURED above (credibility pass S1, 2026-10-04): 35 of the 40 moved, all by the CUTOFF at least.
   // The five Unit 04 goldens (u4/) are deliberately absent: none of the S1 mechanisms reaches them, so the check below proves them
   // byte-identical instead of listing them.
+  //
+  // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): three of the 35 moved again; the other 32 and the five Unit 04 goldens did not.
+  // Measured field by field against the S1 head (adeb18a), and by switching the mechanisms off one at a time in a scratch tree while the stage was
+  // built. Reason codes as above, plus three:
+  //   OWNERSHIP  FIC211 reads PROGRAM in every active phase while the sequence runs, TIC212 where the table owns its jacket setpoint (HEATUP to DRAIN, CR48), and both read OPERATOR while held or idle (spec 4.2, CR41).
+  //              Where it shows: a batch the TI216 shed holds in FEED ends with TIC212 OPERATOR (drill-D11, upset-agit-batch), and arch/A5, which
+  //              ends in REACT, has FIC211 PROGRAM where it read OPERATOR (the old rule was FEED only).
+  //   FREEZE     a held batch stands still (spec 4.1): the phase timer, the transitions and the charge and drain levels stop (drill-D11: batch.pt
+  //              746 -> 90; upset-agit-batch: 300 -> 91.5). Those two moved in exactly these two leaves, FREEZE and OWNERSHIP, and nothing else.
+  //   SPCUTOFF   a flow loop in AUTO whose setpoint is at or below its low-flow cutoff drives its output to the low limit (CR40; a cascade secondary
+  //              following its master is exempt, CR40b). arch/A5's run ends in REACT, where the sequence writes the feed setpoint 0 every scan and the
+  //              loop used to leave a trickle running under its own cutoff (FIC211 OP 1.97, MV-211 2.3 % open); the valve is now shut, and the monomer
+  //              inventory, conversion and temperatures follow: 18 leaves in all, OWNERSHIP's attribute one of them.
+  // A5's health digest, score (65), pass flag and event count did not move, and the 13 other arch fixtures did not move at all: they count the
+  // A-drill's own events, not the session journal, so spec 5.2's journal rule reaches none of them. drill-D4 and upset-cool were red under CR40 as
+  // first ruled (FIC102, a cascade secondary, was held shut for four or five scans as the R-201 trip released); CR40b exempts a cascade secondary
+  // and both are back at their S1 digests, so they carry no S2 reason.
   const KNOWN_RECAPTURED_SINCE_31 = [
     'drill-D1.json',         // CUTOFF
-    'drill-D11.json',        // CUTOFF (steps 4021 -> 4023), MARGIN
+    'drill-D11.json',        // CUTOFF (steps 4021 -> 4023), MARGIN; S2: OWNERSHIP, FREEZE (batch.pt 746 -> 90, TIC212 OPERATOR while held)
     'drill-D12.json',        // CUTOFF, ILK-BED (score 10 -> 16, alarm load 14.2 -> 5 per 10 min, events 45 -> 15)
     'drill-D2.json',         // CUTOFF, MARGIN
     'drill-D3.json',         // CUTOFF (also FIC102's), PUMP (outcome unchanged: score 13, TK-101 overflow trip; FIC102 ends at OP 0, not 100)
@@ -157,7 +186,7 @@ test('every golden listed as re-captured since 3.1.0 really differs from its 3.1
                              // trip clears instead of surging at once
     'drill-D6.json',         // CUTOFF, MARGIN
     'drill-D9.json',         // CUTOFF, MARGIN
-    'upset-agit-batch.json', // CUTOFF
+    'upset-agit-batch.json', // CUTOFF; S2: OWNERSHIP, FREEZE (batch.pt 300 -> 91.5, TIC212 OPERATOR while held)
     'upset-agit.json',       // CUTOFF
     'upset-air.json',        // CUTOFF
     'upset-bedact.json',     // CUTOFF, ILK-BED (TIC311:PVHI no longer raised, events 37 -> 14)
@@ -175,7 +204,7 @@ test('every golden listed as re-captured since 3.1.0 really differs from its 3.1
     'arch/A2.json',          // CUTOFF
     'arch/A3.json',          // CUTOFF
     'arch/A4.json',          // CUTOFF
-    'arch/A5.json',          // CUTOFF
+    'arch/A5.json',          // CUTOFF; S2: OWNERSHIP, SPCUTOFF (physics digest only: FIC211 PROGRAM in REACT, and its feed valve shut at SP 0 instead of a trickle)
     'arch/A6.json',          // CUTOFF
     'arch/A6_gated.json',    // CUTOFF
     'arch/A7.json',          // CUTOFF

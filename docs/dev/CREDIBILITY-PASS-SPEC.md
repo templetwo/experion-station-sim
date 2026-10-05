@@ -183,6 +183,53 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   stored value, every reader takes `Number(arg)` or prints it, and a target band stored at an
   edge replays as stored.
 
+Stage S2 (2026-10-04 onward), same numbering:
+
+- **CR40.** A flow loop whose setpoint is at or below its low-flow cutoff drives its output to the low
+  limit, so a zero setpoint means no flow, not no error: `stepPid` applies it through a `spCutoff` field
+  the plant core sets on every M3/H PID loop from the §2.2 cutoff (1 % of span), with the integrator
+  tracked for a bumpless return; PV tracking does not apply inside the shutoff (the setpoint is the
+  stop instruction). Found when S2's HOLD wrote the feed setpoint to 0 and the feed still trickled on
+  at 0.3 M3/H under the cutoff; the same dead zone had let monomer trickle in after FEED ended.
+- **CR40b.** The shutoff applies to a loop that owns its setpoint (AUTO); a cascade secondary following
+  its master is exempt, because its setpoint is the master's demand passing through the band on a
+  cascade return, not an instruction to stop.
+- **CR41.** The sequence restores every loop it owns to the mode its phase needs: FIC211 to AUTO in
+  every active phase, TIC212 to AUTO wherever the phase table owns its setpoint, each with its MODE
+  RESTORED BY SEQUENCE event.
+- **CR42.** Alarm-help actions that direct a write to a PROGRAM-owned loop during a batch say to HOLD
+  the sequence first; the loops are the operator's while held.
+- **CR43.** The batch trip clears the hold where it forces COOL (from HEATUP, FEED or REACT): that
+  forced COOL is the plant taking the sequence over, so
+  the phase timer runs in COOL, the button reads HOLD, and the trip card's "resumes in COOL when the
+  trip clears" stays true. The setpoint shutoff (CR40) shows no saturation card: a valve the loop
+  closed on purpose is not a disturbance exceeding it.
+- **CR44.** An initial-condition load closes the session's KPI history for the alarms active at the
+  moment of the load (one return row each at the load time) and opens it for the alarms the settle
+  left active (one raise row each at its raise time), so KPI windows survive a load without phantom
+  standing alarms; an alarm active on both sides of a load continues, with no row either way.
+- **CR45.** The architecture-drill debrief is windowed to the drill: events from the drill's start, KPI
+  alarm rows strictly after it (CR44's return rows are stamped at the load time, which is the drill's
+  own start on the menu path), and the action journal, the fault timeline and the DOF note rows
+  windowed the same way, relative times from that instant.
+- **CR46.** The trainee-visible canonical start record names the drill only when the trainee chose it
+  by name; a random start, or one made while the instructor is hidden, records `DRILL STARTED —
+  CANONICAL`; replay carries the same choice. The "drill armed" instructor message follows the same
+  rule (CR46b).
+- **CR47.** An initial-condition load empties the backtrack ring: a backtrack never crosses a load into
+  the settle (not operable history), so the KPI rows written at the load cannot be trimmed away; the
+  slots are unaffected.
+- **CR48.** TIC212 is program-owned only where the phase table owns its jacket setpoint (HEATUP to
+  DRAIN); in CHARGE and IDLE it reads OPERATOR, so a change the operator makes during a CHARGE hold is
+  not locked in at RESUME; the sequence takes the loop at HEATUP (the transition's own AUTO write at the
+  table's setpoint, not a CR41 restore). §4.2 amended.
+- **CR49.** A slot or backtrack restore to before an architecture drill's start drops that drill
+  (`_lastADrill`, which is not a snapshot key): the debrief is the session's, cannot re-window on the
+  abandoned start once the clock passes it, and shows no stale score. A restore to at or after the
+  start keeps it. Not a snapshot key still: a restore to after one drill and before the next does not
+  bring the earlier drill's debrief back.
+- *CR39 is a process ruling (the Task 1 push waited for Task 2), recorded in the S2 ledger only.*
+
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
 - A saturation cue on the graphic that does not sit under text (CR12b).
@@ -211,6 +258,18 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
   no finiteness check (pre-existing; journals and replays identically).
 - `setTargetBand`'s refusal prints the band edges at the point's decimals ("140.0 TO 168.0" against a
   168.0006 limit) where the CR35 message prints exact edges (cosmetic).
+- CR44's retroactive raise rows survive an instructor slot restore to inside the settle window (an
+  alarm the engine no longer holds stays standing in the KPI), and an earlier episode of the same key
+  ending inside that window would close the live one; both unreachable with the shipped presets (none
+  leaves an alarm standing after its settle); fix together.
+- A refused dry settle leaves the plant settled at the epoch with the session journal restored; a
+  capture-and-rollback around the dry settle would also cover the menu callers that ignore the load's
+  return value (unreachable with the shipped presets).
+- An initial-condition load during an armed drill clears it silently (pre-existing); a load should end
+  an armed drill with a reason.
+- `_lastADrill` is not a snapshot key. A restore to before a drill's start drops it (CR49); a restore
+  to after one drill's end and before the next drill's start keeps nothing of the earlier drill, whose
+  debrief the later one overwrote.
 - An idle 'alarms' drill can end STABILIZED beside a trip (cross-drill semantics since 3.1.0; the
   trip row already scores it). No test resolves the measurement module's RESOURCES citations (all
   four exist today).
@@ -362,12 +421,14 @@ Equipment goes to its hold state once, at the HOLD command in `seqCmd`: the feed
 The jacket keeps holding temperature at its current setpoint. RESUME re-asserts the phase's
 setpoints. The HOLD button reads RESUME while held.
 
-4.2 **Ownership honest.** FIC211 and TIC212 carry `modeAttr: 'PROGRAM'` in every active phase
-while not held, because the sequence writes their setpoints. On HOLD both go to `OPERATOR` on the
+4.2 **Ownership honest.** FIC211 carries `modeAttr: 'PROGRAM'` in every active phase while not
+held, and TIC212 in the phases whose jacket setpoint the sequence owns (HEATUP to DRAIN; in CHARGE
+and IDLE it is the operator's, CR48), because the sequence writes their setpoints there. On HOLD both go to `OPERATOR` on the
 next scan and the sequence stops writing them until RESUME, so an operator setpoint during a hold
 is honoured. This keeps the M202-trip advice and `tests/app-models.test.js` ("HOLD the sequence",
 attribute `OPERATOR` on the next scan) as designed. Under PROGRAM an operator write is refused
-with the existing mode-attribute message and nothing is journaled (D6's second half).
+with the existing mode-attribute message and no change is journaled; the refusal's own
+`WRITE REJECTED` record is the existing path (as §3.3) (D6's second half).
 
 4.3 **Trips.** `P.trips.batch` keeps zeroing the feed and forcing MV211 and JV213; with §3 the
 two loops show `INTERLOCK · R-202 HI TEMP TRIP` while it holds.
@@ -384,7 +445,9 @@ that fresh journal (`events`, `msgs`, `eid`, `alarmLog`, `t0` are snapshot keys)
 lifts `events`, `msgs`, `alarmLog`, `eid` and `t0` out before `initSim()`, discards the settle's
 internal entries, puts the session journal back after `restoreSnapshot()`, keeps `eid` counting,
 and appends one record: `INITIAL CONDITION LOADED — <PRESET> (SETTLED <n> S)`. A canonical drill
-start appends a trainee-visible `DRILL <id> STARTED — <name> — CANONICAL` record. KPI windows and
+start appends a trainee-visible `DRILL <id> STARTED — <name> — CANONICAL` record when the trainee
+chose the drill by name; a random start, or one made while the instructor is hidden, records
+`DRILL STARTED — CANONICAL` without the name (CR46). KPI windows and
 the bad-actor history survive. Trends (`hist`) reset with the IC: they are process data, and the
 report did not ask otherwise. The instructor's own snapshot restore (ring and slots) keeps today's
 semantics, a rewind of the journal to the snapshot's time, because replay and release gate 3
@@ -622,6 +685,32 @@ not a re-capture. Because the cutoff moves every fixture, the stage's closing ta
 3.1.0 fixtures (as of `1f0147e`) under `tests/fixtures/v31-baseline/`, and the archive guard compares the
 live goldens against that baseline too, each S1 mover listed with its reasons, so "what moved since
 3.1.0" stays answerable; the v2 archive is untouched (CR10).
+
+Measured at the close of S2 (2026-10-04, Task 6): each end state compared leaf by leaf with the S1 head
+(`adeb18a`), and the mechanisms switched off one at a time in a scratch tree while Tasks 1 and 2 were
+built. Three fixtures moved, all three in the table's expectation, each for more than the table named,
+and no other did. **drill-D11 and upset-agit-batch** move in exactly two leaves each: `batch.pt`
+(746 to 90, and 300 to 91.5), the §4.1 freeze (the TI216 shed holds the batch in FEED in both runs,
+and its phase timer used to run on), and TIC212's attribute (PROGRAM to OPERATOR), §4.2 ownership (a
+held batch is the operator's); alarm order, step count, event count and score are unchanged.
+**arch A5** (its base preset is U2_REACT) moves in its physics digest only, 18 leaves: FIC211's
+attribute (OPERATOR to PROGRAM, since REACT is an active phase and the old rule was FEED only) and the
+feed valve, which the CR40 setpoint shutoff now closes at the sequence's SP 0 where the loop left a
+trickle running through REACT (FIC211 OP 1.97 to 0, MV-211 2.3 % open to shut), the monomer inventory
+(12.24 to 7.08), the conversion and the temperatures following; its health digest, score (65), pass
+flag and event count did not move. The guards name the three mechanisms `OWNERSHIP`, `FREEZE` and
+`SPCUTOFF`. The review wave's CR48 (TIC212 the operator's in CHARGE and IDLE) moved no fixture: the
+three movers end held in FEED or in REACT, where TIC212 reads as before. Did not move: drill-D4 and upset-cool, which were red under CR40 as first ruled (FIC102, a
+cascade secondary under LIC101, was held shut for four or five scans as the R-201 trip released and its
+demand passed up through the 0 to 1.2 M3/H band) and are back at their S1 digests under CR40b, which
+exempts a cascade secondary; the 13 other arch fixtures, because the arch driver counts the A-drill's own
+events (`P.aDrill.events`), never the session journal, so §5.2's journal rule reaches none of them (the
+plan allowed that it might); the D-series goldens, which start from live state with no load or start
+record; the five Unit 04 goldens, which nothing in §4 or §5 reaches (the guard proves them byte-identical
+and `tests/golden-u4.test.js` was never run under `UPDATE_GOLDENS`); and every other mover of S1. CR42
+(the alarm help) and CR43 (the trip clearing the hold) moved no fixture, nor did the load's records, CR44
+to CR47, the settle ending at the base time or the SIM label; CR41's restore belongs to the ownership
+mechanism and leaves no leaf of its own in any end state.
 
 ---
 

@@ -228,7 +228,7 @@ test('a canonical D start replays when the sim clock is nowhere near the wall cl
   c.setState({ dlg: { type: 'drills' } });
   c.renderVals().dg.drills.find((x) => x.id === 'D1').canonicalCb();
   const live = { t: c.P.t, preset: c.state.drill.preset, mode: c.state.drill.startMode };
-  assert.equal(live.t - 1700000000000, 120000, 'U1_SS runs forward 120 s and that is the only clock movement');
+  assert.equal(live.t - 1700000000000, 0, 'the settle ends at the base time (spec §5.3): the canonical start moves the sim clock by nothing');
   c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 60);   // two JOURNALED trainee actions after the start
   for (let i = 0; i < 20; i++) c.step(0.5);
   const liveTraj = trajectory(c);
