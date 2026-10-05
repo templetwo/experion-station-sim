@@ -214,7 +214,11 @@ Stage S2 (2026-10-04 onward), same numbering:
   windowed the same way, relative times from that instant.
 - **CR46.** The trainee-visible canonical start record names the drill only when the trainee chose it
   by name; a random start, or one made while the instructor is hidden, records `DRILL STARTED —
-  CANONICAL`; replay carries the same choice.
+  CANONICAL`; replay carries the same choice. The "drill armed" instructor message follows the same
+  rule (CR46b).
+- **CR47.** An initial-condition load empties the backtrack ring: a backtrack never crosses a load into
+  the settle (not operable history), so the KPI rows written at the load cannot be trimmed away; the
+  slots are unaffected.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
