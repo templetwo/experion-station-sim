@@ -1287,19 +1287,34 @@
     this.msgZone('REPLAY REFUSED — '+reason);
     this.instrNote('REPLAY REFUSED: '+note);
   }
+  // A preset's settle from a clock: initSim at atTime (today's clock when undefined), the preset's point and
+  // environment set, the batch run to its phase, then its run-forward. Returns the settle's length; null when the
+  // preset is unknown.
+  settle(p,atTime){
+    if(!p) return null;
+    this.initSim(typeof atTime==='number'?atTime:undefined);
+    const start=this.P.t;
+    if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
+    if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
+    if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
+    for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
+    const ms=this.P.t-start;
+    return {ms,seconds:Math.round(ms/1000)};
+  }
   applyPreset(id,opts){
     const p=ESS.Instructor.presets().find(x=>x.id===id); if(!p) return;
     const o=opts||{}, replay=o.preserveReplay?this.instr.replay:null;
     this.instr.replay=null;
     if(this.state.drill) this.setState({drill:null});   // an armed drill must not inject during the run-forward below
-    this.initSim(typeof o.baseTime==='number'?o.baseTime:undefined);
-    if(p.set&&p.set.L) for(const tag in p.set.L) Object.assign(this.L[tag],p.set.L[tag]);
-    if(p.set&&p.set.env) Object.assign(this.P.env,p.set.env);
-    if(p.batch){ this.seqCmd('START',true); const max=(p.maxRun||3600)*2; for(let i=0;i<max;i++){ this.step(0.5); if(this.P.b.phase===p.waitPhase&&(p.waitLvl==null||this.P.b.lvl>=p.waitLvl)) break; } }
-    for(let i=0;i<(p.run||0)*2;i++) this.step(0.5);
+    // The journal belongs to the session, not to the process state (spec §5.2): lift it out, let the settle run on
+    // a scratch journal, put the session's back after the restore, and record the load as one entry. KPI history
+    // (alarmLog, t0) is session state too; trends (hist) are process data and reset with the IC.
+    const session={events:this.events,msgs:this.msgs,alarmLog:this.alarmLog,eid:this.eid,t0:this.t0};
+    const settled=this.settle(p,o.baseTime);
     const snap=this.snapshotData('IC '+p.label); if(!snap) return;
     this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
-    this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase(),'','');
+    this.events=session.events; this.msgs=session.msgs; this.alarmLog=session.alarmLog; this.eid=session.eid; this.t0=session.t0;
+    this.addEvent('SYSTEM','STN01','INITIAL CONDITION LOADED — '+p.label.toUpperCase()+' (SETTLED '+settled.seconds+' S)','','');
     this.setState({fps:[],unit:p.id.slice(0,2)});
     if(o.preserveReplay) this.instr.replay=replay;
     return true;
@@ -1316,6 +1331,7 @@
     const delay=8000+this.modelCtx().rand()*7000;
     this.setState({drill:{def:d,t0:this.P.t,ti:this.P.t+delay,injected:false,m:{},stableFor:0,startMode,preset},dlg:null});
     this.journal('DRILL',d.id,'',{instr:true,startMode,preset,presetBaseT:o.presetBaseT});
+    if(startMode==='CANONICAL') this.addEvent('SYSTEM','STN01','DRILL '+d.id+' STARTED — '+d.name.toUpperCase()+' — CANONICAL','','');
     this.instrNote('DRILL '+d.id+' ARMED — '+d.name.toUpperCase()+' — '+startMode+(preset?' '+preset:'')+' — INJECTION AT '+this.fT(this.P.t+delay));
     if(!this.instr.hidden) this.postMsg('INSTRUCTOR: drill '+d.id+' armed — confirm you are at the console',{confirm:true,src:'INSTR'});
   }

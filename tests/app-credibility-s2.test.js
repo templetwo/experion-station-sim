@@ -390,3 +390,79 @@ test('CR43: a batch trip during a hold clears the hold: COOL runs, the timer adv
   assert.equal(c.renderVals().batch.phase, 'COOL', 'running COOL, not HELD · COOL');
   assert.ok(run(c, 3600, () => c.P.b.phase === 'DRAIN'), 'COOL completes into DRAIN with nobody pressing RESUME');
 });
+
+test('D4: an initial-condition load keeps the session journal: one record is appended, ids stay unique, eid keeps counting, the KPI history and t0 survive, the settle\'s internal entries are discarded, trends hold only the settle', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 60);
+  c.setMode('TIC202', 'MAN'); c.storeEntry('TIC202', 'OP', 40); c.setMode('TIC202', 'AUTO');
+  const before = c.events.length, eid = c.eid, t0 = c.t0, log = c.alarmLog.length, first = c.events[c.events.length - 1].id;
+  const base = c.P.t;
+  c.applyPreset('U1_SS', { baseTime: base });
+  assert.equal(c.events.length, before + 1);
+  assert.equal(c.events[0].desc, 'INITIAL CONDITION LOADED — U1 STEADY STATE (SETTLED 120 S)');
+  assert.equal(c.events[0].type, 'SYSTEM');
+  assert.equal(c.events[0].id, eid);
+  assert.equal(c.eid, eid + 1);
+  assert.equal(new Set(c.events.map((e) => e.id)).size, c.events.length, 'event ids unique');
+  assert.equal(c.events[c.events.length - 1].id, first, 'the session\'s first record is still there');
+  assert.equal(c.events.filter((e) => /OPERATOR STATION STARTED/.test(e.desc)).length, 1, 'no second station start');
+  assert.ok(c.events.some((e) => e.src === 'TIC202' && e.desc === 'OP CHANGE'), 'the operator\'s own actions survive');
+  assert.ok(!c.events.some((e) => /^INITIAL CONDITION LOADED: /.test(e.desc)), 'the restore\'s own log line is the instructor\'s, not an event');
+  assert.equal(c.t0, t0);
+  assert.equal(c.alarmLog.length, log);
+  // The window is the 120 s settle ending at the clock after the load: Task 4 moves that end back to the base time.
+  for (const tag of Object.keys(c.hist)) for (const [t] of c.hist[tag]) assert.ok(t >= c.P.t - 120000 && t <= c.P.t, tag + ': trends reset with the IC and hold only the settle');
+});
+
+test('D4: a batch preset load discards the settle\'s PHASE records and keeps the session\'s', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  const before = c.events.length;
+  c.applyPreset('U2_REACT', { baseTime: c.P.t });
+  assert.equal(c.events.length, before + 1);
+  assert.ok(!c.events.some((e) => /PHASE →/.test(e.desc)));
+  assert.equal(c.P.b.phase, 'REACT');
+  assert.match(c.events[0].desc, /^INITIAL CONDITION LOADED — U2 BATCH REACT \(SETTLED \d+ S\)$/);
+});
+
+test('D4: a canonical drill start appends a trainee-visible record after the load record and keeps everything before it', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  const before = c.events.length;
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'canonical');
+  assert.equal(c.events.length, before + 2);
+  assert.equal(c.events[1].desc, 'INITIAL CONDITION LOADED — U1 STEADY STATE (SETTLED 120 S)');
+  assert.equal(c.events[0].desc, 'DRILL D3 STARTED — FEED PUMP TRIP — CANONICAL');
+  assert.equal(c.events[0].type, 'SYSTEM');
+  assert.ok(c.state.drill && c.state.drill.startMode === 'CANONICAL');
+});
+
+test('a LIVE STATE drill start appends no load record and no canonical record', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  const before = c.events.length;
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D3'), 'live');
+  assert.equal(c.events.length, before);
+});
+
+// Review Focus 3: the other readers of the session journal across a load.
+test('other readers: a slot saved before an IC load restores to the slot\'s time (the load lies after it and is rewound away), eid keeps counting after the restore, and the debrief timeline builds', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.saveSlot(1, 'before');
+  run(c, 30);
+  const base = c.P.t;
+  c.applyPreset('U1_SS', { baseTime: base });
+  const eid = c.eid;
+  c.restoreSlot(1);
+  assert.ok(c.events.every((e) => e.t <= c.P.t));
+  assert.ok(!c.events.some((e) => /INITIAL CONDITION LOADED/.test(e.desc)), 'the slot predates the load');
+  c.setMode('TIC202', 'MAN');
+  assert.equal(c.events[0].id, eid + 1, 'eid continues past the restore (the restore\'s own INSTR record took ' + eid + ')');
+  assert.equal(new Set(c.events.map((e) => e.id)).size, c.events.length, 'event ids stay unique across the load and the restore');
+  const d1 = c.drillDefs().find((d) => d.id === 'D1');
+  c.startDrill(d1);
+  assert.ok(run(c, 900, () => !c.state.drill), 'D1 runs to its debrief');
+  assert.equal(c.state.dlg.type, 'debrief');
+  assert.doesNotThrow(() => c.renderVals(), 'the debrief renders across the load boundary in the journal');
+});
