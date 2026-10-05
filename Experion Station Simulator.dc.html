@@ -3480,7 +3480,8 @@ class Component extends ESS.PlantCore(DCLogic) {
       speeds:X.speeds().filter(v=>v>1).map(v=>chip(v+'×',S.speed===v,()=>this.setSpeed(v)))};
     const slots=I.snapshots.map((s,i)=>({n:String(i+1),name:s?s.name:'— empty —',t:s?this.fT(s.t):'',has:!!s,
       save:()=>{this.saveSlot(i,S.instrSnapName);},restore:()=>this.restoreSlot(i),replay:()=>this.startReplay(i),clear:()=>{this.clearSlot(i);bump();}}));
-    const presets=X.presets().map(p=>({label:p.label,desc:p.desc,cb:()=>this.applyPreset(p.id)}));
+    // the settle ends at the sim clock (spec 5.3), so a load never jumps the station clock
+    const presets=X.presets().map(p=>({label:p.label,desc:p.desc,cb:()=>this.applyPreset(p.id,{baseTime:this.P.t})}));
     const oldest=I.ring.length?I.ring[0].t:null;
     const back={count:String(I.ring.length),spanT:oldest!=null?this.mmss(P.t-oldest):'00:00',oldestT:oldest!=null?this.fT(oldest):'—',
       btns:[[30000,'−30 S'],[120000,'−2 MIN'],[600000,'−10 MIN']].map(b=>({label:b[1],cb:()=>this.backtrack(b[0])}))};

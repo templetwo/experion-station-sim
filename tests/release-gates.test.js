@@ -216,8 +216,8 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
     // THIS IS THE ASSERTION THE ALLOWANCE ALWAYS NEEDED AND NEVER HAD. The seed is only
     // harmless if nothing a snapshot must reproduce calls createState() without an explicit
     // `now`. Measured, not asserted: count real Date.now calls across BOTH trainee drill-start
-    // lanes (D-series canonical, A-series) and require P.t to move across each start by
-    // exactly the preset's declared run-forward -- the sim clock, and nothing else.
+    // lanes (D-series canonical, A-series) and require P.t not to move across each start at all:
+    // the settle ends at the base time (CREDIBILITY-PASS-SPEC §5.3), so the sim clock is the only clock and the load adds none.
     const { Component } = load();
     const Instructor = require('../src/instructor.js');
     const lanes = [
@@ -249,9 +249,9 @@ test('GATE 3 DETERMINISM: the invariant is stated, stamped, and pure where it is
         'sides of a discontinuity the replay cannot cross, which is release gate 3 falsified. ' +
         'Fix by seeding the preset from P.t and keeping Date.now out of snapshotData, not by ' +
         'widening the allowance.');
-      assert.equal(jump, preset.run * 1000,
-        `${lane.name}: P.t moved ${jump} ms across the start; the preset ${presetId} runs forward ` +
-        `${preset.run} s and that must be the ONLY clock movement`);
+      assert.equal(jump, 0,
+        `${lane.name}: P.t moved ${jump} ms across the start; the preset ${presetId} settles ` +
+        `${preset.run} s ending at the base time (spec §5.3) and a start must not move the sim clock at all`);
     }
   });
 

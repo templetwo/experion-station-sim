@@ -9,9 +9,10 @@ const AlarmHelp = require('../src/alarm-help.js');
 const Measurement = require('../src/measurement.js');
 
 const { Component } = load();
-function boot(seed, sec) {
+// `at` is the start clock: left undefined the page seeds it from Date.now() (as before); 0 is the zero clock, independent of the wall clock.
+function boot(seed, sec, at) {
   const c = new Component({});
-  c.initSim();
+  c.initSim(at);
   c.rand = Models.createRand(seed || 1);
   if (sec) c.setState({ sec });
   return c;
@@ -410,8 +411,7 @@ test('D4: an initial-condition load keeps the session journal: one record is app
   assert.ok(!c.events.some((e) => /^INITIAL CONDITION LOADED: /.test(e.desc)), 'the restore\'s own log line is the instructor\'s, not an event');
   assert.equal(c.t0, t0);
   assert.equal(c.alarmLog.length, log);
-  // The window is the 120 s settle ending at the clock after the load: Task 4 moves that end back to the base time.
-  for (const tag of Object.keys(c.hist)) for (const [t] of c.hist[tag]) assert.ok(t >= c.P.t - 120000 && t <= c.P.t, tag + ': trends reset with the IC and hold only the settle');
+  for (const tag of Object.keys(c.hist)) for (const [t] of c.hist[tag]) assert.ok(t >= base - 120000 && t <= base, tag + ': trends reset with the IC and hold only the settle');
 });
 
 test('D4: a batch preset load discards the settle\'s PHASE records and keeps the session\'s', () => {
@@ -465,4 +465,82 @@ test('other readers: a slot saved before an IC load restores to the slot\'s time
   assert.ok(run(c, 900, () => !c.state.drill), 'D1 runs to its debrief');
   assert.equal(c.state.dlg.type, 'debrief');
   assert.doesNotThrow(() => c.renderVals(), 'the debrief renders across the load boundary in the journal');
+});
+
+test('D5: a canonical drill start leaves the station clock where it was: the settle ends at the base time, and afterwards sim time equals base time plus the steps taken', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  const base = c.P.t;
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D4'), 'canonical');
+  assert.equal(c.P.t, base);
+  run(c, 10);
+  assert.equal(c.P.t, base + 10000);
+  const ic = c.events.find((e) => /^INITIAL CONDITION LOADED/.test(e.desc));
+  assert.equal(ic.t, base);
+  assert.equal(c.state.drill.t0, base);
+});
+
+// The shipped U1_HIFEED stops under the High limit (R-201 reads 164.3 against PVHI 165), so no alarm is raised during its settle. This variant takes the
+// TIC201 setpoint to its 170 limit as well, which crosses PVHI at about 246 s into the 480 s run-forward: an alarm raised during a settle.
+test('D5: the settle lands before the base time: an IC with alarms raised during its run-forward carries raise times inside [base − length, base], and the zero clock tolerates it (times before the session start)', () => {
+  const c = boot(4, 'MNGR', 0);
+  const base = c.P.t;                                   // the zero clock: the 480 s settle runs at negative times
+  assert.equal(base, 0);
+  const I = globalThis.ESS.Instructor, real = I.presets;
+  I.presets = () => real().map((p) => p.id === 'U1_HIFEED' ? Object.assign({}, p, { set: { L: { LIC101: { sp: 40 }, TIC201: { sp: 170 } } } }) : p);
+  try {
+    assert.equal(c.applyPreset('U1_HIFEED', { baseTime: base }), true);
+  } finally { I.presets = real; }
+  assert.equal(c.P.t, base);
+  const active = c.alarms.filter((a) => a.active);
+  assert.ok(active.length > 0, 'the hot U1 high feed settles with R-201 in alarm');
+  for (const a of active) {
+    assert.ok(a.t >= base - 480000 && a.t <= base, a.key + ' raised during the settle: ' + a.t);
+    assert.match(c.fT(a.t), /^\d\d:\d\d:\d\d$/, 'a time before the session start still formats as a clock time');
+  }
+  c.setState({ display: 'alarms' });
+  let rows;
+  assert.doesNotThrow(() => { rows = c.renderVals().av.rows; }, 'the Alarm Summary renders the settle\'s alarms');
+  assert.ok(rows.length > 0, 'and lists them');
+  for (const r of rows) {
+    assert.match(r.t, /^\d\d:\d\d:\d\d$/, r.tag + ' ' + r.cond + ': the time column reads a clock time');
+    assert.ok(!/NaN|undefined/.test([r.t, r.trip, r.live].join(' ')), r.tag + ' ' + r.cond + ': no NaN in the row');
+  }
+});
+
+test('D5: without a base time the load is today\'s: the settle starts at the page clock and ends 120 s later (the arch fixtures\' physics is pinned by this)', () => {
+  const T0 = 1_700_000_000_000, realNow = Date.now;     // the page seeds a load with no base time from Date.now()
+  const c = boot(4, 'MNGR');
+  try { Date.now = () => T0; c.applyPreset('U1_SS'); } finally { Date.now = realNow; }
+  assert.equal(c.P.t, T0 + 120000);
+  const d = boot(4, 'MNGR');
+  d.applyPreset('U1_SS', { baseTime: T0 + 120000 });
+  assert.equal(d.P.t, T0 + 120000);
+  assert.deepEqual(d.P.tankL, c.P.tankL);
+  assert.deepEqual(d.L.TIC201.pv, c.L.TIC201.pv);
+  assert.deepEqual(JSON.stringify(d.P), JSON.stringify(c.P), 'the same base time gives the same plant either way');
+});
+
+test('D5: the dry settle is the real settle: two loads of the same preset at the same base time are byte-identical, and a replay of a canonical drill rebuilds at the receipt\'s time', () => {
+  const a = boot(4, 'MNGR', 0); run(a, 30); a.applyPreset('U2_FEED', { baseTime: a.P.t });
+  const b = boot(4, 'MNGR', 0); run(b, 30); b.applyPreset('U2_FEED', { baseTime: b.P.t });
+  assert.equal(JSON.stringify(a.P), JSON.stringify(b.P));
+  assert.equal(JSON.stringify(a.L), JSON.stringify(b.L));
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  c.startDrillFromMenu(c.drillDefs().find((d) => d.id === 'D4'), 'canonical');
+  const drill = c.instr.journal.find((e) => e.op === 'DRILL');
+  assert.equal(drill.presetBaseT, drill.t, 'the DRILL receipt and its own time agree, so replay\'s time check holds');
+});
+
+test('§12: a dry settle whose state is not finite refuses the load with SNAPSHOT REFUSED', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 30);
+  const I = globalThis.ESS.Instructor, real = I.presets;
+  I.presets = () => real().map((p) => p.id === 'U1_SS' ? Object.assign({}, p, { set: { L: { LIC101: { sp: Infinity } } } }) : p);
+  try {
+    assert.equal(c.applyPreset('U1_SS', { baseTime: c.P.t }), undefined);
+  } finally { I.presets = real; }
+  assert.equal(c.state.msg, 'SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE');
+  assert.ok(Number.isFinite(c.P.t));
 });

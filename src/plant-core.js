@@ -1310,7 +1310,16 @@
     // a scratch journal, put the session's back after the restore, and record the load as one entry. KPI history
     // (alarmLog, t0) is session state too; trends (hist) are process data and reset with the IC.
     const session={events:this.events,msgs:this.msgs,alarmLog:this.alarmLog,eid:this.eid,t0:this.t0};
-    const settled=this.settle(p,o.baseTime);
+    // The settle ends at the base time instead of starting there (spec §5.3): a dry settle from 0 measures its
+    // length for this preset and seed (initSim re-seeds from the instructor seed, so the two runs are the same run),
+    // then the real settle runs from baseTime - length and ends exactly at baseTime. Alarms raised during the settle
+    // land in the preceding minutes, like a plant that was already running. With no base time the load is today's.
+    let settled;
+    if(typeof o.baseTime==='number'){
+      const dry=this.settle(p,0);
+      if(!this.snapshotData('IC '+p.label)) return;   // a non-finite settle refuses the load with today's SNAPSHOT REFUSED
+      settled=this.settle(p,o.baseTime-dry.ms);
+    } else settled=this.settle(p,undefined);
     const snap=this.snapshotData('IC '+p.label); if(!snap) return;
     this.restoreSnapshot(snap,'INITIAL CONDITION LOADED: '+p.label);
     this.events=session.events; this.msgs=session.msgs; this.alarmLog=session.alarmLog; this.eid=session.eid; this.t0=session.t0;
