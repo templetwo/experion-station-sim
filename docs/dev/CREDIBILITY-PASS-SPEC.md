@@ -583,7 +583,13 @@ builds served locally before the release; the log and screenshots are filed to t
 the receipt. The repo gains no dependency.
 
 9.4 **Gates per stage.** Suite 0-fail, build clean, smoke ok on both builds, goldens as §11, the
-AA contrast gate green under both palettes, commit and push on the branch.
+AA contrast gate green under both palettes, commit and push on the branch. Before a stage merges
+to main: the master-operations-agent development drills rescored at the new simulator tip
+(`scripts/rescore_drills.py` there), and either a new manifest and receipt landed in that repo
+(`moa/data/drills-vN.json` beside the old one, `receipts/drills-vN/`, never an edited pin) or the
+score and the revision mismatch recorded in the stage's CHANGELOG entry. (Added 2026-10-04 by the
+HQ seat, after S1 merged without this check; it is not one of the sections approved on 2026-10-03
+and is not a stage-ledger CR.)
 
 9.5 **Release.** Changelog entry, version strings, Mac build, movers re-captured, smoke, replay
 receipt, tag 3.2.0, intake doc in place. Merge to main is Anthony's.

@@ -4,6 +4,14 @@ All notable changes to the simulator. Semantic versioning.
 
 ## [Unreleased]
 
+### The agent seam: a stage-close check, and pointers to the current tips
+
+Documentation only, recorded 2026-10-04. No application code, no `src/` module, no test and no fixture changed; `dist/` is untouched and `ESS.MODEL_ID` is unmoved.
+
+- **Spec §9.4 gains one check before a stage merges to main** (`docs/dev/CREDIBILITY-PASS-SPEC.md`): rescore the master-operations-agent development drills at the new simulator tip with that repository's `scripts/rescore_drills.py`, then either land a new manifest and receipt there or record the score and the revision mismatch in the stage's CHANGELOG entry. S1 merged without it. At `adeb18a` the agent's drills-v2 manifest, pinned to `bfed001`, is refused as written for another revision; scored with `--allow-revision-mismatch` it gives 6/8 useful and 10/10 guards (8/8 at `bfed001` and at `1f0147e`), because both restoration-lag seeds lose the `reactor_warming` finding: TIC201 now rises 0.7 and 0.8 °C across the exported window, under the agent's 2 °C rule, where it rose 4.2 and 4.3. The cause is measured: with the one line that has the controllers read the observed value reverted at `adeb18a`, the trajectory is `1f0147e`'s to the sample, so the drop is spec §2.4 (CR8) by design, the jacket controller acting on the saturated 103.125 °C during the cooling loss.
+- **Two agent pointers gain a dated note** naming the current tips (simulator `adeb18a`, agent `3a6f81b` carrying drills-v2) and that score: `docs/dev/CONVERGENCE-SPEC.md` §0.1, whose rev 5 checkpoint (`bfed001`, agent evaluation `68aae66`) stays as written, and the MOA review in `docs/dev/G2-INTEGRATION-DESIGN.md`, whose 2026-09-28 check against `68aae66` stays as written. The convergence spec stays at rev 5: the 10-03 edits to it were a source-count change and its revert, which net to nothing, count-only edits have not taken a revision before, and a revision that rules on G3 is Anthony's.
+- **G3 (§8.7 of the convergence spec) gains a dated note of fact**: S1 §2.4 routes the observed value into the controller and alarm path (`4fc55ac`, `373ba66`), so the projection-only TIC202 policy the gate calls present behaviour is no longer what main does. G3 still reads open.
+
 ### Credibility pass S1 — the board reports what the transmitter sends, and a held loop says so
 
 Stage S1 of `docs/dev/CREDIBILITY-PASS-SPEC.md` (sections 2 and 3; plan `docs/dev/CREDIBILITY-PASS-PLAN-S1.md`), written from the black-box playtest of 2026-10-02 ([`docs/playtest-2026-10-02.md`](docs/playtest-2026-10-02.md), items D1, D7, D8, D9, D10 and D14). One principle under two seams: the board states no value the instrument could not have sent, and no loop's output looks free while the plant has taken it. **No trip threshold moved** (the six are untouched), no model equation changed, and no tag, valve or alarm was added.
