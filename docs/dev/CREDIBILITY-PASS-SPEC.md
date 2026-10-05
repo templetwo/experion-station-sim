@@ -204,6 +204,15 @@ Stage S2 (2026-10-04 onward), same numbering:
   the phase timer runs in COOL, the button reads HOLD, and the trip card's "resumes in COOL when the
   trip clears" stays true. The setpoint shutoff (CR40) shows no saturation card: a valve the loop
   closed on purpose is not a disturbance exceeding it.
+- **CR44.** An initial-condition load closes the session's KPI history for the alarms active at the
+  moment of the load (one return row each at the load time) and opens it for the alarms the settle
+  left active (one raise row each at its raise time), so KPI windows survive a load without phantom
+  standing alarms; an alarm active on both sides of a load continues, with no row either way.
+- **CR45.** The architecture-drill debrief is windowed to the drill: events and KPI rows from the
+  drill's start, relative times from that instant.
+- **CR46.** The trainee-visible canonical start record names the drill only when the trainee chose it
+  by name; a random start, or one made while the instructor is hidden, records `DRILL STARTED —
+  CANONICAL`; replay carries the same choice.
 
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
@@ -406,7 +415,9 @@ that fresh journal (`events`, `msgs`, `eid`, `alarmLog`, `t0` are snapshot keys)
 lifts `events`, `msgs`, `alarmLog`, `eid` and `t0` out before `initSim()`, discards the settle's
 internal entries, puts the session journal back after `restoreSnapshot()`, keeps `eid` counting,
 and appends one record: `INITIAL CONDITION LOADED — <PRESET> (SETTLED <n> S)`. A canonical drill
-start appends a trainee-visible `DRILL <id> STARTED — <name> — CANONICAL` record. KPI windows and
+start appends a trainee-visible `DRILL <id> STARTED — <name> — CANONICAL` record when the trainee
+chose the drill by name; a random start, or one made while the instructor is hidden, records
+`DRILL STARTED — CANONICAL` without the name (CR46). KPI windows and
 the bad-actor history survive. Trends (`hist`) reset with the IC: they are process data, and the
 report did not ask otherwise. The instructor's own snapshot restore (ring and slots) keeps today's
 semantics, a rewind of the journal to the snapshot's time, because replay and release gate 3
