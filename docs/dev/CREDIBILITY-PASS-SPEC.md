@@ -208,8 +208,10 @@ Stage S2 (2026-10-04 onward), same numbering:
   moment of the load (one return row each at the load time) and opens it for the alarms the settle
   left active (one raise row each at its raise time), so KPI windows survive a load without phantom
   standing alarms; an alarm active on both sides of a load continues, with no row either way.
-- **CR45.** The architecture-drill debrief is windowed to the drill: events and KPI rows from the
-  drill's start, relative times from that instant.
+- **CR45.** The architecture-drill debrief is windowed to the drill: events from the drill's start, KPI
+  alarm rows strictly after it (CR44's return rows are stamped at the load time, which is the drill's
+  own start on the menu path), and the action journal, the fault timeline and the DOF note rows
+  windowed the same way, relative times from that instant.
 - **CR46.** The trainee-visible canonical start record names the drill only when the trainee chose it
   by name; a random start, or one made while the instructor is hidden, records `DRILL STARTED —
   CANONICAL`; replay carries the same choice.
@@ -398,7 +400,8 @@ while not held, because the sequence writes their setpoints. On HOLD both go to 
 next scan and the sequence stops writing them until RESUME, so an operator setpoint during a hold
 is honoured. This keeps the M202-trip advice and `tests/app-models.test.js` ("HOLD the sequence",
 attribute `OPERATOR` on the next scan) as designed. Under PROGRAM an operator write is refused
-with the existing mode-attribute message and nothing is journaled (D6's second half).
+with the existing mode-attribute message and no change is journaled; the refusal's own
+`WRITE REJECTED` record is the existing path (as §3.3) (D6's second half).
 
 4.3 **Trips.** `P.trips.batch` keeps zeroing the feed and forcing MV211 and JV213; with §3 the
 two loops show `INTERLOCK · R-202 HI TEMP TRIP` while it holds.
@@ -655,6 +658,31 @@ not a re-capture. Because the cutoff moves every fixture, the stage's closing ta
 3.1.0 fixtures (as of `1f0147e`) under `tests/fixtures/v31-baseline/`, and the archive guard compares the
 live goldens against that baseline too, each S1 mover listed with its reasons, so "what moved since
 3.1.0" stays answerable; the v2 archive is untouched (CR10).
+
+Measured at the close of S2 (2026-10-04, Task 6): each end state compared leaf by leaf with the S1 head
+(`adeb18a`), and the mechanisms switched off one at a time in a scratch tree while Tasks 1 and 2 were
+built. Three fixtures moved, all three in the table's expectation, each for more than the table named,
+and no other did. **drill-D11 and upset-agit-batch** move in exactly two leaves each: `batch.pt`
+(746 to 90, and 300 to 91.5), the §4.1 freeze (the TI216 shed holds the batch in FEED in both runs,
+and its phase timer used to run on), and TIC212's attribute (PROGRAM to OPERATOR), §4.2 ownership (a
+held batch is the operator's); alarm order, step count, event count and score are unchanged.
+**arch A5** (its base preset is U2_REACT) moves in its physics digest only, 18 leaves: FIC211's
+attribute (OPERATOR to PROGRAM, since REACT is an active phase and the old rule was FEED only) and the
+feed valve, which the CR40 setpoint shutoff now closes at the sequence's SP 0 where the loop left a
+trickle running through REACT (FIC211 OP 1.97 to 0, MV-211 2.3 % open to shut), the monomer inventory
+(12.24 to 7.08), the conversion and the temperatures following; its health digest, score (65), pass
+flag and event count did not move. The guards name the three mechanisms `OWNERSHIP`, `FREEZE` and
+`SPCUTOFF`. Did not move: drill-D4 and upset-cool, which were red under CR40 as first ruled (FIC102, a
+cascade secondary under LIC101, was held shut for four or five scans as the R-201 trip released and its
+demand passed up through the 0 to 1.2 M3/H band) and are back at their S1 digests under CR40b, which
+exempts a cascade secondary; the 13 other arch fixtures, because the arch driver counts the A-drill's own
+events (`P.aDrill.events`), never the session journal, so §5.2's journal rule reaches none of them (the
+plan allowed that it might); the D-series goldens, which start from live state with no load or start
+record; the five Unit 04 goldens, which nothing in §4 or §5 reaches (the guard proves them byte-identical
+and `tests/golden-u4.test.js` was never run under `UPDATE_GOLDENS`); and every other mover of S1. CR42
+(the alarm help) and CR43 (the trip clearing the hold) moved no fixture, nor did the load's records, CR44
+to CR47, the settle ending at the base time or the SIM label; CR41's restore belongs to the ownership
+mechanism and leaves no leaf of its own in any end state.
 
 ---
 

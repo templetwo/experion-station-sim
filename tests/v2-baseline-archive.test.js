@@ -93,9 +93,9 @@ test('every golden listed as re-captured since v2 really differs from its archiv
   // 'restore' stability rule (CR11), because the goldens are unattended runs that never acknowledge, so none reaches a
   // stability verdict; spec 11 also expected upset-stick to saturate TIC202, and its run never does.
   //
-  // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): two of the 21 moved a third time, and no other did, so those two lines carry a
-  // second reason. Measured field by field against the S1 head (adeb18a): each end state differs from it in exactly the leaves named here, and the
-  // mechanisms were switched off one at a time in a scratch tree while the stage was built.
+  // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): two of the 21 moved again, and no other did, so those two lines carry the S2
+  // reasons beside the S1 ones. Measured field by field against the S1 head (adeb18a): each end state differs from it in exactly the leaves named
+  // here, and the mechanisms were switched off one at a time in a scratch tree while the stage was built.
   //   OWNERSHIP  FIC211 and TIC212 read PROGRAM in every active phase while the sequence runs and OPERATOR while it is held or idle (spec 4.2, CR41):
   //              a batch the TI216 shed holds in FEED ends with TIC212 OPERATOR where it read PROGRAM.
   //   FREEZE     a held batch stands still (spec 4.1): the phase timer, the transitions and the charge and drain levels stop. The shed holds the batch
