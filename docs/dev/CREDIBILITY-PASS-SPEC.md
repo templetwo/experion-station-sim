@@ -692,7 +692,8 @@ feed valve, which the CR40 setpoint shutoff now closes at the sequence's SP 0 wh
 trickle running through REACT (FIC211 OP 1.97 to 0, MV-211 2.3 % open to shut), the monomer inventory
 (12.24 to 7.08), the conversion and the temperatures following; its health digest, score (65), pass
 flag and event count did not move. The guards name the three mechanisms `OWNERSHIP`, `FREEZE` and
-`SPCUTOFF`. Did not move: drill-D4 and upset-cool, which were red under CR40 as first ruled (FIC102, a
+`SPCUTOFF`. The review wave's CR48 (TIC212 the operator's in CHARGE and IDLE) moved no fixture: the
+three movers end held in FEED or in REACT, where TIC212 reads as before. Did not move: drill-D4 and upset-cool, which were red under CR40 as first ruled (FIC102, a
 cascade secondary under LIC101, was held shut for four or five scans as the R-201 trip released and its
 demand passed up through the 0 to 1.2 M3/H band) and are back at their S1 digests under CR40b, which
 exempts a cascade secondary; the 13 other arch fixtures, because the arch driver counts the A-drill's own

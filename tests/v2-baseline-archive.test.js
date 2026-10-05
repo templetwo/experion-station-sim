@@ -96,7 +96,7 @@ test('every golden listed as re-captured since v2 really differs from its archiv
   // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): two of the 21 moved again, and no other did, so those two lines carry the S2
   // reasons beside the S1 ones. Measured field by field against the S1 head (adeb18a): each end state differs from it in exactly the leaves named
   // here, and the mechanisms were switched off one at a time in a scratch tree while the stage was built.
-  //   OWNERSHIP  FIC211 and TIC212 read PROGRAM in every active phase while the sequence runs and OPERATOR while it is held or idle (spec 4.2, CR41):
+  //   OWNERSHIP  FIC211 reads PROGRAM in every active phase while the sequence runs, TIC212 where the table owns its jacket setpoint (HEATUP to DRAIN, CR48), and both read OPERATOR while held or idle (spec 4.2, CR41):
   //              a batch the TI216 shed holds in FEED ends with TIC212 OPERATOR where it read PROGRAM.
   //   FREEZE     a held batch stands still (spec 4.1): the phase timer, the transitions and the charge and drain levels stop. The shed holds the batch
   //              in FEED in both runs, and its phase timer used to run on (batch.pt 746 -> 90 in drill-D11, 300 -> 91.5 in upset-agit-batch).
@@ -161,7 +161,7 @@ test('every golden listed as re-captured since 3.1.0 really differs from its 3.1
   // 2026-10-04, credibility pass S2 (spec section 11, CR40 to CR43): three of the 35 moved again; the other 32 and the five Unit 04 goldens did not.
   // Measured field by field against the S1 head (adeb18a), and by switching the mechanisms off one at a time in a scratch tree while the stage was
   // built. Reason codes as above, plus three:
-  //   OWNERSHIP  FIC211 and TIC212 read PROGRAM in every active phase while the sequence runs and OPERATOR while it is held or idle (spec 4.2, CR41).
+  //   OWNERSHIP  FIC211 reads PROGRAM in every active phase while the sequence runs, TIC212 where the table owns its jacket setpoint (HEATUP to DRAIN, CR48), and both read OPERATOR while held or idle (spec 4.2, CR41).
   //              Where it shows: a batch the TI216 shed holds in FEED ends with TIC212 OPERATOR (drill-D11, upset-agit-batch), and arch/A5, which
   //              ends in REACT, has FIC211 PROGRAM where it read OPERATOR (the old rule was FEED only).
   //   FREEZE     a held batch stands still (spec 4.1): the phase timer, the transitions and the charge and drain levels stop (drill-D11: batch.pt
