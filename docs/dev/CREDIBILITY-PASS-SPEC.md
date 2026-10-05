@@ -183,6 +183,23 @@ changed this document or the code, in the order made (S1, 2026-10-03 and 2026-10
   stored value, every reader takes `Number(arg)` or prints it, and a target band stored at an
   edge replays as stored.
 
+Stage S2 (2026-10-04 onward), same numbering:
+
+- **CR40.** A flow loop whose setpoint is at or below its low-flow cutoff drives its output to the low
+  limit, so a zero setpoint means no flow, not no error: `stepPid` applies it through a `spCutoff` field
+  the plant core sets on every M3/H PID loop from the §2.2 cutoff (1 % of span), with the integrator
+  tracked for a bumpless return; PV tracking does not apply inside the shutoff (the setpoint is the
+  stop instruction). Found when S2's HOLD wrote the feed setpoint to 0 and the feed still trickled on
+  at 0.3 M3/H under the cutoff; the same dead zone had let monomer trickle in after FEED ended.
+- **CR40b.** The shutoff applies to a loop that owns its setpoint (AUTO); a cascade secondary following
+  its master is exempt, because its setpoint is the master's demand passing through the band on a
+  cascade return, not an instruction to stop.
+- **CR41.** The sequence restores every loop it owns to the mode its phase needs: FIC211 to AUTO in
+  every active phase, TIC212 to AUTO wherever the phase table owns its setpoint, each with its MODE
+  RESTORED BY SEQUENCE event.
+- **CR42.** Alarm-help actions that direct a write to a PROGRAM-owned loop during a batch say to HOLD
+  the sequence first; the loops are the operator's while held.
+
 Design items deferred to the intake doc (§1.5), recorded here until it exists:
 
 - A saturation cue on the graphic that does not sit under text (CR12b).

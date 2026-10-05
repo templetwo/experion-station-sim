@@ -853,6 +853,17 @@ This plan: an "As built" section at the end, one short paragraph per task where 
 Run: `node --test tests/*.test.js 2>&1 | grep -E '^# (tests|pass|fail|skipped)' && python3 tools/build-dist.py && git status --porcelain dist/ && tools/smoke.sh`
 Expected: `# fail 0`; `dist/` unchanged by the second build; smoke ok on both builds.
 
+- [ ] **Step 5b: The agent-seam check before the stage merges (spec §9.4 as amended by PR #9, 2026-10-04)**
+
+The master-operations-agent development drills are rescored at the new simulator tip and the result recorded in the S2 CHANGELOG entry. From a clone of `https://github.com/templetwo/master-operations-agent.git` at its main tip (the controller keeps one under the job scratch; `git clone --depth 50` is enough), with this repo checked out clean at the stage head:
+
+```bash
+cd <moa-clone> && git log -1 --format='%h %s'
+python3 scripts/rescore_drills.py /Users/vaquez/experion-station-sim --manifest moa/data/drills-v2.json --allow-revision-mismatch --out /Users/vaquez/.claude/jobs/9570056f/tmp/s2-rescore.json
+```
+
+Expected: a line like `ess-u1-development-v2 at <head>: useful N/8, guards M/10` (at S1's head `adeb18a` it read 6/8 and 10/10, the two misses being the `restoration-lag` seeds whose `reactor_warming` finding S1 §2.4 removed by design: with the jacket controller acting on the saturated value, TIC201 rises 0.7 °C across the agent's window instead of 4.2). Record the score, the manifest pin and the revision mismatch in the CHANGELOG entry (one sentence under the S2 entry's gates line), and whether a newer manifest pinned to this stage exists on agent main. Do not land a manifest or receipt in the agent repo from this task; that is the agent repo's PR. If the script refuses for a reason other than the revision pin, record the refusal verbatim instead and report it.
+
 ```bash
 git add tests/fixtures tests/v2-baseline-archive.test.js CHANGELOG.md docs/dev/CODE-MAP.md docs/dev/CREDIBILITY-PASS-SPEC.md docs/dev/CREDIBILITY-PASS-PLAN-S2.md src/model-id.js dist/experion-station-sim-standalone.html
 git commit -m "test(goldens): re-capture the S2 movers with their reasons; changelog and docs for sequence ownership and the session journal" -m "Closes stage S2 of the credibility pass (spec §10). Movers and reasons: <copy the guard's S2 legend>." -m "Co-Authored-By: Claude <model name> <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_<id>"
