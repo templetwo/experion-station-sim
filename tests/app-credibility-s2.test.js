@@ -544,3 +544,36 @@ test('§12: a dry settle whose state is not finite refuses the load with SNAPSHO
   assert.equal(c.state.msg, 'SNAPSHOT REFUSED: PROCESS STATE IS NOT FINITE');
   assert.ok(Number.isFinite(c.P.t));
 });
+
+// Review Focus 5: every path that changes the run speed flips the label.
+test('§5.4: the status-bar clock reads SIM hh:mm:ss whenever the run control is frozen or off 1×, computed from state.speed alone', () => {
+  const c = boot(4, 'OPER');
+  run(c, 10);
+  const t = c.fT(c.P.t);
+  assert.equal(c.state.speed, 1);
+  assert.equal(c.renderVals().timeT, t);
+  c.freeze();
+  assert.equal(c.renderVals().timeT, 'SIM ' + t);
+  c.setSpeed(1);
+  assert.equal(c.renderVals().timeT, t);
+  c.setSpeed(4);
+  assert.equal(c.renderVals().timeT, 'SIM ' + t);
+  c.setSpeed(1);
+  c.stepOnce();
+  assert.equal(c.state.speed, 0);
+  assert.equal(c.renderVals().timeT, 'SIM ' + c.fT(c.P.t));
+  const v = c.renderVals();
+  assert.equal(v.dateT, c.fD(c.P.t));
+  c.instr.auth = true;                                  // opens the instructor's run line, the other teller of the clock: it keeps its own words
+  const line = c.renderVals().instr.run;
+  assert.match(line.simT, /^\d\d:\d\d:\d\d$/);
+  assert.equal(line.simT, c.fT(c.P.t));
+  assert.equal(line.stateT, 'FROZEN');
+});
+
+test('no core code reads the wall clock for the label: src/ has the same Date.now count as S1 left it, and the page seeds the start clock once', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const src = fs.readdirSync(path.join(__dirname, '..', 'src')).filter((f) => f.endsWith('.js'));
+  const hits = src.flatMap((f) => (fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8').match(/Date\.now\(\)/g) || []).map(() => f));
+  assert.deepEqual(hits.sort(), ['models.js'], 'only createState\'s start-clock fallback reads Date.now in src/');
+});
