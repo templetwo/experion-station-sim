@@ -152,3 +152,45 @@ test('RT30 a stopped pump is a device hold: the governed OP demand in MAN still 
  assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['applied','committed']);
  assert.equal(a.outcomes[0].after.op_milli,25000);assert.equal(a.state.fields.L.FIC102.op,25,'the operator owns the output in MAN while the pump is stopped');
 });
+
+// Review Important 1 (CR40): spCutoff is derived from the range, and applySnapshot recomputes it, but the kernel's restore() assigned the
+// checkpoint's L as it stood. A checkpoint from before S2 (no loop carries the field) therefore resumed with the shutoff silently off: FIC211 in
+// AUTO at SP 0 holds its output where it was, because SP 0 against an observed 0 is no error. restore() now recomputes the field after the assign.
+test('RT31 a checkpoint from before the setpoint shutoff restores with spCutoff recomputed, and FIC211 in AUTO at SP 0 drives its output to 0',()=>{
+ let s=K.create();
+ for(const tag of ['FIC102','FIC211','FIC310','FIC313'])assert.equal(typeof s.fields.L[tag].spCutoff,'number',tag+': a fresh checkpoint carries the field');
+ for(const l of Object.values(s.fields.L))delete l.spCutoff;      // the shape of a checkpoint written before S2: no loop has the field
+ const f=s.fields.L.FIC211;f.mode='AUTO';f.sp=0;f.op=30;f.I=30;   // a feed loop whose setpoint is 0 with its output left at 30 %
+ const c=K.restore(s);
+ assert.deepEqual(['FIC102','FIC211','FIC310','FIC313'].map(t=>c.L[t].spCutoff),[1.2,0.4,0.8,0.4],'recomputed from each range, on every M3/H loop');
+ assert.deepEqual(Object.keys(c.L).filter(k=>'spCutoff' in c.L[k]).sort(),['FIC102','FIC211','FIC310','FIC313'],'and on nothing else');
+ assert.equal('spCutoff' in s.fields.L.FIC211,false,'the caller\'s checkpoint is not touched');
+ const a=K.advance(s,.5,[]).state;
+ assert.equal(a.fields.L.FIC211.spCutoff,0.4);
+ assert.equal(a.fields.L.FIC211.op,0,'the shutoff is on after the restore: one scan takes the output to the low limit');
+ // control: the same loop on a live plant with the field deleted holds its 30 %, so the 0 above is the shutoff and not the loop's own action
+ const held=K.restore(K.create());held.L.FIC211.mode='AUTO';held.L.FIC211.sp=0;held.L.FIC211.op=30;held.L.FIC211.I=30;delete held.L.FIC211.spCutoff;
+ held.step(.5);
+ assert.equal(held.L.FIC211.op,30,'without the field the loop does not shut');
+});
+
+// Review Minor 7: the governed contract reads the mode attribute (program_owned), and S2 made FIC211 PROGRAM in every running phase (3.1.0: an unheld
+// FEED only), so an agent's loop.set on FIC211 is refused through CHARGE, HEATUP, FEED, REACT, COOL and DRAIN and accepted while the sequence is held.
+test('RT32 an agent\'s loop.set on FIC211 is refused program_owned in CHARGE and accepted once the sequence is held',()=>{
+ let c=K.restore(K.create());c.seqCmd('START');
+ let s=K.advance(K.capture(c),.5,[]).state;                     // one scan: the sequence writes the attribute
+ c=K.restore(s);assert.equal(c.P.b.phase,'CHARGE');assert.equal(c.L.FIC211.modeAttr,'PROGRAM');
+ const sp5=loop('FIC211','AUTO',5000,'M3/H');
+ assert.equal(C.validate(c,sp5,{role:'subject'}),'program_owned');
+ let a=K.advance(s,.5,[command(sp5,s.revisions.FIC211||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['rejected','program_owned']);
+ assert.equal(a.state.fields.L.FIC211.sp,0,'nothing landed');
+ const hold={operation:'sequence.command',arguments:{target:'SCM202',command:'HOLD',expected_phase:'CHARGE'}};
+ a=K.advance(s,.5,[command(hold,s.revisions.SCM202||0)]);assert.equal(a.outcomes[0].status,'applied');
+ s=K.advance(a.state,.5,[]).state;                              // the attribute follows HOLD by one scan
+ c=K.restore(s);assert.equal(c.P.b.held,true);assert.equal(c.L.FIC211.modeAttr,'OPERATOR');
+ assert.equal(C.validate(c,sp5,{role:'subject'}),null,'held: the loop is the operator\'s');
+ a=K.advance(s,.5,[command(sp5,s.revisions.FIC211||0)]);
+ assert.deepEqual([a.outcomes[0].status,a.outcomes[0].reason],['applied','committed']);
+ assert.equal(a.state.fields.L.FIC211.sp,5);
+});

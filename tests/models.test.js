@@ -335,11 +335,20 @@ test('HOLD during DRAIN freezes the drain: the level does not fall and IDLE is n
   assert.equal(c.P.b.lvl, 29.6);
 });
 
-test('ownership is one rule: PROGRAM on both loops in every active phase while running, OPERATOR one scan after HOLD, PROGRAM one scan after RESUME, OPERATOR when IDLE (D6, spec 4.2)', () => {
+test('ownership is one rule per loop (D6, spec 4.2, CR48): FIC211 is PROGRAM in every active phase while running, TIC212 only where the phase table owns its jacket setpoint (not CHARGE); both are OPERATOR one scan after HOLD and when IDLE', () => {
   const { c, tick } = rig(4);
   assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
   c.seqCmd('START', true); tick();
-  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'CHARGE is an active phase'); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'CHARGE is an active phase: the sequence writes the feed setpoint every scan');
+  assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'but it owns no jacket setpoint there (phaseSetpoints gives null), so the loop is the operator\'s');
+  // the flip is the scan that enters HEATUP and no scan before it
+  for (let i = 0; i < 600 && c.P.b.phase === 'CHARGE'; i++) {
+    tick();
+    if (c.P.b.phase === 'CHARGE') assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'CHARGE scan ' + i);
+  }
+  assert.equal(c.P.b.phase, 'HEATUP');
+  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM', 'PROGRAM on the scan that enters HEATUP');
+  assert.equal(c.L.TIC212.mode, 'AUTO'); assert.equal(c.L.TIC212.sp, 80);
   for (const phase of ['HEATUP', 'FEED', 'REACT', 'COOL', 'DRAIN']) {
     c.P.b.phase = phase; c.P.b.pt = 0; c.P.b.lvl = 50;
     if (phase === 'REACT') c.P.b.Cm = 10;      // above the REACT → COOL threshold (2): the scan ends in REACT, not COOL
@@ -347,7 +356,10 @@ test('ownership is one rule: PROGRAM on both loops in every active phase while r
     tick();
     assert.equal(c.P.b.phase, phase, 'the scan ends in the phase under test');
     assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', phase); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM', phase);
+    assert.notEqual(Models.phaseSetpoints(c.P.b, c.P).TIC212, null, phase + ': the table owns the jacket setpoint exactly where the loop reads PROGRAM');
   }
+  assert.equal(Models.phaseSetpoints({ phase: 'CHARGE' }, c.P).TIC212, null);
+  assert.equal(Models.phaseSetpoints({ phase: 'IDLE' }, c.P).TIC212, null);
   c.P.b.phase = 'FEED'; c.P.b.lvl = 50;
   c.P.b.held = true;
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'the attribute follows on the next scan');
@@ -355,6 +367,11 @@ test('ownership is one rule: PROGRAM on both loops in every active phase while r
   assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
   c.P.b.held = false; tick();
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM'); assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  // a hold in CHARGE: both are the operator's; RESUME gives the sequence the feed loop and not the jacket loop
+  c.P.b.phase = 'CHARGE'; c.P.b.pt = 0; c.P.b.lvl = 20; c.P.b.held = true; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  c.P.b.held = false; tick();
+  assert.equal(c.L.FIC211.modeAttr, 'PROGRAM'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'RESUME in CHARGE does not take the jacket loop');
   c.P.b.phase = 'IDLE'; tick();
   assert.equal(c.L.FIC211.modeAttr, 'OPERATOR'); assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
 });

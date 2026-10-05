@@ -111,11 +111,14 @@ test('CR40: after FEED ends (REACT) the feed reads 0 and the true flow dies away
   assert.ok(c.P.b.mf < 1e-6, 'no monomer keeps flowing through REACT: ' + c.P.b.mf);
 });
 
-test('D6: the sequence owns FIC211 and TIC212 in CHARGE: an operator SP is refused with the PROGRAM message and only the refusal is journaled; on HOLD both are OPERATOR on the next scan and an SP entered during the hold is held until RESUME re-asserts the phase value', () => {
+// CR48 (whole-branch review, Minor 4): ownership is per loop. The sequence writes FIC211's setpoint on every running scan, so FIC211 is PROGRAM in every active
+// phase; it writes TIC212's only where the phase table gives it the jacket setpoint (HEATUP to DRAIN), so in CHARGE TIC212 reads OPERATOR and takes an
+// operator's store, and from HEATUP it is PROGRAM and refuses one.
+test('D6: the sequence owns FIC211 in CHARGE and TIC212 from HEATUP (CR48): an operator SP on an owned loop is refused with the PROGRAM message and only the refusal is journaled; TIC212 takes an SP in CHARGE; on HOLD FIC211 is OPERATOR on the next scan and an SP entered during the hold is held until RESUME re-asserts the phase value', () => {
   const c = boot(4, 'OPER');
   c.seqCmd('START'); c.step(0.5);
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM');
-  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'CHARGE gives the sequence no jacket setpoint');
   const before = c.events.length;
   assert.equal(c.storeEntry('FIC211', 'SP', 5), true);
   assert.equal(c.L.FIC211.sp, 0);
@@ -123,6 +126,14 @@ test('D6: the sequence owns FIC211 and TIC212 in CHARGE: an operator SP is refus
   assert.equal(c.events.length, before + 1);
   assert.equal(c.events[0].desc, 'WRITE REJECTED — MODE ATTRIBUTE PROGRAM — SP OWNED BY SEQUENCE');
   assert.ok(!c.events.some((e) => e.src === 'FIC211' && e.desc === 'SP CHANGE'), 'no change is journaled');
+  // TIC212 in CHARGE is the operator's: the store is accepted, journaled, and stands through the scans (the sequence writes the jacket setpoint at
+  // the transitions only)
+  assert.equal(c.storeEntry('TIC212', 'SP', 60), true);
+  assert.equal(c.L.TIC212.sp, 60);
+  assert.ok(has(c, 'TIC212', 'SP CHANGE'));
+  assert.ok(!c.events.some((e) => e.src === 'TIC212' && /WRITE REJECTED/.test(e.desc)), 'nothing refused on TIC212');
+  run(c, 20);
+  assert.equal(c.L.TIC212.sp, 60, 'the sequence leaves it alone in CHARGE');
   c.seqCmd('HOLD');
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM', 'the attribute follows on the next scan');
   c.step(0.5);
@@ -135,8 +146,22 @@ test('D6: the sequence owns FIC211 and TIC212 in CHARGE: an operator SP is refus
   assert.equal(c.L.FIC211.sp, 5, 'held: the sequence does not overwrite the operator setpoint');
   c.seqCmd('HOLD');
   assert.equal(c.L.FIC211.sp, 0, 'RESUME in CHARGE re-asserts the phase feed setpoint');
+  assert.equal(c.L.TIC212.sp, 60, 'and not the jacket setpoint, which CHARGE does not own');
   c.step(0.5);
   assert.equal(c.L.FIC211.modeAttr, 'PROGRAM');
+  assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+  // from HEATUP the table gives the sequence the jacket setpoint: the loop is PROGRAM, holds the phase's 80, and refuses the operator
+  assert.ok(run(c, 400, () => c.P.b.phase === 'HEATUP'), 'the charge completes');
+  c.step(0.5);
+  assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+  assert.equal(c.L.TIC212.sp, 80);
+  const n = c.events.length, changes = () => c.events.filter((e) => e.src === 'TIC212' && e.desc === 'SP CHANGE').length, was = changes();
+  assert.equal(c.storeEntry('TIC212', 'SP', 70), true);
+  assert.equal(c.L.TIC212.sp, 80);
+  assert.equal(c.state.msg, 'TIC212: MODE ATTRIBUTE PROGRAM — SP OWNED BY SEQUENCE');
+  assert.equal(c.events.length, n + 1);
+  assert.equal(c.events[0].desc, 'WRITE REJECTED — MODE ATTRIBUTE PROGRAM — SP OWNED BY SEQUENCE');
+  assert.equal(changes(), was, 'no change is journaled for the refused store');
 });
 
 test('§4.3: under the R-202 trip both batch loops carry INTERLOCK · R-202 HI TEMP TRIP and the feed setpoint is 0, held or not', () => {
@@ -254,11 +279,11 @@ test('CR41: RESUME hands both loops back in AUTO: TIC212 put in MAN during a FEE
   assert.equal(b.L.FIC211.mode, 'AUTO'); assert.equal(b.L.TIC212.mode, 'AUTO');
   assert.ok(has(b, 'SCM202', 'FIC211 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
   assert.ok(has(b, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
-  // CHARGE: PROGRAM, but the sequence does not own the jacket setpoint there, so it leaves the loop where it is
+  // CHARGE: the sequence does not own the jacket setpoint there (CR48: the loop reads OPERATOR), so there is nothing to restore and it leaves the loop where it is
   const d = boot(4, 'OPER');
   d.seqCmd('START'); d.step(0.5);
   assert.equal(d.P.b.phase, 'CHARGE');
-  assert.equal(d.L.TIC212.modeAttr, 'PROGRAM'); assert.equal(d.L.TIC212.mode, 'MAN');
+  assert.equal(d.L.TIC212.modeAttr, 'OPERATOR'); assert.equal(d.L.TIC212.mode, 'MAN');
   run(d, 20);
   assert.equal(d.L.TIC212.mode, 'MAN');
   assert.ok(!has(d, 'SCM202', 'TIC212 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
@@ -271,9 +296,47 @@ test('CR41: RESUME hands both loops back in AUTO: TIC212 put in MAN during a FEE
   assert.ok(!e.events.some((x) => /MODE RESTORED BY SEQUENCE/.test(x.desc)));
 });
 
+// CR48 (review Minor 4): TIC212 is PROGRAM only where the phase table gives the sequence its jacket setpoint, so a CHARGE hold followed by RESUME does not
+// take the loop: it reads OPERATOR through CHARGE, the operator's mode and setpoint stand and can still be changed, and the sequence takes the loop with
+// the phase's own writes on entering HEATUP (AUTO at 80), whatever the operator left it at. The transition's write is the sequence's own, so it is not a
+// restore and carries no MODE RESTORED record: the PHASE → HEATUP record is the record of it.
+test('CR48: an operator\'s AUTO and SP on TIC212 during a CHARGE hold are not locked in by RESUME (the loop is still the operator\'s in CHARGE), and the sequence takes the loop at HEATUP: AUTO at 80', () => {
+  for (const leaveInMan of [false, true]) {
+    const c = boot(4, 'OPER');
+    c.seqCmd('START'); c.step(0.5);
+    c.seqCmd('HOLD'); c.step(0.5);
+    assert.equal(c.P.b.phase, 'CHARGE'); assert.equal(c.P.b.held, true);
+    assert.equal(c.L.TIC212.modeAttr, 'OPERATOR');
+    c.setMode('TIC212', 'AUTO');
+    assert.equal(c.storeEntry('TIC212', 'SP', 60), true);
+    assert.deepEqual([c.L.TIC212.mode, c.L.TIC212.sp], ['AUTO', 60], 'the hold honours the operator\'s mode and setpoint');
+    c.seqCmd('HOLD');                                  // RESUME
+    c.step(0.5);
+    assert.equal(c.P.b.held, false); assert.equal(c.P.b.phase, 'CHARGE');
+    assert.equal(c.L.TIC212.modeAttr, 'OPERATOR', 'CHARGE does not own the jacket loop: RESUME does not take it');
+    assert.deepEqual([c.L.TIC212.mode, c.L.TIC212.sp], ['AUTO', 60], 'and does not re-assert a setpoint over the operator\'s');
+    // not locked in: the operator's further stores are accepted after RESUME, with no refusal journaled
+    assert.equal(c.storeEntry('TIC212', 'SP', 65), true);
+    assert.equal(c.L.TIC212.sp, 65);
+    if (leaveInMan) { c.setMode('TIC212', 'MAN'); assert.equal(c.L.TIC212.mode, 'MAN'); }
+    assert.ok(!c.events.some((e) => e.src === 'TIC212' && /WRITE REJECTED/.test(e.desc)), 'no TIC212 write refused in CHARGE');
+    // HEATUP: the sequence takes the loop, AUTO at the phase's 80, from the scan it enters the phase
+    assert.ok(run(c, 400, () => c.P.b.phase === 'HEATUP'), 'the charge completes after RESUME');
+    assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+    assert.deepEqual([c.L.TIC212.mode, c.L.TIC212.sp], ['AUTO', 80], (leaveInMan ? 'left in MAN' : 'left in AUTO at 65') + ': the phase takes it');
+    assert.ok(has(c, 'SCM202', 'PHASE → HEATUP'));
+    assert.ok(!c.events.some((e) => /MODE RESTORED BY SEQUENCE/.test(e.desc)), 'the transition is the sequence\'s own write, not a restore');
+    c.step(0.5);
+    assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
+    assert.equal(c.storeEntry('TIC212', 'SP', 70), true);
+    assert.equal(c.L.TIC212.sp, 80, 'and from here the operator is refused');
+    assert.equal(c.state.msg, 'TIC212: MODE ATTRIBUTE PROGRAM — SP OWNED BY SEQUENCE');
+  }
+});
+
 // CR42: the alarm help for the three high alarms that told the operator to write a loop the sequence owns while it runs now says HOLD the
 // sequence first: FIC211 and TIC212 are the sequence's while it runs and the operator's while it is held (spec 4.2).
-test('CR42: the alarm help that directs a write to a loop the sequence owns says HOLD the sequence first: FIC211, TIC212, LI215 and PI214 PVHI, and FIC211 PVLO', () => {
+test('CR42: the alarm help that directs a write to a loop the sequence owns says HOLD the sequence first: FIC211, TIC212, LI215 and PI214 PVHI, TI216 PVHI, and FIC211 PVLO; the three entries that said only to cut the feed say how', () => {
   const f = AlarmHelp.resolve('FIC211', 'PVHI', {});
   assert.equal(f.found, true);
   assert.equal(f.correctiveAction, 'HOLD the sequence first: FIC211 belongs to the sequence while it runs and to you while it is held. Then reduce the FIC211 setpoint or place it in MAN at a lower output; check the monomer inventory bar.');
@@ -287,6 +350,34 @@ test('CR42: the alarm help that directs a write to a loop the sequence owns says
   const low = AlarmHelp.resolve('FIC211', 'PVLO', {});
   assert.equal(low.found, true);
   assert.equal(low.correctiveAction, 'Check MV-211 position against output. The sequence returns FIC211 to AUTO itself once its PV is good. To work the loop, HOLD the sequence first (FIC211 is yours while it is held) and keep it held until the feed is available.');
+  // Review Minor 10: TI216 PVHI's action is the entry of the list no assertion read.
+  const tad = AlarmHelp.resolve('TI216', 'PVHI', {});
+  assert.equal(tad.found, true);
+  assert.equal(tad.correctiveAction, 'HOLD the sequence to stop the monomer feed (the sequence owns the FIC211 setpoint while it runs), confirm M-202 is running, and watch the monomer inventory bar fall before you RESUME.');
+  // Review Minor 2: TIC212 PVHH, PI214 PVHH and M202 TRIP told the operator to cut the feed without saying how; while the sequence runs HOLD (or ABORT) is the way.
+  for (const [tag, cond] of [['TIC212', 'PVHH'], ['PI214', 'PVHH'], ['M202', 'TRIP']]) {
+    const h = AlarmHelp.resolve(tag, cond, {});
+    assert.equal(h.found, true, tag + ' ' + cond);
+    assert.match(h.correctiveAction, /^HOLD the sequence (first|at once) to cut the monomer feed/, tag + ' ' + cond);
+    assert.match(h.correctiveAction, /FIC211 belongs to the sequence while it runs and to you while it is held/, tag + ' ' + cond);
+  }
+});
+
+// Review Minor 9: FIC211 PVLO's consequence said the sequence "will move to REACT with an under-charged reactor". FEED ends on the batch level, and the level only rises
+// with the monomer flow, so without flow the sequence waits in FEED. The help now says that, and the model does it.
+test('FIC211 PVLO: the help says the sequence waits in FEED without monomer and does not move to REACT, and the model does exactly that', () => {
+  const help = AlarmHelp.resolve('FIC211', 'PVLO', {});
+  assert.equal(help.found, true);
+  assert.match(help.consequence, /so the sequence waits in FEED \(it does not move to REACT under-charged\)/);
+  assert.ok(!/will move to REACT/.test(help.consequence), 'the under-charged move to REACT is gone');
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' });
+  assert.equal(c.P.b.phase, 'FEED');
+  c.V.MV211.pos = 0; c.V.MV211.stuck = true;           // the feed valve shut for good: no monomer reaches the batch
+  assert.ok(!run(c, 1200, () => c.P.b.phase !== 'FEED'), 'twenty minutes later the sequence is still in FEED');
+  assert.equal(c.P.b.phase, 'FEED');
+  assert.ok(c.P.b.lvl < 75, 'the level that ends FEED never got there: ' + c.P.b.lvl);
+  assert.ok(c.alarms.some((a) => a.key === 'FIC211.PVLO' && a.active), 'and the low-flow alarm the help belongs to stands');
 });
 
 // CR40: the plant gives every M3/H PID loop the measurement policy's low-flow cutoff (1 % of its span) at init, and nothing else. The field is
@@ -344,8 +435,9 @@ test('the saturation card stays silent under the setpoint shutoff: FIC313 at SP 
 });
 
 // Minor 3: the risk.tad card sent the operator to the FIC211 faceplate to "reduce the monomer feed", a store the PROGRAM attribute refuses
-// while the sequence runs in FEED and REACT. It now says HOLD first, as the TI216 alarm help does, and keeps its GO to the faceplate.
-test('the adiabatic-temperature risk card says HOLD the sequence to stop the feed, and keeps its GO to the FIC211 faceplate', () => {
+// while the sequence runs in FEED and REACT. It says HOLD first, as the TI216 alarm help does (S2 round 2), and, since the HOLD button lives on the U2 graphic,
+// its GO opens that graphic as the M-202 and agitator-stopped cards' HOLD steps do, not the FIC211 faceplate (whole-branch review, Minor 3).
+test('the adiabatic-temperature risk card says HOLD the sequence to stop the feed, and its GO opens the U2 graphic where the HOLD button is', () => {
   const c = boot(4, 'OPER');
   c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' });
   c.injectFault('agit', true);
@@ -353,8 +445,17 @@ test('the adiabatic-temperature risk card says HOLD the sequence to stop the fee
   const risk = c.diagnose().find((x) => x.id === 'risk.tad');
   assert.equal(risk.steps[0].t, 'HOLD the sequence to stop the monomer feed (the sequence owns the FIC211 setpoint while it runs).');
   assert.equal(typeof risk.steps[0].go, 'function');
+  c.setState({ unit: 'U1', display: 'alarms', sel: null });
   risk.steps[0].go();
-  assert.equal(c.state.sel, 'FIC211', 'the GO opens the FIC211 faceplate');
+  assert.equal(c.state.unit, 'U2', 'the GO opens Unit 02');
+  assert.equal(c.state.display, 'graphic', 'on the graphic, where SCM202 START / HOLD / ABORT live');
+  assert.notEqual(c.state.sel, 'FIC211', 'and no FIC211 faceplate: its stores are refused while the sequence runs');
+  // the same GO the other HOLD steps use (the M-202 trip card's first step)
+  c.setState({ unit: 'U1', display: 'alarms' });
+  const mt = c.diagnose().find((x) => x.id === 'mtrip.M202');
+  assert.ok(mt && /HOLD the sequence/.test(mt.steps[0].t));
+  mt.steps[0].go();
+  assert.deepEqual([c.state.unit, c.state.display], ['U2', 'graphic']);
 });
 
 // Minor 4 (ruled correct): ABORT from CHARGE leaves TIC212 in MAN at 8 % with the sequence in COOL. The sequence owns the jacket in COOL, so
@@ -397,6 +498,59 @@ test('CR43: a batch trip during a hold clears the hold: COOL runs, the timer adv
   assert.ok(run(c, 600, () => !c.P.trips.batch), 'the trip resets');
   assert.equal(c.renderVals().batch.phase, 'COOL', 'running COOL, not HELD · COOL');
   assert.ok(run(c, 3600, () => c.P.b.phase === 'DRAIN'), 'COOL completes into DRAIN with nobody pressing RESUME');
+});
+
+// Review Minor 1: the TI216 shed card spoke of a held sequence whatever the state ("refuses RESUME", step 3 "RESUME the sequence"), and the TI216 PVHH help said to confirm
+// the sequence is HELD. The shed holds the sequence in FEED only, and under CR43 a batch trip during a hold clears the hold on the scan the shed latches: trip and shed
+// both up, held false, the batch running in COOL and the button reading HOLD. There is nothing to RESUME there, and the shed releases on its own.
+test('the TI216 shed card and help are true held and not held: RESUME is named only for a held sequence, and in the CR43 overlap (trip and shed up, no hold) nothing is said to need resuming', () => {
+  // held: the shed holds the batch in FEED, and RESUME is refused until the Urgent alarm clears
+  const h = boot(4, 'OPER');
+  h.applyPreset('U2_FEED'); h.setState({ sec: 'OPER' });
+  h.injectFault('agit', true);
+  assert.ok(run(h, 600, () => h.tadShed), 'the shed latches');
+  assert.equal(h.P.b.held, true);
+  let card = h.diagnose().find((x) => x.id === 'shed.tad');
+  assert.equal(card.title, 'Monomer feed shed by TI216 — sequence HELD');
+  assert.match(card.why, /closed and refuses RESUME until the Urgent alarm clears\.$/);
+  assert.equal(card.steps[2].t, 'When the Urgent alarm clears, RESUME the sequence — the SCM returns FIC211 to AUTO itself.');
+  assert.equal(typeof card.steps[2].go, 'function', 'the RESUME step takes the operator to the U2 graphic');
+  // not held, the CR43 overlap: the trip clears the hold on the scan the shed latches
+  const c = boot(4, 'OPER');
+  c.applyPreset('U2_FEED'); c.setState({ sec: 'OPER' });
+  c.seqCmd('HOLD');
+  c.P.b.T = 112; c.step(0.5);
+  assert.deepEqual([c.P.trips.batch, c.tadShed, c.P.b.held, c.P.b.phase], [true, true, false, 'COOL'], 'test setup: trip and shed up, no hold, COOL running');
+  assert.equal(c.renderVals().batch.holdT, 'HOLD', 'the button offers no RESUME');
+  card = c.diagnose().find((x) => x.id === 'shed.tad');
+  assert.equal(card.title, 'Monomer feed shed by TI216', 'no HELD in the title');
+  assert.ok(!/RESUME/.test(card.why), 'the card does not say the interlock refuses RESUME: ' + card.why);
+  assert.match(card.why, /until the Urgent alarm clears; the sequence is not held \(the R-202 trip has it running in COOL\)\.$/);
+  assert.ok(card.steps.every((st) => !/^When the Urgent alarm clears, RESUME/.test(st.t)), 'and no step sends the operator to RESUME');
+  assert.equal(card.steps[2].t, 'No RESUME is needed: the shed releases on its own when the Urgent alarm clears, and the SCM returns FIC211 to AUTO itself.');
+  // and what the card says is what happens: the shed releases with nobody pressing RESUME, and the SCM puts FIC211 back to AUTO
+  assert.ok(run(c, 120, () => !c.tadShed), 'the shed releases on its own');
+  assert.equal(c.P.trips.batch, true); assert.equal(c.P.b.held, false);
+  assert.ok(!has(c, 'SCM202', 'SEQUENCE RESUMED'), 'nobody resumed anything');
+  run(c, 2);
+  assert.equal(c.L.FIC211.mode, 'AUTO');
+  assert.ok(has(c, 'SCM202', 'FIC211 MODE RESTORED BY SEQUENCE (MAN → AUTO)'));
+  // the shed in REACT, with no trip standing: not held again, and no R-202 trip to cite, so the card carries no COOL clause
+  const d = boot(3, 'OPER');
+  d.P.b.phase = 'REACT'; d.syncPhaseSet();
+  d.L.TI216.pv = 150; d.L.TI216.almDelay = 0;
+  d.scan(0.5); d.interlocks();
+  assert.deepEqual([d.tadShed, d.P.b.held, !!d.P.trips.batch], [true, false, false]);
+  card = d.diagnose().find((x) => x.id === 'shed.tad');
+  assert.match(card.why, /until the Urgent alarm clears; the sequence is not held\.$/);
+  assert.match(card.steps[2].t, /^No RESUME is needed/);
+  // the help is true in both states: it names HELD and not held, and says what RESUME does in each
+  const help = AlarmHelp.resolve('TI216', 'PVHH', {});
+  assert.equal(help.found, true);
+  assert.ok(!/and the sequence is HELD,/.test(help.correctiveAction), 'it no longer asks the operator to confirm a hold that is not there');
+  assert.match(help.correctiveAction, /if the sequence is HELD \(the shed holds it itself in FEED\), RESUME is refused until the Urgent alarm clears/);
+  assert.match(help.correctiveAction, /if it is running \(COOL under the R-202 trip, for one\), there is nothing to RESUME/);
+  assert.match(help.consequence, /and, in FEED, HOLDS the sequence automatically\.$/);
 });
 
 test('D4: an initial-condition load keeps the session journal: one record is appended, ids stay unique, eid keeps counting, the KPI history and t0 survive, the settle\'s internal entries are discarded, trends hold only the settle', () => {
@@ -485,6 +639,26 @@ test('D5: a canonical drill start leaves the station clock where it was: the set
   const ic = c.events.find((e) => /^INITIAL CONDITION LOADED/.test(e.desc));
   assert.equal(ic.t, base);
   assert.equal(c.state.drill.t0, base);
+});
+
+// Review Minor 8: the instructor's initial-condition menu is the one load that is not a drill start, and its callback is built in the page (instructorView).
+// It passes the sim clock as the base time (spec 5.3), so the settle ends at the clock and the station clock does not jump; a callback that passed none
+// would seed the settle from the wall clock. Reached as the instructor tests reach it, through renderVals().instr.presets.
+test('D5: the instructor IC menu loads at the sim clock: every preset\'s callback leaves the station clock where it was', () => {
+  const c = boot(4, 'MNGR', 0);
+  run(c, 30);
+  c.instr.auth = true;
+  const presets = c.renderVals().instr.presets;
+  assert.equal(presets.length, 5);
+  for (const p of presets) {
+    run(c, 7);
+    const t = c.P.t;
+    assert.ok(t > 0 && t < 1e6, 'the zero clock, not the wall clock: ' + t);
+    const before = c.events.filter((e) => /^INITIAL CONDITION LOADED/.test(e.desc)).length;
+    p.cb();
+    assert.equal(c.P.t, t, p.label + ': the settle ends at the sim clock, so the station clock does not move');
+    assert.equal(c.events.filter((e) => /^INITIAL CONDITION LOADED/.test(e.desc)).length, before + 1, p.label + ': the load happened');
+  }
 });
 
 test('D5: the settle lands before the base time: an IC with alarms raised during its run-forward carries raise times inside [base − length, base], and the zero clock tolerates it (times before the session start)', () => {
@@ -701,6 +875,42 @@ test('CR45: the window covers the action journal too: an action taken between th
   assert.ok(c.instr.journal.some((e) => e.t < from), 'test setup: a journal row precedes the drill');
   const { seen } = debriefInput(c);
   assert.ok(seen.journal.length > 0 && seen.journal.every((r) => r.t >= from));
+});
+
+// Review Minor 5: _lastADrill is not a snapshot key, so a slot or backtrack restore to before the drill leaves the ended drill's start in the plant's future, and the
+// window opened at that instant: every row of the session is before it, so the debrief came up empty. A start later than the plant clock is not this timeline's drill.
+test('CR45: after a slot restore to before an architecture drill the debrief is the session again, not a window that opens in the future; a restore to after it keeps the window', () => {
+  const c = boot(4, 'MNGR');
+  run(c, 60);
+  c.setMode('TIC202', 'MAN');
+  c.saveSlot(1, 'before the drill');
+  const slotT = c.P.t;
+  run(c, 30);
+  c.startADrillFromMenu('A1');
+  const from = c.P.aDrill.startedAt;
+  c.endADrill('ENDED BY INSTRUCTOR');
+  assert.equal(c.archDebriefFrom(), from, 'test setup: an ended drill windows the debrief at its start');
+  c.restoreSlot(1);
+  assert.equal(c.P.t, slotT);
+  assert.ok(from > c.P.t, 'test setup: the drill\'s start is after the restored clock');
+  assert.equal(c.archDebriefFrom(), null, 'a start in the plant\'s future is not this timeline\'s drill');
+  const { seen, rows } = debriefInput(c);
+  assert.equal(seen.t0, c.t0, 'the debrief is the session');
+  assert.ok(seen.events.some((e) => /OPERATOR STATION STARTED/.test(e.desc)), 'the session before the slot is in it');
+  assert.ok(rows.some((r) => /MODE/.test(r.text)), 'and so is the operator\'s own action');
+  // control: a slot taken after the drill ended restores to a clock at or after its start, so the drill still windows the debrief
+  const d = boot(4, 'MNGR');
+  run(d, 30);
+  d.startADrillFromMenu('A1');
+  const from2 = d.P.aDrill.startedAt;
+  run(d, 30);
+  d.endADrill('ENDED BY INSTRUCTOR');
+  d.saveSlot(2, 'after the drill');
+  run(d, 30);
+  d.restoreSlot(2);
+  assert.ok(d.P.t >= from2);
+  assert.equal(d.archDebriefFrom(), from2);
+  assert.equal(debriefInput(d).seen.t0, from2);
 });
 
 test('with no architecture drill run the debrief shows the whole session, as before', () => {

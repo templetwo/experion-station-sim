@@ -29,18 +29,27 @@ test('actual archived v1 checkpoints resume explicit legacy operation without in
   assert.equal(current.schema_version,'peb.plant.v2');
   assert.equal(current.materialMode,'legacy');assert.equal(current.composition,null);
   assert.deepEqual(current.product,old.product);
+  // CR40 (docs/dev/CREDIBILITY-PASS-SPEC.md section 0.6): restore() recomputes the derived spCutoff on every M3/H PID loop, as applySnapshot does, and a
+  // checkpoint archived before the field existed has none; so the restored L carries the field and the archived L does not. It is the one leaf the
+  // restore adds. Like the derived obs and pvObs that the lockstep comparison retired by CR27 (below) set aside, it is derived from the range, so it is
+  // stripped from the restored copy before the exact comparisons. Its own value, and the shutoff it switches on, are pinned in tests/rt-kernel.test.js
+  // (RT31); the strip is itself checked here, so it hides nothing else.
+  assert.deepEqual(Object.keys(current.fields.L).filter(k=>'spCutoff' in current.fields.L[k]).sort(),['FIC102','FIC211','FIC310','FIC313'],'the restore added spCutoff to the four M3/H loops');
+  assert.deepEqual(Object.keys(checkpoint.fields.L).filter(k=>'spCutoff' in checkpoint.fields.L[k]),[],'and the archived checkpoint carries it on none');
+  const withoutCutoff=(capture)=>{const o=JSON.parse(JSON.stringify(capture));for(const l of Object.values(o.fields.L))delete l.spCutoff;return o;};
+  const restored=withoutCutoff(current);
   // the restore itself is exact: at the restore instant, before any tick has run, the plant fields are the archived checkpoint's
-  for(const key of ['P','L','V'])assert.deepEqual(current.fields[key],checkpoint.fields[key],key);
+  for(const key of ['P','L','V'])assert.deepEqual(restored.fields[key],checkpoint.fields[key],key);
   // and so is everything else the checkpoint carries (the other plant fields, the alarm records, the random streams, the drill and the ledgers):
   // the whole capture equals the archived checkpoint less the three things v2 adds or retypes (the schema stamp, the material mode, the composition).
   // This recovers the hidden-state coverage the removed lockstep comparison gave (CR27): a field the restore dropped, defaulted or rewrote now
   // fails here, naming the key, where the three plant objects alone would have passed it.
   const bare=(capture)=>{const o={...capture};for(const k of ['schema_version','materialMode','composition'])delete o[k];return o;};
-  assert.deepEqual(Object.keys(bare(current)).sort(),Object.keys(bare(checkpoint)).sort(),'the same top-level keys');
-  assert.deepEqual(Object.keys(current.fields).sort(),Object.keys(checkpoint.fields).sort(),'the same plant fields');
-  for(const key of Object.keys(bare(checkpoint)))assert.deepEqual(bare(current)[key],bare(checkpoint)[key],'top-level '+key);
-  for(const key of Object.keys(checkpoint.fields))assert.deepEqual(current.fields[key],checkpoint.fields[key],'plant field '+key);
-  assert.deepEqual(bare(current),bare(checkpoint),'the whole capture equals the checkpoint at the restore instant');
+  assert.deepEqual(Object.keys(bare(restored)).sort(),Object.keys(bare(checkpoint)).sort(),'the same top-level keys');
+  assert.deepEqual(Object.keys(restored.fields).sort(),Object.keys(checkpoint.fields).sort(),'the same plant fields');
+  for(const key of Object.keys(bare(checkpoint)))assert.deepEqual(bare(restored)[key],bare(checkpoint)[key],'top-level '+key);
+  for(const key of Object.keys(checkpoint.fields))assert.deepEqual(restored.fields[key],checkpoint.fields[key],'plant field '+key);
+  assert.deepEqual(bare(restored),bare(checkpoint),'the whole capture equals the checkpoint at the restore instant, less the derived spCutoff (CR40)');
   // CR27 (docs/dev/CREDIBILITY-PASS-SPEC.md section 0.6): this test used to run the archived 3.1.0-era kernel and the current
   // kernel in lockstep for 12 ticks and compare P, L (less the derived obs and pvObs) and V field for field. That proved G2
   // left the legacy dynamics untouched, a property stage S1 of the credibility pass breaks on purpose: the FIC211 low-flow

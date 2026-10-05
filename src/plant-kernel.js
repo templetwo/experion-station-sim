@@ -63,6 +63,9 @@
     const accounting=Instructor.validateAccounting(s,s.fields.P,s.schema_version==='peb.plant.v1',s.fields.L);
     const c=fresh({seed:s.fields.seed,sim_time_ms:s.fields.t0,materialMode:accounting.materialMode,mission:accounting.product.mission});
     Object.assign(c,s.fields);c.rtTick=s.tick;c.nextMessage=s.nextMessage;
+    // spCutoff is derived from each loop's range (CR40), so it is recomputed here as applySnapshot does: a checkpoint written before the field existed has none,
+    // and would resume with the setpoint shutoff off. A value the checkpoint does carry is not kept.
+    c.setFlowCutoffs();
     c.alarmEngine.restore(s.alarms);c.rand=Models.createRand(c.seed);c.rand.setState(s.rand);c.rand4=Models.createRand((c.seed^0x5eed4)>>>0);c.rand4.setState(s.rand4);
     c.tasksDone=new Set(s.tasksDone);c.disabledAssets=new Set(s.disabledAssets);Object.assign(c.instr,s.instructor);
     c.state.drill=c.drillFromData(s.drill);Object.assign(c.state,s.exercise);Object.assign(c,accounting);c.plausibility=s.plausibility||Plausibility.create(c.P);c.revisions=s.revisions;c.focus=s.focus;

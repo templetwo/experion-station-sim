@@ -119,6 +119,8 @@ test('state-based limits: disabled conditions leave the point, tightened ones ch
 test('PROGRAM mode attribute: operator SP / OP / MODE stores are rejected with a callout and a journal entry while the sequence owns the loop', () => {
   const c = boot(2, 'OPER');
   c.seqCmd('START', true);
+  // the sequence owns the jacket loop from HEATUP on (CR48): in CHARGE it writes no jacket setpoint and the loop reads OPERATOR
+  assert.ok(run(c, 400, () => c.P.b.phase === 'HEATUP'), 'the charge completes into HEATUP');
   c.step(0.5);
   assert.equal(c.L.TIC212.modeAttr, 'PROGRAM');
   const spBefore = c.L.TIC212.sp, modeBefore = c.L.TIC212.mode;
@@ -411,8 +413,8 @@ test('PROGRAM write-rejection callouts clear after ten UI ticks while the simula
   const c = boot(3, 'OPER');
   c.seqCmd('START', true);
   c.step(0.5);
-  c.openFp('TIC212');
-  c.setMode('TIC212', 'MAN');
+  c.openFp('FIC211');                    // PROGRAM in every active phase; TIC212 is the operator's in CHARGE (CR48)
+  c.setMode('FIC211', 'MAN');
   c.setState({ speed: 0, silenced: true });
   assert.equal(c.renderVals().fps[0].calloutOn, true);
   const t = c.P.t;
