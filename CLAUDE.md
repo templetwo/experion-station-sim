@@ -19,7 +19,7 @@ don't restate it. This file is what you need to *change* it safely.
 ## Commands
 
 ```bash
-node --test tests/*.test.js     # 1294 tests, ~6 s, no dependencies (2026-10-05)
+node --test tests/*.test.js     # 1294 tests, ~6 s, no dependencies (2026-10-05); 2 coach tests skip without the anthropic Python package
 python3 tools/build-dist.py     # rebuild dist/ after ANY change to the app or src/
 tools/smoke.sh                  # headless-Chrome check of both builds
 tools/strip-dev.sh              # list/produce the production-only tree (dry run by default)
@@ -65,7 +65,10 @@ deterministic core never waits on a network or a model**.
 **Two shipping artifacts, always kept in step.** The folder build (`Experion
 Station Simulator.dc.html` + `support.js` + `src/`) and the single-file offline
 build (`dist/experion-station-sim-standalone.html`). A change to either the app
-or `src/` is not finished until `build-dist.py` has run.
+or `src/` is not finished until `build-dist.py` has run. The build is deterministic per
+machine: a second run leaves `dist/` byte-identical, while another Node or zlib writes different
+gzip bytes around identical modules. Judge a dist by its decompressed modules and the stamped
+`ESS.MODEL_ID`, never by its hash across machines.
 
 **`src/*.js` are UMD plain scripts**, not modules: `module.exports` under node,
 `root.ESS.<Name>` in the browser. Pure logic — no DOM, no timers, no globals.

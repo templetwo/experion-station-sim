@@ -262,9 +262,11 @@ Design items deferred to the intake doc (§1.5), recorded here until it exists:
   alarm the engine no longer holds stays standing in the KPI), and an earlier episode of the same key
   ending inside that window would close the live one; both unreachable with the shipped presets (none
   leaves an alarm standing after its settle); fix together.
-- A refused dry settle leaves the plant settled at the epoch with the session journal restored; a
-  capture-and-rollback around the dry settle would also cover the menu callers that ignore the load's
-  return value (unreachable with the shipped presets).
+- A refused dry settle leaves the plant settled at the epoch with the session journal restored, and a
+  settle that throws leaves the scratch journal in place over a half-settled plant (nothing wraps the
+  settle; the journal lift is S2's, the shape predates it). A capture-and-rollback around the settle,
+  restoring plant and journal on a refusal or a throw, would also cover the menu callers that ignore
+  the load's return value (unreachable with the shipped presets; the 2026-10-06 audit, caveat 5).
 - An initial-condition load during an armed drill clears it silently (pre-existing); a load should end
   an armed drill with a reason.
 - `_lastADrill` is not a snapshot key. A restore to before a drill's start drops it (CR49); a restore
